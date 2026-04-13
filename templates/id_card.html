@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}{{ worker.full_name }} ID Card - SmartWorker{% endblock %}
+
+{% block head %}
+<!-- Additional libraries for ID card generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Employee ID Card</div>
+                <div class="text-sm opacity-90">Digital Identity</div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="shareIDCard()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-share text-lg"></i>
+            </button>
+            <button onclick="showDownloadModal()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-print text-lg"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-32">
+    <!-- ID Card Preview -->
+    <section class="mb-6">
+        <div id="employee-id-card" class="bg-gradient-to-br from-primary to-accent text-white rounded-3xl p-6 relative overflow-hidden shadow-2xl border border-white/20">
+            <!-- Background decorations -->
+            <div class="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-20 translate-x-20"></div>
+            <div class="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
+            <div class="absolute top-4 right-4 w-16 h-16 bg-white/10 rounded-2xl backdrop-blur-sm flex items-center justify-center">
+                <i class="fa-solid fa-building text-white/70 text-xl"></i>
+            </div>
+            
+            <div class="relative z-10">
+                <!-- Header -->
+                <div class="text-center mb-6">
+                    <div class="text-xl font-bold text-white mb-1">SmartWorker</div>
+                    <div class="text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full inline-block">Employee ID Card</div>
+                </div>
+                
+                <!-- Employee Info -->
+                <div class="flex items-start space-x-4 mb-6">
+                    <div class="relative shrink-0">
+                        {% if worker.profile_image %}
+                            <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}" class="w-20 h-20 shrink-0 rounded-2xl object-cover object-center border-3 border-white/30 shadow-lg">
+                        {% else %}
+                            <div class="w-20 h-20 shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white font-bold text-2xl border-3 border-white/30 shadow-lg">
+                                {{ worker.full_name[0] }}
+                            </div>
+                        {% endif %}
+                        <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
+                            <i class="fa-solid fa-check text-xs text-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xl font-bold mb-1">{{ worker.full_name }}</div>
+                        <div class="text-sm text-white/90 mb-1">{{ worker.position }}</div>
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">ID: {{ worker.worker_id }}</div>
+                            <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">{{ worker.status.title() }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Details -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/20">
+                        <div class="text-xs text-white/70 mb-1">Phone Number</div>
+                        <div class="text-sm font-medium">{{ worker.phone }}</div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/20">
+                        <div class="text-xs text-white/70 mb-1">Joined Date</div>
+                        <div class="text-sm font-medium">{{ worker.join_date.strftime('%d %b %Y') }}</div>
+                    </div>
+                </div>
+                
+                <!-- QR Code Section -->
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex-1">
+                        <div class="text-xs text-white/70 mb-2">QR Code for Attendance</div>
+                        <div class="text-sm font-medium text-white/90 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
+                            QR ID: {{ worker.worker_id }}QR{{ worker.join_date.strftime('%Y') }}
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <div class="bg-white p-3 rounded-2xl shadow-lg">
+                            {% if worker.qr_code %}
+                                <img src="{{ worker.qr_code }}" alt="QR Code" class="w-16 h-16">
+                            {% else %}
+                                <i class="fa-solid fa-qrcode text-primary text-4xl"></i>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="border-t border-white/20 pt-4">
+                    <div class="flex items-center justify-between text-xs text-white/70">
+                        <span>Valid for attendance marking</span>
+                        <span>Generated: {{ worker.updated_at.strftime('%d %b %Y') if worker.updated_at else 'Today' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Action Buttons -->
+    <section class="grid grid-cols-2 gap-4 mb-6">
+        <button onclick="showDownloadModal()" class="bg-accent text-white p-4 rounded-2xl text-center font-medium shadow-lg hover:bg-primary transition-colors">
+            <i class="fa-solid fa-download text-2xl mb-2 block"></i>
+            Download ID
+        </button>
+        <button onclick="generateNewQR()" class="bg-purple-600 text-white p-4 rounded-2xl text-center font-medium shadow-lg hover:bg-purple-700 transition-colors">
+            <i class="fa-solid fa-qrcode text-2xl mb-2 block"></i>
+            Generate New QR
+        </button>
+    </section>
+
+    <!-- ID Card Information -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">ID Card Information</h3>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Card Type</span>
+                <span class="font-medium text-gray-800">Digital Employee ID</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">QR Code Status</span>
+                <span class="font-medium text-green-600 flex items-center">
+                    <i class="fa-solid fa-check-circle mr-2"></i>Active
+                </span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Last Generated</span>
+                <span class="font-medium text-gray-800">{{ worker.updated_at.strftime('%d %b %Y, %H:%M') if worker.updated_at else 'Today, Now' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Department</span>
+                <span class="font-medium text-accent">{{ worker.department }}</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Usage Statistics -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">QR Usage Statistics</h3>
+        <div class="grid grid-cols-2 gap-4">
+            {% set present_count = worker.attendance_records|selectattr('status', 'equalto', 'present')|list|length %}
+            {% set total_records = worker.attendance_records|list|length %}
+            {% set this_week = worker.attendance_records|selectattr('date', 'ge', (date.today() - timedelta(days=7)))|list|length %}
+            {% set success_rate = (present_count / total_records * 100) if total_records > 0 else 0 %}
+            
+            <div class="text-center p-3 bg-green-50 rounded-2xl">
+                <div class="text-2xl font-bold text-green-600">{{ present_count }}</div>
+                <div class="text-sm text-gray-600">Successful Check-ins</div>
+            </div>
+            <div class="text-center p-3 bg-blue-50 rounded-2xl">
+                <div class="text-2xl font-bold text-blue-600">{{ this_week }}</div>
+                <div class="text-sm text-gray-600">This Week</div>
+            </div>
+            <div class="text-center p-3 bg-purple-50 rounded-2xl">
+                <div class="text-2xl font-bold text-purple-600">{{ total_records - present_count }}</div>
+                <div class="text-sm text-gray-600">Other Records</div>
+            </div>
+            <div class="text-center p-3 bg-orange-50 rounded-2xl">
+                <div class="text-2xl font-bold text-orange-600">{{ "%.0f"|format(success_rate) }}%</div>
+                <div class="text-sm text-gray-600">Success Rate</div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Download Options Modal -->
+<div id="download-options-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
+            <div class="text-center mb-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Download Options</h3>
+                <p class="text-gray-600">Choose your preferred format</p>
+            </div>
+            
+            <div class="space-y-3 mb-6">
+                <button onclick="downloadPNG()" class="w-full flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-file-image text-blue-600 text-xl"></i>
+                        <div class="text-left">
+                            <div class="font-medium text-gray-800">PNG Image</div>
+                            <div class="text-sm text-gray-600">High quality image format</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                </button>
+                
+                <button onclick="downloadPDF()" class="w-full flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-file-pdf text-red-600 text-xl"></i>
+                        <div class="text-left">
+                            <div class="font-medium text-gray-800">PDF Document</div>
+                            <div class="text-sm text-gray-600">Printable format</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                </button>
+            </div>
+            
+            <button onclick="hideDownloadModal()" 
+                    class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showDownloadModal() {
+    document.getElementById('download-options-modal').classList.remove('hidden');
+}
+
+function hideDownloadModal() {
+    document.getElementById('download-options-modal').classList.add('hidden');
+}
+
+function downloadPNG() {
+    const element = document.getElementById('employee-id-card');
+    html2canvas(element, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = '{{ worker.full_name }}_ID_Card.png';
+        link.href = canvas.toDataURL();
+        link.click();
+        hideDownloadModal();
+    });
+}
+
+function downloadPDF() {
+    const element = document.getElementById('employee-id-card');
+    html2canvas(element, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true
+    }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+        
+        const imgWidth = 180;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const x = (210 - imgWidth) / 2; // Center horizontally
+        const y = 20;
+        
+        pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+        pdf.save('{{ worker.full_name }}_ID_Card.pdf');
+        hideDownloadModal();
+    });
+}
+
+function shareIDCard() {
+    if (navigator.share) {
+        const element = document.getElementById('employee-id-card');
+        html2canvas(element, {
+            backgroundColor: null,
+            scale: 2,
+            useCORS: true
+        }).then(canvas => {
+            canvas.toBlob(blob => {
+                const file = new File([blob], '{{ worker.full_name }}_ID_Card.png', { type: 'image/png' });
+                navigator.share({
+                    title: '{{ worker.full_name }} - SmartWorker ID Card',
+                    text: 'Employee ID Card for {{ worker.full_name }}',
+                    files: [file]
+                });
+            });
+        });
+    } else {
+        // Fallback for browsers that don't support Web Share API
+        alert('Sharing not supported on this device. Use download instead.');
+    }
+}
+
+function generateNewQR() {
+    if (confirm('Generate a new QR code? This will invalidate the current QR code.')) {
+        // Create a form to submit QR regeneration request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("id_card", worker_id=worker.id) }}';
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'regenerate_qr';
+        input.value = 'true';
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

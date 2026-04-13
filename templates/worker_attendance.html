@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}{{ worker.full_name }} Attendance - SmartWorker{% endblock %}
+
+{% block head %}
+<style>
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background-color: #e5e7eb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.calendar-day {
+    background-color: white;
+    padding: 8px;
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-size: 0.875rem;
+}
+
+.calendar-day.other-month {
+    background-color: #f9fafb;
+    color: #9ca3af;
+}
+
+.calendar-day.present {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.calendar-day.absent {
+    background-color: #fecaca;
+    color: #991b1b;
+}
+
+.calendar-day.late {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.calendar-day.leave {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-indicator.present { background-color: #22c55e; }
+.status-indicator.absent { background-color: #ef4444; }
+.status-indicator.late { background-color: #f59e0b; }
+.status-indicator.leave { background-color: #3b82f6; }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Attendance Calendar</div>
+                <div class="text-sm opacity-90">{{ worker.full_name }}</div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="showStatsModal()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-chart-bar text-lg"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Worker Info -->
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+        <div class="flex items-center space-x-4">
+            <div class="relative shrink-0">
+                {% if worker.profile_image %}
+                    <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}" class="w-16 h-16 shrink-0 rounded-2xl object-cover object-center border-3 border-white/30">
+                {% else %}
+                    <div class="w-16 h-16 shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white font-bold text-xl border-3 border-white/30">
+                        {{ worker.full_name[0] }}
+                    </div>
+                {% endif %}
+                <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
+                    <i class="fa-solid fa-check text-xs text-white"></i>
+                </div>
+            </div>
+            <div class="flex-1">
+                <div class="text-lg font-bold mb-1">{{ worker.full_name }}</div>
+                <div class="text-sm opacity-90 mb-1">{{ worker.position }} • {{ worker.department }}</div>
+                <div class="text-sm opacity-90">ID: {{ worker.worker_id }}</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-32 space-y-6">
+    <!-- Month Navigation -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">
+                {{ start_date.strftime('%B %Y') }}
+            </h3>
+            <div class="flex items-center space-x-2">
+                <a href="{{ url_for('worker_attendance', worker_id=worker.id, month=start_date.month-1 if start_date.month > 1 else 12, year=start_date.year if start_date.month > 1 else start_date.year-1) }}" 
+                   class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
+                    <i class="fa-solid fa-chevron-left text-sm text-gray-600"></i>
+                </a>
+                <a href="{{ url_for('worker_attendance', worker_id=worker.id, month=start_date.month+1 if start_date.month < 12 else 1, year=start_date.year if start_date.month < 12 else start_date.year+1) }}" 
+                   class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
+                    <i class="fa-solid fa-chevron-right text-sm text-gray-600"></i>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Calendar -->
+        <div class="calendar-grid">
+            <!-- Header row -->
+            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Sun</div>
+            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Mon</div>
+            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Tue</div>
+            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Wed</div>
+            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Thu</div>
+            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Fri</div>
+            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Sat</div>
+            
+            <!-- Calendar days -->
+            {% set first_day = start_date.replace(day=1) %}
+            {% set start_calendar = first_day - timedelta(days=first_day.weekday() + 1) %}
+            {% if first_day.weekday() == 6 %}
+                {% set start_calendar = first_day %}
+            {% endif %}
+            
+            {% for i in range(42) %}
+                {% set current_date = start_calendar + timedelta(days=i) %}
+                {% set is_current_month = current_date.month == start_date.month %}
+                {% set attendance = calendar_data.get(current_date.day) if is_current_month else None %}
+                
+                <div class="calendar-day {{ 'other-month' if not is_current_month else '' }} 
+                           {{ attendance.status if attendance and is_current_month else '' }}">
+                    <span>{{ current_date.day }}</span>
+                    {% if attendance and is_current_month %}
+                        <div class="status-indicator {{ attendance.status }}"></div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Legend -->
+        <div class="flex items-center justify-center space-x-6 mt-4 text-xs">
+            <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span class="text-gray-600">Present</span>
+            </div>
+            <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span class="text-gray-600">Absent</span>
+            </div>
+            <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <span class="text-gray-600">Late</span>
+            </div>
+            <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span class="text-gray-600">Leave</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Monthly Summary -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Monthly Summary</h3>
+        
+        {% set present_days = attendance_summary.present_days %}
+        {% set absent_days = attendance_summary.absent_days %}
+        {% set late_days = attendance_summary.late_days %}
+        {% set leave_days = attendance_summary.leave_days %}
+        {% set total_marked_days = attendance_summary.total_marked_days %}
+        
+        <div class="grid grid-cols-2 gap-4">
+            <div class="text-center p-4 bg-green-50 rounded-2xl border border-green-200">
+                <div class="text-2xl font-bold text-green-600">{{ present_days }}</div>
+                <div class="text-sm text-gray-600">Present Days</div>
+            </div>
+            <div class="text-center p-4 bg-red-50 rounded-2xl border border-red-200">
+                <div class="text-2xl font-bold text-red-600">{{ absent_days }}</div>
+                <div class="text-sm text-gray-600">Absent Days</div>
+            </div>
+            <div class="text-center p-4 bg-yellow-50 rounded-2xl border border-yellow-200">
+                <div class="text-2xl font-bold text-yellow-600">{{ late_days }}</div>
+                <div class="text-sm text-gray-600">Late Days</div>
+            </div>
+            <div class="text-center p-4 bg-blue-50 rounded-2xl border border-blue-200">
+                <div class="text-2xl font-bold text-blue-600">{{ leave_days }}</div>
+                <div class="text-sm text-gray-600">Leave Days</div>
+            </div>
+        </div>
+        
+        {% if total_marked_days > 0 %}
+        <div class="mt-4 p-3 bg-gray-50 rounded-xl">
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-600">Attendance Rate</span>
+                <span class="font-semibold text-gray-800">{{ "%.1f"|format((present_days + late_days) / total_marked_days * 100) }}%</span>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Recent Records -->
+    {% if calendar_data %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Records</h3>
+        <div class="space-y-3">
+            {% for day, record in calendar_data.items() %}
+                {% if loop.index <= 10 %}
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 {% if record.status == 'present' %}bg-green-100{% elif record.status == 'absent' %}bg-red-100{% elif record.status == 'late' %}bg-yellow-100{% else %}bg-blue-100{% endif %} rounded-xl flex items-center justify-center">
+                            {% if record.status == 'present' %}
+                                <i class="fa-solid fa-check text-green-600"></i>
+                            {% elif record.status == 'absent' %}
+                                <i class="fa-solid fa-times text-red-600"></i>
+                            {% elif record.status == 'late' %}
+                                <i class="fa-solid fa-clock text-yellow-600"></i>
+                            {% else %}
+                                <i class="fa-solid fa-calendar-days text-blue-600"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-800">{{ record.date.strftime('%d %B %Y') }}</div>
+                            {% if record.check_in_time %}
+                                <div class="text-sm text-gray-600">Check-in: {{ record.check_in_time.strftime('%H:%M') }}</div>
+                            {% endif %}
+                            {% if record.check_out_time %}
+                                <div class="text-sm text-gray-600">Check-out: {{ record.check_out_time.strftime('%H:%M') }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="{% if record.status == 'present' %}bg-green-100 text-green-800{% elif record.status == 'absent' %}bg-red-100 text-red-800{% elif record.status == 'late' %}bg-yellow-100 text-yellow-800{% else %}bg-blue-100 text-blue-800{% endif %} px-3 py-1 rounded-full text-xs font-medium">
+                        {{ record.status.title() }}
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</main>
+
+<!-- Stats Modal -->
+<div id="stats-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
+            <div class="text-center mb-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Detailed Statistics</h3>
+                <p class="text-gray-600">{{ start_date.strftime('%B %Y') }}</p>
+            </div>
+            
+            <div class="space-y-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Total Working Days</span>
+                    <span class="font-semibold text-gray-800">{{ end_date.day }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Days Marked</span>
+                    <span class="font-semibold text-gray-800">{{ total_marked_days }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Present + Late</span>
+                    <span class="font-semibold text-green-600">{{ present_days + late_days }}</span>
+                </div>
+                {% if worker.pay_type == 'daily' %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Paid Days</span>
+                    <span class="font-semibold text-gray-800">{{ pay_summary.paid_days }}</span>
+                </div>
+                {% if pay_summary.full_day_days > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Full Days</span>
+                    <span class="font-semibold text-gray-800">{{ pay_summary.full_day_days }}</span>
+                </div>
+                {% endif %}
+                {% if pay_summary.half_day_days > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Half Days</span>
+                    <span class="font-semibold text-orange-600">{{ pay_summary.half_day_days }}</span>
+                </div>
+                {% endif %}
+                {% if pay_summary.prorated_days > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Pro-Rata Days</span>
+                    <span class="font-semibold text-indigo-600">{{ pay_summary.prorated_days }}</span>
+                </div>
+                {% endif %}
+                {% if pay_summary.paid_absent_days > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Paid Absent Days</span>
+                    <span class="font-semibold text-blue-600">{{ pay_summary.paid_absent_days }}</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Half-Day Grace</span>
+                    <span class="font-semibold text-gray-800">{{ pay_summary.half_day_grace_minutes }} min</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Base Wage</span>
+                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                </div>
+                {% elif worker.pay_type == 'monthly' %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Monthly Salary</span>
+                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Leave Days</span>
+                    <span class="font-semibold text-gray-800">{{ pay_summary.leave_days }}</span>
+                </div>
+                {% if pay_summary.extra_leave_days > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Extra Leave Days</span>
+                    <span class="font-semibold text-red-600">{{ pay_summary.extra_leave_days }}</span>
+                </div>
+                {% endif %}
+                {% elif worker.pay_type == 'hourly' %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Worked Hours</span>
+                    <span class="font-semibold text-gray-800">{{ "%.2f"|format(pay_summary.worked_minutes / 60) }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Hourly Wage</span>
+                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                </div>
+                {% elif worker.pay_type == 'project' %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Project Amount</span>
+                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                </div>
+                {% endif %}
+
+                {% if pay_summary.overtime_pay > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Overtime Pay</span>
+                    <span class="font-semibold text-green-600">+₹{{ "%.0f"|format(pay_summary.overtime_pay) }}</span>
+                </div>
+                {% endif %}
+
+                {% if pay_summary.leave_deductions > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Leave Policy Deductions</span>
+                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.leave_deductions) }}</span>
+                </div>
+                {% endif %}
+
+                {% if pay_summary.late_deductions > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Late Policy Deductions</span>
+                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.late_deductions) }}</span>
+                </div>
+                {% endif %}
+
+                {% if pay_summary.deductions > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Total Deductions</span>
+                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.deductions) }}</span>
+                </div>
+                {% endif %}
+
+                <div class="flex justify-between items-center pt-2 border-t">
+                    <span class="text-gray-600">Estimated Net Pay</span>
+                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.estimated_pay) }}</span>
+                </div>
+                <div class="text-xs text-gray-500">{{ pay_summary.policy_note }}</div>
+            </div>
+            
+            <button onclick="hideStatsModal()" 
+                    class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showStatsModal() {
+    document.getElementById('stats-modal').classList.remove('hidden');
+}
+
+function hideStatsModal() {
+    document.getElementById('stats-modal').classList.add('hidden');
+}
+</script>
+{% endblock %}

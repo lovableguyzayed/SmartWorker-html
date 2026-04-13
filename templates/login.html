@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Login - SmartWorker{% endblock %}
+
+{% block head %}
+<style>
+.signin-orb {
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.32), transparent 66%);
+}
+
+.signin-shell {
+    background: linear-gradient(180deg, #eef3fb 0%, #f8fafc 45%, #f8fafc 100%);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="mobile-signin" class="signin-shell max-w-sm mx-auto min-h-screen">
+    <section id="signin-hero" class="bg-gradient-to-br from-primary to-accent text-white p-8 h-[370px] flex flex-col justify-center items-center relative overflow-hidden rounded-b-[2.2rem]">
+        <div class="absolute top-0 left-0 w-full h-full opacity-10">
+            <div class="absolute top-16 left-6 w-20 h-20 border-2 border-white/20 rounded-xl rotate-12"></div>
+            <div class="absolute top-24 right-8 w-16 h-16 bg-white/10 rounded-full"></div>
+            <div class="absolute bottom-24 left-8 w-14 h-14 bg-white/15 rounded-lg rotate-45"></div>
+            <div class="absolute bottom-16 right-12 w-10 h-10 border border-white/25 rounded-full"></div>
+        </div>
+
+        <div id="app-logo" class="relative z-10 text-center">
+            <div class="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-2xl mx-auto mb-6 relative transform hover:scale-105 transition-transform duration-300">
+                <div class="w-24 h-24 bg-gradient-to-br from-primary via-accent to-blue-600 rounded-full flex items-center justify-center relative overflow-hidden shadow-inner">
+                    <div class="absolute inset-0 signin-orb"></div>
+                    <div class="relative z-10 flex flex-col items-center justify-center">
+                        <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg mb-2">
+                            <div class="relative">
+                                <i class="fa-solid fa-user-clock text-primary text-2xl"></i>
+                                <div class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border border-white flex items-center justify-center">
+                                    <i class="fa-solid fa-check text-white text-[10px]"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-1">
+                            <div class="w-2 h-2 bg-white rounded-full opacity-80"></div>
+                            <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                            <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold mb-2 tracking-wide">SmartWorker</h1>
+            <p class="text-base opacity-90 font-medium">Professional Attendance Management</p>
+        </div>
+    </section>
+
+    <main id="signin-content" class="p-6 -mt-16 relative z-10">
+        <div id="signin-card" class="bg-white rounded-3xl shadow-2xl p-8 mb-6 border border-gray-100">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-primary mb-2">Welcome Back</h2>
+                <p class="text-gray-600">Access your attendance dashboard</p>
+            </div>
+
+            <form id="signin-form" method="POST" class="space-y-6">
+                <div id="username-input" class="space-y-2">
+                    <label for="username" class="text-sm font-semibold text-gray-700 block">Username or Email</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-user text-gray-400"></i>
+                        </div>
+                        <input
+                            id="username"
+                            name="username"
+                            type="text"
+                            required
+                            placeholder="Enter username or email"
+                            class="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
+                        >
+                    </div>
+                </div>
+
+                <div id="password-input" class="space-y-2">
+                    <label for="password" class="text-sm font-semibold text-gray-700 block">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-gray-400"></i>
+                        </div>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            required
+                            placeholder="Enter your password"
+                            class="w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
+                        >
+                        <button id="password-toggle" type="button" class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                            <i class="fa-solid fa-eye text-gray-400 hover:text-gray-600 transition-colors"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="options-row" class="flex items-center justify-between">
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" class="w-4 h-4 text-accent border border-gray-300 rounded focus:ring-2 focus:ring-accent">
+                        <span class="text-gray-600 text-sm">Remember me</span>
+                    </label>
+                    <button type="button" class="text-accent text-sm font-semibold hover:text-primary transition-colors">Forgot Password?</button>
+                </div>
+
+                <button id="signin-btn" type="submit" class="w-full bg-gradient-to-r from-primary to-accent text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
+                    Sign In to Dashboard
+                </button>
+            </form>
+
+            <div id="divider" class="flex items-center my-6">
+                <div class="flex-1 border-t-2 border-gray-200"></div>
+                <span class="px-4 text-sm text-gray-500 font-medium">OR</span>
+                <div class="flex-1 border-t-2 border-gray-200"></div>
+            </div>
+
+            <div id="otp-login-section" class="space-y-3">
+                <div class="space-y-2">
+                    <label for="login_mobile" class="text-sm font-semibold text-gray-700 block">Mobile Number for OTP Login</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-mobile-alt text-gray-400"></i>
+                        </div>
+                        <input
+                            id="login_mobile"
+                            type="tel"
+                            placeholder="Enter registered mobile number"
+                            class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
+                        >
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="login-send-otp-btn" type="button" class="bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition-all border border-gray-200">
+                        Send OTP
+                    </button>
+                    <button id="login-verify-otp-btn" type="button" class="bg-accent text-white py-2.5 rounded-xl font-semibold hover:bg-primary transition-all">
+                        Verify & Login
+                    </button>
+                </div>
+
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-shield-halved text-gray-400"></i>
+                    </div>
+                    <input
+                        id="login_otp"
+                        type="text"
+                        maxlength="6"
+                        placeholder="Enter 6-digit OTP"
+                        class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
+                    >
+                </div>
+
+                <div id="login-otp-status" class="text-xs font-medium text-gray-500">
+                    Enter mobile number and use OTP to login.
+                </div>
+            </div>
+        </div>
+
+        <div id="signup-link" class="text-center mb-8">
+            <p class="text-gray-600 text-sm">
+                Don't have an account?
+                <a href="{{ url_for('register') }}" class="text-accent font-bold hover:text-blue-700 transition-colors">Create Account</a>
+            </p>
+        </div>
+
+        <div class="text-center text-xs text-gray-500 pb-6">
+            &copy; 2024 SmartWorker. All rights reserved.
+        </div>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const signinForm = document.getElementById('signin-form');
+    const signinBtn = document.getElementById('signin-btn');
+    const loginMobileInput = document.getElementById('login_mobile');
+    const loginOtpInput = document.getElementById('login_otp');
+    const loginSendOtpBtn = document.getElementById('login-send-otp-btn');
+    const loginVerifyOtpBtn = document.getElementById('login-verify-otp-btn');
+    const loginOtpStatus = document.getElementById('login-otp-status');
+    const passwordInput = document.getElementById('password');
+    const passwordToggle = document.getElementById('password-toggle');
+    const eyeIcon = passwordToggle ? passwordToggle.querySelector('i') : null;
+
+    function setLoginOtpStatus(message, state) {
+        if (!loginOtpStatus) return;
+        loginOtpStatus.textContent = message;
+        loginOtpStatus.classList.remove('text-gray-500', 'text-green-600', 'text-red-600');
+        if (state === 'success') {
+            loginOtpStatus.classList.add('text-green-600');
+        } else if (state === 'error') {
+            loginOtpStatus.classList.add('text-red-600');
+        } else {
+            loginOtpStatus.classList.add('text-gray-500');
+        }
+    }
+
+    if (signinForm && signinBtn) {
+        signinForm.addEventListener('submit', function() {
+            signinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Signing In...';
+            signinBtn.disabled = true;
+        });
+    }
+
+    if (loginMobileInput) {
+        loginMobileInput.addEventListener('input', function() {
+            setLoginOtpStatus('Enter mobile number and use OTP to login.', 'default');
+        });
+    }
+
+    if (loginSendOtpBtn && loginMobileInput) {
+        loginSendOtpBtn.addEventListener('click', async function() {
+            const mobile = loginMobileInput.value.trim();
+            if (!mobile) {
+                setLoginOtpStatus('Enter mobile number first.', 'error');
+                return;
+            }
+
+            const originalText = loginSendOtpBtn.innerHTML;
+            loginSendOtpBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Sending...';
+            loginSendOtpBtn.disabled = true;
+
+            try {
+                const response = await fetch('{{ url_for("login_send_otp") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile }),
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    setLoginOtpStatus(result.message || 'OTP sent successfully.', 'success');
+                } else {
+                    setLoginOtpStatus(result.message || 'Failed to send OTP.', 'error');
+                }
+            } catch (error) {
+                setLoginOtpStatus('Failed to send OTP. Please try again.', 'error');
+            } finally {
+                loginSendOtpBtn.innerHTML = originalText;
+                loginSendOtpBtn.disabled = false;
+            }
+        });
+    }
+
+    if (loginVerifyOtpBtn && loginMobileInput && loginOtpInput) {
+        loginVerifyOtpBtn.addEventListener('click', async function() {
+            const mobile = loginMobileInput.value.trim();
+            const otp = loginOtpInput.value.trim();
+            if (!mobile || !otp) {
+                setLoginOtpStatus('Enter mobile number and OTP.', 'error');
+                return;
+            }
+
+            const originalText = loginVerifyOtpBtn.innerHTML;
+            loginVerifyOtpBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Verifying...';
+            loginVerifyOtpBtn.disabled = true;
+
+            try {
+                const response = await fetch('{{ url_for("login_verify_otp") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile, otp }),
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    setLoginOtpStatus(result.message || 'OTP verified. Login successful.', 'success');
+                    window.location.href = result.redirect_url || '{{ url_for("dashboard") }}';
+                } else {
+                    setLoginOtpStatus(result.message || 'OTP verification failed.', 'error');
+                }
+            } catch (error) {
+                setLoginOtpStatus('OTP verification failed. Please try again.', 'error');
+            } finally {
+                loginVerifyOtpBtn.innerHTML = originalText;
+                loginVerifyOtpBtn.disabled = false;
+            }
+        });
+    }
+
+    if (passwordInput && eyeIcon && passwordToggle) {
+        passwordToggle.addEventListener('click', function() {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

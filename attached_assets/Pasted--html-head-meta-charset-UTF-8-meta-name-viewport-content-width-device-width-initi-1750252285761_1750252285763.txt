@@ -1,0 +1,348 @@
+<html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = {
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#001F3F",
+        "accent": "#007BFF",
+        "lightGray": "#D3D3D3"
+      },
+      "fontFamily": {
+        "sans": [
+          "Inter",
+          "sans-serif"
+        ]
+      }
+    }
+  }
+};</script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>::-webkit-scrollbar { display: none;}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&amp;display=swap"><style>
+      body {
+        font-family: 'Inter', sans-serif !important;
+      }
+      
+      /* Preserve Font Awesome icons */
+      .fa, .fas, .far, .fal, .fab {
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+      }
+    </style><style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  </style></head>
+<body class="bg-gray-50 font-sans">
+
+<div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen">
+    
+    <header id="header" class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <button id="back-btn" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </button>
+            <h1 class="text-xl font-semibold">Custom Closure Days</h1>
+            <button id="save-btn" class="text-sm font-medium bg-white/10 px-3 py-2 rounded-full">
+                Save
+            </button>
+        </div>
+    </header>
+
+    <main id="closure-main" class="p-4 pb-32 space-y-6">
+        
+        <section id="add-closure-date" class="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
+            <h3 class="text-lg font-semibold text-primary mb-4">Add Closure Date</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-2 block">Select Date</label>
+                    <div class="relative">
+                        <input type="date" id="closure-date" class="w-full p-3 border border-lightGray rounded-2xl focus:border-accent focus:outline-none">
+                        <i class="fa-solid fa-calendar-alt absolute right-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-2 block">Closure Reason/Remark</label>
+                    <input type="text" id="closure-remark" placeholder="e.g., National Holiday, Festival, Company Event" class="w-full p-3 border border-lightGray rounded-2xl focus:border-accent focus:outline-none">
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-orange-50 rounded-2xl">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-exclamation-triangle text-orange-500"></i>
+                        <span class="text-sm text-orange-700">Allow attendance if worker present</span>
+                    </div>
+                    <div class="relative">
+                        <input type="checkbox" id="allow-attendance" class="sr-only" checked="">
+                        <label for="allow-attendance" class="flex items-center cursor-pointer">
+                            <div class="w-10 h-6 bg-orange-500 rounded-full shadow-inner"></div>
+                            <div class="dot absolute w-4 h-4 bg-white rounded-full shadow translate-x-5 transition"></div>
+                        </label>
+                    </div>
+                </div>
+                
+                <button id="add-closure-btn" class="w-full bg-accent text-white py-3 rounded-2xl font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Add Closure Date</span>
+                </button>
+            </div>
+        </section>
+
+        <section id="scheduled-closures" class="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-primary">Scheduled Closures</h3>
+                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">4 upcoming</span>
+            </div>
+            
+            <div class="space-y-3">
+                <div class="flex items-center justify-between p-4 bg-red-50 rounded-2xl border border-red-100">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-1">
+                            <div class="text-sm font-semibold text-red-800">Dec 25, 2024</div>
+                            <span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Holiday</span>
+                        </div>
+                        <div class="text-xs text-red-600">Christmas Day</div>
+                        <div class="flex items-center space-x-1 mt-1">
+                            <i class="fa-solid fa-check-circle text-green-500 text-xs"></i>
+                            <span class="text-xs text-gray-500">Attendance allowed if present</span>
+                        </div>
+                    </div>
+                    <button class="text-red-500 hover:text-red-700 p-2">
+                        <i class="fa-solid fa-trash text-sm"></i>
+                    </button>
+                </div>
+                
+                <div class="flex items-center justify-between p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-1">
+                            <div class="text-sm font-semibold text-blue-800">Jan 1, 2025</div>
+                            <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Holiday</span>
+                        </div>
+                        <div class="text-xs text-blue-600">New Year Day</div>
+                        <div class="flex items-center space-x-1 mt-1">
+                            <i class="fa-solid fa-times-circle text-red-500 text-xs"></i>
+                            <span class="text-xs text-gray-500">No attendance allowed</span>
+                        </div>
+                    </div>
+                    <button class="text-red-500 hover:text-red-700 p-2">
+                        <i class="fa-solid fa-trash text-sm"></i>
+                    </button>
+                </div>
+                
+                <div class="flex items-center justify-between p-4 bg-purple-50 rounded-2xl border border-purple-100">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-1">
+                            <div class="text-sm font-semibold text-purple-800">Jan 26, 2025</div>
+                            <span class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">National</span>
+                        </div>
+                        <div class="text-xs text-purple-600">Republic Day</div>
+                        <div class="flex items-center space-x-1 mt-1">
+                            <i class="fa-solid fa-check-circle text-green-500 text-xs"></i>
+                            <span class="text-xs text-gray-500">Attendance allowed if present</span>
+                        </div>
+                    </div>
+                    <button class="text-red-500 hover:text-red-700 p-2">
+                        <i class="fa-solid fa-trash text-sm"></i>
+                    </button>
+                </div>
+                
+                <div class="flex items-center justify-between p-4 bg-green-50 rounded-2xl border border-green-100">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-1">
+                            <div class="text-sm font-semibold text-green-800">Mar 15, 2025</div>
+                            <span class="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full">Company</span>
+                        </div>
+                        <div class="text-xs text-green-600">Annual Company Event</div>
+                        <div class="flex items-center space-x-1 mt-1">
+                            <i class="fa-solid fa-check-circle text-green-500 text-xs"></i>
+                            <span class="text-xs text-gray-500">Attendance allowed if present</span>
+                        </div>
+                    </div>
+                    <button class="text-red-500 hover:text-red-700 p-2">
+                        <i class="fa-solid fa-trash text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="recurring-closures" class="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
+            <h3 class="text-lg font-semibold text-primary mb-4">Recurring Weekly Closures</h3>
+            
+            <div class="space-y-3">
+                <div class="flex items-center justify-between p-3 bg-orange-50 rounded-2xl">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-calendar-week text-orange-500"></i>
+                        <div>
+                            <span class="text-sm font-medium text-orange-700">Sunday</span>
+                            <div class="text-xs text-orange-600">Weekly off</div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <input type="checkbox" id="sunday-weekly" class="sr-only" checked="">
+                        <label for="sunday-weekly" class="flex items-center cursor-pointer">
+                            <div class="w-10 h-6 bg-orange-500 rounded-full shadow-inner"></div>
+                            <div class="dot absolute w-4 h-4 bg-white rounded-full shadow translate-x-5 transition"></div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-calendar-week text-gray-500"></i>
+                        <div>
+                            <span class="text-sm font-medium text-gray-700">Monday</span>
+                            <div class="text-xs text-gray-600">Optional closure</div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <input type="checkbox" id="monday-weekly" class="sr-only">
+                        <label for="monday-weekly" class="flex items-center cursor-pointer">
+                            <div class="w-10 h-6 bg-gray-300 rounded-full shadow-inner"></div>
+                            <div class="dot absolute w-4 h-4 bg-white rounded-full shadow transition"></div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-calendar-week text-gray-500"></i>
+                        <div>
+                            <span class="text-sm font-medium text-gray-700">Saturday</span>
+                            <div class="text-xs text-gray-600">Half day option</div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <input type="checkbox" id="saturday-weekly" class="sr-only">
+                        <label for="saturday-weekly" class="flex items-center cursor-pointer">
+                            <div class="w-10 h-6 bg-gray-300 rounded-full shadow-inner"></div>
+                            <div class="dot absolute w-4 h-4 bg-white rounded-full shadow transition"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="bulk-import" class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl shadow-lg border border-blue-200 p-6">
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center">
+                    <i class="fa-solid fa-file-import text-white text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-blue-800">Quick Setup</h3>
+                    <p class="text-sm text-blue-600">Import holiday calendar</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button class="bg-white/70 text-blue-700 py-3 rounded-2xl font-medium hover:bg-white/90 transition-colors text-sm">
+                    <i class="fa-solid fa-calendar-plus mr-1"></i>
+                    National Holidays
+                </button>
+                <button class="bg-white/70 text-blue-700 py-3 rounded-2xl font-medium hover:bg-white/90 transition-colors text-sm">
+                    <i class="fa-solid fa-star-and-crescent mr-1"></i>
+                    Religious Days
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <nav id="bottom-navigation" class="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm bg-white/95 backdrop-blur-lg shadow-2xl border-t border-gray-200/50">
+        <div class="flex justify-around items-center py-2 px-4 relative">
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="home">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-home text-lg"></i>
+                </div>
+                <span class="text-xs">Home</span>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="workers">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-users text-lg"></i>
+                </div>
+                <span class="text-xs">Workers</span>
+            </button>
+            
+            <button class="flex flex-col items-center p-2 text-white nav-btn transition-all duration-300 relative" data-tab="scanner">
+                <div class="w-16 h-16 bg-gradient-to-br from-accent to-blue-600 rounded-full flex items-center justify-center shadow-xl transform -translate-y-2">
+                    <i class="fa-solid fa-qrcode text-2xl"></i>
+                </div>
+                <span class="text-xs mt-1">Scanner</span>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="transactions">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-receipt text-lg"></i>
+                </div>
+                <span class="text-xs">Reports</span>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-accent nav-btn transition-all duration-300" data-tab="profile">
+                <div class="w-10 h-10 bg-accent/10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-user text-lg"></i>
+                </div>
+                <span class="text-xs">Profile</span>
+            </button>
+        </div>
+    </nav>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addClosureBtn = document.getElementById('add-closure-btn');
+    const closureDate = document.getElementById('closure-date');
+    const closureRemark = document.getElementById('closure-remark');
+    const allowAttendance = document.getElementById('allow-attendance');
+    
+    addClosureBtn.addEventListener('click', function() {
+        if (closureDate.value && closureRemark.value) {
+            // Add new closure date logic here
+            closureDate.value = '';
+            closureRemark.value = '';
+            allowAttendance.checked = true;
+        }
+    });
+    
+    // Toggle functionality for switches
+    const toggles = document.querySelectorAll('input[type="checkbox"]');
+    toggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const dot = this.parentElement.querySelector('.dot');
+            const bg = this.parentElement.querySelector('div');
+            
+            if (this.checked) {
+                dot.classList.add('translate-x-5');
+                bg.classList.remove('bg-gray-300');
+                bg.classList.add('bg-accent', 'bg-orange-500');
+            } else {
+                dot.classList.remove('translate-x-5');
+                bg.classList.add('bg-gray-300');
+                bg.classList.remove('bg-accent', 'bg-orange-500');
+            }
+        });
+    });
+});
+</script>
+
+
+</body></html>

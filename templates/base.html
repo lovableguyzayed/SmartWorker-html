@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SmartWorker{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/logo.png') }}">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#001F3F",
+                        accent: "#007BFF",
+                        lightGray: "#D3D3D3"
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        };
+    </script>
+    
+    <!-- Font Awesome -->
+    <script>window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&display=swap">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    
+    <!-- Additional libraries for specific pages -->
+    {% block head %}{% endblock %}
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        .app-bottom-nav {
+            z-index: 50;
+            padding: 0 0.75rem calc(0.7rem + env(safe-area-inset-bottom));
+        }
+
+        .app-bottom-nav-frame {
+            position: relative;
+            overflow: hidden;
+            height: 5.1rem;
+            border-radius: 1.75rem;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.95) 100%);
+            box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.08), 0 12px 28px rgba(15, 23, 42, 0.12);
+            backdrop-filter: blur(16px);
+        }
+
+        .app-nav-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+            padding: 0.45rem 0.5rem 0.35rem;
+        }
+
+        .app-nav-item {
+            width: 3.95rem;
+            text-align: center;
+            border-radius: 0.95rem;
+            padding: 0.35rem 0.2rem;
+            color: #94a3b8;
+        }
+
+        .app-nav-item:hover {
+            color: #475569;
+        }
+
+        .app-nav-icon-wrap {
+            width: 2rem;
+            height: 2rem;
+            margin: 0 auto 0.2rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .app-nav-item-active {
+            color: #001f3f;
+        }
+
+        .app-nav-item-active .app-nav-icon-wrap {
+            background: linear-gradient(180deg, rgba(0, 123, 255, 0.16) 0%, rgba(0, 123, 255, 0.08) 100%);
+            box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.12);
+        }
+
+        .app-nav-label {
+            font-size: 0.62rem;
+            line-height: 1;
+            letter-spacing: 0.01em;
+            font-weight: 600;
+        }
+
+        .app-nav-fab {
+            width: 3.95rem;
+            height: 4rem;
+            border-radius: 1rem;
+            background: linear-gradient(145deg, #001f3f 0%, #007bff 100%);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            color: #ffffff;
+            box-shadow: 0 8px 16px rgba(0, 31, 63, 0.22);
+        }
+
+        .app-nav-fab i {
+            filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+        }
+
+        .app-nav-fab::after {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            pointer-events: none;
+        }
+
+        .app-nav-fab:hover {
+            transform: translateY(-1px);
+        }
+
+        .app-nav-fab-active {
+            box-shadow: 0 10px 20px rgba(0, 31, 63, 0.28);
+        }
+        
+        .fa, .fas, .far, .fal, .fab {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+        }
+        
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        
+        html, body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flash-messages" class="fixed top-4 right-4 z-50 space-y-2">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} bg-{% if category == 'error' %}red{% else %}green{% endif %}-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-sm">
+                        <div class="flex items-center justify-between">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated %}pb-32{% endif %}">
+        {% block content %}{% endblock %}
+        
+        {% if current_user.is_authenticated %}
+        {% set home_active = request.endpoint == 'dashboard' %}
+        {% set workers_active = request.endpoint in ['workers', 'worker_profile', 'add_worker', 'edit_worker', 'edit_daily_worker', 'id_card'] %}
+        {% set attendance_active = request.endpoint in ['attendance', 'worker_attendance', 'mark_attendance'] %}
+        {% set transactions_active = request.endpoint in ['closures', 'export_data'] %}
+        {% set profile_active = request.endpoint == 'profile' %}
+        <!-- Bottom Navigation -->
+        <nav class="app-bottom-nav fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm">
+            <div class="app-bottom-nav-frame">
+                <div class="app-nav-row">
+                    <a href="{{ url_for('dashboard') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if home_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-home text-xl"></i></span>
+                        <span class="app-nav-label">Home</span>
+                    </a>
+
+                    <a href="{{ url_for('workers') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if workers_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-users text-xl"></i></span>
+                        <span class="app-nav-label">Workers</span>
+                    </a>
+
+                    <a href="{{ url_for('attendance') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if attendance_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-xl"></i></span>
+                        <span class="app-nav-label">Barcode</span>
+                    </a>
+
+                    <a href="{{ url_for('closures') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-receipt text-xl"></i></span>
+                        <span class="app-nav-label">Transactions</span>
+                    </a>
+
+                    <a href="{{ url_for('profile') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if profile_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-user text-xl"></i></span>
+                        <span class="app-nav-label">Profile</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        {% endif %}
+    </div>
+    
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    <!-- Page-specific JavaScript -->
+    {% block scripts %}{% endblock %}
+    
+    <!-- Auto-hide flash messages -->
+    <script>
+        setTimeout(function() {
+            const flashMessages = document.getElementById('flash-messages');
+            if (flashMessages) {
+                flashMessages.style.opacity = '0';
+                setTimeout(() => flashMessages.remove(), 300);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

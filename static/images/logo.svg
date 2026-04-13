@@ -1,0 +1,40 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer circle with gradient -->
+  <circle cx="40" cy="40" r="38" fill="url(#gradient)" stroke="#E5E7EB" stroke-width="4"/>
+  
+  <!-- Inner circle with icon background -->
+  <circle cx="40" cy="40" r="26" fill="white" fill-opacity="0.95"/>
+  
+  <!-- Main icon - Worker with clock -->
+  <g transform="translate(25, 25)">
+    <!-- Worker icon -->
+    <circle cx="15" cy="8" r="6" fill="#001F3F"/>
+    <path d="M6 22c0-4.97 4.03-9 9-9s9 4.03 9 9v8H6v-8z" fill="#001F3F"/>
+    
+    <!-- Clock overlay -->
+    <circle cx="22" cy="18" r="8" fill="white" stroke="#007BFF" stroke-width="2"/>
+    <circle cx="22" cy="18" r="1" fill="#007BFF"/>
+    <path d="M22 13v5l3 3" stroke="#007BFF" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Check mark -->
+    <circle cx="26" cy="8" r="6" fill="#22C55E"/>
+    <path d="m23 8 2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <!-- Status dots -->
+  <circle cx="15" cy="65" r="3" fill="white"/>
+  <circle cx="25" cy="65" r="3" fill="#FCD34D"/>
+  <circle cx="35" cy="65" r="3" fill="#22C55E"/>
+  
+  <!-- Company name text (small) -->
+  <text x="40" y="74" text-anchor="middle" font-family="Inter, sans-serif" font-size="6" font-weight="600" fill="#001F3F">SMARTWORKER</text>
+  
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#001F3F;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1E40AF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#007BFF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>

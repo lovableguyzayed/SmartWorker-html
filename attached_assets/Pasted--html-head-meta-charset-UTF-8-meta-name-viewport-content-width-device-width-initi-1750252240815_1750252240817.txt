@@ -1,0 +1,264 @@
+<html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = {
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#001F3F",
+        "accent": "#007BFF",
+        "lightGray": "#D3D3D3"
+      },
+      "fontFamily": {
+        "sans": [
+          "Inter",
+          "sans-serif"
+        ]
+      }
+    }
+  }
+};</script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>::-webkit-scrollbar { display: none;}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&amp;display=swap"><style>
+      body {
+        font-family: 'Inter', sans-serif !important;
+      }
+      
+      /* Preserve Font Awesome icons */
+      .fa, .fas, .far, .fal, .fab {
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+      }
+    </style><style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  </style></head>
+<body class="bg-gray-50 font-sans">
+
+<div id="mobile-signup" class="max-w-sm mx-auto bg-gray-50 min-h-screen">
+    
+    <section id="signup-hero" class="bg-gradient-to-br from-primary to-accent text-white p-8 h-[320px] flex flex-col justify-center items-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-full opacity-10">
+            <div class="absolute top-12 left-4 w-16 h-16 border-2 border-white/20 rounded-xl rotate-12"></div>
+            <div class="absolute top-20 right-6 w-12 h-12 bg-white/10 rounded-full"></div>
+            <div class="absolute bottom-20 left-6 w-10 h-10 bg-white/15 rounded-lg rotate-45"></div>
+            <div class="absolute bottom-12 right-8 w-8 h-8 border border-white/25 rounded-full"></div>
+        </div>
+        
+        <div id="app-logo" class="relative z-10 text-center">
+            <div class="w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-2xl mx-auto mb-4 relative transform hover:scale-105 transition-transform duration-300">
+                <div class="w-20 h-20 bg-gradient-to-br from-primary via-accent to-blue-600 rounded-full flex items-center justify-center relative overflow-hidden shadow-inner">
+                    <div class="absolute inset-0 bg-gradient-radial from-white/30 via-transparent to-transparent"></div>
+                    <div class="relative z-10 flex flex-col items-center justify-center">
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg mb-1">
+                            <div class="relative">
+                                <i class="fa-solid fa-user-clock text-primary text-xl"></i>
+                                <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                                    <i class="fa-solid fa-check text-white text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-1">
+                            <div class="w-1.5 h-1.5 bg-white rounded-full opacity-80"></div>
+                            <div class="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
+                            <div class="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold mb-2 tracking-wide">Smart Worker</h1>
+            <p class="text-sm opacity-90 font-medium">Join the smart way to manage attendance</p>
+        </div>
+    </section>
+
+    <main id="signup-content" class="p-6 -mt-12 relative z-10">
+        
+        <div id="signup-card" class="bg-white rounded-3xl shadow-2xl p-6 mb-6 border border-gray-100">
+            <div class="text-center mb-6">
+                <h2 class="text-xl font-bold text-primary mb-1">Create Your Account</h2>
+                <p class="text-gray-600 text-sm">Start managing attendance efficiently</p>
+            </div>
+
+            <form id="signup-form" class="space-y-4">
+                <div id="business-name-input" class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-700 block">Business Name</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-building text-gray-400"></i>
+                        </div>
+                        <input type="text" placeholder="Enter your business name" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="owner-name-input" class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-700 block">Owner Name</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-user text-gray-400"></i>
+                        </div>
+                        <input type="text" placeholder="Enter your full name" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="email-input" class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-700 block">Email Address</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-envelope text-gray-400"></i>
+                        </div>
+                        <input type="email" placeholder="Enter your email" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="mobile-input" class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-700 block">Mobile Number</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-mobile-alt text-gray-400"></i>
+                        </div>
+                        <input type="tel" placeholder="Enter mobile number" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="password-input" class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-700 block">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" placeholder="Create a strong password" class="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                        <button type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <i class="fa-solid fa-eye text-gray-400 hover:text-gray-600 transition-colors"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="confirm-password-input" class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-700 block">Confirm Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" placeholder="Confirm your password" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="terms-checkbox" class="flex items-start space-x-3 pt-2">
+                    <input type="checkbox" class="w-4 h-4 text-accent border-2 border-gray-300 rounded focus:ring-2 focus:ring-accent mt-1">
+                    <span class="text-sm text-gray-600 leading-relaxed">
+                        I agree to the <button type="button" class="text-accent font-semibold hover:text-blue-700 transition-colors">Terms of Service</button> 
+                        and <button type="button" class="text-accent font-semibold hover:text-blue-700 transition-colors">Privacy Policy</button>
+                    </span>
+                </div>
+
+                <button id="signup-btn" type="submit" class="w-full bg-gradient-to-r from-primary to-accent text-white py-3 rounded-xl font-bold text-base shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 mt-6">
+                    Create Account
+                </button>
+            </form>
+
+            <div id="divider" class="flex items-center my-4">
+                <div class="flex-1 border-t-2 border-gray-200"></div>
+                <span class="px-3 text-xs text-gray-500 font-medium">OR</span>
+                <div class="flex-1 border-t-2 border-gray-200"></div>
+            </div>
+
+            <button id="otp-signup-btn" class="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:bg-gray-200 transition-all border-2 border-gray-200">
+                <i class="fa-solid fa-mobile-alt text-accent"></i>
+                <span>Sign up with OTP</span>
+            </button>
+        </div>
+
+        <div id="signin-link" class="text-center mb-8">
+            <p class="text-gray-600 text-sm">
+                Already have an account? 
+                <button class="text-accent font-bold hover:text-blue-700 transition-colors">Sign In</button>
+            </p>
+        </div>
+
+        <div id="subscription-info" class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
+            <div class="text-center">
+                <i class="fa-solid fa-crown text-accent text-xl mb-2"></i>
+                <h3 class="text-sm font-bold text-primary mb-1">Start Your Free Trial</h3>
+                <p class="text-xs text-gray-600 mb-2">7 days free, then ₹29/month or ₹319/year</p>
+                <div class="flex justify-center space-x-4 text-xs text-gray-500">
+                    <span class="flex items-center space-x-1">
+                        <i class="fa-solid fa-check text-green-500"></i>
+                        <span>Unlimited Workers</span>
+                    </span>
+                    <span class="flex items-center space-x-1">
+                        <i class="fa-solid fa-check text-green-500"></i>
+                        <span>Cloud Sync</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const signupForm = document.getElementById('signup-form');
+    const signupBtn = document.getElementById('signup-btn');
+    const otpSignupBtn = document.getElementById('otp-signup-btn');
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
+    const eyeIcons = document.querySelectorAll('.fa-eye');
+
+    signupForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        signupBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Creating Account...';
+        signupBtn.disabled = true;
+        
+        setTimeout(() => {
+            console.log('Account created successfully');
+        }, 2000);
+    });
+
+    otpSignupBtn.addEventListener('click', function() {
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Sending OTP...';
+        this.disabled = true;
+        
+        setTimeout(() => {
+            this.innerHTML = '<i class="fa-solid fa-mobile-alt text-accent mr-2"></i>Sign up with OTP';
+            this.disabled = false;
+        }, 2000);
+    });
+
+    eyeIcons.forEach((eyeIcon, index) => {
+        eyeIcon.addEventListener('click', function() {
+            const passwordInput = passwordInputs[index];
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.classList.remove('fa-eye');
+                this.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                this.classList.remove('fa-eye-slash');
+                this.classList.add('fa-eye');
+            }
+        });
+    });
+});
+</script>
+
+
+</body></html>

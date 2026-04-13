@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Workers - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('dashboard') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Workers</div>
+                <div class="text-sm opacity-90">Manage Employee Records</div>
+            </div>
+        </div>
+        <a href="{{ url_for('add_worker') }}" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/30">
+            <i class="fa-solid fa-plus mr-2"></i>Add Worker
+        </a>
+    </div>
+    
+    <!-- Search and Filter -->
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+        <form method="GET" class="space-y-3">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70"></i>
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="Search by name, ID, or phone..."
+                       class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/70 focus:ring-2 focus:ring-white/50">
+            </div>
+            <div class="flex space-x-2">
+                <select name="department" class="flex-1 p-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}" {{ 'selected' if dept == selected_department }} style="color: black;">{{ dept }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="px-6 py-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-white font-medium">
+                    <i class="fa-solid fa-filter"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</header>
+
+<main class="p-4 pb-32">
+    {% if workers %}
+    <div class="space-y-4">
+        {% for worker in workers %}
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center space-x-4">
+                <div class="relative shrink-0">
+                    {% if worker.profile_image %}
+                        <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}" class="w-16 h-16 shrink-0 rounded-2xl object-cover object-center">
+                    {% else %}
+                        <div class="w-16 h-16 shrink-0 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center text-white font-bold text-xl">
+                            {{ worker.full_name[0] }}
+                        </div>
+                    {% endif %}
+                    <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
+                        <i class="fa-solid fa-check text-xs text-white"></i>
+                    </div>
+                </div>
+                
+                <div class="flex-1">
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="text-lg font-semibold text-gray-800">{{ worker.full_name }}</h3>
+                        <span class="bg-accent/10 text-accent px-2 py-1 rounded-lg text-xs font-medium">{{ worker.employee_type }}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2">{{ worker.position }} • {{ worker.department }}</div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-500">ID: {{ worker.worker_id }}</div>
+                        <div class="flex items-center space-x-2">
+                            {% if worker.pay_type == 'daily' %}
+                                <span class="text-sm font-medium text-green-600">₹{{ worker.daily_rate }}/day</span>
+                            {% elif worker.pay_type == 'monthly' %}
+                                <span class="text-sm font-medium text-green-600">₹{{ worker.monthly_salary }}/month</span>
+                            {% elif worker.pay_type == 'hourly' %}
+                                <span class="text-sm font-medium text-green-600">₹{{ worker.hourly_rate }}/hour</span>
+                            {% elif worker.pay_type == 'project' %}
+                                <span class="text-sm font-medium text-green-600">
+                                    {{ ('₹' ~ worker.project_rate ~ '/project') if worker.project_rate else 'Project Based' }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                <div class="flex items-center space-x-4">
+                    <div class="text-sm text-gray-600">
+                        <i class="fa-solid fa-phone mr-1"></i>{{ worker.phone }}
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        <i class="fa-solid fa-calendar mr-1"></i>{{ worker.join_date.strftime('%d %b %Y') }}
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" 
+                       class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-accent hover:text-white transition-colors">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </a>
+                    <a href="{{ url_for('id_card', worker_id=worker.id) }}" 
+                       class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-purple-500 hover:text-white transition-colors">
+                        <i class="fa-solid fa-id-card"></i>
+                    </a>
+                    <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" 
+                       class="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white hover:bg-primary transition-colors">
+                        <i class="fa-solid fa-eye"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-users text-3xl text-gray-400"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Workers Found</h3>
+        <p class="text-gray-600 mb-6">
+            {% if search or selected_department %}
+                No workers match your search criteria. Try adjusting your filters.
+            {% else %}
+                Start by adding your first worker to the system.
+            {% endif %}
+        </p>
+        <a href="{{ url_for('add_worker') }}" 
+           class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
+            <i class="fa-solid fa-plus mr-2"></i>Add First Worker
+        </a>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}

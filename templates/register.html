@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Register - SmartWorker{% endblock %}
+
+{% block head %}
+<style>
+.signup-orb {
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.32), transparent 66%);
+}
+
+.signup-shell {
+    background: linear-gradient(180deg, #eef3fb 0%, #f8fafc 45%, #f8fafc 100%);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="mobile-signup" class="signup-shell max-w-sm mx-auto min-h-screen">
+    <section id="signup-hero" class="bg-gradient-to-br from-primary to-accent text-white p-8 h-[320px] flex flex-col justify-center items-center relative overflow-hidden rounded-b-[2.2rem]">
+        <div class="absolute top-0 left-0 w-full h-full opacity-10">
+            <div class="absolute top-12 left-4 w-16 h-16 border-2 border-white/20 rounded-xl rotate-12"></div>
+            <div class="absolute top-20 right-6 w-12 h-12 bg-white/10 rounded-full"></div>
+            <div class="absolute bottom-20 left-6 w-10 h-10 bg-white/15 rounded-lg rotate-45"></div>
+            <div class="absolute bottom-12 right-8 w-8 h-8 border border-white/25 rounded-full"></div>
+        </div>
+
+        <div id="app-logo" class="relative z-10 text-center">
+            <div class="w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-2xl mx-auto mb-4 relative transform hover:scale-105 transition-transform duration-300">
+                <div class="w-20 h-20 bg-gradient-to-br from-primary via-accent to-blue-600 rounded-full flex items-center justify-center relative overflow-hidden shadow-inner">
+                    <div class="absolute inset-0 signup-orb"></div>
+                    <div class="relative z-10 flex flex-col items-center justify-center">
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg mb-1">
+                            <div class="relative">
+                                <i class="fa-solid fa-user-clock text-primary text-xl"></i>
+                                <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white flex items-center justify-center">
+                                    <i class="fa-solid fa-check text-white text-[9px]"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-1">
+                            <div class="w-1.5 h-1.5 bg-white rounded-full opacity-80"></div>
+                            <div class="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
+                            <div class="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold mb-2 tracking-wide">SmartWorker</h1>
+            <p class="text-sm opacity-90 font-medium">Join the smart way to manage attendance</p>
+        </div>
+    </section>
+
+    <main id="signup-content" class="p-6 -mt-12 relative z-10">
+        <div id="signup-card" class="bg-white rounded-3xl shadow-2xl p-6 mb-6 border border-gray-100">
+            <div class="text-center mb-6">
+                <h2 class="text-xl font-bold text-primary mb-1">Create Your Account</h2>
+                <p class="text-gray-600 text-sm">Start managing attendance efficiently</p>
+            </div>
+
+            <form id="signup-form" method="POST" class="space-y-4">
+                <div id="business-name-input" class="space-y-2">
+                    <label for="business_name" class="text-sm font-semibold text-gray-700 block">Business Name</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-building text-gray-400"></i>
+                        </div>
+                        <input id="business_name" name="business_name" type="text" placeholder="Enter your business name" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="owner-name-input" class="space-y-2">
+                    <label for="full_name" class="text-sm font-semibold text-gray-700 block">Owner Name</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-user text-gray-400"></i>
+                        </div>
+                        <input id="full_name" name="full_name" type="text" required placeholder="Enter your full name" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="email-input" class="space-y-2">
+                    <label for="email" class="text-sm font-semibold text-gray-700 block">Email Address</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-envelope text-gray-400"></i>
+                        </div>
+                        <input id="email" name="email" type="email" required placeholder="Enter your email" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="mobile-input" class="space-y-2">
+                    <label for="mobile" class="text-sm font-semibold text-gray-700 block">Mobile Number</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-mobile-alt text-gray-400"></i>
+                        </div>
+                        <input id="mobile" name="mobile" type="tel" required placeholder="Enter mobile number" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="send-otp-btn" type="button" class="bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition-all border border-gray-200">
+                            Send OTP
+                        </button>
+                        <button id="verify-otp-btn" type="button" class="bg-accent text-white py-2.5 rounded-xl font-semibold hover:bg-primary transition-all">
+                            Verify OTP
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-shield-halved text-gray-400"></i>
+                        </div>
+                        <input id="mobile_otp" name="mobile_otp" type="text" maxlength="6" placeholder="Enter 6-digit OTP" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                    <div id="otp-status" class="text-xs font-medium text-gray-500">Mobile number verification is required before signup.</div>
+                </div>
+
+                <div id="password-input" class="space-y-2">
+                    <label for="password" class="text-sm font-semibold text-gray-700 block">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-gray-400"></i>
+                        </div>
+                        <input id="password" name="password" type="password" required placeholder="Create a strong password" class="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                        <button id="password-toggle" type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <i class="fa-solid fa-eye text-gray-400 hover:text-gray-600 transition-colors"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="confirm-password-input" class="space-y-2">
+                    <label for="confirm_password" class="text-sm font-semibold text-gray-700 block">Confirm Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-gray-400"></i>
+                        </div>
+                        <input id="confirm_password" name="confirm_password" type="password" required placeholder="Confirm your password" class="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                        <button id="confirm-password-toggle" type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <i class="fa-solid fa-eye text-gray-400 hover:text-gray-600 transition-colors"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="terms-checkbox" class="flex items-start space-x-3 pt-2">
+                    <input id="terms" type="checkbox" required class="w-4 h-4 text-accent border-2 border-gray-300 rounded focus:ring-2 focus:ring-accent mt-1">
+                    <span class="text-sm text-gray-600 leading-relaxed">
+                        I agree to the <button type="button" class="text-accent font-semibold hover:text-blue-700 transition-colors">Terms of Service</button>
+                        and <button type="button" class="text-accent font-semibold hover:text-blue-700 transition-colors">Privacy Policy</button>
+                    </span>
+                </div>
+
+                <button id="signup-btn" type="submit" class="w-full bg-gradient-to-r from-primary to-accent text-white py-3 rounded-xl font-bold text-base shadow-xl hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300 mt-6">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="mt-3 text-xs text-gray-500 text-center">
+                OTP confirms your mobile number before account creation.
+            </div>
+        </div>
+
+        <div id="signin-link" class="text-center mb-8">
+            <p class="text-gray-600 text-sm">
+                Already have an account?
+                <a href="{{ url_for('login') }}" class="text-accent font-bold hover:text-blue-700 transition-colors">Sign In</a>
+            </p>
+        </div>
+
+        <div id="subscription-info" class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
+            <div class="text-center">
+                <i class="fa-solid fa-crown text-accent text-xl mb-2"></i>
+                <h3 class="text-sm font-bold text-primary mb-1">Start Your Free Trial</h3>
+                <p class="text-xs text-gray-600 mb-2">7 days free, then ₹29/month or ₹319/year</p>
+                <div class="flex justify-center space-x-4 text-xs text-gray-500">
+                    <span class="flex items-center space-x-1">
+                        <i class="fa-solid fa-check text-green-500"></i>
+                        <span>Unlimited Workers</span>
+                    </span>
+                    <span class="flex items-center space-x-1">
+                        <i class="fa-solid fa-check text-green-500"></i>
+                        <span>Cloud Sync</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center text-xs text-gray-500 mt-6 pb-6">
+            &copy; 2024 SmartWorker. All rights reserved.
+        </div>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const signupForm = document.getElementById('signup-form');
+    const signupBtn = document.getElementById('signup-btn');
+    const sendOtpBtn = document.getElementById('send-otp-btn');
+    const verifyOtpBtn = document.getElementById('verify-otp-btn');
+    const mobileInput = document.getElementById('mobile');
+    const otpInput = document.getElementById('mobile_otp');
+    const otpStatus = document.getElementById('otp-status');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const passwordToggle = document.getElementById('password-toggle');
+    const confirmPasswordToggle = document.getElementById('confirm-password-toggle');
+    let otpVerified = false;
+
+    function setSignupEnabled(enabled) {
+        if (!signupBtn) return;
+        signupBtn.disabled = !enabled;
+        signupBtn.classList.toggle('opacity-60', !enabled);
+        signupBtn.classList.toggle('cursor-not-allowed', !enabled);
+    }
+
+    function setOtpStatus(message, isSuccess) {
+        if (!otpStatus) return;
+        otpStatus.textContent = message;
+        otpStatus.classList.remove('text-gray-500', 'text-green-600', 'text-red-600');
+        otpStatus.classList.add(isSuccess ? 'text-green-600' : 'text-red-600');
+    }
+
+    function toggleVisibility(input, toggle) {
+        const icon = toggle ? toggle.querySelector('i') : null;
+        if (!input || !icon) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    if (passwordToggle) {
+        passwordToggle.addEventListener('click', function() {
+            toggleVisibility(password, passwordToggle);
+        });
+    }
+
+    if (confirmPasswordToggle) {
+        confirmPasswordToggle.addEventListener('click', function() {
+            toggleVisibility(confirmPassword, confirmPasswordToggle);
+        });
+    }
+
+    function validatePasswordMatch() {
+        if (!password || !confirmPassword) return true;
+        if (password.value !== confirmPassword.value) {
+            confirmPassword.setCustomValidity('Passwords do not match');
+            return false;
+        }
+        confirmPassword.setCustomValidity('');
+        return true;
+    }
+
+    if (confirmPassword) {
+        confirmPassword.addEventListener('input', validatePasswordMatch);
+    }
+
+    if (mobileInput) {
+        mobileInput.addEventListener('input', function() {
+            otpVerified = false;
+            setSignupEnabled(false);
+            if (otpStatus) {
+                otpStatus.classList.remove('text-green-600', 'text-red-600');
+                otpStatus.classList.add('text-gray-500');
+                otpStatus.textContent = 'Mobile number verification is required before signup.';
+            }
+        });
+    }
+
+    if (sendOtpBtn && mobileInput) {
+        sendOtpBtn.addEventListener('click', async function() {
+            const mobile = mobileInput.value.trim();
+            if (!mobile) {
+                setOtpStatus('Enter mobile number first.', false);
+                return;
+            }
+
+            const originalText = sendOtpBtn.innerHTML;
+            sendOtpBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Sending...';
+            sendOtpBtn.disabled = true;
+
+            try {
+                const response = await fetch('{{ url_for("register_send_otp") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile }),
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    setOtpStatus(result.message, true);
+                } else {
+                    setOtpStatus(result.message || 'Failed to send OTP.', false);
+                }
+            } catch (error) {
+                setOtpStatus('Failed to send OTP. Please try again.', false);
+            } finally {
+                sendOtpBtn.innerHTML = originalText;
+                sendOtpBtn.disabled = false;
+            }
+        });
+    }
+
+    if (verifyOtpBtn && mobileInput && otpInput) {
+        verifyOtpBtn.addEventListener('click', async function() {
+            const mobile = mobileInput.value.trim();
+            const otp = otpInput.value.trim();
+            if (!mobile || !otp) {
+                setOtpStatus('Enter mobile number and OTP.', false);
+                return;
+            }
+
+            const originalText = verifyOtpBtn.innerHTML;
+            verifyOtpBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Verifying...';
+            verifyOtpBtn.disabled = true;
+
+            try {
+                const response = await fetch('{{ url_for("register_verify_otp") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile, otp }),
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    otpVerified = true;
+                    setSignupEnabled(true);
+                    setOtpStatus(result.message, true);
+                } else {
+                    otpVerified = false;
+                    setSignupEnabled(false);
+                    setOtpStatus(result.message || 'OTP verification failed.', false);
+                }
+            } catch (error) {
+                otpVerified = false;
+                setSignupEnabled(false);
+                setOtpStatus('OTP verification failed. Please try again.', false);
+            } finally {
+                verifyOtpBtn.innerHTML = originalText;
+                verifyOtpBtn.disabled = false;
+            }
+        });
+    }
+
+    if (signupForm && signupBtn) {
+        signupForm.addEventListener('submit', function(event) {
+            if (!otpVerified) {
+                event.preventDefault();
+                setOtpStatus('Verify mobile number with OTP before creating account.', false);
+                return;
+            }
+            if (!validatePasswordMatch()) {
+                event.preventDefault();
+                return;
+            }
+            signupBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Creating Account...';
+            signupBtn.disabled = true;
+        });
+    }
+    setSignupEnabled(false);
+});
+</script>
+{% endblock %}

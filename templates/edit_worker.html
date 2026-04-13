@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block title %}{% if worker %}Edit Worker{% else %}Add Worker{% endif %} - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% if worker %}{{ url_for('worker_profile', worker_id=worker.id) }}{% else %}{{ url_for('workers') }}{% endif %}" 
+               class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">{% if worker %}Edit Worker{% else %}Add Worker{% endif %}</div>
+                <div class="text-sm opacity-90">Update Profile Information</div>
+            </div>
+        </div>
+        <button type="submit" form="worker-form" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/30">
+            Save
+        </button>
+    </div>
+    
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+        <div class="flex items-center space-x-4">
+            <div class="relative shrink-0">
+                {% if worker and worker.profile_image %}
+                    <img id="worker-photo-preview" src="{{ worker.profile_image }}" alt="{{ worker.full_name }}" class="w-20 h-20 shrink-0 rounded-2xl object-cover object-center border-4 border-white/20">
+                    <div id="worker-photo-fallback" class="hidden w-20 h-20 shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white font-bold text-2xl border-4 border-white/20">
+                        {{ worker.full_name[0] if worker and worker.full_name else 'N' }}
+                    </div>
+                {% else %}
+                    <img id="worker-photo-preview" src="" alt="Worker Photo" class="hidden w-20 h-20 shrink-0 rounded-2xl object-cover object-center border-4 border-white/20">
+                    <div id="worker-photo-fallback" class="w-20 h-20 shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white font-bold text-2xl border-4 border-white/20">
+                        {{ worker.full_name[0] if worker and worker.full_name else 'N' }}
+                    </div>
+                {% endif %}
+                <button type="button" id="worker-photo-trigger" class="absolute -bottom-1 -right-1 w-8 h-8 bg-accent rounded-full border-2 border-white flex items-center justify-center">
+                    <i class="fa-solid fa-camera text-xs text-white"></i>
+                </button>
+            </div>
+            <div class="flex-1">
+                <div class="text-xl font-bold mb-1">{{ worker.full_name if worker else 'New Worker' }}</div>
+                <div class="text-sm opacity-90 mb-2">{{ worker.position if worker else 'Position' }} • {{ worker.department if worker else 'Department' }}</div>
+                <div class="flex items-center justify-between">
+                    <div class="text-sm opacity-90">ID: {{ worker.worker_id if worker else 'Auto-Generated' }}</div>
+                    <div class="flex flex-col items-center">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30 mb-1">
+                            <i class="fa-solid fa-qrcode text-white text-2xl"></i>
+                        </div>
+                        <div class="text-xs opacity-75 text-center">Auto-Generated</div>
+                    </div>
+                </div>
+                <div id="worker-photo-hint" class="text-xs opacity-80 mt-2">
+                    {% if worker and worker.profile_image %}
+                        Tap camera to replace profile photo
+                    {% else %}
+                        Tap camera to add profile photo
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-32 space-y-4">
+    <form id="worker-form" method="POST" enctype="multipart/form-data" class="space-y-4">
+        <input id="worker-photo-input" type="file" name="profile_image" accept=".jpg,.jpeg,.png,.gif,.webp,image/*" class="hidden">
+        <!-- Basic Details -->
+        <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Details</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" name="full_name" value="{{ worker.full_name if worker else '' }}" required
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <input type="tel" name="phone" value="{{ worker.phone if worker else '' }}" required
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email (Optional)</label>
+                    <input type="email" name="email" value="{{ worker.email if worker else '' }}"
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                    <textarea name="address" rows="3"
+                              class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent h-20 resize-none">{{ worker.address if worker else '' }}</textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- Work Details -->
+        <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Work Details</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Position/Role</label>
+                    <input type="text" name="position" value="{{ worker.position if worker else '' }}" required
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                    <select name="department" required class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                        <option value="">Select Department</option>
+                        <option value="Construction" {{ 'selected' if worker and worker.department == 'Construction' }}>Construction</option>
+                        <option value="Administration" {{ 'selected' if worker and worker.department == 'Administration' }}>Administration</option>
+                        <option value="Security" {{ 'selected' if worker and worker.department == 'Security' }}>Security</option>
+                        <option value="Maintenance" {{ 'selected' if worker and worker.department == 'Maintenance' }}>Maintenance</option>
+                        <option value="Cleaning" {{ 'selected' if worker and worker.department == 'Cleaning' }}>Cleaning</option>
+                        <option value="Other" {{ 'selected' if worker and worker.department == 'Other' }}>Other</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Join Date</label>
+                    <input type="date" name="join_date" value="{{ worker.join_date if worker else '' }}" required
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Employee Type</label>
+                    <select name="employee_type" required class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                        <option value="">Select Type</option>
+                        <option value="Full Time" {{ 'selected' if worker and worker.employee_type == 'Full Time' }}>Full Time</option>
+                        <option value="Part Time" {{ 'selected' if worker and worker.employee_type == 'Part Time' }}>Part Time</option>
+                        <option value="Contract" {{ 'selected' if worker and worker.employee_type == 'Contract' }}>Contract</option>
+                        <option value="Temporary" {{ 'selected' if worker and worker.employee_type == 'Temporary' }}>Temporary</option>
+                        <option value="Daily Wage" {{ 'selected' if worker and worker.employee_type == 'Daily Wage' }}>Daily Wage</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Payment Settings -->
+        <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Settings</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Pay Type</label>
+                    <select id="pay-type-select" name="pay_type" required class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                        <option value="">Select Pay Type</option>
+                        <option value="daily" {{ 'selected' if worker and worker.pay_type == 'daily' }}>Daily Wage</option>
+                        <option value="monthly" {{ 'selected' if worker and worker.pay_type == 'monthly' }}>Monthly Salary</option>
+                        <option value="hourly" {{ 'selected' if worker and worker.pay_type == 'hourly' }}>Hourly Rate</option>
+                        <option value="project" {{ 'selected' if worker and worker.pay_type == 'project' }}>Project Based</option>
+                    </select>
+                </div>
+                
+                <div id="rate-container">
+                    <div id="daily-rate" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Daily Rate</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <input type="number" name="daily_rate" value="{{ worker.daily_rate if worker else '' }}" step="0.01"
+                                   class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                        </div>
+                    </div>
+                    
+                    <div id="monthly-rate" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Monthly Salary</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <input type="number" name="monthly_salary" value="{{ worker.monthly_salary if worker else '' }}" step="0.01"
+                                   class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                        </div>
+                    </div>
+                    
+                    <div id="hourly-rate" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Hourly Rate</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <input type="number" name="hourly_rate" value="{{ worker.hourly_rate if worker else '' }}" step="0.01"
+                                   class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                        </div>
+                    </div>
+
+                    <div id="project-rate" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Project Amount</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <input type="number" name="project_rate" value="{{ worker.project_rate if worker else '' }}" step="0.01"
+                                   class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1">Fixed amount for the project cycle.</div>
+                    </div>
+                </div>
+
+                <!-- Leave Settings (for salaried employees) -->
+                <div id="leave-settings" class="hidden">
+                    <div class="bg-green-50 rounded-2xl p-4 border border-green-200">
+                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                            <i class="fa-solid fa-calendar-days text-green-600 mr-2"></i>
+                            Leave Policy
+                        </h4>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Allowed Leaves per Month</label>
+                                <input type="number" name="allowed_leaves" value="{{ worker.allowed_leaves_per_month if worker else '2' }}" min="0" max="31"
+                                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                <div class="text-xs text-gray-600 mt-1">Number of leaves without salary deduction</div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Leave Deduction per Day</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <input type="number" name="leave_deduction" value="{{ worker.leave_deduction_per_day if worker else '500' }}" step="0.01"
+                                           class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                </div>
+                                <div class="text-xs text-gray-600 mt-1">Amount deducted for each extra leave day</div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl p-3 border border-green-300">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-700">Apply Leave Policy</span>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="leave_policy_enabled" {% if not worker or worker.leave_policy_enabled %}checked{% endif %} class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </div>
+                                <div class="text-xs text-gray-600">
+                                    Example: 2 free leaves, then ₹500 per extra leave day
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="daily-policy-settings" class="space-y-4 hidden">
+                    <!-- Working Hours -->
+                    <div class="bg-blue-50 rounded-2xl p-4 border border-blue-200">
+                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                            <i class="fa-solid fa-clock text-blue-600 mr-2"></i>
+                            Working Hours
+                        </h4>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                                <input type="time" name="start_time" value="{{ worker.start_time.strftime('%H:%M') if worker and worker.start_time else '09:00' }}"
+                                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                                <input type="time" name="end_time" value="{{ worker.end_time.strftime('%H:%M') if worker and worker.end_time else '18:00' }}"
+                                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Absence Policy -->
+                    <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
+                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                            <i class="fa-solid fa-user-slash text-red-600 mr-2"></i>
+                            Absence Policy
+                        </h4>
+
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-red-200">
+                                <span class="text-sm font-medium text-gray-700">No Work, No Pay</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="no_work_no_pay" {% if not worker or worker.no_work_no_pay %}checked{% endif %} class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                                </label>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Half Day Rate</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <input type="number" name="half_day_rate"
+                                           value="{{ worker.half_day_rate if worker and worker.half_day_rate is not none else '' }}"
+                                           step="0.01" min="0"
+                                           placeholder="Half day payment amount"
+                                           class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                </div>
+                                <div class="text-xs text-gray-600 mt-1">Used when worked time is up to 50% of shift hours.</div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Half Day Grace Window (Minutes)</label>
+                                <input type="number" name="half_day_grace_minutes"
+                                       value="{{ worker.half_day_grace_minutes if worker and worker.half_day_grace_minutes else 20 }}"
+                                       min="15" max="25" step="1"
+                                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                <div class="text-xs text-gray-600 mt-1">Half-day rate remains active for this many minutes after half-shift time.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overtime Settings -->
+                    <div class="bg-green-50 rounded-2xl p-4 border border-green-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-medium text-gray-700">Apply Overtime</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input id="overtime-enabled-toggle" type="checkbox" name="overtime_enabled" {% if not worker or worker.overtime_enabled %}checked{% endif %} class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                            </label>
+                        </div>
+
+                        <div id="overtime-settings-fields" class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Overtime Rate</label>
+                            <div class="flex space-x-2">
+                                <select name="overtime_type" class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                    <option value="hour" {{ 'selected' if worker and worker.overtime_type == 'hour' }}>Per Hour</option>
+                                    <option value="minute" {{ 'selected' if worker and worker.overtime_type == 'minute' }}>Per Minute</option>
+                                </select>
+                                <div class="relative flex-1">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <input type="number" name="overtime_rate" value="{{ worker.overtime_rate if worker and worker.overtime_rate is not none else '100' }}" step="0.01" min="0"
+                                           class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Late Policy Settings -->
+                    <div class="bg-yellow-50 rounded-2xl p-4 border border-yellow-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-medium text-gray-700">Apply Late Fine</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input id="late-policy-toggle" type="checkbox" name="late_policy_enabled" {% if worker and worker.late_policy_enabled %}checked{% endif %} class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                            </label>
+                        </div>
+
+                        <div id="late-policy-fields" class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Late Fine Rate</label>
+                            <div class="flex space-x-2">
+                                <select name="late_deduction_type" class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                    <option value="hour" {{ 'selected' if worker and worker.late_deduction_type == 'hour' else '' }}>Per Hour</option>
+                                    <option value="minute" {{ 'selected' if worker and worker.late_deduction_type == 'minute' else '' }}>Per Minute</option>
+                                    <option value="day" {{ 'selected' if worker and worker.late_deduction_type == 'day' else '' }}>Per Day</option>
+                                </select>
+                                <div class="relative flex-1">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <input type="number" name="late_deduction"
+                                           value="{{ worker.late_deduction_per_day if worker and worker.late_deduction_per_day is not none else '25' }}"
+                                           step="0.01" min="0"
+                                           class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </form>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const payTypeSelect = document.getElementById('pay-type-select');
+    const dailyRate = document.getElementById('daily-rate');
+    const monthlyRate = document.getElementById('monthly-rate');
+    const hourlyRate = document.getElementById('hourly-rate');
+    const projectRate = document.getElementById('project-rate');
+    const leaveSettings = document.getElementById('leave-settings');
+    const dailyPolicySettings = document.getElementById('daily-policy-settings');
+    const overtimeToggle = document.getElementById('overtime-enabled-toggle');
+    const overtimeFields = document.getElementById('overtime-settings-fields');
+    const latePolicyToggle = document.getElementById('late-policy-toggle');
+    const latePolicyFields = document.getElementById('late-policy-fields');
+    const photoInput = document.getElementById('worker-photo-input');
+    const photoTrigger = document.getElementById('worker-photo-trigger');
+    const photoPreview = document.getElementById('worker-photo-preview');
+    const photoFallback = document.getElementById('worker-photo-fallback');
+    const photoHint = document.getElementById('worker-photo-hint');
+
+    function toggleSectionInputs(section, enabled) {
+        if (!section) return;
+        const controls = section.querySelectorAll('input, select, textarea');
+        controls.forEach((control) => {
+            control.disabled = !enabled;
+        });
+    }
+
+    function syncPolicyFieldVisibility() {
+        const overtimeEnabled = overtimeToggle ? overtimeToggle.checked : false;
+        const lateEnabled = latePolicyToggle ? latePolicyToggle.checked : false;
+
+        if (overtimeFields) {
+            overtimeFields.classList.toggle('hidden', !overtimeEnabled);
+            toggleSectionInputs(overtimeFields, overtimeEnabled);
+        }
+        if (latePolicyFields) {
+            latePolicyFields.classList.toggle('hidden', !lateEnabled);
+            toggleSectionInputs(latePolicyFields, lateEnabled);
+        }
+    }
+    
+    function updatePayTypeFields() {
+        const payType = payTypeSelect.value;
+        
+        // Hide all rate containers
+        dailyRate.classList.add('hidden');
+        monthlyRate.classList.add('hidden');
+        hourlyRate.classList.add('hidden');
+        projectRate.classList.add('hidden');
+        leaveSettings.classList.add('hidden');
+        dailyPolicySettings.classList.add('hidden');
+        toggleSectionInputs(dailyPolicySettings, false);
+        
+        // Show relevant container
+        if (payType === 'daily') {
+            dailyRate.classList.remove('hidden');
+            dailyPolicySettings.classList.remove('hidden');
+            toggleSectionInputs(dailyPolicySettings, true);
+            syncPolicyFieldVisibility();
+        } else if (payType === 'monthly') {
+            monthlyRate.classList.remove('hidden');
+            leaveSettings.classList.remove('hidden');
+        } else if (payType === 'hourly') {
+            hourlyRate.classList.remove('hidden');
+        } else if (payType === 'project') {
+            projectRate.classList.remove('hidden');
+        }
+    }
+    
+    payTypeSelect.addEventListener('change', updatePayTypeFields);
+    if (overtimeToggle) {
+        overtimeToggle.addEventListener('change', syncPolicyFieldVisibility);
+    }
+    if (latePolicyToggle) {
+        latePolicyToggle.addEventListener('change', syncPolicyFieldVisibility);
+    }
+    updatePayTypeFields(); // Initial call
+    
+    if (photoTrigger && photoInput && photoPreview && photoFallback) {
+        photoTrigger.addEventListener('click', function() {
+            photoInput.click();
+        });
+        
+        photoInput.addEventListener('change', function() {
+            const file = this.files && this.files[0];
+            if (!file) {
+                return;
+            }
+            photoPreview.src = URL.createObjectURL(file);
+            photoPreview.classList.remove('hidden');
+            photoFallback.classList.add('hidden');
+            if (photoHint) {
+                photoHint.textContent = 'Selected: ' + file.name;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

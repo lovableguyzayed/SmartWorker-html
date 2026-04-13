@@ -1,0 +1,369 @@
+<html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = {
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#001F3F",
+        "accent": "#007BFF",
+        "lightGray": "#D3D3D3"
+      },
+      "fontFamily": {
+        "sans": [
+          "Inter",
+          "sans-serif"
+        ]
+      }
+    }
+  }
+};</script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>::-webkit-scrollbar { display: none;}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&amp;display=swap"><style>
+      body {
+        font-family: 'Inter', sans-serif !important;
+      }
+      
+      /* Preserve Font Awesome icons */
+      .fa, .fas, .far, .fal, .fab {
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+      }
+    </style><style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  </style></head>
+<body class="bg-gray-50 font-sans">
+
+<div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen">
+    
+    <header id="workers-header" class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-4">
+                <button id="back-btn" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </button>
+                <div>
+                    <div class="text-xl font-semibold">Workers</div>
+                    <div class="text-sm opacity-90">Manage Your Team</div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="add-worker-btn" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-plus text-lg"></i>
+                </button>
+                <button id="deleted-workers-btn" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-trash-restore text-lg"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+            <div class="text-center mb-3">
+                <div class="text-sm opacity-90 font-medium">Today's Attendance</div>
+                <div class="text-xs opacity-75">December 18, 2024</div>
+            </div>
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <div class="text-2xl font-bold">32</div>
+                    <div class="text-xs opacity-80">Total Workers</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-green-300">27</div>
+                    <div class="text-xs opacity-80">Present</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-red-300">5</div>
+                    <div class="text-xs opacity-80">Absent</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="tab-navigation" class="p-4 pt-2">
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-1">
+            <div class="grid grid-cols-3 gap-1">
+                <button class="tab-btn active bg-accent text-white py-3 px-4 rounded-xl text-sm font-medium transition-all duration-300" data-tab="attendance">
+                    <i class="fa-solid fa-clock mr-2"></i>
+                    Mark Attendance
+                </button>
+                <button class="tab-btn text-gray-600 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-300" data-tab="payment">
+                    <i class="fa-solid fa-wallet mr-2"></i>
+                    Payment Entry
+                </button>
+                <button class="tab-btn text-gray-600 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-300" data-tab="workers">
+                    <i class="fa-solid fa-users mr-2"></i>
+                    Workers
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <main id="workers-main" class="p-4 pb-32 space-y-4">
+        
+        <section id="search-filter" class="space-y-3">
+            <div class="relative">
+                <input type="text" id="search-workers" placeholder="Search workers..." class="w-full bg-white rounded-2xl pl-12 pr-4 py-4 shadow-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/20">
+                <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+            
+            <div class="flex space-x-3 overflow-x-auto pb-2">
+                <button class="filter-btn bg-accent text-white px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap shadow-lg" data-filter="all">All Workers</button>
+                <button class="filter-btn bg-white text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap shadow-lg border border-gray-100" data-filter="present">Present</button>
+                <button class="filter-btn bg-white text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap shadow-lg border border-gray-100" data-filter="absent">Absent</button>
+                <button class="filter-btn bg-white text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap shadow-lg border border-gray-100" data-filter="daily">Daily Wage</button>
+                <button class="filter-btn bg-white text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap shadow-lg border border-gray-100" data-filter="fixed">Fixed Salary</button>
+            </div>
+        </section>
+
+        <section id="workers-list" class="space-y-3">
+            
+            <div class="worker-card bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden" data-status="present" data-type="daily">
+                <div class="p-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-2.jpg" alt="Worker" class="w-16 h-16 rounded-2xl object-cover">
+                            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <h3 class="font-semibold text-gray-800">John Smith</h3>
+                                <div class="text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">Present</div>
+                            </div>
+                            <div class="text-sm text-gray-500 mb-1">Position: Site Supervisor</div>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg font-medium">Construction Project A</div>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">₹450/day</span>
+                                <span class="text-gray-600">ID: #JW001</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex space-x-2">
+                        <button class="flex-1 bg-blue-50 text-accent py-2 px-4 rounded-xl text-sm font-medium">View Profile</button>
+                        <button class="flex-1 bg-green-50 text-green-600 py-2 px-4 rounded-xl text-sm font-medium">Mark Attendance</button>
+                        <button class="bg-gray-50 text-gray-600 p-2 rounded-xl">
+                            <i class="fa-solid fa-ellipsis-v"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-card bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden" data-status="absent" data-type="fixed">
+                <div class="p-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-5.jpg" alt="Worker" class="w-16 h-16 rounded-2xl object-cover">
+                            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-gray-400 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <h3 class="font-semibold text-gray-800">Emma Wilson</h3>
+                                <div class="text-xs text-red-700 bg-red-100 px-3 py-1 rounded-full font-medium">Absent</div>
+                            </div>
+                            <div class="text-sm text-gray-500 mb-1">Position: HR Manager</div>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-lg font-medium">Office Management</div>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">₹25,000/month</span>
+                                <span class="text-gray-600">ID: #EW002</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex space-x-2">
+                        <button class="flex-1 bg-blue-50 text-accent py-2 px-4 rounded-xl text-sm font-medium">View Profile</button>
+                        <button class="flex-1 bg-orange-50 text-orange-600 py-2 px-4 rounded-xl text-sm font-medium">Mark Present</button>
+                        <button class="bg-gray-50 text-gray-600 p-2 rounded-xl">
+                            <i class="fa-solid fa-ellipsis-v"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-card bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden" data-status="present" data-type="daily">
+                <div class="p-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-3.jpg" alt="Worker" class="w-16 h-16 rounded-2xl object-cover">
+                            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <h3 class="font-semibold text-gray-800">Mike Johnson</h3>
+                                <div class="text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">Present</div>
+                            </div>
+                            <div class="text-sm text-gray-500 mb-1">Position: Mason</div>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-medium">Building Complex B</div>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">₹500/day</span>
+                                <span class="text-gray-600">ID: #MJ003</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex space-x-2">
+                        <button class="flex-1 bg-blue-50 text-accent py-2 px-4 rounded-xl text-sm font-medium">View Profile</button>
+                        <button class="flex-1 bg-green-50 text-green-600 py-2 px-4 rounded-xl text-sm font-medium">Mark Attendance</button>
+                        <button class="bg-gray-50 text-gray-600 p-2 rounded-xl">
+                            <i class="fa-solid fa-ellipsis-v"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-card bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden" data-status="present" data-type="fixed">
+                <div class="p-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-6.jpg" alt="Worker" class="w-16 h-16 rounded-2xl object-cover">
+                            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <h3 class="font-semibold text-gray-800">Sarah Davis</h3>
+                                <div class="text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">Present</div>
+                            </div>
+                            <div class="text-sm text-gray-500 mb-1">Position: Accountant</div>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-lg font-medium">Finance Department</div>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">₹22,000/month</span>
+                                <span class="text-gray-600">ID: #SD004</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex space-x-2">
+                        <button class="flex-1 bg-blue-50 text-accent py-2 px-4 rounded-xl text-sm font-medium">View Profile</button>
+                        <button class="flex-1 bg-green-50 text-green-600 py-2 px-4 rounded-xl text-sm font-medium">Mark Attendance</button>
+                        <button class="bg-gray-50 text-gray-600 p-2 rounded-xl">
+                            <i class="fa-solid fa-ellipsis-v"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <nav id="bottom-navigation" class="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm bg-white/95 backdrop-blur-lg shadow-2xl border-t border-gray-200/50">
+        <div class="flex justify-around items-center py-2 px-4 relative">
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="home">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-home text-lg"></i>
+                </div>
+                <span class="text-xs">Home</span>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-accent nav-btn transition-all duration-300" data-tab="workers">
+                <div class="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-users text-lg"></i>
+                </div>
+                <span class="text-xs font-semibold">Workers</span>
+            </button>
+            
+            <button id="scanner-btn" class="relative -top-8 bg-gradient-to-br from-accent via-blue-600 to-blue-700 text-white rounded-full w-24 h-24 flex items-center justify-center shadow-2xl nav-btn transform hover:scale-110 transition-all duration-300 border-4 border-white" data-tab="scanner">
+                <i class="fa-solid fa-qrcode text-4xl"></i>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="transactions">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-credit-card text-lg"></i>
+                </div>
+                <span class="text-xs">Pay</span>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="profile">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-user text-lg"></i>
+                </div>
+                <span class="text-xs">Profile</span>
+            </button>
+        </div>
+    </nav>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const workerCards = document.querySelectorAll('.worker-card');
+    const searchInput = document.getElementById('search-workers');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            tabBtns.forEach(b => {
+                b.classList.remove('active', 'bg-accent', 'text-white');
+                b.classList.add('text-gray-600');
+            });
+            this.classList.add('active', 'bg-accent', 'text-white');
+            this.classList.remove('text-gray-600');
+        });
+    });
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            filterBtns.forEach(b => {
+                b.classList.remove('bg-accent', 'text-white');
+                b.classList.add('bg-white', 'text-gray-600', 'border', 'border-gray-100');
+            });
+            this.classList.add('bg-accent', 'text-white');
+            this.classList.remove('bg-white', 'text-gray-600', 'border', 'border-gray-100');
+            
+            const filter = this.dataset.filter;
+            filterWorkers(filter);
+        });
+    });
+
+    function filterWorkers(filter) {
+        workerCards.forEach(card => {
+            if (filter === 'all') {
+                card.style.display = 'block';
+            } else if (filter === 'present' || filter === 'absent') {
+                card.style.display = card.dataset.status === filter ? 'block' : 'none';
+            } else if (filter === 'daily' || filter === 'fixed') {
+                card.style.display = card.dataset.type === filter ? 'block' : 'none';
+            }
+        });
+    }
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        workerCards.forEach(card => {
+            const workerName = card.querySelector('h3').textContent.toLowerCase();
+            const position = card.querySelector('.text-gray-500').textContent.toLowerCase();
+            if (workerName.includes(searchTerm) || position.includes(searchTerm)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+
+
+</body></html>

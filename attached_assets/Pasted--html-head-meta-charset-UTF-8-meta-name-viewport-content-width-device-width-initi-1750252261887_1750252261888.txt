@@ -1,0 +1,376 @@
+<html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = {
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#001F3F",
+        "accent": "#007BFF",
+        "lightGray": "#D3D3D3"
+      },
+      "fontFamily": {
+        "sans": [
+          "Inter",
+          "sans-serif"
+        ]
+      }
+    }
+  }
+};</script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>::-webkit-scrollbar { display: none;}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&amp;display=swap"><style>
+      body {
+        font-family: 'Inter', sans-serif !important;
+      }
+      
+      /* Preserve Font Awesome icons */
+      .fa, .fas, .far, .fal, .fab {
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+      }
+    </style><style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  </style></head>
+<body class="bg-gray-50 font-sans">
+
+<div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen">
+    
+    <header id="header" class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-1.jpg" alt="Profile" class="w-12 h-12 rounded-full border-3 border-white/30 shadow-lg">
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
+                </div>
+                <div>
+                    <div class="text-sm opacity-90 font-light">Good Morning</div>
+                    <div class="text-xl font-semibold">Sarah Admin</div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <div class="relative">
+                    <div class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-bell text-lg"></i>
+                    </div>
+                    <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                </div>
+                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            </div>
+        </div>
+        
+        <div class="bg-white/15 backdrop-blur-lg rounded-3xl p-5 border border-white/20">
+            <div class="flex items-center justify-between mb-3">
+                <div class="text-sm opacity-90 font-medium">Real Time</div>
+                <div class="flex items-center space-x-1">
+                    <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span id="current-time" class="text-sm font-mono">12:34:56 PM</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <div class="text-3xl font-bold mb-1" id="total-pay">₹12,450</div>
+                    <div class="text-sm opacity-80">Total Pay Due</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold mb-1">27/32</div>
+                    <div class="text-sm opacity-80">Workers Present</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-dashboard" class="p-4 pb-32 space-y-6">
+        
+        <section id="quick-actions" class="grid grid-cols-2 gap-4">
+            <button id="mark-attendance-btn" class="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-3xl p-5 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center space-y-3">
+                <div class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-user-check text-white text-xl"></i>
+                </div>
+                <span class="text-sm font-semibold">Mark Attendance</span>
+            </button>
+            
+            <button id="manage-workers-btn" class="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-3xl p-5 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center space-y-3">
+                <div class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-users text-white text-xl"></i>
+                </div>
+                <span class="text-sm font-semibold">Manage Workers</span>
+            </button>
+        </section>
+
+        <section id="dashboard-stats" class="grid grid-cols-2 gap-4">
+            <div class="bg-white rounded-3xl p-5 shadow-lg border border-gray-100">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <i class="fa-solid fa-user-check text-white text-lg"></i>
+                    </div>
+                    <div class="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">+2</div>
+                </div>
+                <div class="text-3xl font-bold text-gray-800 mb-1">24</div>
+                <div class="text-sm text-gray-600 mb-2">Present Today</div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-green-500 h-2 rounded-full" style="width: 75%"></div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-3xl p-5 shadow-lg border border-gray-100">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-red-400 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <i class="fa-solid fa-user-times text-white text-lg"></i>
+                    </div>
+                    <div class="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">-1</div>
+                </div>
+                <div class="text-3xl font-bold text-gray-800 mb-1">8</div>
+                <div class="text-sm text-gray-600 mb-2">Absent Today</div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-red-500 h-2 rounded-full" style="width: 25%"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="recent-workers" class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+            <div class="p-5 border-b border-gray-100">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <h3 class="text-lg font-semibold text-primary">Recent Workers</h3>
+                        <div class="bg-accent text-white text-xs px-2 py-1 rounded-full">5</div>
+                    </div>
+                    <button class="text-accent text-sm font-medium">View All</button>
+                </div>
+            </div>
+            <div class="divide-y divide-gray-50">
+                <div class="p-4 flex items-center space-x-4">
+                    <div class="relative">
+                        <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-2.jpg" alt="Worker" class="w-12 h-12 rounded-full">
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">John Smith</div>
+                        <div class="text-sm text-gray-500">Daily Wage Worker</div>
+                    </div>
+                    <div class="text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">Present</div>
+                </div>
+                
+                <div class="p-4 flex items-center space-x-4">
+                    <div class="relative">
+                        <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-5.jpg" alt="Worker" class="w-12 h-12 rounded-full">
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-gray-400 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">Emma Wilson</div>
+                        <div class="text-sm text-gray-500">Fixed Salary</div>
+                    </div>
+                    <div class="text-xs text-red-700 bg-red-100 px-3 py-1 rounded-full font-medium">Absent</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="real-time-activity" class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+            <div class="p-5 border-b border-gray-100">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <h3 class="text-lg font-semibold text-primary">Live Activity</h3>
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    </div>
+                    <button class="text-accent text-sm font-medium">View All</button>
+                </div>
+            </div>
+            <div class="divide-y divide-gray-50 max-h-48 overflow-y-auto">
+                <div class="p-4 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-sign-in-alt text-green-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">John Smith checked in</div>
+                        <div class="text-sm text-gray-500 flex items-center">
+                            <div class="w-1 h-1 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                            Just now
+                        </div>
+                    </div>
+                    <div class="text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">On Time</div>
+                </div>
+                
+                <div class="p-4 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-coffee text-blue-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">Emma Wilson on break</div>
+                        <div class="text-sm text-gray-500 flex items-center">
+                            <div class="w-1 h-1 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
+                            2 minutes ago
+                        </div>
+                    </div>
+                    <div class="text-xs text-blue-700 bg-blue-100 px-3 py-1 rounded-full font-medium">Break</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tracking-controls" class="grid grid-cols-2 gap-4">
+            <button class="bg-white rounded-3xl p-5 shadow-lg border border-gray-100 flex flex-col items-center space-y-3 hover:shadow-xl transition-all duration-300">
+                <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-user-plus text-white text-xl"></i>
+                </div>
+                <span class="text-sm font-semibold text-gray-800">Add Worker</span>
+            </button>
+            
+            <button class="bg-white rounded-3xl p-5 shadow-lg border border-gray-100 flex flex-col items-center space-y-3 hover:shadow-xl transition-all duration-300">
+                <div class="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-700 rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-chart-line text-white text-xl"></i>
+                </div>
+                <span class="text-sm font-semibold text-gray-800">View Report</span>
+            </button>
+        </section>
+
+    </main>
+
+    <nav id="bottom-navigation" class="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm bg-white/95 backdrop-blur-lg shadow-2xl border-t border-gray-200/50">
+        <div class="flex justify-around items-center py-2 px-4 relative">
+            <button class="flex flex-col items-center p-3 text-accent nav-btn transition-all duration-300" data-tab="home">
+                <div class="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-home text-lg"></i>
+                </div>
+                <span class="text-xs font-semibold">Home</span>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="workers">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-users text-lg"></i>
+                </div>
+                <span class="text-xs">Workers</span>
+            </button>
+            
+            <button id="scanner-btn" class="relative -top-8 bg-gradient-to-br from-accent via-blue-600 to-blue-700 text-white rounded-full w-24 h-24 flex items-center justify-center shadow-2xl nav-btn transform hover:scale-110 transition-all duration-300 border-4 border-white" data-tab="scanner">
+                <i class="fa-solid fa-qrcode text-4xl"></i>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="transactions">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-credit-card text-lg"></i>
+                </div>
+                <span class="text-xs">Pay</span>
+            </button>
+            
+            <button class="flex flex-col items-center p-3 text-gray-400 nav-btn transition-all duration-300" data-tab="profile">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-1">
+                    <i class="fa-solid fa-user text-lg"></i>
+                </div>
+                <span class="text-xs">Profile</span>
+            </button>
+        </div>
+    </nav>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const scannerBtn = document.getElementById('scanner-btn');
+    const markAttendanceBtn = document.getElementById('mark-attendance-btn');
+    const manageWorkersBtn = document.getElementById('manage-workers-btn');
+    
+    function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', {
+            hour12: true,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        document.getElementById('current-time').textContent = timeString;
+    }
+    
+    function updateTotalPay() {
+        const presentWorkers = 27;
+        const dailyRate = 450;
+        const overtimeHours = 8;
+        const overtimeRate = 75;
+        const totalPay = (presentWorkers * dailyRate) + (overtimeHours * overtimeRate);
+        document.getElementById('total-pay').textContent = `₹${totalPay.toLocaleString()}`;
+    }
+    
+    updateTime();
+    updateTotalPay();
+    setInterval(updateTime, 1000);
+    setInterval(updateTotalPay, 30000);
+    
+    markAttendanceBtn.addEventListener('click', function() {
+        this.classList.add('animate-pulse');
+        setTimeout(() => {
+            this.classList.remove('animate-pulse');
+        }, 300);
+        console.log('Opening Manual Attendance Marking...');
+    });
+    
+    manageWorkersBtn.addEventListener('click', function() {
+        this.classList.add('animate-pulse');
+        setTimeout(() => {
+            this.classList.remove('animate-pulse');
+        }, 300);
+        console.log('Opening Worker Management...');
+    });
+    
+    navButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tab = this.getAttribute('data-tab');
+            
+            navButtons.forEach(btn => {
+                if (btn.id === 'scanner-btn') return;
+                btn.classList.remove('text-accent');
+                btn.classList.add('text-gray-400');
+                const iconContainer = btn.querySelector('div');
+                const span = btn.querySelector('span');
+                if (iconContainer && !iconContainer.classList.contains('bg-blue-50')) {
+                    iconContainer.classList.remove('bg-blue-50');
+                }
+                if (span) {
+                    span.classList.remove('font-semibold');
+                }
+            });
+            
+            if (tab !== 'scanner') {
+                this.classList.remove('text-gray-400');
+                this.classList.add('text-accent');
+                const iconContainer = this.querySelector('div');
+                const span = this.querySelector('span');
+                if (iconContainer) {
+                    iconContainer.classList.add('bg-blue-50');
+                }
+                if (span) {
+                    span.classList.add('font-semibold');
+                }
+            }
+            
+            if (tab === 'scanner') {
+                scannerBtn.classList.add('animate-pulse');
+                setTimeout(() => {
+                    scannerBtn.classList.remove('animate-pulse');
+                }, 300);
+                console.log('Opening QR Scanner...');
+            }
+        });
+    });
+});
+</script>
+
+
+</body></html>

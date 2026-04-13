@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - SmartWorker{% endblock %}
+
+{% block head %}
+<!-- Date picker styles -->
+<style>
+.calendar-day {
+    transition: all 0.2s ease;
+}
+.calendar-day:hover {
+    transform: scale(1.05);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('dashboard') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Attendance</div>
+                <div class="text-sm opacity-90">Daily Attendance Management</div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="{{ url_for('closures') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-calendar-times text-lg"></i>
+            </a>
+            <button onclick="showBulkActions()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-tasks text-lg"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Date Selection -->
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+        <form method="GET" class="flex items-center space-x-3">
+            <div class="flex-1">
+                <label class="block text-xs text-white/70 mb-1">Select Date</label>
+                <div class="relative">
+                    <i class="fa-solid fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70"></i>
+                    <input type="date" name="date" value="{{ selected_date }}" 
+                           class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50"
+                           onchange="this.form.submit()">
+                </div>
+            </div>
+            <div class="flex items-end space-x-2">
+                <a href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat()) }}" 
+                   class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
+                    <i class="fa-solid fa-chevron-left text-white"></i>
+                </a>
+                <a href="{{ url_for('attendance', date=(selected_date + timedelta(days=1)).isoformat()) }}" 
+                   class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
+                    <i class="fa-solid fa-chevron-right text-white"></i>
+                </a>
+            </div>
+        </form>
+        
+        <div class="mt-3 text-center">
+            <div class="text-sm text-white/90">{{ selected_date.strftime('%A, %B %d, %Y') }}</div>
+            {% if closure %}
+                {% if closure.allow_attendance %}
+                    <div class="bg-orange-500/20 border border-orange-400/30 rounded-lg px-3 py-2 mt-2">
+                        <div class="text-sm text-orange-100">
+                            <i class="fa-solid fa-exclamation-triangle mr-2"></i>
+                            {{ closure.reason }} - {{ closure.type.title() }} (Attendance allowed if present)
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="bg-red-500/20 border border-red-400/30 rounded-lg px-3 py-2 mt-2">
+                        <div class="text-sm text-red-200">
+                            <i class="fa-solid fa-calendar-times mr-2"></i>
+                            {{ closure.reason }} - {{ closure.type.title() }} (Attendance locked)
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-32">
+    {% if not closure or closure.allow_attendance %}
+    <!-- Quick Stats -->
+    <section class="grid grid-cols-3 gap-4 mb-6">
+        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl text-center">
+            <div class="text-xl font-bold">{{ attendance_data|selectattr('attendance')|selectattr('attendance.status', 'equalto', 'present')|list|length }}</div>
+            <div class="text-xs opacity-90">Present</div>
+        </div>
+        <div class="bg-gradient-to-br from-red-500 to-red-600 text-white p-4 rounded-2xl text-center">
+            <div class="text-xl font-bold">{{ attendance_data|rejectattr('attendance')|list|length + attendance_data|selectattr('attendance')|selectattr('attendance.status', 'equalto', 'absent')|list|length }}</div>
+            <div class="text-xs opacity-90">Absent</div>
+        </div>
+        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-4 rounded-2xl text-center">
+            <div class="text-xl font-bold">{{ attendance_data|selectattr('attendance')|selectattr('attendance.status', 'equalto', 'late')|list|length }}</div>
+            <div class="text-xs opacity-90">Late</div>
+        </div>
+    </section>
+
+    <div class="mb-6 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl p-3">
+        Tap Present or Late once for check-in. Tap the same status again to close shift and calculate overtime instantly.
+    </div>
+    {% endif %}
+
+    <!-- Attendance List -->
+    {% if attendance_data %}
+    <div class="space-y-4">
+        {% for data in attendance_data %}
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="relative shrink-0">
+                        {% if data.worker.profile_image %}
+                            <img src="{{ data.worker.profile_image }}" alt="{{ data.worker.full_name }}" class="w-12 h-12 shrink-0 rounded-xl object-cover object-center">
+                        {% else %}
+                            <div class="w-12 h-12 shrink-0 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold">
+                                {{ data.worker.full_name[0] }}
+                            </div>
+                        {% endif %}
+                        
+                        {% if data.attendance %}
+                            {% if data.attendance.status == 'present' %}
+                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                                    <i class="fa-solid fa-check text-xs text-white"></i>
+                                </div>
+                            {% elif data.attendance.status == 'absent' %}
+                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
+                                    <i class="fa-solid fa-times text-xs text-white"></i>
+                                </div>
+                            {% elif data.attendance.status == 'late' %}
+                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full border-2 border-white flex items-center justify-center">
+                                    <i class="fa-solid fa-clock text-xs text-white"></i>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-gray-400 rounded-full border-2 border-white flex items-center justify-center">
+                                <i class="fa-solid fa-question text-xs text-white"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="flex-1">
+                        <div class="font-semibold text-gray-800">{{ data.worker.full_name }}</div>
+                        <div class="text-sm text-gray-600">{{ data.worker.worker_id }} • {{ data.worker.department }}</div>
+                        {% if data.attendance and data.attendance.check_in_time %}
+                            <div class="text-xs text-gray-500">Check-in: {{ data.attendance.check_in_time.strftime('%H:%M') }}</div>
+                        {% endif %}
+                        {% if data.attendance and data.attendance.check_out_time %}
+                            <div class="text-xs text-gray-500">Check-out: {{ data.attendance.check_out_time.strftime('%H:%M') }}</div>
+                        {% endif %}
+                        {% if data.wage is not none and data.wage > 0 %}
+                            <div class="text-xs text-gray-500">Pay: ₹{{ "%.2f"|format(data.wage) }} ({{ data.pay_mode.replace('_',' ')|title }})</div>
+                        {% endif %}
+                        {% if data.overtime_pay and data.overtime_pay > 0 %}
+                            <div class="text-xs text-gray-500">Overtime pay: ₹{{ "%.2f"|format(data.overtime_pay) }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    {% if not closure or closure.allow_attendance %}
+                    <form method="POST" action="{{ url_for('mark_attendance') }}" class="flex space-x-1">
+                        <input type="hidden" name="worker_id" value="{{ data.worker.id }}">
+                        <input type="hidden" name="date" value="{{ selected_date }}">
+                        
+                        {% set current_status = data.attendance.status if data.attendance else 'absent' %}
+                        
+                        <button type="submit" name="status" value="present" 
+                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs {{ 'bg-green-500 text-white' if current_status == 'present' else 'bg-green-100 text-green-600 hover:bg-green-200' }}">
+                            <i class="fa-solid fa-check"></i>
+                        </button>
+                        
+                        <button type="submit" name="status" value="absent" 
+                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs {{ 'bg-red-500 text-white' if current_status == 'absent' else 'bg-red-100 text-red-600 hover:bg-red-200' }}">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                        
+                        <button type="submit" name="status" value="late" 
+                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs {{ 'bg-yellow-500 text-white' if current_status == 'late' else 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200' }}">
+                            <i class="fa-solid fa-clock"></i>
+                        </button>
+                        
+                        <button type="submit" name="status" value="leave" 
+                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs {{ 'bg-blue-500 text-white' if current_status == 'leave' else 'bg-blue-100 text-blue-600 hover:bg-blue-200' }}">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="bg-gray-100 text-gray-500 px-3 py-1 rounded-lg text-xs">
+                        Closure Day Locked
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-calendar-check text-3xl text-gray-400"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Workers Found</h3>
+        <p class="text-gray-600 mb-6">Add workers to start marking attendance.</p>
+        <a href="{{ url_for('add_worker') }}" 
+           class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
+            <i class="fa-solid fa-plus mr-2"></i>Add First Worker
+        </a>
+    </div>
+    {% endif %}
+</main>
+
+<!-- Bulk Actions Modal -->
+<div id="bulk-actions-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
+            <div class="text-center mb-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Bulk Actions</h3>
+                <p class="text-gray-600">Apply actions to all workers</p>
+            </div>
+            
+            {% if not closure or closure.allow_attendance %}
+            <div class="space-y-3 mb-6">
+                <form method="POST" action="{{ url_for('mark_attendance') }}">
+                    <input type="hidden" name="date" value="{{ selected_date }}">
+                    <input type="hidden" name="bulk_action" value="true">
+                    
+                    <button type="submit" name="status" value="present" 
+                            class="w-full flex items-center justify-center p-4 bg-green-50 rounded-2xl hover:bg-green-100 transition-colors">
+                        <i class="fa-solid fa-check text-green-600 mr-3"></i>
+                        <span class="font-medium text-gray-800">Mark All Present</span>
+                    </button>
+                </form>
+                
+                <form method="POST" action="{{ url_for('mark_attendance') }}">
+                    <input type="hidden" name="date" value="{{ selected_date }}">
+                    <input type="hidden" name="bulk_action" value="true">
+                    
+                    <button type="submit" name="status" value="absent" 
+                            class="w-full flex items-center justify-center p-4 bg-red-50 rounded-2xl hover:bg-red-100 transition-colors">
+                        <i class="fa-solid fa-times text-red-600 mr-3"></i>
+                        <span class="font-medium text-gray-800">Mark All Absent</span>
+                    </button>
+            </div>
+            {% else %}
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 mb-6">
+                Bulk attendance is disabled because this date is configured as a locked closure day.
+            </div>
+            {% endif %}
+            
+            <button onclick="hideBulkActions()" 
+                    class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showBulkActions() {
+    document.getElementById('bulk-actions-modal').classList.remove('hidden');
+}
+
+function hideBulkActions() {
+    document.getElementById('bulk-actions-modal').classList.add('hidden');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}{{ worker.full_name }} - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('workers') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Worker Profile</div>
+                <div class="text-sm opacity-90">Employee Information</div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="{{ url_for('edit_worker', worker_id=worker.id) }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-edit text-lg"></i>
+            </a>
+            <button class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-ellipsis-v text-lg"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+        <div class="flex items-center space-x-4">
+            <div class="relative shrink-0">
+                {% if worker.profile_image %}
+                    <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}" class="w-20 h-20 shrink-0 rounded-2xl object-cover object-center border-4 border-white/20">
+                {% else %}
+                    <div class="w-20 h-20 shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white font-bold text-2xl border-4 border-white/20">
+                        {{ worker.full_name[0] }}
+                    </div>
+                {% endif %}
+                <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
+                    <i class="fa-solid fa-check text-xs text-white"></i>
+                </div>
+            </div>
+            <div class="flex-1">
+                <div class="text-xl font-bold mb-1">{{ worker.full_name }}</div>
+                <div class="text-sm opacity-90 mb-2">{{ worker.position }} • {{ worker.department }}</div>
+                <div class="flex items-center justify-between">
+                    <div class="text-sm opacity-90">ID: {{ worker.worker_id }}</div>
+                    <div class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl text-xs font-medium">{{ worker.employee_type }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-32 space-y-4">
+    <!-- Quick Actions -->
+    <section class="grid grid-cols-3 gap-3">
+        <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" 
+           class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+            <div class="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center mb-2">
+                <i class="fa-solid fa-calendar-check text-accent text-xl"></i>
+            </div>
+            <span class="text-sm font-medium text-gray-800">Attendance</span>
+        </a>
+        
+        <a href="{{ url_for('id_card', worker_id=worker.id) }}" 
+           class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+            <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-2">
+                <i class="fa-solid fa-id-card text-purple-500 text-xl"></i>
+            </div>
+            <span class="text-sm font-medium text-gray-800">ID Card</span>
+        </a>
+        
+        <button class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+            <div class="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-2">
+                <i class="fa-solid fa-file-invoice-dollar text-green-500 text-xl"></i>
+            </div>
+            <span class="text-sm font-medium text-gray-800">Payroll</span>
+        </button>
+    </section>
+
+    <!-- Personal Information -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Full Name</span>
+                <span class="font-medium text-gray-800">{{ worker.full_name }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Phone Number</span>
+                <span class="font-medium text-gray-800">{{ worker.phone }}</span>
+            </div>
+            {% if worker.email %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Email</span>
+                <span class="font-medium text-gray-800">{{ worker.email }}</span>
+            </div>
+            {% endif %}
+            {% if worker.address %}
+            <div class="flex justify-between items-start">
+                <span class="text-gray-600">Address</span>
+                <span class="font-medium text-gray-800 text-right max-w-48">{{ worker.address }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Work Information -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Work Information</h3>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Position</span>
+                <span class="font-medium text-gray-800">{{ worker.position }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Department</span>
+                <span class="font-medium text-gray-800">{{ worker.department }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Employee Type</span>
+                <span class="font-medium text-gray-800">{{ worker.employee_type }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Join Date</span>
+                <span class="font-medium text-gray-800">{{ worker.join_date.strftime('%d %B %Y') }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Status</span>
+                <span class="font-medium text-green-600 capitalize">{{ worker.status }}</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Payment Information -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Information</h3>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Pay Type</span>
+                <span class="font-medium text-gray-800 capitalize">{{ worker.pay_type }}</span>
+            </div>
+            {% if worker.pay_type == 'daily' and worker.daily_rate %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Daily Rate</span>
+                <span class="font-medium text-green-600">₹{{ worker.daily_rate }}</span>
+            </div>
+            {% if worker.start_time and worker.end_time %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Working Hours</span>
+                <span class="font-medium text-gray-800">{{ worker.start_time.strftime('%H:%M') }} - {{ worker.end_time.strftime('%H:%M') }}</span>
+            </div>
+            {% endif %}
+            {% elif worker.pay_type == 'monthly' and worker.monthly_salary %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Monthly Salary</span>
+                <span class="font-medium text-green-600">₹{{ worker.monthly_salary }}</span>
+            </div>
+            {% elif worker.pay_type == 'hourly' and worker.hourly_rate %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Hourly Rate</span>
+                <span class="font-medium text-green-600">₹{{ worker.hourly_rate }}</span>
+            </div>
+            {% elif worker.pay_type == 'project' and worker.project_rate %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Project Amount</span>
+                <span class="font-medium text-green-600">₹{{ worker.project_rate }}</span>
+            </div>
+            {% endif %}
+
+            {% if worker.pay_type == 'monthly' %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Leave Policy</span>
+                <span class="font-medium {{ 'text-green-600' if worker.leave_policy_enabled else 'text-gray-500' }}">
+                    {{ 'Enabled' if worker.leave_policy_enabled else 'Disabled' }}
+                </span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Allowed Leaves/Month</span>
+                <span class="font-medium text-gray-800">{{ worker.allowed_leaves_per_month }}</span>
+            </div>
+            {% if worker.leave_policy_enabled and worker.leave_deduction_per_day %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Leave Deduction/Day</span>
+                <span class="font-medium text-red-600">₹{{ worker.leave_deduction_per_day }}</span>
+            </div>
+            {% endif %}
+            {% endif %}
+            
+            {% if worker.overtime_enabled and worker.overtime_rate %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Overtime Rate</span>
+                <span class="font-medium text-gray-800">₹{{ worker.overtime_rate }}/{{ worker.overtime_type }}</span>
+            </div>
+            {% endif %}
+
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Late Policy</span>
+                <span class="font-medium {{ 'text-green-600' if worker.late_policy_enabled else 'text-gray-500' }}">
+                    {{ 'Enabled' if worker.late_policy_enabled else 'Disabled' }}
+                </span>
+            </div>
+            {% if worker.late_policy_enabled and worker.late_deduction_per_day %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Late Deduction/Day</span>
+                <span class="font-medium text-red-600">₹{{ worker.late_deduction_per_day }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Attendance Summary -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">This Month's Summary</h3>
+            <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" class="text-accent text-sm font-medium">View Details</a>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="text-center p-3 bg-green-50 rounded-2xl">
+                <div class="text-2xl font-bold text-green-600">{{ month_attendance }}</div>
+                <div class="text-sm text-gray-600">Days Present</div>
+            </div>
+            <div class="text-center p-3 bg-blue-50 rounded-2xl">
+                <div class="text-2xl font-bold text-blue-600">{{ recent_attendance|length }}</div>
+                <div class="text-sm text-gray-600">Total Records</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Attendance -->
+    {% if recent_attendance %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Attendance</h3>
+        <div class="space-y-3">
+            {% for record in recent_attendance[:5] %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 {% if record.status == 'present' %}bg-green-100{% elif record.status == 'absent' %}bg-red-100{% else %}bg-yellow-100{% endif %} rounded-xl flex items-center justify-center">
+                        {% if record.status == 'present' %}
+                            <i class="fa-solid fa-check text-green-600"></i>
+                        {% elif record.status == 'absent' %}
+                            <i class="fa-solid fa-times text-red-600"></i>
+                        {% else %}
+                            <i class="fa-solid fa-clock text-yellow-600"></i>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-800">{{ record.date.strftime('%d %B %Y') }}</div>
+                        {% if record.check_in_time %}
+                            <div class="text-sm text-gray-600">Check-in: {{ record.check_in_time.strftime('%H:%M') }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="{% if record.status == 'present' %}bg-green-100 text-green-800{% elif record.status == 'absent' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-3 py-1 rounded-full text-xs font-medium">
+                    {{ record.status.title() }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</main>
+{% endblock %}

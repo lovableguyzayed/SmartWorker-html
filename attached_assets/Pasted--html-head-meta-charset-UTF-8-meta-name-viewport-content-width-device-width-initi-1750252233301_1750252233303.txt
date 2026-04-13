@@ -1,0 +1,205 @@
+<html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = {
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#001F3F",
+        "accent": "#007BFF",
+        "lightGray": "#D3D3D3"
+      },
+      "fontFamily": {
+        "sans": [
+          "Inter",
+          "sans-serif"
+        ]
+      }
+    }
+  }
+};</script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>::-webkit-scrollbar { display: none;}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&amp;display=swap"><style>
+      body {
+        font-family: 'Inter', sans-serif !important;
+      }
+      
+      /* Preserve Font Awesome icons */
+      .fa, .fas, .far, .fal, .fab {
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+      }
+    </style><style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  </style></head>
+<body class="bg-gray-50 font-sans">
+
+<div id="mobile-signin" class="max-w-sm mx-auto bg-gray-50 min-h-screen">
+    
+    <section id="signin-hero" class="bg-gradient-to-br from-primary to-accent text-white p-8 h-[380px] flex flex-col justify-center items-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-full opacity-10">
+            <div class="absolute top-16 left-6 w-20 h-20 border-2 border-white/20 rounded-xl rotate-12"></div>
+            <div class="absolute top-24 right-8 w-16 h-16 bg-white/10 rounded-full"></div>
+            <div class="absolute bottom-24 left-8 w-14 h-14 bg-white/15 rounded-lg rotate-45"></div>
+            <div class="absolute bottom-16 right-12 w-10 h-10 border border-white/25 rounded-full"></div>
+        </div>
+        
+        <div id="app-logo" class="relative z-10 text-center">
+            <div class="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-2xl mx-auto mb-6 relative transform hover:scale-105 transition-transform duration-300">
+                <div class="w-24 h-24 bg-gradient-to-br from-primary via-accent to-blue-600 rounded-full flex items-center justify-center relative overflow-hidden shadow-inner">
+                    <div class="absolute inset-0 bg-gradient-radial from-white/30 via-transparent to-transparent"></div>
+                    <div class="relative z-10 flex flex-col items-center justify-center">
+                        <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg mb-2">
+                            <div class="relative">
+                                <i class="fa-solid fa-user-clock text-primary text-2xl"></i>
+                                <div class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                                    <i class="fa-solid fa-check text-white text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-1">
+                            <div class="w-2 h-2 bg-white rounded-full opacity-80"></div>
+                            <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                            <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold mb-2 tracking-wide">Attendance Tracker Pro</h1>
+            <p class="text-base opacity-90 font-medium">Professional Attendance Management</p>
+        </div>
+    </section>
+
+    <main id="signin-content" class="p-6 -mt-16 relative z-10">
+        
+        <div id="signin-card" class="bg-white rounded-3xl shadow-2xl p-8 mb-6 border border-gray-100">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-primary mb-2">Welcome Back</h2>
+                <p class="text-gray-600">Access your attendance dashboard</p>
+            </div>
+
+            <form id="signin-form" class="space-y-6">
+                <div id="email-input" class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-700 block">Email or Mobile</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-user text-gray-400"></i>
+                        </div>
+                        <input type="text" placeholder="Enter email or mobile number" class="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                    </div>
+                </div>
+
+                <div id="password-input" class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-700 block">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" placeholder="Enter your password" class="w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                        <button type="button" class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                            <i class="fa-solid fa-eye text-gray-400 hover:text-gray-600 transition-colors"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="options-row" class="flex items-center justify-between">
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="w-5 h-5 text-accent border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-accent">
+                        <span class="text-gray-600 font-medium">Remember me</span>
+                    </label>
+                    <button type="button" class="text-accent font-semibold hover:text-blue-700 transition-colors">Forgot Password?</button>
+                </div>
+
+                <button id="signin-btn" type="submit" class="w-full bg-gradient-to-r from-primary to-accent text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300">
+                    Sign In to Dashboard
+                </button>
+            </form>
+
+            <div id="divider" class="flex items-center my-6">
+                <div class="flex-1 border-t-2 border-gray-200"></div>
+                <span class="px-4 text-sm text-gray-500 font-medium">OR</span>
+                <div class="flex-1 border-t-2 border-gray-200"></div>
+            </div>
+
+            <button id="otp-btn" class="w-full bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold flex items-center justify-center space-x-3 hover:bg-gray-200 transition-all border-2 border-gray-200">
+                <i class="fa-solid fa-mobile-alt text-accent text-lg"></i>
+                <span>Sign in with OTP</span>
+            </button>
+        </div>
+
+        <div id="signup-link" class="text-center mb-8">
+            <p class="text-gray-600">
+                Don't have an account? 
+                <button class="text-accent font-bold hover:text-blue-700 transition-colors">Create Account</button>
+            </p>
+        </div>
+
+    </main>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const signinForm = document.getElementById('signin-form');
+    const signinBtn = document.getElementById('signin-btn');
+    const otpBtn = document.getElementById('otp-btn');
+    const passwordInput = document.querySelector('input[type="password"]');
+    const eyeIcon = document.querySelector('.fa-eye');
+
+    signinForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        signinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Signing In...';
+        signinBtn.disabled = true;
+        
+        setTimeout(() => {
+            console.log('Sign in successful');
+        }, 2000);
+    });
+
+    otpBtn.addEventListener('click', function() {
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Sending OTP...';
+        this.disabled = true;
+        
+        setTimeout(() => {
+            this.innerHTML = '<i class="fa-solid fa-mobile-alt text-accent mr-2"></i>Sign in with OTP';
+            this.disabled = false;
+        }, 2000);
+    });
+
+    if (eyeIcon) {
+        eyeIcon.addEventListener('click', function() {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.classList.remove('fa-eye');
+                this.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                this.classList.remove('fa-eye-slash');
+                this.classList.add('fa-eye');
+            }
+        });
+    }
+});
+</script>
+
+
+</body></html>

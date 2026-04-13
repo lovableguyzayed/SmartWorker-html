@@ -1,0 +1,239 @@
+<html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = {
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#001F3F",
+        "accent": "#007BFF",
+        "lightGray": "#D3D3D3"
+      },
+      "fontFamily": {
+        "sans": [
+          "Inter",
+          "sans-serif"
+        ]
+      }
+    }
+  }
+};</script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>::-webkit-scrollbar { display: none;}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&amp;display=swap"><style>
+      body {
+        font-family: 'Inter', sans-serif !important;
+      }
+      
+      /* Preserve Font Awesome icons */
+      .fa, .fas, .far, .fal, .fab {
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+      }
+    </style><style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  </style></head>
+<body class="bg-gray-50 font-sans">
+
+<div id="mobile-app-logo" class="max-w-sm mx-auto bg-gray-50 min-h-screen">
+    
+    <section id="logo-hero" class="bg-gradient-to-br from-primary via-accent to-blue-600 text-white p-8 h-[400px] flex flex-col justify-center items-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-full opacity-10">
+            <div class="absolute top-20 left-8 w-16 h-16 border-2 border-white/20 rounded-xl rotate-12"></div>
+            <div class="absolute top-32 right-6 w-12 h-12 bg-white/10 rounded-full"></div>
+            <div class="absolute bottom-32 left-12 w-10 h-10 bg-white/15 rounded-lg rotate-45"></div>
+            <div class="absolute bottom-20 right-8 w-8 h-8 border border-white/25 rounded-full"></div>
+            <div class="absolute top-40 left-4 w-6 h-6 bg-white/20 rounded-full"></div>
+            <div class="absolute bottom-40 right-16 w-14 h-14 border-2 border-white/15 rounded-lg rotate-12"></div>
+        </div>
+        
+        <div id="main-app-logo" class="relative z-10 text-center">
+            <div class="w-40 h-40 bg-white rounded-full flex items-center justify-center shadow-2xl mx-auto mb-8 relative transform hover:scale-105 transition-transform duration-300">
+                <div class="w-32 h-32 bg-gradient-to-br from-primary via-accent to-blue-600 rounded-full flex items-center justify-center relative overflow-hidden shadow-inner">
+                    <div class="absolute inset-0 bg-gradient-radial from-white/30 via-transparent to-transparent"></div>
+                    <div class="relative z-10 flex flex-col items-center justify-center">
+                        <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg mb-3">
+                            <div class="relative">
+                                <i class="fa-solid fa-user-clock text-primary text-3xl"></i>
+                                <div class="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                                    <i class="fa-solid fa-check text-white text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-1.5">
+                            <div class="w-2.5 h-2.5 bg-white rounded-full opacity-90"></div>
+                            <div class="w-2.5 h-2.5 bg-yellow-400 rounded-full"></div>
+                            <div class="w-2.5 h-2.5 bg-green-400 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h1 class="text-4xl font-bold mb-3 tracking-wide">Attendance Tracker Pro</h1>
+            <p class="text-lg opacity-95 font-medium">Smart Workforce Management</p>
+        </div>
+    </section>
+
+    <main id="logo-content" class="p-6 -mt-20 relative z-10">
+        
+        <div id="logo-info-card" class="bg-white rounded-3xl shadow-2xl p-8 mb-6 border border-gray-100">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-primary mb-3">Professional Attendance Solution</h2>
+                <p class="text-gray-600 leading-relaxed">Streamline your workforce management with our comprehensive attendance tracking system designed for businesses of all sizes.</p>
+            </div>
+
+            <div id="features-grid" class="space-y-6">
+                <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-2xl">
+                    <div class="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-qrcode text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-lg">QR Code System</h3>
+                        <p class="text-gray-600 text-sm">Quick and secure attendance marking</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-2xl">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-users text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-lg">Worker Management</h3>
+                        <p class="text-gray-600 text-sm">Complete employee profile control</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-2xl">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-lg">Real-time Analytics</h3>
+                        <p class="text-gray-600 text-sm">Live tracking and reporting</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-2xl">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-rupee-sign text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-lg">Payment Management</h3>
+                        <p class="text-gray-600 text-sm">Automated salary and overtime calculation</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-2xl">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-cloud text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-lg">Cloud Sync</h3>
+                        <p class="text-gray-600 text-sm">Multi-device data synchronization</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="business-types" class="bg-white rounded-3xl shadow-xl p-6 mb-6 border border-gray-100">
+            <h3 class="text-xl font-bold text-primary text-center mb-6">Perfect For Every Business</h3>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl">
+                    <div class="w-12 h-12 bg-blue-500 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                        <i class="fa-solid fa-store text-white text-xl"></i>
+                    </div>
+                    <p class="font-semibold text-gray-800">Retail Shops</p>
+                </div>
+
+                <div class="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl">
+                    <div class="w-12 h-12 bg-green-500 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                        <i class="fa-solid fa-building text-white text-xl"></i>
+                    </div>
+                    <p class="font-semibold text-gray-800">Offices</p>
+                </div>
+
+                <div class="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl">
+                    <div class="w-12 h-12 bg-orange-500 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                        <i class="fa-solid fa-hard-hat text-white text-xl"></i>
+                    </div>
+                    <p class="font-semibold text-gray-800">Construction</p>
+                </div>
+
+                <div class="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl">
+                    <div class="w-12 h-12 bg-purple-500 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                        <i class="fa-solid fa-industry text-white text-xl"></i>
+                    </div>
+                    <p class="font-semibold text-gray-800">Factories</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="get-started-section" class="text-center mb-8">
+            <button id="get-started-btn" class="w-full bg-gradient-to-r from-primary to-accent text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 mb-4">
+                Get Started Today
+            </button>
+            
+            <p class="text-gray-600 text-sm">
+                Transform your attendance management with our professional solution
+            </p>
+        </div>
+
+    </main>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const getStartedBtn = document.getElementById('get-started-btn');
+    const logoElement = document.getElementById('main-app-logo');
+
+    getStartedBtn.addEventListener('click', function() {
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading...';
+        this.disabled = true;
+        
+        setTimeout(() => {
+            console.log('Navigating to dashboard');
+        }, 1500);
+    });
+
+    logoElement.addEventListener('click', function() {
+        this.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            this.style.transform = 'scale(1)';
+        }, 200);
+    });
+
+    const featureCards = document.querySelectorAll('#features-grid > div');
+    featureCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+
+
+</body></html>

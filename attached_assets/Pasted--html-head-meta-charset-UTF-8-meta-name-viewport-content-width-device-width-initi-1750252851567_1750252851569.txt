@@ -1,0 +1,451 @@
+<html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>tailwind.config = {
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#001F3F",
+        "accent": "#007BFF",
+        "lightGray": "#D3D3D3"
+      },
+      "fontFamily": {
+        "sans": [
+          "Inter",
+          "sans-serif"
+        ]
+      }
+    }
+  }
+};</script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>::-webkit-scrollbar { display: none;}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&amp;display=swap"><style>
+      body {
+        font-family: 'Inter', sans-serif !important;
+      }
+      
+      /* Preserve Font Awesome icons */
+      .fa, .fas, .far, .fal, .fab {
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+      }
+    </style><style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  </style></head>
+<body class="bg-gray-50 font-sans">
+
+<div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen">
+    
+    <header id="id-card-header" class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-4">
+                <button id="back-btn" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </button>
+                <div>
+                    <div class="text-xl font-semibold">Employee ID Card</div>
+                    <div class="text-sm opacity-90">Digital Identity</div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="share-id-btn" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-share text-lg"></i>
+                </button>
+                <button id="print-id-btn" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-print text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="id-card-main" class="p-4 pb-32">
+        
+        <section id="id-card-preview" class="mb-6">
+            <div id="employee-id-card" class="bg-gradient-to-br from-primary to-accent text-white rounded-3xl p-6 relative overflow-hidden shadow-2xl border border-white/20">
+                <div class="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-20 translate-x-20"></div>
+                <div class="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
+                <div class="absolute top-4 right-4 w-16 h-16 bg-white/10 rounded-2xl backdrop-blur-sm flex items-center justify-center">
+                    <i class="fa-solid fa-building text-white/70 text-xl"></i>
+                </div>
+                
+                <div class="relative z-10">
+                    <div class="text-center mb-6">
+                        <div class="text-xl font-bold text-white mb-1">Attendance Tracker Pro</div>
+                        <div class="text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full inline-block">Employee ID Card</div>
+                    </div>
+                    
+                    <div class="flex items-start space-x-4 mb-6">
+                        <div class="relative">
+                            <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-5.jpg" alt="Employee" class="w-20 h-20 rounded-2xl object-cover border-3 border-white/30 shadow-lg">
+                            <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
+                                <i class="fa-solid fa-check text-xs text-white"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-xl font-bold mb-1">Sarah Johnson</div>
+                            <div class="text-sm text-white/90 mb-1">Marketing Manager</div>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">ID: #SJ002</div>
+                                <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">Active</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/20">
+                            <div class="text-xs text-white/70 mb-1">Phone Number</div>
+                            <div class="text-sm font-medium">+91 98765 43211</div>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/20">
+                            <div class="text-xs text-white/70 mb-1">Joined Date</div>
+                            <div class="text-sm font-medium">01 Mar 2024</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex-1">
+                            <div class="text-xs text-white/70 mb-2">QR Code for Attendance</div>
+                            <div class="text-sm font-medium text-white/90 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
+                                QR ID: #SJ002QR2024
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <div class="bg-white p-3 rounded-2xl shadow-lg">
+                                <i class="fa-solid fa-qrcode text-primary text-4xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-white/20 pt-4">
+                        <div class="flex items-center justify-between text-xs text-white/70">
+                            <span>Valid for attendance marking</span>
+                            <span>Generated: Today</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="id-card-actions" class="grid grid-cols-2 gap-4 mb-6">
+            <button id="download-id-card-btn" class="bg-accent text-white p-4 rounded-2xl text-center font-medium shadow-lg">
+                <i class="fa-solid fa-download text-2xl mb-2 block"></i>
+                Download ID
+            </button>
+            <button id="generate-new-qr-btn" class="bg-purple-600 text-white p-4 rounded-2xl text-center font-medium shadow-lg">
+                <i class="fa-solid fa-qrcode text-2xl mb-2 block"></i>
+                Generate New QR
+            </button>
+        </section>
+
+        <section id="id-card-info" class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">ID Card Information</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Card Type</span>
+                    <span class="font-medium text-gray-800">Digital Employee ID</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">QR Code Status</span>
+                    <span class="font-medium text-green-600 flex items-center">
+                        <i class="fa-solid fa-check-circle mr-2"></i>Active
+                    </span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Last Generated</span>
+                    <span class="font-medium text-gray-800">Today, 10:30 AM</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Usage Count</span>
+                    <span class="font-medium text-accent">24 times</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="qr-usage-stats" class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">QR Usage Statistics</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="text-center p-3 bg-green-50 rounded-2xl">
+                    <div class="text-2xl font-bold text-green-600">18</div>
+                    <div class="text-sm text-gray-600">Successful Scans</div>
+                </div>
+                <div class="text-center p-3 bg-blue-50 rounded-2xl">
+                    <div class="text-2xl font-bold text-blue-600">6</div>
+                    <div class="text-sm text-gray-600">This Week</div>
+                </div>
+                <div class="text-center p-3 bg-purple-50 rounded-2xl">
+                    <div class="text-2xl font-bold text-purple-600">2</div>
+                    <div class="text-sm text-gray-600">Failed Attempts</div>
+                </div>
+                <div class="text-center p-3 bg-orange-50 rounded-2xl">
+                    <div class="text-2xl font-bold text-orange-600">92%</div>
+                    <div class="text-sm text-gray-600">Success Rate</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="download-options-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
+                <div class="text-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Download Options</h3>
+                    <p class="text-gray-600">Choose your preferred format</p>
+                </div>
+                
+                <div class="space-y-3 mb-6">
+                    <button id="download-png" class="w-full flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-file-image text-blue-600 text-xl"></i>
+                            <div class="text-left">
+                                <div class="font-medium text-gray-800">PNG Image</div>
+                                <div class="text-sm text-gray-600">High quality image format</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                    </button>
+                    
+                    <button id="download-pdf" class="w-full flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-file-pdf text-red-600 text-xl"></i>
+                            <div class="text-left">
+                                <div class="font-medium text-gray-800">PDF Document</div>
+                                <div class="text-sm text-gray-600">Printable format</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                    </button>
+                    
+                    <button id="download-qr-only" class="w-full flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-qrcode text-purple-600 text-xl"></i>
+                            <div class="text-left">
+                                <div class="font-medium text-gray-800">QR Code Only</div>
+                                <div class="text-sm text-gray-600">Just the QR code image</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                    </button>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button id="cancel-download" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-medium">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="download-progress-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center">
+                <div class="mb-4">
+                    <i class="fa-solid fa-download text-accent text-4xl mb-3"></i>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Generating PDF</h3>
+                    <p class="text-gray-600">Please wait while we prepare your ID card...</p>
+                </div>
+                
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                    <div id="progress-bar" class="bg-accent h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                
+                <div id="progress-text" class="text-sm text-gray-600">Initializing...</div>
+            </div>
+        </div>
+    </div>
+
+    <nav id="bottom-navigation" class="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm bg-white/95 backdrop-blur-lg shadow-2xl border-t border-gray-200/50">
+        <div class="flex items-center justify-around p-4">
+            <button class="flex flex-col items-center space-y-1 text-gray-400">
+                <i class="fa-solid fa-home text-xl"></i>
+                <span class="text-xs">Home</span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 text-accent">
+                <i class="fa-solid fa-users text-xl"></i>
+                <span class="text-xs">Workers</span>
+            </button>
+            <button class="flex flex-col items-center justify-center w-16 h-16 bg-accent text-white rounded-2xl shadow-lg -mt-6">
+                <i class="fa-solid fa-qrcode text-2xl"></i>
+            </button>
+            <button class="flex flex-col items-center space-y-1 text-gray-400">
+                <i class="fa-solid fa-receipt text-xl"></i>
+                <span class="text-xs">Transactions</span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 text-gray-400">
+                <i class="fa-solid fa-user text-xl"></i>
+                <span class="text-xs">Profile</span>
+            </button>
+        </div>
+    </nav>
+
+</div>
+
+<script>
+document.getElementById('download-id-card-btn').addEventListener('click', function() {
+    document.getElementById('download-options-modal').classList.remove('hidden');
+});
+
+document.getElementById('cancel-download').addEventListener('click', function() {
+    document.getElementById('download-options-modal').classList.add('hidden');
+});
+
+document.getElementById('download-png').addEventListener('click', function() {
+    document.getElementById('download-options-modal').classList.add('hidden');
+    downloadAsImage();
+});
+
+document.getElementById('download-pdf').addEventListener('click', function() {
+    document.getElementById('download-options-modal').classList.add('hidden');
+    downloadAsPDF();
+});
+
+document.getElementById('download-qr-only').addEventListener('click', function() {
+    document.getElementById('download-options-modal').classList.add('hidden');
+    downloadQROnly();
+});
+
+function showProgress(text, progress) {
+    document.getElementById('download-progress-modal').classList.remove('hidden');
+    document.getElementById('progress-text').textContent = text;
+    document.getElementById('progress-bar').style.width = progress + '%';
+}
+
+function hideProgress() {
+    document.getElementById('download-progress-modal').classList.add('hidden');
+}
+
+function downloadAsImage() {
+    showProgress('Capturing ID card...', 20);
+    
+    setTimeout(() => {
+        showProgress('Processing image...', 60);
+        
+        setTimeout(() => {
+            showProgress('Preparing download...', 90);
+            
+            setTimeout(() => {
+                const element = document.getElementById('employee-id-card');
+                html2canvas(element, {
+                    backgroundColor: null,
+                    scale: 2,
+                    useCORS: true
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = 'employee-id-card.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                    hideProgress();
+                });
+            }, 500);
+        }, 800);
+    }, 500);
+}
+
+function downloadAsPDF() {
+    showProgress('Initializing PDF generation...', 10);
+    
+    setTimeout(() => {
+        showProgress('Capturing ID card...', 30);
+        
+        setTimeout(() => {
+            showProgress('Converting to PDF...', 70);
+            
+            setTimeout(() => {
+                showProgress('Finalizing document...', 90);
+                
+                setTimeout(() => {
+                    const element = document.getElementById('employee-id-card');
+                    html2canvas(element, {
+                        backgroundColor: null,
+                        scale: 2,
+                        useCORS: true
+                    }).then(canvas => {
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF({
+                            orientation: 'portrait',
+                            unit: 'mm',
+                            format: 'a4'
+                        });
+                        
+                        const imgData = canvas.toDataURL('image/png');
+                        const imgWidth = 180;
+                        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                        
+                        pdf.addImage(imgData, 'PNG', 15, 20, imgWidth, imgHeight);
+                        
+                        pdf.setFontSize(16);
+                        pdf.text('Employee ID Card - Attendance Tracker Pro', 15, 15);
+                        
+                        pdf.setFontSize(10);
+                        pdf.text('Generated on: ' + new Date().toLocaleDateString(), 15, imgHeight + 30);
+                        pdf.text('Employee: Sarah Johnson', 15, imgHeight + 40);
+                        pdf.text('ID: #SJ002', 15, imgHeight + 50);
+                        pdf.text('Position: Marketing Manager', 15, imgHeight + 60);
+                        pdf.text('QR ID: #SJ002QR2024', 15, imgHeight + 70);
+                        
+                        pdf.save('employee-id-card.pdf');
+                        hideProgress();
+                    });
+                }, 500);
+            }, 800);
+        }, 700);
+    }, 500);
+}
+
+function downloadQROnly() {
+    showProgress('Generating QR code...', 50);
+    
+    setTimeout(() => {
+        showProgress('Preparing download...', 90);
+        
+        setTimeout(() => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 400;
+            canvas.height = 400;
+            
+            ctx.fillStyle = '#001F3F';
+            ctx.fillRect(0, 0, 400, 400);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('QR CODE', 200, 200);
+            ctx.fillText('#SJ002QR2024', 200, 230);
+            
+            const link = document.createElement('a');
+            link.download = 'qr-code.png';
+            link.href = canvas.toDataURL();
+            link.click();
+            hideProgress();
+        }, 500);
+    }, 800);
+}
+
+document.getElementById('generate-new-qr-btn').addEventListener('click', function() {
+    alert('New QR code generated successfully!');
+});
+</script>
+
+
+</body></html>

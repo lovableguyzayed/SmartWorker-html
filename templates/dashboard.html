@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SmartWorker" class="w-10 h-10 rounded-lg object-contain">
+            <div>
+                <div class="text-xl font-semibold">SmartWorker</div>
+                <div class="text-sm opacity-90">Dashboard Overview</div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-bell text-lg"></i>
+            </button>
+            <a href="{{ url_for('profile') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-user text-lg"></i>
+            </a>
+        </div>
+    </div>
+    
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+        <div class="text-center">
+            <div class="text-2xl font-bold mb-1">Welcome back{% if current_user.is_authenticated %}, {{ current_user.full_name.split()[0] }}{% endif %}!</div>
+            <div class="text-sm opacity-90" id="current-date"></div>
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-32 space-y-6">
+    <!-- Quick Stats -->
+    <section class="grid grid-cols-2 gap-4">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-2xl font-bold">{{ total_workers }}</div>
+                    <div class="text-sm opacity-90">Total Workers</div>
+                </div>
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <i class="fa-solid fa-users text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-2xl font-bold">{{ present_today }}</div>
+                    <div class="text-sm opacity-90">Present Today</div>
+                </div>
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <i class="fa-solid fa-check-circle text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-2xl font-bold">{{ attendance_percentage }}%</div>
+                    <div class="text-sm opacity-90">Attendance Rate</div>
+                </div>
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <i class="fa-solid fa-chart-pie text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-2xl font-bold">{{ (total_workers - present_today) }}</div>
+                    <div class="text-sm opacity-90">Absent Today</div>
+                </div>
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <i class="fa-solid fa-user-slash text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+        <div class="grid grid-cols-2 gap-3">
+            <a href="{{ url_for('add_worker') }}" class="flex items-center justify-center p-4 bg-accent text-white rounded-2xl hover:shadow-lg transition-all">
+                <i class="fa-solid fa-user-plus mr-2"></i>
+                Add Worker
+            </a>
+            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500 text-white rounded-2xl hover:shadow-lg transition-all">
+                <i class="fa-solid fa-calendar-check mr-2"></i>
+                Mark Attendance
+            </a>
+            <a href="{{ url_for('workers') }}" class="flex items-center justify-center p-4 bg-purple-500 text-white rounded-2xl hover:shadow-lg transition-all">
+                <i class="fa-solid fa-users mr-2"></i>
+                View Workers
+            </a>
+            <a href="{{ url_for('closures') }}" class="flex items-center justify-center p-4 bg-orange-500 text-white rounded-2xl hover:shadow-lg transition-all">
+                <i class="fa-solid fa-calendar-xmark mr-2"></i>
+                Closures
+            </a>
+        </div>
+    </section>
+
+    <!-- Today's Attendance -->
+    {% if recent_attendance %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Today's Attendance</h3>
+            <a href="{{ url_for('attendance') }}" class="text-accent hover:text-primary text-sm font-medium">View All</a>
+        </div>
+        <div class="space-y-3">
+            {% for attendance, worker in recent_attendance[:5] %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold">
+                        {{ worker.full_name[0] }}
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-800">{{ worker.full_name }}</div>
+                        <div class="text-sm text-gray-600">{{ worker.worker_id }}</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    {% if attendance.status == 'present' %}
+                        <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">Present</div>
+                    {% elif attendance.status == 'absent' %}
+                        <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">Absent</div>
+                    {% elif attendance.status == 'late' %}
+                        <div class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">Late</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Upcoming Closures -->
+    {% if upcoming_closures %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Upcoming Closures</h3>
+        <div class="space-y-3">
+            {% for closure in upcoming_closures %}
+            <div class="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-calendar-times text-red-600"></i>
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-800">{{ closure.reason }}</div>
+                        <div class="text-sm text-gray-600">{{ closure.date.strftime('%B %d, %Y') }}</div>
+                        <div class="text-xs {{ 'text-green-600' if closure.allow_attendance else 'text-red-600' }}">
+                            {{ 'Attendance allowed if present' if closure.allow_attendance else 'Attendance locked for this date' }}
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">{{ closure.type.title() }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</main>
+
+<script>
+// Set current date
+document.addEventListener('DOMContentLoaded', function() {
+    const dateElement = document.getElementById('current-date');
+    if (dateElement) {
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateElement.textContent = today.toLocaleDateString('en-US', options);
+    }
+});
+</script>
+{% endblock %}
