@@ -1,5 +1,49 @@
 /* SmartWorker Custom Styles */
 
+/* ── Page transition progress bar ── */
+#nav-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, #007BFF, #00c6ff);
+    z-index: 99999;
+    opacity: 0;
+    transition: width 0.25s ease, opacity 0.2s ease;
+    border-radius: 0 2px 2px 0;
+}
+
+/* ── Page content slides in on every load ── */
+@keyframes pageSlideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+#mobile-app {
+    animation: pageSlideIn 0.18s ease-out both;
+}
+
+/* ── Nav tap feedback: instant highlight ── */
+.app-nav-item:active,
+.app-nav-fab:active {
+    opacity: 0.6;
+    transform: scale(0.93);
+    transition: opacity 0.08s, transform 0.08s;
+}
+
+/* ── Prevent nav bar from flashing in ── */
+.app-bottom-nav {
+    will-change: transform;
+}
+
+/* ── Link tap: instant visual feedback ── */
+a:active {
+    opacity: 0.7;
+    transition: opacity 0.05s;
+}
+
+
 /* Custom scrollbar for webkit browsers */
 ::-webkit-scrollbar {
     width: 8px;

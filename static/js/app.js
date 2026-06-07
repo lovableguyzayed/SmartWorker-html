@@ -425,9 +425,58 @@ const SmartWorker = {
     }
 };
 
+// ── Native-feel page transition ──────────────────────────────
+const NavProgress = {
+    bar: null,
+    timer: null,
+
+    init() {
+        this.bar = document.createElement('div');
+        this.bar.id = 'nav-progress';
+        document.body.prepend(this.bar);
+
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a[href]');
+            if (!link) return;
+            const href = link.getAttribute('href');
+            if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+            if (link.target === '_blank') return;
+            try {
+                const url = new URL(href, window.location.origin);
+                if (url.origin !== window.location.origin) return;
+            } catch (_) { return; }
+            this.start();
+        });
+
+        document.addEventListener('submit', () => this.start());
+        window.addEventListener('pageshow', () => this.done());
+    },
+
+    start() {
+        clearTimeout(this.timer);
+        this.bar.style.opacity = '1';
+        this.bar.style.width = '0%';
+        // animate to 80% quickly, hold there until done
+        requestAnimationFrame(() => {
+            this.bar.style.transition = 'width 0.3s ease';
+            this.bar.style.width = '75%';
+        });
+    },
+
+    done() {
+        this.bar.style.transition = 'width 0.15s ease';
+        this.bar.style.width = '100%';
+        this.timer = setTimeout(() => {
+            this.bar.style.opacity = '0';
+            setTimeout(() => { this.bar.style.width = '0%'; }, 250);
+        }, 200);
+    }
+};
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     SmartWorker.init();
+    NavProgress.init();
 });
 
 // Expose SmartWorker globally for use in templates

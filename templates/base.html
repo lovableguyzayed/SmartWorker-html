@@ -185,16 +185,18 @@
         {% endif %}
     {% endwith %}
 
-    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated %}pb-32{% endif %}">
+    {% set main_screens_check = ['dashboard', 'workers', 'attendance', 'closures', 'profile'] %}
+    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens_check %}pb-32{% endif %}">
         {% block content %}{% endblock %}
         
-        {% if current_user.is_authenticated %}
+        {% set main_screens = ['dashboard', 'workers', 'attendance', 'closures', 'profile'] %}
+        {% if current_user.is_authenticated and request.endpoint in main_screens %}
         {% set home_active = request.endpoint == 'dashboard' %}
-        {% set workers_active = request.endpoint in ['workers', 'worker_profile', 'add_worker', 'edit_worker', 'edit_daily_worker', 'id_card'] %}
-        {% set attendance_active = request.endpoint in ['attendance', 'worker_attendance', 'mark_attendance'] %}
-        {% set transactions_active = request.endpoint in ['closures', 'export_data'] %}
+        {% set workers_active = request.endpoint == 'workers' %}
+        {% set attendance_active = request.endpoint == 'attendance' %}
+        {% set transactions_active = request.endpoint == 'closures' %}
         {% set profile_active = request.endpoint == 'profile' %}
-        <!-- Bottom Navigation -->
+        <!-- Bottom Navigation (main screens only) -->
         <nav class="app-bottom-nav fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm">
             <div class="app-bottom-nav-frame">
                 <div class="app-nav-row">
