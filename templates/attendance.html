@@ -164,6 +164,7 @@
                 <div class="flex items-center space-x-2">
                     {% if not closure or closure.allow_attendance %}
                     <form method="POST" action="{{ url_for('mark_attendance') }}" class="flex space-x-1">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="worker_id" value="{{ data.worker.id }}">
                         <input type="hidden" name="date" value="{{ selected_date }}">
                         
@@ -226,6 +227,7 @@
             {% if not closure or closure.allow_attendance %}
             <div class="space-y-3 mb-6">
                 <form method="POST" action="{{ url_for('mark_attendance') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="date" value="{{ selected_date }}">
                     <input type="hidden" name="bulk_action" value="true">
                     
@@ -237,6 +239,7 @@
                 </form>
                 
                 <form method="POST" action="{{ url_for('mark_attendance') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="date" value="{{ selected_date }}">
                     <input type="hidden" name="bulk_action" value="true">
                     

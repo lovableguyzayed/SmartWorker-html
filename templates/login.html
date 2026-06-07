@@ -58,6 +58,7 @@
             </div>
 
             <form id="signin-form" method="POST" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div id="username-input" class="space-y-2">
                     <label for="username" class="text-sm font-semibold text-gray-700 block">Username or Email</label>
                     <div class="relative">

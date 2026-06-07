@@ -1,7 +1,10 @@
 import os
+import secrets
+import string
 import logging
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -13,10 +16,18 @@ class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
+csrf = CSRFProtect()
 
 # create the app
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "smartworker-secret-key-2024")
+
+# Session secret — required, no insecure fallback
+_secret = os.environ.get("SESSION_SECRET")
+if not _secret:
+    logging.warning("SESSION_SECRET not set — generating a random key (sessions will reset on restart). Set SESSION_SECRET in environment variables for production.")
+    _secret = secrets.token_hex(32)
+app.secret_key = _secret
+
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # configure the database
@@ -28,8 +39,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB upload limit
 
-# initialize the app with the extension
+# initialize the app with the extensions
 db.init_app(app)
+csrf.init_app(app)
 
 with app.app_context():
     # Make sure to import the models here or their tables won't be created
@@ -132,12 +144,20 @@ with app.app_context():
     
     # Initialize admin user if not exists
     if not models.User.query.filter_by(username='admin').first():
+        default_pw = os.environ.get('ADMIN_DEFAULT_PASSWORD')
+        if not default_pw:
+            default_pw = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
+            logging.warning("=" * 60)
+            logging.warning("DEFAULT ADMIN PASSWORD: %s", default_pw)
+            logging.warning("Change this immediately via Profile > Change Password")
+            logging.warning("Set ADMIN_DEFAULT_PASSWORD env var to control this.")
+            logging.warning("=" * 60)
         admin = models.User()
         admin.username = 'admin'
         admin.email = 'admin@smartworker.com'
         admin.full_name = 'System Administrator'
         admin.role = 'admin'
-        admin.set_password('admin123')
+        admin.set_password(default_pw)
         db.session.add(admin)
         db.session.commit()
         logging.info("Default admin user created")

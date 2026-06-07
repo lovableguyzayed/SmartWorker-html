@@ -58,6 +58,7 @@
             </div>
 
             <form id="signup-form" method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div id="business-name-input" class="space-y-2">
                     <label for="business_name" class="text-sm font-semibold text-gray-700 block">Business Name</label>
                     <div class="relative">

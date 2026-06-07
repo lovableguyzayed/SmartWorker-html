@@ -8,7 +8,7 @@ from datetime import datetime, date, timedelta
 from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
-from app import app, db
+from app import app, db, csrf
 from models import User, Worker, AttendanceRecord, ClosureDay, PayrollRecord
 
 # Initialize Flask-Login
@@ -214,6 +214,7 @@ def login():
     return render_template('login.html')
 
 @app.route('/login/send-otp', methods=['POST'])
+@csrf.exempt
 def login_send_otp():
     payload = request.get_json(silent=True) or request.form
     mobile = normalize_mobile_number(payload.get('mobile'))
@@ -245,11 +246,12 @@ def login_send_otp():
 
     return jsonify({
         'success': True,
-        'message': f'OTP sent to {mobile}. Demo OTP: {otp_code}',
+        'message': f'OTP has been sent to {mobile}. (Check server logs in demo mode)',
         'expires_in': 300,
     })
 
 @app.route('/login/verify-otp', methods=['POST'])
+@csrf.exempt
 def login_verify_otp():
     payload = request.get_json(silent=True) or request.form
     mobile = normalize_mobile_number(payload.get('mobile'))
@@ -303,6 +305,7 @@ def login_verify_otp():
     })
 
 @app.route('/register/send-otp', methods=['POST'])
+@csrf.exempt
 def register_send_otp():
     payload = request.get_json(silent=True) or request.form
     mobile = normalize_mobile_number(payload.get('mobile'))
@@ -327,11 +330,12 @@ def register_send_otp():
 
     return jsonify({
         'success': True,
-        'message': f'OTP sent to {mobile}. Demo OTP: {otp_code}',
+        'message': f'OTP has been sent to {mobile}. (Check server logs in demo mode)',
         'expires_in': 300,
     })
 
 @app.route('/register/verify-otp', methods=['POST'])
+@csrf.exempt
 def register_verify_otp():
     payload = request.get_json(silent=True) or request.form
     mobile = normalize_mobile_number(payload.get('mobile'))

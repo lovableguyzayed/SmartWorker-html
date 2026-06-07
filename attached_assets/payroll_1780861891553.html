@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll - SmartWorker</title>
+    <link rel="icon" type="image/png" href="#">
+    <link rel="apple-touch-icon" href="#">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#001F3F",
+                        accent: "#007BFF",
+                        lightGray: "#D3D3D3"
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        };
+    </script>
+    
+    <!-- Font Awesome -->
+    <script>window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&display=swap">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="#">
+    
+    <!-- Additional libraries for specific pages -->
+    
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        .app-bottom-nav {
+            z-index: 50;
+            padding: 0 0.75rem calc(0.7rem + env(safe-area-inset-bottom));
+        }
+
+        .app-bottom-nav-frame {
+            position: relative;
+            overflow: hidden;
+            height: 5.1rem;
+            border-radius: 1.75rem;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.95) 100%);
+            box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.08), 0 12px 28px rgba(15, 23, 42, 0.12);
+            backdrop-filter: blur(16px);
+        }
+
+        .app-nav-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+            padding: 0.45rem 0.5rem 0.35rem;
+        }
+
+        .app-nav-item {
+            width: 3.95rem;
+            text-align: center;
+            border-radius: 0.95rem;
+            padding: 0.35rem 0.2rem;
+            color: #94a3b8;
+        }
+
+        .app-nav-item:hover {
+            color: #475569;
+        }
+
+        .app-nav-icon-wrap {
+            width: 2rem;
+            height: 2rem;
+            margin: 0 auto 0.2rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .app-nav-item-active {
+            color: #001f3f;
+        }
+
+        .app-nav-item-active .app-nav-icon-wrap {
+            background: linear-gradient(180deg, rgba(0, 123, 255, 0.16) 0%, rgba(0, 123, 255, 0.08) 100%);
+            box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.12);
+        }
+
+        .app-nav-label {
+            font-size: 0.62rem;
+            line-height: 1;
+            letter-spacing: 0.01em;
+            font-weight: 600;
+        }
+
+        .app-nav-fab {
+            width: 3.95rem;
+            height: 4rem;
+            border-radius: 1rem;
+            background: linear-gradient(145deg, #001f3f 0%, #007bff 100%);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            color: #ffffff;
+            box-shadow: 0 8px 16px rgba(0, 31, 63, 0.22);
+        }
+
+        .app-nav-fab i {
+            filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+        }
+
+        .app-nav-fab::after {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            pointer-events: none;
+        }
+
+        .app-nav-fab:hover {
+            transform: translateY(-1px);
+        }
+
+        .app-nav-fab-active {
+            box-shadow: 0 10px 20px rgba(0, 31, 63, 0.28);
+        }
+        
+        .fa, .fas, .far, .fal, .fab {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+        }
+        
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        
+        html, body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Flash Messages -->
+    
+        
+    
+
+    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen pb-32">
+        
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="#" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Payroll</div>
+                <div class="text-sm opacity-90">May 2026</div>
+            </div>
+        </div>
+        <div class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
+        </div>
+    </div>
+
+    <!-- Month / Year selector -->
+    <form method="GET" action="#" onsubmit="return false" class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20">
+        <div class="flex items-center space-x-2">
+            <select name="month" onchange="this.form.submit()"
+                    class="flex-1 bg-white/90 text-gray-800 text-sm p-2 rounded-xl focus:ring-2 focus:ring-white/60 border-0">
+                
+                <option value="1" >January</option>
+                
+                <option value="2" >February</option>
+                
+                <option value="3" >March</option>
+                
+                <option value="4" >April</option>
+                
+                <option value="5" selected>May</option>
+                
+                <option value="6" >June</option>
+                
+                <option value="7" >July</option>
+                
+                <option value="8" >August</option>
+                
+                <option value="9" >September</option>
+                
+                <option value="10" >October</option>
+                
+                <option value="11" >November</option>
+                
+                <option value="12" >December</option>
+                
+            </select>
+            <select name="year" onchange="this.form.submit()"
+                    class="w-24 bg-white/90 text-gray-800 text-sm p-2 rounded-xl focus:ring-2 focus:ring-white/60 border-0">
+                
+                <option value="2024" >2024</option>
+                
+                <option value="2025" >2025</option>
+                
+                <option value="2026" selected>2026</option>
+                
+            </select>
+        </div>
+    </form>
+</header>
+
+<main class="p-4 pb-32 space-y-6">
+    <!-- Totals -->
+    <section class="grid grid-cols-2 gap-4">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="text-2xl font-bold">₹54853</div>
+            <div class="text-sm opacity-90">Gross Payroll</div>
+        </div>
+        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="text-2xl font-bold">₹54709</div>
+            <div class="text-sm opacity-90">Net Payable</div>
+        </div>
+        <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="text-2xl font-bold">₹144</div>
+            <div class="text-sm opacity-90">Total Deductions</div>
+        </div>
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="text-2xl font-bold">0<span class="text-base font-medium opacity-80"> paid</span></div>
+            <div class="text-sm opacity-90">7 pending</div>
+        </div>
+    </section>
+
+    <!-- Generate payroll -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-base font-semibold text-gray-800">Generate / Refresh Payroll</h3>
+                <p class="text-sm text-gray-500">Saves the latest calculation for every active worker this month.</p>
+            </div>
+        </div>
+        <form method="POST" action="#" onsubmit="return false" class="mt-4">
+            <input type="hidden" name="month" value="5">
+            <input type="hidden" name="year" value="2026">
+            <button type="submit" class="w-full flex items-center justify-center p-3 bg-accent text-white rounded-2xl font-medium hover:bg-primary transition-colors">
+                <i class="fa-solid fa-rotate mr-2"></i>
+                Generate Payroll
+            </button>
+        </form>
+    </section>
+
+    <!-- Worker payroll list -->
+    <section class="space-y-3">
+        <h3 class="text-lg font-semibold text-gray-800 px-1">Workers (7)</h3>
+
+        
+
+        
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <a href="#" class="flex items-center space-x-3 flex-1 min-w-0">
+                    
+                    <div class="w-11 h-11 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold">
+                        H
+                    </div>
+                    
+                    <div class="min-w-0">
+                        <div class="font-medium text-gray-800 truncate">Half Day Test</div>
+                        <div class="text-xs text-gray-500">TEST_HALF_DAY · Daily</div>
+                    </div>
+                </a>
+                
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="font-semibold text-gray-800">9</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="font-semibold text-gray-800">₹9978</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="font-semibold text-red-600">₹120</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div>
+                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-lg font-bold text-accent">₹9857.78</div>
+                </div>
+                
+                <form method="POST" action="#" onsubmit="return false">
+                    
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                    </button>
+                    
+                </form>
+                
+            </div>
+
+            
+            <p class="text-xs text-gray-400 mt-3 leading-relaxed">Absent days are paid because no-work-no-pay is disabled. Pro-rata minute-based daily wage applied for 1 day(s) after grace window. Late policy deduction applied per minute.</p>
+            
+        </div>
+        
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <a href="#" class="flex items-center space-x-3 flex-1 min-w-0">
+                    
+                    <div class="w-11 h-11 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold">
+                        P
+                    </div>
+                    
+                    <div class="min-w-0">
+                        <div class="font-medium text-gray-800 truncate">Policy Test</div>
+                        <div class="text-xs text-gray-500">TEST_DAILY_POLICY · Daily</div>
+                    </div>
+                </a>
+                
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="font-semibold text-gray-800">9</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="font-semibold text-gray-800">₹898</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="font-semibold text-red-600">₹24</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div>
+                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-lg font-bold text-accent">₹873.78</div>
+                </div>
+                
+                <form method="POST" action="#" onsubmit="return false">
+                    
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                    </button>
+                    
+                </form>
+                
+            </div>
+
+            
+            <p class="text-xs text-gray-400 mt-3 leading-relaxed">No-work-no-pay applied for absent days. Pro-rata minute-based daily wage applied for 1 day(s) after grace window. Late policy deduction applied per minute.</p>
+            
+        </div>
+        
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <a href="#" class="flex items-center space-x-3 flex-1 min-w-0">
+                    
+                    <img src="https://via.placeholder.com/80/001F3F/FFFFFF?text=SW" alt="RUKHSAR" class="w-11 h-11 rounded-xl object-cover">
+                    
+                    <div class="min-w-0">
+                        <div class="font-medium text-gray-800 truncate">RUKHSAR</div>
+                        <div class="text-xs text-gray-500">AD002 · Daily</div>
+                    </div>
+                </a>
+                
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="font-semibold text-gray-800">0</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="font-semibold text-gray-800">₹0</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="font-semibold text-red-600">₹0</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div>
+                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-lg font-bold text-accent">₹0.00</div>
+                </div>
+                
+                <form method="POST" action="#" onsubmit="return false">
+                    
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                    </button>
+                    
+                </form>
+                
+            </div>
+
+            
+        </div>
+        
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <a href="#" class="flex items-center space-x-3 flex-1 min-w-0">
+                    
+                    <div class="w-11 h-11 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold">
+                        i
+                    </div>
+                    
+                    <div class="min-w-0">
+                        <div class="font-medium text-gray-800 truncate">ibrahim</div>
+                        <div class="text-xs text-gray-500">CO001 · Daily</div>
+                    </div>
+                </a>
+                
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="font-semibold text-gray-800">9</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="font-semibold text-gray-800">₹4489</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="font-semibold text-red-600">₹0</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div>
+                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-lg font-bold text-accent">₹4488.89</div>
+                </div>
+                
+                <form method="POST" action="#" onsubmit="return false">
+                    
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                    </button>
+                    
+                </form>
+                
+            </div>
+
+            
+            <p class="text-xs text-gray-400 mt-3 leading-relaxed">No-work-no-pay applied for absent days. Pro-rata minute-based daily wage applied for 1 day(s) after grace window.</p>
+            
+        </div>
+        
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <a href="#" class="flex items-center space-x-3 flex-1 min-w-0">
+                    
+                    <img src="https://via.placeholder.com/80/001F3F/FFFFFF?text=SW" alt="ibrahim" class="w-11 h-11 rounded-xl object-cover">
+                    
+                    <div class="min-w-0">
+                        <div class="font-medium text-gray-800 truncate">ibrahim</div>
+                        <div class="text-xs text-gray-500">CO002 · Daily</div>
+                    </div>
+                </a>
+                
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="font-semibold text-gray-800">0</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="font-semibold text-gray-800">₹0</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="font-semibold text-red-600">₹0</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div>
+                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-lg font-bold text-accent">₹0.00</div>
+                </div>
+                
+                <form method="POST" action="#" onsubmit="return false">
+                    
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                    </button>
+                    
+                </form>
+                
+            </div>
+
+            
+        </div>
+        
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <a href="#" class="flex items-center space-x-3 flex-1 min-w-0">
+                    
+                    <div class="w-11 h-11 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold">
+                        j
+                    </div>
+                    
+                    <div class="min-w-0">
+                        <div class="font-medium text-gray-800 truncate">javed</div>
+                        <div class="text-xs text-gray-500">AD001 · Monthly</div>
+                    </div>
+                </a>
+                
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="font-semibold text-gray-800">9</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="font-semibold text-gray-800">₹35000</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="font-semibold text-red-600">₹0</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div>
+                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-lg font-bold text-accent">₹35000.00</div>
+                </div>
+                
+                <form method="POST" action="#" onsubmit="return false">
+                    
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                    </button>
+                    
+                </form>
+                
+            </div>
+
+            
+            <p class="text-xs text-gray-400 mt-3 leading-relaxed">Monthly salary applies leave deduction after allowed leaves.</p>
+            
+        </div>
+        
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <a href="#" class="flex items-center space-x-3 flex-1 min-w-0">
+                    
+                    <img src="https://via.placeholder.com/80/001F3F/FFFFFF?text=SW" alt="javed" class="w-11 h-11 rounded-xl object-cover">
+                    
+                    <div class="min-w-0">
+                        <div class="font-medium text-gray-800 truncate">javed</div>
+                        <div class="text-xs text-gray-500">CL001 · Daily</div>
+                    </div>
+                </a>
+                
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="font-semibold text-gray-800">9</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="font-semibold text-gray-800">₹4489</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="font-semibold text-red-600">₹0</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div>
+                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-lg font-bold text-accent">₹4488.89</div>
+                </div>
+                
+                <form method="POST" action="#" onsubmit="return false">
+                    
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                    </button>
+                    
+                </form>
+                
+            </div>
+
+            
+            <p class="text-xs text-gray-400 mt-3 leading-relaxed">No-work-no-pay applied for absent days. Pro-rata minute-based daily wage applied for 1 day(s) after grace window.</p>
+            
+        </div>
+        
+    </section>
+</main>
+
+        
+        
+        
+        
+        
+        
+        
+        <!-- Bottom Navigation -->
+        <nav class="app-bottom-nav fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm">
+            <div class="app-bottom-nav-frame">
+                <div class="app-nav-row">
+                    <a href="#" class="app-nav-item transition-colors ">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-home text-xl"></i></span>
+                        <span class="app-nav-label">Home</span>
+                    </a>
+
+                    <a href="#" class="app-nav-item transition-colors ">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-users text-xl"></i></span>
+                        <span class="app-nav-label">Workers</span>
+                    </a>
+
+                    <a href="#" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all ">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-xl"></i></span>
+                        <span class="app-nav-label">Barcode</span>
+                    </a>
+
+                    <a href="#" class="app-nav-item transition-colors ">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-receipt text-xl"></i></span>
+                        <span class="app-nav-label">Transactions</span>
+                    </a>
+
+                    <a href="#" class="app-nav-item transition-colors ">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-user text-xl"></i></span>
+                        <span class="app-nav-label">Profile</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+    </div>
+    
+    <!-- Custom JavaScript -->
+    <script src="https://via.placeholder.com/80/001F3F/FFFFFF?text=SW"></script>
+    
+    <!-- Page-specific JavaScript -->
+    
+    
+    <!-- Auto-hide flash messages -->
+    <script>
+        setTimeout(function() {
+            const flashMessages = document.getElementById('flash-messages');
+            if (flashMessages) {
+                flashMessages.style.opacity = '0';
+                setTimeout(() => flashMessages.remove(), 300);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

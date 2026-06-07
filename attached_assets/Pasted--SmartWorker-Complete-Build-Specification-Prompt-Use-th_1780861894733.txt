@@ -1,0 +1,374 @@
+# SmartWorker — Complete Build Specification / Prompt
+
+> Use this document as a single prompt to rebuild the **SmartWorker Employee Management System** exactly. Follow every section precisely: data models, routes, business logic, design system, and behaviors are all specified. Do not invent extra features; build exactly what is described.
+
+---
+
+## 1. Goal & Product Summary
+
+Build **SmartWorker**, a mobile-first **Flask web application** for managing daily-wage and salaried workers. It handles: worker profiles, daily attendance (with check-in/check-out and overtime), closure/holiday days, a full wage/payroll calculation engine, digital QR ID cards, and an admin profile area. The UI is a single-column mobile app (max width 384px) styled with Tailwind CSS, with a fixed bottom navigation bar. Auth supports password login and mobile OTP login, plus self-registration with OTP verification.
+
+It is a **web app**, not native — but it looks and behaves like a phone app.
+
+---
+
+## 2. Tech Stack (exact)
+
+- **Backend:** Python 3.11+, Flask 3.1.x
+- **ORM:** Flask-SQLAlchemy 3.1.x / SQLAlchemy 2.0.x (declarative base)
+- **Auth/session:** Flask-Login 0.6.x; Werkzeug 3.1.x for password hashing + `ProxyFix`
+- **DB:** SQLite by default (`sqlite:///smartworker.db`), PostgreSQL in production via `DATABASE_URL` (psycopg2-binary)
+- **QR codes:** `qrcode` + `Pillow` (server-side, returned as base64 data URI)
+- **Validation:** `email-validator`
+- **Server:** Gunicorn in production
+- **Frontend:** Tailwind CSS via CDN (`https://cdn.tailwindcss.com`), Font Awesome 6.4 JS, Google Font **Inter**
+- **ID card PDF (client-side):** jsPDF 2.5.1 + html2canvas 1.4.1 (from cdnjs)
+- **SMS (OTP):** pluggable module using only Python stdlib `urllib` (no extra dependency); providers: MSG91, Fast2SMS, Twilio
+
+Entry point: `main.py` imports `app` from `app.py` and `routes`, runs on host `0.0.0.0` port `5000`, debug on in dev.
+
+---
+
+## 3. File / Folder Structure
+
+```
+.
+├── main.py                 # entrypoint: from app import app; import routes; app.run(...)
+├── app.py                  # Flask app + db init + schema auto-patch + admin seed
+├── models.py               # SQLAlchemy models
+├── routes.py               # all routes + helpers + calculation engine
+├── sms.py                  # pluggable OTP SMS gateway
+├── pyproject.toml          # dependencies
+├── instance/
+│   └── smartworker.db      # SQLite DB (auto-created)
+├── static/
+│   ├── css/custom.css
+│   ├── js/app.js
+│   ├── images/logo.png, logo.svg
+│   └── uploads/
+│       ├── workers/        # worker profile photos
+│       └── users/          # admin/user profile photos
+└── templates/
+    ├── base.html           # layout + bottom nav + flash
+    ├── splash.html         # landing
+    ├── login.html          # password + OTP login
+    ├── register.html       # signup with OTP
+    ├── dashboard.html
+    ├── workers.html        # worker list + search/filter
+    ├── worker_profile.html # single worker detail
+    ├── edit_worker.html    # add + general edit form
+    ├── edit_daily_worker.html # streamlined daily-worker edit
+    ├── attendance.html     # mark attendance for a date
+    ├── worker_attendance.html # per-worker month calendar + pay summary
+    ├── closures.html       # closure/holiday days
+    ├── id_card.html        # digital ID card + PDF export
+    ├── payroll.html        # consolidated monthly payroll
+    └── profile.html        # admin account area
+```
+
+---
+
+## 4. App Configuration & Startup (`app.py`)
+
+- Create Flask app. `app.secret_key = os.environ.get("SESSION_SECRET", "smartworker-secret-key-2024")`.
+- `app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)`.
+- DB URI from `DATABASE_URL` env, else `sqlite:///smartworker.db`.
+- `SQLALCHEMY_ENGINE_OPTIONS = {"pool_recycle": 300, "pool_pre_ping": True}`.
+- `SQLALCHEMY_TRACK_MODIFICATIONS = False`.
+- `MAX_CONTENT_LENGTH = 100 * 1024 * 1024` (100 MB upload limit).
+- Use a `DeclarativeBase` subclass; `db = SQLAlchemy(model_class=Base)`.
+- On startup inside `app.app_context()`: `import models`, then `db.create_all()`.
+- **Lightweight schema auto-patch** (so existing SQLite DBs upgrade without migrations): use `inspect(db.engine)`; if a table exists but is missing a column, run a raw `ALTER TABLE ... ADD COLUMN`. Patch these columns if absent:
+  - `users.phone VARCHAR(20)`
+  - `users.profile_image VARCHAR(200)`
+  - `closure_days.allow_attendance BOOLEAN NOT NULL DEFAULT 1`
+  - `workers.project_rate FLOAT`
+  - `workers.late_policy_enabled BOOLEAN NOT NULL DEFAULT 0`
+  - `workers.late_deduction_per_day FLOAT`
+  - `workers.late_deduction_type VARCHAR(10) DEFAULT 'day'`
+  - `workers.no_work_no_pay BOOLEAN NOT NULL DEFAULT 1`
+  - `workers.half_day_rate FLOAT`
+  - `workers.half_day_grace_minutes INTEGER NOT NULL DEFAULT 20`
+- **Seed default admin** if no user with username `admin` exists: username `admin`, email `admin@smartworker.com`, full_name `System Administrator`, role `admin`, password `admin123` (hashed).
+
+---
+
+## 5. Data Models (`models.py`)
+
+### User (`users`) — extends `UserMixin`
+- `id` int PK
+- `username` str(80) unique not null
+- `email` str(120) unique not null
+- `phone` str(20) nullable
+- `password_hash` str(256) not null
+- `full_name` str(100) not null
+- `role` str(20) default `'admin'` (values: admin, manager)
+- `profile_image` str(200) nullable
+- `created_at` datetime default utcnow
+- Methods: `set_password(pw)` (werkzeug `generate_password_hash`), `check_password(pw)`.
+
+### Worker (`workers`)
+- `id` int PK
+- `worker_id` str(20) unique not null  (human ID e.g. `CO001`)
+- `full_name` str(100) not null
+- `phone` str(20) not null
+- `email` str(120) nullable
+- `address` text nullable
+- `position` str(100) not null
+- `department` str(50) not null
+- `employee_type` str(30) not null  (e.g. "Daily Wage", "Full Time")
+- `join_date` date not null
+- **Payment:** `pay_type` str(20) not null (daily | monthly | hourly | project); `daily_rate` float; `monthly_salary` float; `hourly_rate` float; `project_rate` float
+- **Working hours:** `start_time` time; `end_time` time; `break_duration` int default 60 (minutes)
+- **Overtime:** `overtime_enabled` bool default True; `overtime_rate` float; `overtime_type` str(10) default 'hour' (hour | minute)
+- **Late policy:** `late_policy_enabled` bool default False; `late_deduction_per_day` float; `late_deduction_type` str(10) default 'day' (day | hour | minute)
+- **Daily absence policy:** `no_work_no_pay` bool default True; `half_day_rate` float; `half_day_grace_minutes` int default 20
+- **Leave policy (salaried):** `allowed_leaves_per_month` int default 2; `leave_deduction_per_day` float; `leave_policy_enabled` bool default True
+- **Meta:** `status` str(20) default 'active' (active | inactive); `profile_image` str(200); `qr_code` str(100) (base64 data URI); `created_at`; `updated_at` (onupdate utcnow)
+- Relationship: `attendance_records` → AttendanceRecord (backref `worker`)
+
+### AttendanceRecord (`attendance_records`)
+- `id` int PK
+- `worker_id` int FK→workers.id not null
+- `date` date not null
+- `check_in_time` datetime nullable
+- `check_out_time` datetime nullable
+- `status` str(20) not null (present | absent | late | leave)
+- `overtime_minutes` int default 0
+- `notes` text nullable
+- `created_at` datetime default utcnow
+
+### ClosureDay (`closure_days`)
+- `id` int PK
+- `date` date not null unique
+- `reason` str(200) not null
+- `type` str(20) not null (holiday | maintenance | etc.)
+- `allow_attendance` bool not null default True
+- `created_at` datetime default utcnow
+
+### PayrollRecord (`payroll_records`)
+- `id` int PK
+- `worker_id` int FK→workers.id not null
+- `month` int not null; `year` int not null
+- `total_days` int not null
+- `present_days` int not null
+- `overtime_hours` float default 0
+- `gross_pay` float not null
+- `deductions` float default 0
+- `net_pay` float not null
+- `status` str(20) default 'pending' (pending | paid)
+- `created_at` datetime default utcnow
+- Relationship: `worker` (backref `payroll_records`)
+
+---
+
+## 6. Design System (match exactly)
+
+- **Layout:** Everything inside `<div class="max-w-sm mx-auto bg-gray-50 min-h-screen">`. When authenticated, add `pb-32` to clear the fixed bottom nav.
+- **Tailwind custom config (inline in base.html):** colors `primary #001F3F`, `accent #007BFF`, `lightGray #D3D3D3`; font family `Inter`.
+- **Font:** Inter (Google Fonts), weights 100–900.
+- **Icons:** Font Awesome 6.4 (solid) via JS CDN with `FontAwesomeConfig = { autoReplaceSvg: 'nest' }`.
+- **Headers (page top):** gradient `bg-gradient-to-br from-primary via-blue-900 to-accent`, white text, `rounded-b-3xl shadow-xl`, contains back/menu button + title + subtitle, often a translucent `bg-white/15 backdrop-blur-lg` info card below.
+- **Cards:** `bg-white rounded-3xl shadow-lg border border-gray-100 p-4`. Stat cards use solid gradient fills (blue/green/purple/orange families) `rounded-2xl`.
+- **Inputs:** `p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent`.
+- **Buttons (primary):** `bg-accent text-white rounded-2xl hover:bg-primary`.
+- **Status pills:** present=green, absent=red, late=yellow, paid=green, pending=yellow — light bg + dark text, `rounded-full text-xs font-medium`.
+- **Flash messages:** fixed top-right stack; green for success, red for `error`; auto-hide after 5s via JS.
+- **Bottom nav (fixed, authenticated only):** 5 items in a rounded floating frame — Home (`dashboard`), Workers (`workers`), center FAB "Barcode" (`attendance`, qrcode icon, navy→accent gradient), Transactions (`closures`), Profile (`profile`). Active state computed from `request.endpoint`. Active groups:
+  - workers_active: workers, worker_profile, add_worker, edit_worker, edit_daily_worker, id_card
+  - attendance_active: attendance, worker_attendance, mark_attendance
+  - transactions_active: closures, export_data
+- Hide scrollbars globally. `body` font Inter.
+
+---
+
+## 7. Authentication & OTP
+
+### Password login — `GET/POST /login`
+- POST reads `username` (matched against username OR email) + `password`. On success `login_user(user, remember=True)`, redirect to `next` or `dashboard` (303). On failure flash "Invalid username or password".
+- Clear any login-OTP session on GET.
+
+### OTP login (mobile)
+- `POST /login/send-otp` (JSON or form `mobile`): normalize to digits; validate 10–15 digits; find user by `phone`; if none → 404 "No account found with this mobile number." Generate 6-digit OTP, store in session with 5-min expiry (`login_otp`, `login_otp_mobile`, `login_otp_expires_at`, `login_otp_user_id`). Send via SMS module (see §11). In demo mode, return the OTP inside the message and set `demo: true`. If a real gateway fails, clear session and return 502 (never leak OTP).
+- `POST /login/verify-otp` (JSON/form `mobile`, `otp`): validate session presence, expiry, matching mobile, matching OTP; on success `login_user`, clear OTP session, return `redirect_url` to dashboard.
+
+### Registration — `GET/POST /register` + OTP
+- `POST /register/send-otp`: validate mobile, generate OTP, store in session (`register_otp*`, `register_otp_verified=False`, 5-min expiry), send via SMS. Demo behavior same as above.
+- `POST /register/verify-otp`: validate, then set `register_otp_verified=True`.
+- `POST /register`: require `email`, `password`, `confirm_password`, `full_name`, `mobile`. Checks: passwords match; valid mobile; OTP verified for the same mobile and not expired; email not already registered; phone not already registered. Username auto-generated via `generate_unique_username` (see helpers). Create user, hash password, commit, clear OTP session, redirect to login with success flash.
+
+### Logout — `GET /logout` (login_required): `logout_user()` → redirect login.
+
+### Helpers
+- `normalize_mobile_number(v)` → digits only.
+- `is_valid_mobile_number(v)` → 10 ≤ len(digits) ≤ 15.
+- `generate_unique_username(full_name, email)` → base from email local-part (or full_name, or "user"), lowercased, non-alphanumerics → `_`, trimmed, max 24 chars; if taken, append `01`, `02`, … until unique.
+
+---
+
+## 8. Worker ID & QR Code
+
+- `generate_worker_id(department)`: prefix = first 2 letters of department, uppercased. Find highest existing `worker_id` starting with that prefix; new number = last numeric suffix + 1 (else 1). Return `f"{PREFIX}{n:03d}"` (e.g. `CO001`).
+- `generate_qr_code(worker_id)`: build a QR encoding the string `SMARTWORKER:{worker_id}` (qrcode lib, box_size 10, border 5, black on white), save PNG to a buffer, base64-encode, return `data:image/png;base64,...`. Stored in `worker.qr_code`.
+
+---
+
+## 9. The Pay Calculation Engine (critical — replicate precisely)
+
+Implement these helpers; `calculate_pay_summary` is used by both the per-worker attendance page and the payroll page.
+
+### Time helpers
+- `calculate_scheduled_minutes_for_day(worker, date)`: if no start/end time → 0; else minutes between start and end (if end ≤ start, add a day); floored at 0.
+- `calculate_worked_minutes_for_record(rec)`: 0 unless both check-in and check-out exist and out > in; else minutes between them.
+- `get_half_day_grace_minutes(worker)`: `half_day_grace_minutes` clamped to [15, 25] (default 20).
+
+### Daily wage for one record — `calculate_daily_wage_for_record(worker, rec)` → (pay, mode)
+- `daily_rate = worker.daily_rate or 0`; `half_day_rate = worker.half_day_rate if set else daily_rate/2`.
+- If record missing or status not in (present, late) → (0, 'none').
+- `scheduled = scheduled_minutes(day)`, `worked = worked_minutes(rec)`.
+- If scheduled ≤ 0 or worked ≤ 0 → (daily_rate, 'full_day').
+- `half_day_limit = scheduled/2 + grace`. If worked ≤ half_day_limit → (half_day_rate, 'half_day').
+- If worked ≥ scheduled → (daily_rate, 'full_day').
+- Else (after grace, below full): pro-rata → `(worked/scheduled)*daily_rate`, 'pro_rata'.
+
+### Overtime per record — `calculate_overtime_minutes_for_record(worker, rec)`
+- Only for daily pay_type with overtime_enabled and a record. = `max(worked_minutes - scheduled_minutes, 0)`.
+
+### Late minutes per record — `calculate_late_minutes_for_record(worker, rec)`
+- Only daily + status 'late' + has check-in + has start_time. = `max(check_in - shift_start, 0)` in minutes.
+
+### Attendance summary — `calculate_attendance_summary(records)`
+- Counts: `present_days`, `absent_days`, `late_days`, `leave_days`, and `total_marked_days` = sum of the four.
+
+### Full pay summary — `calculate_pay_summary(worker, records)` → dict
+1. `paid_days = present_days + late_days`.
+2. Overtime: sum all `overtime_minutes`; if enabled + rate set + minutes>0: units = minutes (if type 'minute') else minutes/60; `overtime_pay = units * overtime_rate`.
+3. Accumulate `worked_minutes` and `late_minutes` over present/late records that have valid in/out.
+4. **Base pay by pay_type:**
+   - **daily:** for each present/late record add `calculate_daily_wage_for_record` (track counts of half_day/pro_rata/full_day). If `no_work_no_pay` is False and there are absents → pay `daily_rate * absent_days` too (paid_absent_days). Add policy notes.
+   - **monthly:** `base = monthly_salary`. If leave policy enabled and `leave_deduction_per_day` set → `extra_leave_days = max(0, leave_days - allowed_leaves_per_month)`, `leave_deductions = extra_leave_days * leave_deduction_per_day`.
+   - **hourly:** `base = (worked_minutes/60) * hourly_rate`.
+   - **project:** `base = project_rate` (fixed).
+5. **Late deduction:** if late policy enabled + rate set: units by type (minute→late_minutes, hour→late_minutes/60, day→late_days); `late_deductions = units * late_deduction_per_day`.
+6. `deductions = leave_deductions + late_deductions`. `estimated_pay = base_pay + overtime_pay - deductions`. (Note: estimated_pay can go negative if deductions exceed earnings — that is intended/raw; do not floor unless asked.)
+7. Return all of: pay_type, base_pay, overtime_pay, leave_deductions, late_deductions, deductions, estimated_pay, paid_days, full_day_days, half_day_days, prorated_days, paid_absent_days, half_day_grace_minutes, worked_minutes, overtime_minutes, overtime_units, late_minutes, late_units, late_unit_label, leave_days, extra_leave_days, policy_note (all monetary values rounded to 2 dp).
+
+---
+
+## 10. Routes & Pages
+
+All app pages require `@login_required` except splash, login, register and the OTP send/verify endpoints.
+
+- `GET /` → **splash.html** (public landing).
+- `GET /dashboard` → stats: active worker count, present-today count, attendance %, today's recent attendance (join Worker), upcoming closures (next 5). Includes a prominent **Payroll** shortcut card and a Quick Actions grid (Add Worker, Mark Attendance, View Workers, Closures).
+- `GET /workers` → list active workers; supports `search` (name/worker_id/phone contains) and `department` filter; pass distinct departments.
+- `GET /worker/<id>` → **worker_profile.html**: worker detail, recent 30 attendance, this-month present count. Quick actions link to worker_attendance, id_card, and **Payroll** (→ that worker's `worker_attendance`). The **Edit** button routes to `edit_daily_worker` when `pay_type=='daily'`, else `edit_worker`.
+- `GET/POST /add_worker` → renders **edit_worker.html** (worker=None). POST: generate worker_id, build worker via the shared `apply_worker_form`, optional profile photo, generate QR, save, redirect to workers.
+- `GET/POST /edit_worker/<id>` → general edit. POST: `apply_worker_form`, optional photo (replaces), set updated_at, redirect to worker_profile.
+- `GET/POST /edit_daily_worker/<id>` → **edit_daily_worker.html**, streamlined daily-wage form; same POST handling as edit_worker.
+- `GET /attendance?date=YYYY-MM-DD` → list all active workers + their record for that date, computing display wage/pay_mode/overtime_pay per worker via `calculate_daily_wage_for_record`; also show the date's ClosureDay if any.
+- `POST /mark_attendance` → see §10a (tap logic). Honors closure lock.
+- `GET/POST /closures` → list upcoming closures; POST upserts a ClosureDay (date, reason, type lowercased, allow_attendance checkbox).
+- `POST /closures/<id>/delete` → delete a closure.
+- `GET /worker_attendance/<id>?month=&year=` → month calendar of records (keyed by day) + `calculate_attendance_summary` + `calculate_pay_summary` for the month. This **is** the per-worker payroll detail.
+- `GET/POST /id_card/<id>` → **id_card.html**; generate QR if missing; POST `regenerate_qr` makes a new QR. The template uses jsPDF + html2canvas to export the card as PDF client-side.
+- `GET /payroll?month=&year=` → consolidated payroll (see §10b).
+- `POST /payroll/save` → persist/refresh PayrollRecord rows for the month.
+- `POST /payroll/<record_id>/toggle_paid` → flip pending⇄paid.
+- `GET/POST /profile` → admin area (see §10c).
+- `GET /export_data` → stream a CSV of every worker × attendance row (filename `smartworker_data_<today>.csv`). Header columns include all worker fields + attendance date/status/check-in/check-out.
+
+### 10a. `mark_attendance` tap logic
+- Parse `date`; if it is a closure with `allow_attendance=False` → flash error, redirect back.
+- **Bulk** (`bulk_action` present): set every active worker's record for that date to `status`; for present/late set check_in=now, clear check_out, overtime=0; for absent/leave clear times + overtime.
+- **Individual** (`worker_id`, `status`):
+  - If no record → create it; present/late sets check_in=now; message "Check-in captured…".
+  - If record exists and status is present/late:
+    - If no check_in yet → **first tap = check-in** (set check_in=now, clear check_out/overtime).
+    - Else if check_out is None AND status unchanged → **second tap = check-out**: set check_out=now, compute overtime via helper; build a message that includes overtime minutes + ₹ value, and append a note if the day resolves to half_day or pro_rata.
+    - Else (status changed) → reopen: clear check_out + overtime.
+  - If status is absent/leave → clear check_in/check_out/overtime.
+- Commit, flash the feedback message, redirect to attendance for that date.
+
+### 10b. Payroll page
+- `_build_payroll_rows(month, year)`: for every active worker, gather that month's records (1st → last day via `calendar.monthrange`), compute attendance + pay summaries, `gross_pay = base_pay + overtime_pay`, look up existing PayrollRecord (status 'unsaved' if none). Accumulate totals (gross, deductions, net, paid count, pending count). Return rows + totals + start_date.
+- Page shows: month/year selector (auto-submit GET), four total cards (Gross, Net, Deductions, paid/pending), a "Generate Payroll" button (POST /payroll/save), and one card per worker (avatar/initial, name, worker_id · pay_type, status pill, mini-stats Paid Days/Gross/Deductions, Net Payable, and a Mark Paid/Mark Pending toggle once saved). Show each worker's `policy_note`.
+- `save_payroll`: rebuild rows; upsert PayrollRecord per worker with total_days=`total_marked_days`, present_days=`paid_days`, overtime_hours=overtime_minutes/60, gross_pay, deductions, net_pay=estimated_pay. **Never overwrite a record already marked paid's status.** Flash a count + month/year.
+
+### 10c. Profile page (`/profile`)
+- GET renders **profile.html** with account info, quick stats (worker/present counts), quick actions (edit profile, change password, manage workers, export data), system info, sign-out; pass `sms_configured` flag.
+- POST actions (hidden `action` field):
+  - `update_profile`: update full_name + email.
+  - `update_settings`: update `phone` (validated; for OTP login). Settings modal also shows whether SMS is live or demo.
+  - `upload_photo`: save uploaded image to `static/uploads/users/` and set `user.profile_image`.
+  - `change_password`: verify current, confirm match, min length 6, then set new.
+- Header avatar shows `profile_image` if set, else first initial; camera button triggers a hidden file form that auto-submits on file pick.
+
+### Shared `apply_worker_form(worker)` (used by add/edit/edit_daily)
+Reads form fields: full_name, phone, email, address, position, department, employee_type, join_date (`%Y-%m-%d`), pay_type. **Reset all policy fields to defaults**, then set per pay_type:
+- **daily:** daily_rate; start_time/end_time (`%H:%M`); overtime_enabled (checkbox) + overtime_rate + overtime_type; late_policy_enabled + late_deduction (→ late_deduction_per_day) + late_deduction_type (day/hour/minute); no_work_no_pay (checkbox); half_day_rate (default daily_rate/2 if blank); half_day_grace_minutes (clamp 15–25, default 20).
+- **monthly:** monthly_salary; allowed_leaves (→ allowed_leaves_per_month, default 2); leave_deduction; leave_policy_enabled (checkbox).
+- **hourly:** hourly_rate.
+- **project:** project_rate.
+Use safe parsers `parse_float(v, 0.0)` and `parse_int(v, 0)`.
+
+Image upload helpers: `save_worker_profile_image(file, worker_id)` → `static/uploads/workers/`, `save_user_profile_image(file, user_id)` → `static/uploads/users/`. Allowed extensions: png, jpg, jpeg, gif, webp; unique filename `{id}_{timestamp}.{ext}`; raise ValueError on invalid type.
+
+---
+
+## 11. SMS / OTP Gateway (`sms.py`)
+
+Provider-agnostic module using only `urllib`. Public API:
+- `is_configured()` → True if env `SMS_PROVIDER` is one of msg91/fast2sms/twilio.
+- `send_otp(mobile, otp)` → dict `{'delivered': bool, 'demo': bool, 'error': str|None}`.
+  - If no provider configured → **demo mode**: log it, return `{'delivered': False, 'demo': True}` (route reveals the OTP for testing).
+  - Else call the provider; catch all exceptions and return them in `error` (never crash).
+
+Providers (selected by env vars):
+- **MSG91:** `SMS_PROVIDER=msg91`, `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`, `MSG91_SENDER` (default SMARTW); POST JSON to `https://control.msg91.com/api/v5/otp`.
+- **Fast2SMS:** `SMS_PROVIDER=fast2sms`, `FAST2SMS_API_KEY` (+ optional `FAST2SMS_SENDER`, `FAST2SMS_TEMPLATE_ID` for DLT route); POST form to `https://www.fast2sms.com/dev/bulkV2` with `authorization` header.
+- **Twilio:** `SMS_PROVIDER=twilio`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`; HTTP Basic auth POST to the Messages API; build E.164 numbers (use `SMS_DEFAULT_COUNTRY_CODE`, default 91, for bare 10-digit numbers).
+- OTP validity: 5 minutes.
+
+---
+
+## 12. Environment Variables
+
+| Var | Purpose | Default |
+|---|---|---|
+| `SESSION_SECRET` | Flask secret | dev fallback string |
+| `DATABASE_URL` | DB connection | sqlite file |
+| `SMS_PROVIDER` | msg91 / fast2sms / twilio | unset → demo mode |
+| `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`, `MSG91_SENDER` | MSG91 | — |
+| `FAST2SMS_API_KEY`, `FAST2SMS_SENDER`, `FAST2SMS_TEMPLATE_ID` | Fast2SMS | — |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | Twilio | — |
+| `SMS_DEFAULT_COUNTRY_CODE` | E.164 prefix | 91 |
+
+---
+
+## 13. Build / Run
+
+1. Install deps (Flask, Flask-SQLAlchemy, Flask-Login, Werkzeug, SQLAlchemy, qrcode, Pillow, email-validator, gunicorn, psycopg2-binary).
+2. `python main.py` → open `http://localhost:5000`.
+3. Default login: **admin / admin123**. In demo mode, the OTP appears on screen.
+4. Production: `gunicorn main:app` with `DATABASE_URL` (PostgreSQL) and a real `SESSION_SECRET` + SMS provider.
+
+---
+
+## 14. Acceptance Checklist (must all pass)
+
+- [ ] Fresh DB auto-creates tables, applies column patches, seeds admin.
+- [ ] Login by username or email; OTP login by registered phone; registration requires verified OTP.
+- [ ] Add worker generates `PREFIX###` ID + QR; photo upload works.
+- [ ] Daily workers open the streamlined edit screen; others the general one.
+- [ ] Attendance: first tap = check-in, second tap = check-out with overtime; bulk marking; closure lock respected.
+- [ ] Per-worker month view shows calendar + correct pay summary (half-day / pro-rata / overtime / late / leave rules per §9).
+- [ ] Payroll page totals match the sum of worker rows; Generate saves PayrollRecords; Mark Paid toggles and is preserved on regenerate.
+- [ ] Profile: edit info, change password, update phone (settings), upload photo all persist.
+- [ ] CSV export downloads all worker × attendance rows.
+- [ ] Demo SMS reveals OTP; configured SMS never leaks OTP and returns 502 on send failure.
+- [ ] Mobile UI matches the design system (navy/accent palette, Inter font, rounded cards, fixed 5-item bottom nav).
+
+---
+
+*Build exactly to this spec. The pay-calculation engine (§9) and the attendance tap logic (§10a) are the most behavior-sensitive parts — implement them verbatim.*
