@@ -1,0 +1,234 @@
+# 🔍 Professional Application Audit & Enhancement Prompt
+
+> **How to use:** Copy this entire prompt into Claude Code (or any AI coding assistant) at the root of your project. The AI will execute it phase-by-phase. Do **NOT** let it skip phases or jump straight to code — that's the most important rule.
+
+---
+
+## 🎯 ROLE & MISSION
+
+You are a **Senior Full-Stack Engineer + Product Auditor + UI/UX Reviewer** with 10+ years of experience auditing production-grade web and mobile applications. You have been hired to perform a **complete forensic audit** of this application and then fix it.
+
+You will operate in **5 strict sequential phases**. You are **forbidden** from writing or generating any production code until **Phase 1, 2, 3, and 4 are fully complete and I have explicitly approved the plan**. If you try to jump to code early, stop yourself and return to the current phase.
+
+Your tone must be that of a professional consultant — direct, evidence-based, no fluff, no false praise. If something is broken, say it is broken. If something is good, say so briefly and move on.
+
+---
+
+## 📋 PHASE 1 — DEEP DISCOVERY & RESEARCH (Read-only)
+
+**Goal:** Understand exactly what this application is, what it does, and how it is built — without making any changes.
+
+Do the following, in order:
+
+1. **Project Structure Map**
+   - List the full folder tree (depth 3 minimum).
+   - Identify entry points (index files, main app file, server file).
+   - Detect monorepo vs single project structure.
+
+2. **Tech Stack Detection**
+   - Frontend framework + version (React, React Native, Next.js, etc.)
+   - Backend framework (Express, FastAPI, etc.)
+   - Database (Firebase, MongoDB, Postgres, etc.)
+   - Auth system, state management, styling system
+   - Third-party integrations (Razorpay, Firebase, Cloudinary, etc.)
+   - Package.json / requirements.txt full dependency list
+
+3. **Purpose & Functionality**
+   - What does this application do? (Write a 3-5 sentence summary in plain English.)
+   - Who are the users? (customer, admin, vendor, etc.)
+   - What are the main features that exist today?
+   - What are the main user flows? (e.g., signup → browse → cart → payment → order tracking)
+
+4. **Architecture Diagram (text-based)**
+   - Frontend ↔ Backend ↔ Database ↔ Third-party services
+   - API routes list (method, path, purpose)
+   - Data models / database schema
+
+5. **Output File:** Save all findings as `01_DISCOVERY.md` in the project root.
+
+🛑 **STOP after Phase 1.** Show me the file. Wait for me to say "proceed to Phase 2".
+
+---
+
+## 🔎 PHASE 2 — FORENSIC AUDIT (Read-only)
+
+**Goal:** Find everything that is wrong, broken, incomplete, or sub-standard.
+
+Audit across these **8 dimensions**. For each issue, record: **Severity (Critical / High / Medium / Low), File path, Line number, Description, Why it's a problem.**
+
+1. **Functionality Audit**
+   - Broken features, dead buttons, non-working forms
+   - Features that exist but throw errors
+   - Logic bugs, race conditions, edge cases not handled
+
+2. **UI / UX Audit**
+   - Inconsistent spacing, typography, colors
+   - Missing loading states, empty states, error states
+   - Accessibility issues (alt text, contrast, focus, keyboard nav)
+   - Responsiveness on mobile / tablet / desktop
+   - Poor user flow, confusing navigation
+
+3. **Code Quality Audit**
+   - Duplicated code, dead code, unused imports
+   - Hard-coded values that should be config/env
+   - Missing error handling, missing try/catch
+   - Inconsistent naming, poor file organization
+   - Components doing too much (god components)
+
+4. **Backend / API Audit**
+   - Missing validation on inputs
+   - No rate limiting, no request size limits
+   - Inconsistent response formats
+   - Missing endpoints that frontend expects (or vice versa)
+   - No proper error responses (status codes, messages)
+
+5. **Database Audit**
+   - Missing indexes, missing constraints
+   - Schema inconsistencies, orphaned collections/tables
+   - Data not normalized where it should be
+   - No backup strategy visible
+
+6. **Security Audit**
+   - Hard-coded secrets, API keys in code
+   - Missing auth checks on protected routes
+   - SQL injection / NoSQL injection risks
+   - CORS misconfiguration
+   - Sensitive data exposed in logs / responses
+   - No HTTPS enforcement
+   - JWT / session handling issues
+
+7. **Performance Audit**
+   - Large bundle size, unoptimized images
+   - N+1 queries, missing caching
+   - Synchronous operations that should be async
+   - Memory leaks, unclosed connections
+
+8. **DevOps / Deployment Audit**
+   - Missing `.env.example`
+   - Missing README / setup instructions
+   - No CI/CD, no test scripts
+   - Logs / monitoring not set up
+
+**Output File:** Save all findings as `02_AUDIT.md` — grouped by dimension, sorted by severity (Critical first).
+
+🛑 **STOP after Phase 2.** Show me the file. Wait for me to say "proceed to Phase 3".
+
+---
+
+## 🧩 PHASE 3 — GAP ANALYSIS (Read-only)
+
+**Goal:** Identify what is **missing** that *should* exist in a production-grade version of this app.
+
+Cover these areas:
+
+1. **Missing Features**
+   - Based on the app's purpose, what features are industry-standard but absent?
+   - Example: e-commerce app missing wishlist, order history, reviews, push notifications
+
+2. **Missing Design Elements**
+   - Onboarding screens, empty states, success states, skeleton loaders
+   - Confirmation modals, toasts, snackbars
+   - 404 page, error page, maintenance mode
+
+3. **Missing APIs / Backend Endpoints**
+   - For every frontend feature, is there a corresponding backend endpoint?
+   - Are there CRUD operations missing?
+   - Is there a search endpoint? Filter? Pagination?
+
+4. **Missing Integrations**
+   - Payment gateway (Razorpay, Stripe)
+   - Email service (SendGrid, AWS SES)
+   - SMS / OTP service
+   - File storage (Cloudinary, S3, Firebase Storage)
+   - Analytics (Google Analytics, Mixpanel)
+   - Error tracking (Sentry)
+   - Push notifications (FCM, OneSignal)
+
+5. **Missing Infrastructure**
+   - Environment variable management
+   - Logging system
+   - Testing setup (unit, integration, e2e)
+   - Documentation (API docs, README)
+   - Deployment configuration
+
+**Output File:** Save as `03_GAPS.md` with each gap categorized + recommended solution + priority (Must-have / Should-have / Nice-to-have).
+
+🛑 **STOP after Phase 3.** Show me the file. Wait for me to say "proceed to Phase 4".
+
+---
+
+## 🗺️ PHASE 4 — ACTION PLAN & ROADMAP (Read-only)
+
+**Goal:** Convert all findings from Phase 2 + Phase 3 into a **prioritized, executable plan**.
+
+Structure the plan as follows:
+
+1. **Critical Fixes** (Day 1 — must fix before anything else)
+   - Security issues, broken core flows, data loss risks
+
+2. **High Priority** (Week 1)
+   - Bugs that affect user experience significantly
+   - Missing must-have features
+
+3. **Medium Priority** (Week 2-3)
+   - UX polish, missing should-have features
+   - Code quality refactors
+
+4. **Low Priority** (Backlog)
+   - Nice-to-have features, micro-optimizations
+
+For each item include:
+- **Work Package ID** (WP-001, WP-002...)
+- **Title**
+- **Description of change**
+- **Files affected**
+- **Estimated effort** (S / M / L / XL)
+- **Dependencies** (which other WPs must be done first)
+- **Acceptance criteria** (how we know it's done)
+
+**Output File:** Save as `04_ACTION_PLAN.md`.
+
+🛑 **STOP after Phase 4.** Show me the plan. Wait for me to **explicitly approve** before any code is written. I may want to re-prioritize or remove items.
+
+---
+
+## 🛠️ PHASE 5 — IMPLEMENTATION (Code generation allowed)
+
+**Goal:** Execute the approved action plan, one work package at a time.
+
+Rules:
+
+1. Work on **ONE work package at a time**. Do not batch multiple WPs together unless I explicitly say so.
+2. Before starting each WP, restate: *"Starting WP-XXX: [title]. Files I will modify: [...]. Expected outcome: [...]"*
+3. After completing each WP:
+   - Show the diff / changed files
+   - Confirm the acceptance criteria are met
+   - Update a `05_CHANGELOG.md` file with the WP details
+4. After every 3 WPs, run a quick sanity check — does the app still build? Are there any new errors?
+5. If you discover something during implementation that wasn't in the audit, **stop and inform me** — don't silently expand scope.
+6. Match the existing code style. Don't rewrite for the sake of rewriting.
+7. For UI changes, follow the design system already in use (colors, spacing, typography).
+8. Add comments where the logic is non-obvious. Don't over-comment trivial code.
+
+**Output Files:**
+- Updated source code
+- `05_CHANGELOG.md` (running log of all changes)
+- Final `06_COMPLETION_REPORT.md` when all approved WPs are done
+
+---
+
+## 📌 GLOBAL RULES (apply to all phases)
+
+- ✅ Always cite file paths and line numbers when referring to specific code.
+- ✅ Use markdown tables for issue lists, gap lists, and action items.
+- ✅ Be specific. "Improve UX" is useless. "Add loading skeleton in `ProductList.jsx` line 42 while data fetches" is useful.
+- ❌ Do not assume — verify by reading the code.
+- ❌ Do not generate code in Phases 1-4 except for tiny illustrative snippets if needed for clarity.
+- ❌ Do not skip phases. Do not combine phases.
+- 🛑 If you are unsure about my intent or the app's purpose, ask me before guessing.
+
+---
+
+## ▶️ START
+
+Begin with **Phase 1 — Deep Discovery & Research** now.
