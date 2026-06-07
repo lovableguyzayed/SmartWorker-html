@@ -69,8 +69,8 @@ class Worker(db.Model):
     
     # Status and metadata
     status = db.Column(db.String(20), default='active')  # active, inactive
-    profile_image = db.Column(db.String(200), nullable=True)
-    qr_code = db.Column(db.String(100), nullable=True)
+    profile_image = db.Column(db.Text, nullable=True)
+    qr_code = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
