@@ -1,10 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta http-equiv="refresh" content="0; url=https://YOUR_REPLIT_APP_URL.replit.app">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' https://YOUR_REPLIT_APP_URL.replit.app https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com data: blob: 'unsafe-inline' 'unsafe-eval'">
   <title>SmartWorker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #001F3F;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: sans-serif;
+      color: white;
+    }
+    .logo {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      background: #007BFF;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      font-size: 40px;
+    }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    p { font-size: 14px; opacity: 0.7; margin-bottom: 30px; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { color: #ff6b6b; font-size: 13px; margin-top: 16px; display: none; text-align: center; padding: 0 20px; }
+    .retry-btn {
+      margin-top: 12px; padding: 10px 24px;
+      background: #007BFF; color: white;
+      border: none; border-radius: 8px;
+      font-size: 14px; cursor: pointer; display: none;
+    }
+  </style>
+  <script src="cordova.js"></script>
 </head>
 <body>
-  <p>Loading SmartWorker...</p>
+  <div class="logo">&#128203;</div>
+  <h1>SmartWorker</h1>
+  <p>Professional Attendance Management</p>
+  <div class="spinner" id="spinner"></div>
+  <p class="error" id="err-msg">Cannot connect to server.<br>Please check your internet connection.</p>
+  <button class="retry-btn" id="retry-btn" onclick="loadApp()">Retry</button>
+
+  <script>
+    var APP_URL = 'https://YOUR_REPLIT_APP_URL.replit.app';
+
+    function loadApp() {
+      document.getElementById('spinner').style.display = 'block';
+      document.getElementById('err-msg').style.display = 'none';
+      document.getElementById('retry-btn').style.display = 'none';
+      window.location.href = APP_URL;
+    }
+
+    function handleOffline() {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('err-msg').style.display = 'block';
+      document.getElementById('retry-btn').style.display = 'block';
+      window.addEventListener('online', loadApp, { once: true });
+    }
+
+    document.addEventListener('deviceready', function () {
+      var Connection = window.Connection;
+      if (navigator.connection && Connection && navigator.connection.type === Connection.NONE) {
+        handleOffline();
+      } else {
+        setTimeout(loadApp, 500);
+      }
+    }, false);
+
+    // Fallback for browser testing without Cordova
+    setTimeout(function () {
+      if (typeof cordova === 'undefined') {
+        loadApp();
+      }
+    }, 1500);
+
+    window.addEventListener('offline', handleOffline);
+  </script>
 </body>
 </html>

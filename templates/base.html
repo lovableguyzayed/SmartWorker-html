@@ -160,6 +160,13 @@
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
+    <!-- Offline Indicator Bar -->
+    <div id="offline-indicator" class="hidden fixed top-0 left-0 right-0 z-50 bg-red-600 text-white text-center text-xs py-1.5 px-3 flex items-center justify-center gap-2">
+        <i class="fas fa-wifi-slash text-xs"></i>
+        <span id="offline-status-text">You are offline</span>
+        <span id="pending-sync-badge" class="hidden bg-white text-red-600 text-xs font-bold rounded-full px-1.5 py-0.5 ml-1"></span>
+    </div>
+
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -223,6 +230,7 @@
     
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
     
     <!-- Page-specific JavaScript -->
     {% block scripts %}{% endblock %}
