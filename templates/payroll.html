@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Payroll — {{ month_name }} {{ year }} - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('dashboard') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Payroll</div>
+                <div class="text-sm opacity-90">{{ month_name }} {{ year }}</div>
+            </div>
+        </div>
+        <div class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
+        </div>
+    </div>
+
+    <form method="GET" action="{{ url_for('payroll') }}" class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20">
+        <div class="flex items-center space-x-2">
+            <select name="month" onchange="this.form.submit()"
+                    class="flex-1 bg-white/90 text-gray-800 text-sm p-2 rounded-xl focus:ring-2 focus:ring-white/60 border-0">
+                {% for m_num, m_name in months %}
+                <option value="{{ m_num }}" {% if m_num == month %}selected{% endif %}>{{ m_name }}</option>
+                {% endfor %}
+            </select>
+            <select name="year" onchange="this.form.submit()"
+                    class="w-24 bg-white/90 text-gray-800 text-sm p-2 rounded-xl focus:ring-2 focus:ring-white/60 border-0">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</header>
+
+<main class="p-4 pb-32 space-y-6">
+    <!-- Summary Tiles -->
+    <section class="grid grid-cols-2 gap-4">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_gross) }}</div>
+            <div class="text-sm opacity-90">Gross Payroll</div>
+        </div>
+        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_net) }}</div>
+            <div class="text-sm opacity-90">Net Payable</div>
+        </div>
+        <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_deductions) }}</div>
+            <div class="text-sm opacity-90">Total Deductions</div>
+        </div>
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-2xl shadow-lg">
+            <div class="text-2xl font-bold">
+                {{ totals.paid_count }}<span class="text-base font-medium opacity-80"> paid</span>
+            </div>
+            <div class="text-sm opacity-90">{{ totals.pending_count }} pending</div>
+        </div>
+    </section>
+
+    <!-- Generate / Refresh -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div>
+            <h3 class="text-base font-semibold text-gray-800">Generate / Refresh Payroll</h3>
+            <p class="text-sm text-gray-500 mt-1">Saves the latest calculation for every active worker this month.</p>
+        </div>
+        <form method="POST" action="{{ url_for('payroll_save') }}" class="mt-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="year" value="{{ year }}">
+            <button type="submit"
+                    class="w-full flex items-center justify-center p-3 bg-accent text-white rounded-2xl font-medium hover:bg-primary transition-colors">
+                <i class="fa-solid fa-rotate mr-2"></i>
+                Generate Payroll
+            </button>
+        </form>
+    </section>
+
+    <!-- Worker List -->
+    <section class="space-y-3">
+        <h3 class="text-lg font-semibold text-gray-800 px-1">
+            Workers ({{ totals.worker_count }})
+        </h3>
+
+        {% if not rows %}
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 text-center">
+            <i class="fa-solid fa-users text-4xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">No active workers found.</p>
+        </div>
+        {% endif %}
+
+        {% for row in rows %}
+        {% set worker = row.worker %}
+        {% set pay = row.pay_summary %}
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <!-- Worker header row -->
+            <div class="flex items-center justify-between">
+                <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}"
+                   class="flex items-center space-x-3 flex-1 min-w-0">
+                    {% if worker.profile_image %}
+                    <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}"
+                         class="w-11 h-11 rounded-xl object-cover shrink-0">
+                    {% else %}
+                    <div class="w-11 h-11 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold shrink-0">
+                        {{ worker.full_name[0] }}
+                    </div>
+                    {% endif %}
+                    <div class="min-w-0">
+                        <div class="font-medium text-gray-800 truncate">{{ worker.full_name }}</div>
+                        <div class="text-xs text-gray-500">{{ worker.worker_id }} · {{ worker.pay_type | capitalize }}</div>
+                    </div>
+                </a>
+
+                {% if row.status == 'paid' %}
+                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Paid</span>
+                {% elif row.status == 'unsaved' %}
+                <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Not Saved</span>
+                {% else %}
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                {% endif %}
+            </div>
+
+            <!-- Mini stats -->
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="font-semibold text-gray-800">{{ pay.paid_days }}</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="font-semibold text-gray-800">₹{{ "%.0f"|format(row.gross_pay) }}</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2">
+                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="font-semibold text-red-600">₹{{ "%.0f"|format(row.deductions) }}</div>
+                </div>
+            </div>
+
+            <!-- Net payable + action -->
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div>
+                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-lg font-bold text-accent">₹{{ "%.2f"|format(row.net_pay) }}</div>
+                </div>
+
+                {% if row.record_id %}
+                <form method="POST" action="{{ url_for('payroll_toggle_paid', record_id=row.record_id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if row.status == 'paid' %}
+                    <button type="submit"
+                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-300 transition-colors">
+                        <i class="fa-solid fa-rotate-left mr-1"></i>Mark Pending
+                    </button>
+                    {% else %}
+                    <button type="submit"
+                            class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                    </button>
+                    {% endif %}
+                </form>
+                {% else %}
+                <span class="text-xs text-gray-400 italic">Generate to enable</span>
+                {% endif %}
+            </div>
+
+            {% if pay.policy_note %}
+            <p class="text-xs text-gray-400 mt-3 leading-relaxed">{{ pay.policy_note }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+</main>
+{% endblock %}

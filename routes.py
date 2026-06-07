@@ -4,6 +4,7 @@ import io
 import base64
 import csv
 import random
+import calendar as _cal
 from datetime import datetime, date, timedelta
 from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -1232,6 +1233,176 @@ def mark_attendance():
             flash(feedback_message, feedback_category)
     
     return redirect(url_for('attendance', date=attendance_date.isoformat()))
+
+def _build_payroll_rows(month, year):
+    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    _, days_in_month = _cal.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, days_in_month)
+
+    rows = []
+    total_gross = 0.0
+    total_deductions = 0.0
+    total_net = 0.0
+    paid_count = 0
+    pending_count = 0
+
+    for worker in workers:
+        records = AttendanceRecord.query.filter(
+            AttendanceRecord.worker_id == worker.id,
+            AttendanceRecord.date >= start_date,
+            AttendanceRecord.date <= end_date,
+        ).all()
+
+        att_summary = calculate_attendance_summary(records)
+        pay_summary = calculate_pay_summary(worker, records)
+
+        gross_pay = round(pay_summary['base_pay'] + pay_summary['overtime_pay'], 2)
+        deductions = pay_summary['deductions']
+        net_pay = pay_summary['estimated_pay']
+
+        existing_record = PayrollRecord.query.filter_by(
+            worker_id=worker.id, month=month, year=year
+        ).first()
+
+        if existing_record:
+            record_status = existing_record.status
+            record_id = existing_record.id
+        else:
+            record_status = 'unsaved'
+            record_id = None
+
+        total_gross += gross_pay
+        total_deductions += deductions
+        total_net += net_pay
+        if record_status == 'paid':
+            paid_count += 1
+        else:
+            pending_count += 1
+
+        rows.append({
+            'worker': worker,
+            'att_summary': att_summary,
+            'pay_summary': pay_summary,
+            'gross_pay': gross_pay,
+            'deductions': deductions,
+            'net_pay': net_pay,
+            'status': record_status,
+            'record_id': record_id,
+        })
+
+    return rows, {
+        'total_gross': round(total_gross, 2),
+        'total_deductions': round(total_deductions, 2),
+        'total_net': round(total_net, 2),
+        'paid_count': paid_count,
+        'pending_count': pending_count,
+        'worker_count': len(rows),
+    }, start_date
+
+
+MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+
+@app.route('/payroll')
+@login_required
+def payroll():
+    today = date.today()
+    try:
+        month = max(1, min(12, int(request.args.get('month', today.month))))
+        year = max(2020, min(2099, int(request.args.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+
+    rows, totals, _ = _build_payroll_rows(month, year)
+    years = list(range(2024, today.year + 2))
+    months = [(i, MONTH_NAMES[i - 1]) for i in range(1, 13)]
+
+    return render_template(
+        'payroll.html',
+        rows=rows,
+        totals=totals,
+        month=month,
+        year=year,
+        years=years,
+        months=months,
+        month_name=MONTH_NAMES[month - 1],
+    )
+
+
+@app.route('/payroll/save', methods=['POST'])
+@login_required
+def payroll_save():
+    today = date.today()
+    try:
+        month = max(1, min(12, int(request.form.get('month', today.month))))
+        year = max(2020, min(2099, int(request.form.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+
+    rows, _, _ = _build_payroll_rows(month, year)
+    saved = 0
+
+    for row in rows:
+        worker = row['worker']
+        pay = row['pay_summary']
+        att = row['att_summary']
+
+        existing = PayrollRecord.query.filter_by(
+            worker_id=worker.id, month=month, year=year
+        ).first()
+
+        fields = dict(
+            total_days=att['total_marked_days'],
+            present_days=pay['paid_days'],
+            overtime_hours=round(pay['overtime_minutes'] / 60.0, 2),
+            gross_pay=row['gross_pay'],
+            deductions=row['deductions'],
+            net_pay=row['net_pay'],
+        )
+
+        if existing:
+            for k, v in fields.items():
+                setattr(existing, k, v)
+            if existing.status != 'paid':
+                existing.status = 'pending'
+        else:
+            record = PayrollRecord(
+                worker_id=worker.id,
+                month=month,
+                year=year,
+                status='pending',
+                **fields,
+            )
+            db.session.add(record)
+
+        saved += 1
+
+    db.session.commit()
+    flash(
+        f'Payroll generated for {saved} worker(s) — {MONTH_NAMES[month - 1]} {year}.',
+        'success',
+    )
+    return redirect(url_for('payroll', month=month, year=year))
+
+
+@app.route('/payroll/<int:record_id>/toggle_paid', methods=['POST'])
+@login_required
+def payroll_toggle_paid(record_id):
+    record = PayrollRecord.query.get_or_404(record_id)
+    record.status = 'pending' if record.status == 'paid' else 'paid'
+    db.session.commit()
+    label = 'Paid' if record.status == 'paid' else 'Pending'
+    flash(
+        f'{record.worker.full_name} marked as {label} — '
+        f'{MONTH_NAMES[record.month - 1]} {record.year}.',
+        'success',
+    )
+    return redirect(url_for('payroll', month=record.month, year=record.year))
+
 
 @app.route('/export_data')
 @login_required

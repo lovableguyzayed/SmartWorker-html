@@ -69,12 +69,13 @@
             <span class="text-sm font-medium text-gray-800">ID Card</span>
         </a>
         
-        <button class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+        <a href="{{ url_for('payroll') }}"
+           class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
             <div class="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-2">
                 <i class="fa-solid fa-file-invoice-dollar text-green-500 text-xl"></i>
             </div>
             <span class="text-sm font-medium text-gray-800">Payroll</span>
-        </button>
+        </a>
     </section>
 
     <!-- Personal Information -->
