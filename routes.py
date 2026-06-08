@@ -1404,6 +1404,69 @@ def payroll_toggle_paid(record_id):
     return redirect(url_for('payroll', month=record.month, year=record.year))
 
 
+@app.route('/payroll/export.csv')
+@login_required
+def payroll_export():
+    today = date.today()
+    try:
+        month = max(1, min(12, int(request.args.get('month', today.month))))
+        year = max(2020, min(2099, int(request.args.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+
+    rows, totals, _ = _build_payroll_rows(month, year)
+    month_name = MONTH_NAMES[month - 1]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        'Worker ID', 'Full Name', 'Department', 'Position',
+        'Pay Type', 'Month', 'Year',
+        'Total Marked Days', 'Paid Days',
+        'Gross Pay (INR)', 'Deductions (INR)', 'Net Payable (INR)',
+        'Overtime Minutes', 'Status',
+    ])
+
+    for row in rows:
+        w = row['worker']
+        pay = row['pay_summary']
+        att = row['att_summary']
+        writer.writerow([
+            w.worker_id,
+            w.full_name,
+            w.department,
+            w.position,
+            w.pay_type,
+            month_name,
+            year,
+            att['total_marked_days'],
+            pay['paid_days'],
+            row['gross_pay'],
+            row['deductions'],
+            row['net_pay'],
+            pay['overtime_minutes'],
+            row['status'],
+        ])
+
+    writer.writerow([])
+    writer.writerow([
+        '', 'TOTALS', '', '', '', '', '',
+        '', '',
+        totals['total_gross'],
+        totals['total_deductions'],
+        totals['total_net'],
+        '',
+        f"{totals['paid_count']} paid / {totals['pending_count']} pending",
+    ])
+
+    filename = f"payroll_{month_name.lower()}_{year}.csv"
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    return response
+
+
 @app.route('/export_data')
 @login_required
 def export_data():

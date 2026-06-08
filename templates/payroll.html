@@ -76,6 +76,11 @@
                 Generate Payroll
             </button>
         </form>
+        <a href="{{ url_for('payroll_export', month=month, year=year) }}"
+           class="mt-3 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium hover:border-accent hover:text-accent transition-colors">
+            <i class="fa-solid fa-file-csv mr-2"></i>
+            Export CSV — {{ month_name }} {{ year }}
+        </a>
     </section>
 
     <!-- Worker List -->
