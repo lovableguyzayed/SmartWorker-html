@@ -186,11 +186,11 @@
         {% endif %}
     {% endwith %}
 
-    {% set main_screens_check = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid'] %}
+    {% set main_screens_check = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip'] %}
     <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens_check %}pb-32{% endif %}">
         {% block content %}{% endblock %}
         
-        {% set main_screens = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid'] %}
+        {% set main_screens = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip'] %}
         {% if current_user.is_authenticated and request.endpoint in main_screens %}
         {% set home_active = request.endpoint == 'dashboard' %}
         {% set workers_active = request.endpoint == 'workers' %}

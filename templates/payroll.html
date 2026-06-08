@@ -102,7 +102,7 @@
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
             <!-- Worker header row -->
             <div class="flex items-center justify-between">
-                <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}"
+                <a href="{{ url_for('payroll_slip', worker_id=worker.id, month=month, year=year) }}"
                    class="flex items-center space-x-3 flex-1 min-w-0">
                     {% if worker.profile_image %}
                     <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}"

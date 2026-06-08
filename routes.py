@@ -1404,6 +1404,53 @@ def payroll_toggle_paid(record_id):
     return redirect(url_for('payroll', month=record.month, year=record.year))
 
 
+@app.route('/payroll/slip/<int:worker_id>')
+@login_required
+def payroll_slip(worker_id):
+    worker = Worker.query.get_or_404(worker_id)
+    today = date.today()
+    try:
+        month = max(1, min(12, int(request.args.get('month', today.month))))
+        year = max(2020, min(2099, int(request.args.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+
+    _, days_in_month = _cal.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, days_in_month)
+
+    records = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker.id,
+        AttendanceRecord.date >= start_date,
+        AttendanceRecord.date <= end_date,
+    ).order_by(AttendanceRecord.date).all()
+
+    calendar_data = {r.date.day: r for r in records}
+    att_summary = calculate_attendance_summary(records)
+    pay_summary = calculate_pay_summary(worker, records)
+
+    payroll_record = PayrollRecord.query.filter_by(
+        worker_id=worker.id, month=month, year=year
+    ).first()
+
+    return render_template(
+        'payroll_slip.html',
+        worker=worker,
+        month=month,
+        year=year,
+        month_name=MONTH_NAMES[month - 1],
+        start_date=start_date,
+        end_date=end_date,
+        days_in_month=days_in_month,
+        calendar_data=calendar_data,
+        att_summary=att_summary,
+        pay_summary=pay_summary,
+        payroll_record=payroll_record,
+        timedelta=timedelta,
+        date=date,
+    )
+
+
 @app.route('/payroll/export.csv')
 @login_required
 def payroll_export():

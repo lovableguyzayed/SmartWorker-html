@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}Payroll Slip — {{ worker.full_name }} {{ month_name }} {{ year }}{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    background: #e5e7eb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.cal-cell {
+    background: #fff;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 500;
+    position: relative;
+}
+.cal-cell.other { background: #f9fafb; color: #9ca3af; }
+.cal-cell.present { background: #dcfce7; color: #166534; }
+.cal-cell.absent  { background: #fecaca; color: #991b1b; }
+.cal-cell.late    { background: #fef3c7; color: #92400e; }
+.cal-cell.leave   { background: #dbeafe; color: #1e40af; }
+.cal-cell.header  { background: #f3f4f6; color: #374151; font-weight: 700; font-size: 0.65rem; }
+
+.pay-row { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid #f3f4f6; }
+.pay-row:last-child { border-bottom: none; }
+
+@media print {
+    .no-print { display: none !important; }
+    body { background: white !important; }
+    #mobile-app { max-width: 100% !important; padding: 0 !important; }
+    .slip-wrapper { box-shadow: none !important; border: none !important; }
+    header, nav { display: none !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header (hidden on print) -->
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl no-print">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('payroll', month=month, year=year) }}"
+               class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Payroll Slip</div>
+                <div class="text-sm opacity-90">{{ worker.full_name }} · {{ month_name }} {{ year }}</div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button onclick="printSlip()"
+                    class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-print text-lg"></i>
+            </button>
+            <button onclick="downloadPDF()"
+                    class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-file-pdf text-lg"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-32 space-y-4">
+
+    <!-- ===== SLIP CARD (captured for PDF) ===== -->
+    <div id="payroll-slip-content" class="slip-wrapper bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+
+        <!-- Slip Top Bar -->
+        <div class="bg-gradient-to-r from-primary to-accent p-5 text-white">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <div class="text-lg font-bold tracking-wide">SmartWorker</div>
+                    <div class="text-xs opacity-75 uppercase tracking-widest">Payroll Department</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm font-semibold opacity-90">PAYSLIP</div>
+                    <div class="text-xs opacity-75">{{ month_name }} {{ year }}</div>
+                </div>
+            </div>
+
+            <!-- Worker Identity -->
+            <div class="flex items-center space-x-3 bg-white/10 rounded-2xl p-3 border border-white/20">
+                {% if worker.profile_image %}
+                <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}"
+                     class="w-14 h-14 rounded-xl object-cover shrink-0 border-2 border-white/30">
+                {% else %}
+                <div class="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold text-xl shrink-0 border-2 border-white/30">
+                    {{ worker.full_name[0] }}
+                </div>
+                {% endif %}
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-base truncate">{{ worker.full_name }}</div>
+                    <div class="text-xs opacity-80">{{ worker.position }} · {{ worker.department }}</div>
+                    <div class="text-xs opacity-70 mt-0.5">ID: {{ worker.worker_id }} · {{ worker.pay_type | capitalize }}</div>
+                </div>
+                {% if payroll_record %}
+                    {% if payroll_record.status == 'paid' %}
+                    <span class="bg-green-400/30 border border-green-300/40 text-white text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap">✓ PAID</span>
+                    {% else %}
+                    <span class="bg-yellow-400/30 border border-yellow-300/40 text-white text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap">PENDING</span>
+                    {% endif %}
+                {% else %}
+                <span class="bg-white/10 border border-white/20 text-white/70 text-xs px-2 py-1 rounded-lg whitespace-nowrap">Not Saved</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="p-4 space-y-4">
+
+            <!-- Attendance Summary Grid -->
+            <div>
+                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Attendance Summary</h4>
+                <div class="grid grid-cols-5 gap-2 text-center">
+                    <div class="bg-green-50 rounded-xl py-2 border border-green-100">
+                        <div class="text-lg font-bold text-green-700">{{ att_summary.present_days }}</div>
+                        <div class="text-xs text-green-600">Present</div>
+                    </div>
+                    <div class="bg-red-50 rounded-xl py-2 border border-red-100">
+                        <div class="text-lg font-bold text-red-700">{{ att_summary.absent_days }}</div>
+                        <div class="text-xs text-red-600">Absent</div>
+                    </div>
+                    <div class="bg-yellow-50 rounded-xl py-2 border border-yellow-100">
+                        <div class="text-lg font-bold text-yellow-700">{{ att_summary.late_days }}</div>
+                        <div class="text-xs text-yellow-600">Late</div>
+                    </div>
+                    <div class="bg-blue-50 rounded-xl py-2 border border-blue-100">
+                        <div class="text-lg font-bold text-blue-700">{{ att_summary.leave_days }}</div>
+                        <div class="text-xs text-blue-600">Leave</div>
+                    </div>
+                    <div class="bg-primary/10 rounded-xl py-2 border border-primary/10">
+                        <div class="text-lg font-bold text-primary">{{ pay_summary.paid_days }}</div>
+                        <div class="text-xs text-primary/70">Paid Days</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar -->
+            <div>
+                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Attendance Calendar — {{ month_name }} {{ year }}
+                </h4>
+                <div class="cal-grid">
+                    {% for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+                    <div class="cal-cell header">{{ d }}</div>
+                    {% endfor %}
+
+                    {% set first_day = start_date.replace(day=1) %}
+                    {% set dow = first_day.weekday() %}
+                    {% set start_offset = (dow + 1) % 7 %}
+                    {% if start_offset == 0 and dow != 6 %}{% set start_offset = 0 %}{% endif %}
+                    {% set start_cal = first_day - timedelta(days=start_offset) %}
+
+                    {% for i in range(42) %}
+                        {% set cur = start_cal + timedelta(days=i) %}
+                        {% set in_month = cur.month == month and cur.year == year %}
+                        {% set rec = calendar_data.get(cur.day) if in_month else None %}
+                        <div class="cal-cell {{ 'other' if not in_month else (rec.status if rec else '') }}">
+                            {{ cur.day }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <!-- Legend -->
+                <div class="flex items-center justify-center space-x-4 mt-2 text-xs text-gray-500">
+                    <span><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>Present</span>
+                    <span><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>Absent</span>
+                    <span><span class="inline-block w-2 h-2 rounded-full bg-yellow-400 mr-1"></span>Late</span>
+                    <span><span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>Leave</span>
+                </div>
+            </div>
+
+            <!-- Pay Breakdown -->
+            <div>
+                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pay Breakdown</h4>
+                <div class="bg-gray-50 rounded-2xl p-3 space-y-0">
+
+                    {% if worker.pay_type == 'daily' %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Daily Rate</span>
+                        <span class="text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.daily_rate or 0) }} / day</span>
+                    </div>
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Full Days</span>
+                        <span class="text-sm font-medium text-gray-800">{{ pay_summary.full_day_days }}</span>
+                    </div>
+                    {% if pay_summary.half_day_days > 0 %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Half Days</span>
+                        <span class="text-sm font-medium text-orange-600">{{ pay_summary.half_day_days }}</span>
+                    </div>
+                    {% endif %}
+                    {% if pay_summary.prorated_days > 0 %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Pro-Rata Days</span>
+                        <span class="text-sm font-medium text-indigo-600">{{ pay_summary.prorated_days }}</span>
+                    </div>
+                    {% endif %}
+                    {% if pay_summary.paid_absent_days > 0 %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Paid Absent Days</span>
+                        <span class="text-sm font-medium text-blue-600">{{ pay_summary.paid_absent_days }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% elif worker.pay_type == 'monthly' %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Monthly Salary</span>
+                        <span class="text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.monthly_salary or 0) }}</span>
+                    </div>
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Leave Days</span>
+                        <span class="text-sm font-medium text-gray-800">{{ pay_summary.leave_days }} ({{ pay_summary.extra_leave_days }} extra)</span>
+                    </div>
+
+                    {% elif worker.pay_type == 'hourly' %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Worked Hours</span>
+                        <span class="text-sm font-medium text-gray-800">{{ "%.2f"|format(pay_summary.worked_minutes / 60) }} hrs</span>
+                    </div>
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Hourly Rate</span>
+                        <span class="text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.hourly_rate or 0) }} / hr</span>
+                    </div>
+
+                    {% elif worker.pay_type == 'project' %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Project Rate</span>
+                        <span class="text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.project_rate or 0) }}</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="pay-row">
+                        <span class="text-sm font-semibold text-gray-700">Base Pay</span>
+                        <span class="text-sm font-bold text-gray-800">₹{{ "%.2f"|format(pay_summary.base_pay) }}</span>
+                    </div>
+
+                    {% if pay_summary.overtime_pay > 0 %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Overtime ({{ pay_summary.overtime_minutes }} min)</span>
+                        <span class="text-sm font-medium text-green-600">+₹{{ "%.2f"|format(pay_summary.overtime_pay) }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if pay_summary.leave_deductions > 0 %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Leave Deduction</span>
+                        <span class="text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.leave_deductions) }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if pay_summary.late_deductions > 0 %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Late Deduction ({{ pay_summary.late_minutes }} min)</span>
+                        <span class="text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.late_deductions) }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if pay_summary.deductions > 0 %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">Total Deductions</span>
+                        <span class="text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.deductions) }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Net Payable box -->
+                <div class="mt-3 bg-gradient-to-r from-primary to-accent rounded-2xl p-4 text-white flex items-center justify-between">
+                    <div>
+                        <div class="text-xs opacity-75 uppercase tracking-wider">Net Payable</div>
+                        <div class="text-2xl font-bold mt-0.5">₹{{ "%.2f"|format(pay_summary.estimated_pay) }}</div>
+                    </div>
+                    {% if payroll_record and payroll_record.status == 'paid' %}
+                    <div class="text-right">
+                        <i class="fa-solid fa-circle-check text-green-300 text-3xl"></i>
+                        <div class="text-xs opacity-75 mt-1">Paid</div>
+                    </div>
+                    {% else %}
+                    <div class="text-right">
+                        <i class="fa-solid fa-clock text-yellow-300 text-3xl"></i>
+                        <div class="text-xs opacity-75 mt-1">Pending</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if pay_summary.policy_note %}
+                <p class="text-xs text-gray-400 mt-2 leading-relaxed px-1">{{ pay_summary.policy_note }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Signature row -->
+            <div class="grid grid-cols-2 gap-4 pt-2">
+                <div class="text-center">
+                    <div class="border-t border-gray-300 pt-2 mt-6"></div>
+                    <div class="text-xs text-gray-500">Employer Signature</div>
+                </div>
+                <div class="text-center">
+                    <div class="border-t border-gray-300 pt-2 mt-6"></div>
+                    <div class="text-xs text-gray-500">Employee Signature</div>
+                </div>
+            </div>
+
+            <!-- Footer stamp -->
+            <div class="text-center text-xs text-gray-400 pt-1 border-t border-gray-100">
+                Generated by SmartWorker · {{ date.today().strftime('%d %B %Y') }}
+            </div>
+        </div>
+    </div>
+    <!-- ===== END SLIP CARD ===== -->
+
+    <!-- Action buttons (hidden on print) -->
+    <div class="grid grid-cols-2 gap-3 no-print">
+        <button onclick="printSlip()"
+                class="flex items-center justify-center p-4 bg-primary text-white rounded-2xl font-medium shadow-lg hover:bg-accent transition-colors">
+            <i class="fa-solid fa-print mr-2"></i>Print Slip
+        </button>
+        <button onclick="downloadPDF()"
+                class="flex items-center justify-center p-4 bg-red-600 text-white rounded-2xl font-medium shadow-lg hover:bg-red-700 transition-colors">
+            <i class="fa-solid fa-file-pdf mr-2"></i>Save PDF
+        </button>
+    </div>
+
+    <a href="{{ url_for('payroll', month=month, year=year) }}"
+       class="no-print flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium hover:border-accent hover:text-accent transition-colors">
+        <i class="fa-solid fa-arrow-left mr-2"></i>Back to Payroll — {{ month_name }} {{ year }}
+    </a>
+</main>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function printSlip() {
+    window.print();
+}
+
+function downloadPDF() {
+    const btn = document.querySelectorAll('.no-print');
+    btn.forEach(el => el.style.visibility = 'hidden');
+
+    const element = document.getElementById('payroll-slip-content');
+    html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+    }).then(canvas => {
+        btn.forEach(el => el.style.visibility = '');
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        const pageW = 210;
+        const margins = 15;
+        const imgW = pageW - margins * 2;
+        const imgH = (canvas.height * imgW) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', margins, 15, imgW, imgH);
+        pdf.save('{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf');
+    }).catch(() => {
+        btn.forEach(el => el.style.visibility = '');
+        alert('PDF generation failed. Use Print instead.');
+    });
+}
+</script>
+{% endblock %}
