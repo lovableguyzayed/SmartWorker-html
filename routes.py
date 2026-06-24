@@ -703,19 +703,19 @@ def calculate_pay_summary(worker, attendance_records):
 
     # Closure day extra pay
     closure_extra_pay = 0.0
+    closure_day_breakdown = []  # [{'date': date, 'reason': str, 'amount': float}]
     if getattr(worker, 'closure_extra_pay_enabled', False) and attendance_records:
         record_dates = [r.date for r in attendance_records]
         month_start = min(record_dates).replace(day=1)
         _, _days = _cal.monthrange(month_start.year, month_start.month)
         month_end = month_start.replace(day=_days)
-        closure_day_dates = {
-            c.date for c in ClosureDay.query.filter(
-                ClosureDay.date >= month_start,
-                ClosureDay.date <= month_end,
-                ClosureDay.allow_attendance == True,
-            ).all()
-        }
-        if closure_day_dates:
+        closure_records_list = ClosureDay.query.filter(
+            ClosureDay.date >= month_start,
+            ClosureDay.date <= month_end,
+            ClosureDay.allow_attendance == True,
+        ).all()
+        closure_day_info = {c.date: c.reason for c in closure_records_list}
+        if closure_day_info:
             pct = float(getattr(worker, 'closure_extra_percentage', 0) or 0) / 100.0
             method = (getattr(worker, 'closure_calculation_method', 'daily_percent') or 'daily_percent')
             mwd = int(getattr(worker, 'monthly_working_days', 26) or 26) or 26
@@ -730,29 +730,37 @@ def calculate_pay_summary(worker, attendance_records):
             else:
                 _daily_base = 0.0
 
-            _hourly_base = _daily_base / swh
+            _hourly_base = _daily_base / swh if swh else 0.0
             _minute_base = _hourly_base / 60.0
 
             for record in attendance_records:
-                if record.date not in closure_day_dates:
+                if record.date not in closure_day_info:
                     continue
                 if record.status not in ('present', 'late'):
                     continue
+                day_bonus = 0.0
                 if method == 'daily_percent':
                     if worker.pay_type == 'daily':
                         day_pay, _ = calculate_daily_wage_for_record(worker, record)
                     else:
                         day_pay = _daily_base
-                    closure_extra_pay += day_pay * pct
+                    day_bonus = day_pay * pct
                 else:
                     if record.check_in_time and record.check_out_time and record.check_out_time > record.check_in_time:
                         rec_mins = int((record.check_out_time - record.check_in_time).total_seconds() // 60)
                     else:
                         rec_mins = swh * 60
                     if method == 'hourly_percent':
-                        closure_extra_pay += (rec_mins / 60.0) * _hourly_base * pct
+                        day_bonus = (rec_mins / 60.0) * _hourly_base * pct
                     else:
-                        closure_extra_pay += rec_mins * _minute_base * pct
+                        day_bonus = rec_mins * _minute_base * pct
+                if day_bonus > 0:
+                    closure_extra_pay += day_bonus
+                    closure_day_breakdown.append({
+                        'date': record.date,
+                        'reason': closure_day_info[record.date],
+                        'amount': round(day_bonus, 2),
+                    })
 
             if closure_extra_pay > 0:
                 policy_notes.append(
@@ -787,6 +795,8 @@ def calculate_pay_summary(worker, attendance_records):
         'leave_days': leave_days,
         'extra_leave_days': extra_leave_days,
         'policy_note': policy_note,
+        'closure_extra_pay': round(closure_extra_pay, 2),
+        'closure_day_breakdown': closure_day_breakdown,
     }
 
 @app.route('/add_worker', methods=['GET', 'POST'])
