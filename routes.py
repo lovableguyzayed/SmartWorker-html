@@ -862,17 +862,29 @@ def add_worker():
             if request.form.get('leave_deduction'):
                 worker.leave_deduction_per_day = parse_float(request.form.get('leave_deduction'))
             worker.leave_policy_enabled = 'leave_policy_enabled' in request.form
+            if request.form.get('start_time'):
+                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
+            if request.form.get('end_time'):
+                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            worker.overtime_enabled = 'overtime_enabled' in request.form
+            if worker.overtime_enabled and request.form.get('overtime_rate'):
+                worker.overtime_rate = parse_float(request.form.get('overtime_rate'))
+                worker.overtime_type = request.form.get('overtime_type', 'hour')
+            worker.late_policy_enabled = 'late_policy_enabled' in request.form
+            if worker.late_policy_enabled and request.form.get('late_deduction'):
+                worker.late_deduction_per_day = parse_float(request.form.get('late_deduction'))
+            selected_late_type = request.form.get('late_deduction_type', 'day')
+            worker.late_deduction_type = selected_late_type if selected_late_type in ('day', 'hour', 'minute') else 'day'
+            # Closure day extra pay settings (monthly only)
+            worker.closure_extra_pay_enabled = 'closure_extra_pay_enabled' in request.form
+            raw_method = request.form.get('closure_calculation_method', 'daily_percent')
+            worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
+            worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
         elif worker.pay_type == 'hourly':
             worker.hourly_rate = parse_float(request.form.get('hourly_rate'))
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
         elif worker.pay_type == 'project':
             worker.project_rate = parse_float(request.form.get('project_rate'))
-
-        # Closure day extra pay settings (apply for all pay types)
-        worker.closure_extra_pay_enabled = 'closure_extra_pay_enabled' in request.form
-        raw_method = request.form.get('closure_calculation_method', 'daily_percent')
-        worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
-        worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
 
         # Optional profile photo upload
         profile_image = request.files.get('profile_image')
@@ -964,17 +976,29 @@ def edit_worker(worker_id):
             if request.form.get('leave_deduction'):
                 worker.leave_deduction_per_day = parse_float(request.form.get('leave_deduction'))
             worker.leave_policy_enabled = 'leave_policy_enabled' in request.form
+            if request.form.get('start_time'):
+                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
+            if request.form.get('end_time'):
+                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            worker.overtime_enabled = 'overtime_enabled' in request.form
+            if worker.overtime_enabled and request.form.get('overtime_rate'):
+                worker.overtime_rate = parse_float(request.form.get('overtime_rate'))
+                worker.overtime_type = request.form.get('overtime_type', 'hour')
+            worker.late_policy_enabled = 'late_policy_enabled' in request.form
+            if worker.late_policy_enabled and request.form.get('late_deduction'):
+                worker.late_deduction_per_day = parse_float(request.form.get('late_deduction'))
+            selected_late_type = request.form.get('late_deduction_type', 'day')
+            worker.late_deduction_type = selected_late_type if selected_late_type in ('day', 'hour', 'minute') else 'day'
+            # Closure day extra pay settings (monthly only)
+            worker.closure_extra_pay_enabled = 'closure_extra_pay_enabled' in request.form
+            raw_method = request.form.get('closure_calculation_method', 'daily_percent')
+            worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
+            worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
         elif worker.pay_type == 'hourly':
             worker.hourly_rate = parse_float(request.form.get('hourly_rate'))
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
         elif worker.pay_type == 'project':
             worker.project_rate = parse_float(request.form.get('project_rate'))
-
-        # Closure day extra pay settings (apply for all pay types)
-        worker.closure_extra_pay_enabled = 'closure_extra_pay_enabled' in request.form
-        raw_method = request.form.get('closure_calculation_method', 'daily_percent')
-        worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
-        worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
 
         # Optional profile photo upload (replaces existing photo)
         profile_image = request.files.get('profile_image')
