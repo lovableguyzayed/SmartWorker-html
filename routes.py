@@ -1153,12 +1153,20 @@ def worker_attendance(worker_id):
     
     attendance_summary = calculate_attendance_summary(attendance_records)
     pay_summary = calculate_pay_summary(worker, attendance_records)
-    
+
+    # Closure days for the month — keyed by day-of-month for easy template lookup
+    closure_days_list = ClosureDay.query.filter(
+        ClosureDay.date >= start_date,
+        ClosureDay.date <= end_date,
+    ).all()
+    closure_days = {c.date.day: c for c in closure_days_list}
+
     return render_template('worker_attendance.html',
                          worker=worker,
                          calendar_data=calendar_data,
                          attendance_summary=attendance_summary,
                          pay_summary=pay_summary,
+                         closure_days=closure_days,
                          month=month,
                          year=year,
                          start_date=start_date,

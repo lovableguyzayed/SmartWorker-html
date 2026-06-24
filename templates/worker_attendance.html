@@ -64,6 +64,19 @@
 .status-indicator.absent { background-color: #ef4444; }
 .status-indicator.late { background-color: #f59e0b; }
 .status-indicator.leave { background-color: #3b82f6; }
+
+.calendar-day.closure-day {
+    box-shadow: inset 0 0 0 2px #f97316;
+}
+.closure-dot {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #f97316;
+}
 </style>
 {% endblock %}
 
@@ -151,10 +164,16 @@
                 {% set current_date = start_calendar + timedelta(days=i) %}
                 {% set is_current_month = current_date.month == start_date.month %}
                 {% set attendance = calendar_data.get(current_date.day) if is_current_month else None %}
+                {% set closure = closure_days.get(current_date.day) if is_current_month else None %}
                 
                 <div class="calendar-day {{ 'other-month' if not is_current_month else '' }} 
-                           {{ attendance.status if attendance and is_current_month else '' }}">
+                           {{ attendance.status if attendance and is_current_month else '' }}
+                           {{ 'closure-day' if closure else '' }}"
+                     {% if closure %}title="{{ closure.reason }} ({{ closure.type.title() }})"{% endif %}>
                     <span>{{ current_date.day }}</span>
+                    {% if closure %}
+                        <div class="closure-dot"></div>
+                    {% endif %}
                     {% if attendance and is_current_month %}
                         <div class="status-indicator {{ attendance.status }}"></div>
                     {% endif %}
@@ -163,7 +182,7 @@
         </div>
         
         <!-- Legend -->
-        <div class="flex items-center justify-center space-x-6 mt-4 text-xs">
+        <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-4 text-xs">
             <div class="flex items-center space-x-1">
                 <div class="w-3 h-3 bg-green-500 rounded-full"></div>
                 <span class="text-gray-600">Present</span>
@@ -179,6 +198,10 @@
             <div class="flex items-center space-x-1">
                 <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
                 <span class="text-gray-600">Leave</span>
+            </div>
+            <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+                <span class="text-gray-600">Closure Day</span>
             </div>
         </div>
     </section>
@@ -350,6 +373,13 @@
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Project Amount</span>
                     <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                </div>
+                {% endif %}
+
+                {% if pay_summary.closure_extra_pay is defined and pay_summary.closure_extra_pay > 0 %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Closure Bonus</span>
+                    <span class="font-semibold text-orange-600">+₹{{ "%.0f"|format(pay_summary.closure_extra_pay) }}</span>
                 </div>
                 {% endif %}
 

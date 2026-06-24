@@ -146,6 +146,11 @@
                     <div class="flex-1">
                         <div class="font-semibold text-gray-800">{{ data.worker.full_name }}</div>
                         <div class="text-sm text-gray-600">{{ data.worker.worker_id }} • {{ data.worker.department }}</div>
+                        {% if closure and closure.allow_attendance and data.attendance and data.attendance.status in ('present', 'late') and data.worker.closure_extra_pay_enabled %}
+                            <div class="inline-flex items-center mt-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                                <i class="fa-solid fa-star mr-1 text-orange-500"></i>Closure Bonus
+                            </div>
+                        {% endif %}
                         {% if data.attendance and data.attendance.check_in_time %}
                             <div class="text-xs text-gray-500">Check-in: {{ data.attendance.check_in_time.strftime('%H:%M') }}</div>
                         {% endif %}
