@@ -1592,13 +1592,16 @@ def payroll_export():
         'Pay Type', 'Month', 'Year',
         'Total Marked Days', 'Paid Days',
         'Gross Pay (INR)', 'Deductions (INR)', 'Net Payable (INR)',
-        'Overtime Minutes', 'Status',
+        'Overtime Minutes', 'Closure Bonus (INR)', 'Status',
     ])
 
+    total_closure_bonus = 0.0
     for row in rows:
         w = row['worker']
         pay = row['pay_summary']
         att = row['att_summary']
+        closure_bonus = pay.get('closure_extra_pay', 0.0)
+        total_closure_bonus += closure_bonus
         writer.writerow([
             w.worker_id,
             w.full_name,
@@ -1613,6 +1616,7 @@ def payroll_export():
             row['deductions'],
             row['net_pay'],
             pay['overtime_minutes'],
+            f"{closure_bonus:.2f}" if closure_bonus else '',
             row['status'],
         ])
 
@@ -1624,6 +1628,7 @@ def payroll_export():
         totals['total_deductions'],
         totals['total_net'],
         '',
+        f"{total_closure_bonus:.2f}" if total_closure_bonus else '',
         f"{totals['paid_count']} paid / {totals['pending_count']} pending",
     ])
 
