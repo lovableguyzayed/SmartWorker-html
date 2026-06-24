@@ -274,6 +274,76 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Closure Day & Half-Day Payment Rules -->
+                <div class="bg-orange-50 rounded-2xl p-4 border border-orange-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-calendar-xmark text-orange-600"></i>
+                            <h4 class="text-md font-semibold text-gray-800">Closure Day Payment</h4>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="closure_extra_pay_enabled" id="dw-closure-toggle"
+                                   {% if worker.closure_extra_pay_enabled %}checked{% endif %}
+                                   class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">Enable extra pay when present on a closure/holiday day</p>
+
+                    <div id="dw-closure-fields" class="space-y-3 {{ '' if worker.closure_extra_pay_enabled else 'hidden' }}">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Closure Day Calculation Basis</label>
+                            <div class="space-y-2">
+                                <label class="flex items-start space-x-3 p-3 bg-white rounded-xl border border-orange-200 cursor-pointer">
+                                    <input type="radio" name="closure_calculation_method" value="daily_percent"
+                                           {% if not worker.closure_calculation_method or worker.closure_calculation_method == 'daily_percent' %}checked{% endif %}
+                                           class="mt-0.5 text-orange-500 focus:ring-orange-400">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-800">Fixed % on Daily Rate</div>
+                                        <div class="text-xs text-gray-500">Flat bonus on top of full-day salary</div>
+                                    </div>
+                                </label>
+                                <label class="flex items-start space-x-3 p-3 bg-white rounded-xl border border-orange-200 cursor-pointer">
+                                    <input type="radio" name="closure_calculation_method" value="hourly_percent"
+                                           {% if worker.closure_calculation_method == 'hourly_percent' %}checked{% endif %}
+                                           class="mt-0.5 text-orange-500 focus:ring-orange-400">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-800">Actual Hours Worked + %</div>
+                                        <div class="text-xs text-gray-500">Hours logged × hourly rate × (1 + %)</div>
+                                    </div>
+                                </label>
+                                <label class="flex items-start space-x-3 p-3 bg-white rounded-xl border border-orange-200 cursor-pointer">
+                                    <input type="radio" name="closure_calculation_method" value="minute_percent"
+                                           {% if worker.closure_calculation_method == 'minute_percent' %}checked{% endif %}
+                                           class="mt-0.5 text-orange-500 focus:ring-orange-400">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-800">Actual Minutes Worked + %</div>
+                                        <div class="text-xs text-gray-500">Minutes logged × minute rate × (1 + %)</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Additional Percentage (%)</label>
+                            <input type="number" name="closure_extra_percentage"
+                                   value="{{ worker.closure_extra_percentage if worker.closure_extra_percentage is not none else 0 }}"
+                                   min="0" max="500" step="0.01" placeholder="e.g. 10 for 10%"
+                                   class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                            <div class="text-xs text-gray-500 mt-1">Applies to all three methods above</div>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-3 border border-orange-100">
+                            <div class="text-xs font-medium text-orange-700 mb-1">
+                                <i class="fa-solid fa-circle-info mr-1"></i>Half-Day on Closure Day
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                For "Fixed %" method, the bonus applies to the half-day base amount. For "Hours/Minutes" methods, only actual time logged is used.
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     </form>
@@ -341,6 +411,16 @@ document.addEventListener('DOMContentLoaded', function() {
         lateToggle.addEventListener('change', syncPolicyVisibility);
     }
     syncDailyWageLayout();
+
+    // Closure day toggle
+    const dwClosureToggle = document.getElementById('dw-closure-toggle');
+    const dwClosureFields = document.getElementById('dw-closure-fields');
+    function syncDwClosureFields() {
+        if (!dwClosureToggle || !dwClosureFields) return;
+        dwClosureFields.classList.toggle('hidden', !dwClosureToggle.checked);
+    }
+    if (dwClosureToggle) dwClosureToggle.addEventListener('change', syncDwClosureFields);
+    syncDwClosureFields();
 
     if (photoTrigger && photoInput && photoPreview && photoFallback) {
         photoTrigger.addEventListener('click', function() {

@@ -62,6 +62,15 @@ class Worker(db.Model):
     half_day_rate = db.Column(db.Float, nullable=True)
     half_day_grace_minutes = db.Column(db.Integer, default=20)
     
+    # Monthly worker rate derivation helpers
+    monthly_working_days = db.Column(db.Integer, default=26)
+    standard_working_hours = db.Column(db.Integer, default=8)
+
+    # Closure day payment settings
+    closure_extra_pay_enabled = db.Column(db.Boolean, default=False)
+    closure_calculation_method = db.Column(db.String(20), default='daily_percent')
+    closure_extra_percentage = db.Column(db.Float, default=0.0)
+
     # Leave policy (for salaried employees)
     allowed_leaves_per_month = db.Column(db.Integer, default=2)
     leave_deduction_per_day = db.Column(db.Float, nullable=True)

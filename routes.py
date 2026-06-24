@@ -701,6 +701,66 @@ def calculate_pay_summary(worker, attendance_records):
     if overtime_pay > 0:
         policy_notes.append('Overtime policy added extra pay.')
 
+    # Closure day extra pay
+    closure_extra_pay = 0.0
+    if getattr(worker, 'closure_extra_pay_enabled', False) and attendance_records:
+        record_dates = [r.date for r in attendance_records]
+        month_start = min(record_dates).replace(day=1)
+        _, _days = _cal.monthrange(month_start.year, month_start.month)
+        month_end = month_start.replace(day=_days)
+        closure_day_dates = {
+            c.date for c in ClosureDay.query.filter(
+                ClosureDay.date >= month_start,
+                ClosureDay.date <= month_end,
+                ClosureDay.allow_attendance == True,
+            ).all()
+        }
+        if closure_day_dates:
+            pct = float(getattr(worker, 'closure_extra_percentage', 0) or 0) / 100.0
+            method = (getattr(worker, 'closure_calculation_method', 'daily_percent') or 'daily_percent')
+            mwd = int(getattr(worker, 'monthly_working_days', 26) or 26) or 26
+            swh = int(getattr(worker, 'standard_working_hours', 8) or 8) or 8
+
+            if worker.pay_type == 'daily':
+                _daily_base = float(worker.daily_rate or 0)
+            elif worker.pay_type == 'monthly':
+                _daily_base = float(worker.monthly_salary or 0) / mwd
+            elif worker.pay_type == 'hourly':
+                _daily_base = float(worker.hourly_rate or 0) * swh
+            else:
+                _daily_base = 0.0
+
+            _hourly_base = _daily_base / swh
+            _minute_base = _hourly_base / 60.0
+
+            for record in attendance_records:
+                if record.date not in closure_day_dates:
+                    continue
+                if record.status not in ('present', 'late'):
+                    continue
+                if method == 'daily_percent':
+                    if worker.pay_type == 'daily':
+                        day_pay, _ = calculate_daily_wage_for_record(worker, record)
+                    else:
+                        day_pay = _daily_base
+                    closure_extra_pay += day_pay * pct
+                else:
+                    if record.check_in_time and record.check_out_time and record.check_out_time > record.check_in_time:
+                        rec_mins = int((record.check_out_time - record.check_in_time).total_seconds() // 60)
+                    else:
+                        rec_mins = swh * 60
+                    if method == 'hourly_percent':
+                        closure_extra_pay += (rec_mins / 60.0) * _hourly_base * pct
+                    else:
+                        closure_extra_pay += rec_mins * _minute_base * pct
+
+            if closure_extra_pay > 0:
+                policy_notes.append(
+                    f'Closure day extra pay ({getattr(worker, "closure_extra_percentage", 0)}% via {method.replace("_", " ")}) applied.'
+                )
+
+    base_pay += closure_extra_pay
+
     estimated_pay = base_pay + overtime_pay - deductions
     policy_note = ' '.join(policy_notes)
     
@@ -796,15 +856,24 @@ def add_worker():
             worker.half_day_grace_minutes = min(max(parse_int(request.form.get('half_day_grace_minutes'), 20), 15), 25)
         elif worker.pay_type == 'monthly':
             worker.monthly_salary = parse_float(request.form.get('monthly_salary'))
+            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
+            worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
             if request.form.get('leave_deduction'):
                 worker.leave_deduction_per_day = parse_float(request.form.get('leave_deduction'))
             worker.leave_policy_enabled = 'leave_policy_enabled' in request.form
         elif worker.pay_type == 'hourly':
             worker.hourly_rate = parse_float(request.form.get('hourly_rate'))
+            worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
         elif worker.pay_type == 'project':
             worker.project_rate = parse_float(request.form.get('project_rate'))
-        
+
+        # Closure day extra pay settings (apply for all pay types)
+        worker.closure_extra_pay_enabled = 'closure_extra_pay_enabled' in request.form
+        raw_method = request.form.get('closure_calculation_method', 'daily_percent')
+        worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
+        worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
+
         # Optional profile photo upload
         profile_image = request.files.get('profile_image')
         if profile_image and profile_image.filename:
@@ -889,15 +958,24 @@ def edit_worker(worker_id):
             worker.half_day_grace_minutes = min(max(parse_int(request.form.get('half_day_grace_minutes'), 20), 15), 25)
         elif worker.pay_type == 'monthly':
             worker.monthly_salary = parse_float(request.form.get('monthly_salary'))
+            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
+            worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
             if request.form.get('leave_deduction'):
                 worker.leave_deduction_per_day = parse_float(request.form.get('leave_deduction'))
             worker.leave_policy_enabled = 'leave_policy_enabled' in request.form
         elif worker.pay_type == 'hourly':
             worker.hourly_rate = parse_float(request.form.get('hourly_rate'))
+            worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
         elif worker.pay_type == 'project':
             worker.project_rate = parse_float(request.form.get('project_rate'))
-        
+
+        # Closure day extra pay settings (apply for all pay types)
+        worker.closure_extra_pay_enabled = 'closure_extra_pay_enabled' in request.form
+        raw_method = request.form.get('closure_calculation_method', 'daily_percent')
+        worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
+        worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
+
         # Optional profile photo upload (replaces existing photo)
         profile_image = request.files.get('profile_image')
         if profile_image and profile_image.filename:

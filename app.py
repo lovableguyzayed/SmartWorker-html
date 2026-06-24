@@ -139,6 +139,36 @@ with app.app_context():
             )
             db.session.commit()
             logging.info("Added half_day_grace_minutes column to workers")
+        if 'monthly_working_days' not in worker_columns:
+            db.session.execute(
+                text("ALTER TABLE workers ADD COLUMN monthly_working_days INTEGER DEFAULT 26")
+            )
+            db.session.commit()
+            logging.info("Added monthly_working_days column to workers")
+        if 'standard_working_hours' not in worker_columns:
+            db.session.execute(
+                text("ALTER TABLE workers ADD COLUMN standard_working_hours INTEGER DEFAULT 8")
+            )
+            db.session.commit()
+            logging.info("Added standard_working_hours column to workers")
+        if 'closure_extra_pay_enabled' not in worker_columns:
+            db.session.execute(
+                text("ALTER TABLE workers ADD COLUMN closure_extra_pay_enabled BOOLEAN NOT NULL DEFAULT false")
+            )
+            db.session.commit()
+            logging.info("Added closure_extra_pay_enabled column to workers")
+        if 'closure_calculation_method' not in worker_columns:
+            db.session.execute(
+                text("ALTER TABLE workers ADD COLUMN closure_calculation_method VARCHAR(20) DEFAULT 'daily_percent'")
+            )
+            db.session.commit()
+            logging.info("Added closure_calculation_method column to workers")
+        if 'closure_extra_percentage' not in worker_columns:
+            db.session.execute(
+                text("ALTER TABLE workers ADD COLUMN closure_extra_percentage FLOAT DEFAULT 0.0")
+            )
+            db.session.commit()
+            logging.info("Added closure_extra_percentage column to workers")
     
     logging.info("Database tables created")
     
