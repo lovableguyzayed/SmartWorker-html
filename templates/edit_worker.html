@@ -433,7 +433,7 @@
                     </div>
                 </div>
 
-                <!-- Monthly Policy Settings (Working Hours / Overtime / Late Fine for Monthly Salary) -->
+                <!-- Monthly Policy Settings (Working Hours / Absence / Overtime / Late Fine for Monthly Salary) -->
                 <div id="monthly-policy-settings" class="space-y-4 hidden">
                     <!-- Working Hours -->
                     <div class="bg-blue-50 rounded-2xl p-4 border border-blue-200">
@@ -451,6 +451,42 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">End Time</label>
                                 <input type="time" name="end_time" value="{{ worker.end_time.strftime('%H:%M') if worker and worker.end_time else '18:00' }}"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Absence Policy (Monthly) -->
+                    <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
+                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                            <i class="fa-solid fa-user-slash text-red-600 mr-2"></i>
+                            Absence Policy
+                        </h4>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-red-200">
+                                <span class="text-sm font-medium text-gray-700">No Work, No Pay</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="no_work_no_pay" {% if not worker or worker.no_work_no_pay %}checked{% endif %} class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Half Day Rate</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <input type="number" name="half_day_rate"
+                                           value="{{ worker.half_day_rate if worker and worker.half_day_rate is not none else '' }}"
+                                           step="0.01" min="0" placeholder="Half day payment amount"
+                                           class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                </div>
+                                <div class="text-xs text-gray-600 mt-1">Used when worked time is up to 50% of shift hours.</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Half Day Grace Window (Minutes)</label>
+                                <input type="number" name="half_day_grace_minutes"
+                                       value="{{ worker.half_day_grace_minutes if worker and worker.half_day_grace_minutes else 20 }}"
+                                       min="15" max="25" step="1"
+                                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                                <div class="text-xs text-gray-600 mt-1">Half-day rate remains active for this many minutes after half-shift time.</div>
                             </div>
                         </div>
                     </div>

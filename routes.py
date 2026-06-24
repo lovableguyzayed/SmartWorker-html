@@ -876,6 +876,10 @@ def add_worker():
                 worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
             if request.form.get('end_time'):
                 worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            worker.no_work_no_pay = 'no_work_no_pay' in request.form
+            if request.form.get('half_day_rate'):
+                worker.half_day_rate = parse_float(request.form.get('half_day_rate'))
+            worker.half_day_grace_minutes = min(max(parse_int(request.form.get('half_day_grace_minutes'), 20), 15), 25)
             worker.overtime_enabled = 'overtime_enabled' in request.form
             if worker.overtime_enabled and request.form.get('overtime_rate'):
                 worker.overtime_rate = parse_float(request.form.get('overtime_rate'))
@@ -990,6 +994,10 @@ def edit_worker(worker_id):
                 worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
             if request.form.get('end_time'):
                 worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            worker.no_work_no_pay = 'no_work_no_pay' in request.form
+            if request.form.get('half_day_rate'):
+                worker.half_day_rate = parse_float(request.form.get('half_day_rate'))
+            worker.half_day_grace_minutes = min(max(parse_int(request.form.get('half_day_grace_minutes'), 20), 15), 25)
             worker.overtime_enabled = 'overtime_enabled' in request.form
             if worker.overtime_enabled and request.form.get('overtime_rate'):
                 worker.overtime_rate = parse_float(request.form.get('overtime_rate'))
