@@ -57,8 +57,8 @@
                             {{ worker.full_name[0] }}
                         </div>
                     {% endif %}
-                    <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
-                        <i class="fa-solid fa-check text-xs text-white"></i>
+                    <div class="absolute -bottom-1 -right-1 w-6 h-6 {{ 'bg-green-400' if worker.status == 'active' else 'bg-gray-400' }} rounded-full border-2 border-white flex items-center justify-center">
+                        <i class="fa-solid {{ 'fa-check' if worker.status == 'active' else 'fa-pause' }} text-xs text-white"></i>
                     </div>
                 </div>
                 

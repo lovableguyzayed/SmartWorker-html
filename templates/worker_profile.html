@@ -18,7 +18,7 @@
             <a href="{{ url_for('edit_worker', worker_id=worker.id) }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                 <i class="fa-solid fa-edit text-lg"></i>
             </a>
-            <button class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <button onclick="showWorkerActionsModal()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                 <i class="fa-solid fa-ellipsis-v text-lg"></i>
             </button>
         </div>
@@ -34,8 +34,8 @@
                         {{ worker.full_name[0] }}
                     </div>
                 {% endif %}
-                <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
-                    <i class="fa-solid fa-check text-xs text-white"></i>
+                <div class="absolute -bottom-1 -right-1 w-8 h-8 {{ 'bg-green-400' if worker.status == 'active' else 'bg-gray-400' }} rounded-full border-2 border-white flex items-center justify-center">
+                    <i class="fa-solid {{ 'fa-check' if worker.status == 'active' else 'fa-pause' }} text-xs text-white"></i>
                 </div>
             </div>
             <div class="flex-1">
@@ -260,4 +260,75 @@
     </section>
     {% endif %}
 </main>
+
+<!-- Worker Actions Modal -->
+<div id="worker-actions-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-end justify-center min-h-screen pb-8 px-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
+            <div class="text-center mb-5">
+                <div class="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-user text-gray-600 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800">{{ worker.full_name }}</h3>
+                <p class="text-sm text-gray-500">{{ worker.worker_id }}</p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+                <a href="{{ url_for('edit_worker', worker_id=worker.id) }}"
+                   class="w-full flex items-center space-x-3 p-4 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors">
+                    <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-pen text-blue-600"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="font-medium text-gray-800">Edit Worker</div>
+                        <div class="text-xs text-gray-500">Update profile details</div>
+                    </div>
+                </a>
+
+                <form method="POST" action="{{ url_for('deactivate_worker', worker_id=worker.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit"
+                            class="w-full flex items-center space-x-3 p-4 {{ 'bg-amber-50 hover:bg-amber-100' if worker.status == 'active' else 'bg-green-50 hover:bg-green-100' }} rounded-2xl transition-colors">
+                        <div class="w-10 h-10 {{ 'bg-amber-100' if worker.status == 'active' else 'bg-green-100' }} rounded-xl flex items-center justify-center shrink-0">
+                            <i class="fa-solid {{ 'fa-user-slash text-amber-600' if worker.status == 'active' else 'fa-user-check text-green-600' }}"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="font-medium text-gray-800">{{ 'Deactivate Worker' if worker.status == 'active' else 'Reactivate Worker' }}</div>
+                            <div class="text-xs text-gray-500">{{ 'Mark as inactive — keeps all records' if worker.status == 'active' else 'Mark as active again' }}</div>
+                        </div>
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ url_for('delete_worker', worker_id=worker.id) }}"
+                      onsubmit="return confirm('Permanently delete {{ worker.full_name }}? This will erase all their attendance and payroll records and cannot be undone.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit"
+                            class="w-full flex items-center space-x-3 p-4 bg-red-50 hover:bg-red-100 rounded-2xl transition-colors">
+                        <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-trash text-red-600"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="font-medium text-red-700">Delete Worker</div>
+                            <div class="text-xs text-gray-500">Permanently remove — cannot be undone</div>
+                        </div>
+                    </button>
+                </form>
+            </div>
+
+            <button onclick="hideWorkerActionsModal()"
+                    class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showWorkerActionsModal() {
+    document.getElementById('worker-actions-modal').classList.remove('hidden');
+}
+function hideWorkerActionsModal() {
+    document.getElementById('worker-actions-modal').classList.add('hidden');
+}
+</script>
 {% endblock %}

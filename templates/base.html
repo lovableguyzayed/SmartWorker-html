@@ -173,11 +173,21 @@
         {% if messages %}
             <div id="flash-messages" class="fixed top-4 right-4 z-50 space-y-2">
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} bg-{% if category == 'error' %}red{% else %}green{% endif %}-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-sm">
-                        <div class="flex items-center justify-between">
-                            <span>{{ message }}</span>
-                            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                                <i class="fa-solid fa-times"></i>
+                    {% if category == 'error' %}
+                        {% set bg = 'bg-red-500' %}{% set icon = 'fa-circle-xmark' %}
+                    {% elif category == 'warning' %}
+                        {% set bg = 'bg-amber-500' %}{% set icon = 'fa-triangle-exclamation' %}
+                    {% elif category == 'success' %}
+                        {% set bg = 'bg-green-500' %}{% set icon = 'fa-circle-check' %}
+                    {% else %}
+                        {% set bg = 'bg-blue-500' %}{% set icon = 'fa-circle-info' %}
+                    {% endif %}
+                    <div class="alert {{ bg }} text-white px-4 py-3 rounded-xl shadow-xl max-w-sm border border-white/20">
+                        <div class="flex items-start gap-3">
+                            <i class="fa-solid {{ icon }} mt-0.5 shrink-0"></i>
+                            <span class="flex-1 text-sm leading-snug">{{ message }}</span>
+                            <button onclick="this.closest('.alert').remove()" class="text-white/70 hover:text-white shrink-0 ml-1">
+                                <i class="fa-solid fa-times text-xs"></i>
                             </button>
                         </div>
                     </div>
@@ -212,13 +222,13 @@
                     </a>
 
                     <a href="{{ url_for('attendance') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if attendance_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-xl"></i></span>
-                        <span class="app-nav-label">Barcode</span>
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
+                        <span class="app-nav-label">Attend</span>
                     </a>
 
                     <a href="{{ url_for('closures') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-receipt text-xl"></i></span>
-                        <span class="app-nav-label">Transactions</span>
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-times text-xl"></i></span>
+                        <span class="app-nav-label">Closures</span>
                     </a>
 
                     <a href="{{ url_for('profile') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if profile_active else '' }}">

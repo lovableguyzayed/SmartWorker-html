@@ -1115,6 +1115,32 @@ def closures():
     
     return render_template('closures.html', closures=upcoming_closures, date=date)
 
+@app.route('/worker/<int:worker_id>/deactivate', methods=['POST'])
+@login_required
+def deactivate_worker(worker_id):
+    worker = Worker.query.get_or_404(worker_id)
+    if worker.status == 'active':
+        worker.status = 'inactive'
+        msg = f'{worker.full_name} has been deactivated.'
+    else:
+        worker.status = 'active'
+        msg = f'{worker.full_name} has been reactivated.'
+    db.session.commit()
+    flash(msg, 'success')
+    return redirect(url_for('worker_profile', worker_id=worker_id))
+
+@app.route('/worker/<int:worker_id>/delete', methods=['POST'])
+@login_required
+def delete_worker(worker_id):
+    worker = Worker.query.get_or_404(worker_id)
+    name = worker.full_name
+    AttendanceRecord.query.filter_by(worker_id=worker_id).delete()
+    PayrollRecord.query.filter_by(worker_id=worker_id).delete()
+    db.session.delete(worker)
+    db.session.commit()
+    flash(f'{name} has been permanently deleted.', 'success')
+    return redirect(url_for('workers'))
+
 @app.route('/closures/<int:closure_id>/delete', methods=['POST'])
 @login_required
 def delete_closure(closure_id):
