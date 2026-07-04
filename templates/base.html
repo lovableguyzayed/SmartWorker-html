@@ -14,30 +14,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SmartWorker">
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: "#001F3F",
-                        accent: "#007BFF",
-                        lightGray: "#D3D3D3"
-                    },
-                    fontFamily: {
-                        sans: ["Inter", "sans-serif"]
-                    }
-                }
-            }
-        };
-    </script>
-    
-    <!-- Font Awesome -->
-    <script>window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    
-    <!-- Google Fonts -->
+    <!-- Tailwind CSS (built locally — works fully offline) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tailwind.min.css') }}">
+
+    <!-- Font Awesome (local webfonts — works fully offline) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+
+    <!-- Google Fonts (progressive enhancement; system font fallback offline) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&display=swap">
@@ -144,10 +127,6 @@
 
         .app-nav-fab-active {
             box-shadow: 0 10px 20px rgba(0, 31, 63, 0.28);
-        }
-        
-        .fa, .fas, .far, .fal, .fab {
-            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
         }
         
         ::-webkit-scrollbar {

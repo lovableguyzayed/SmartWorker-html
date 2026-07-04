@@ -3,7 +3,7 @@
 {% block title %}QR Scanner - SmartWorker{% endblock %}
 
 {% block head %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
 <style>
 #qr-reader { border-radius: 1.5rem; overflow: hidden; }
 #qr-reader video { border-radius: 1.5rem; object-fit: cover; }

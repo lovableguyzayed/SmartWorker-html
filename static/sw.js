@@ -1,11 +1,18 @@
-const CACHE_NAME = 'smartworker-v3';
+const CACHE_NAME = 'smartworker-v4';
 const STATIC_ASSETS = [
   '/login',
   '/static/css/custom.css',
   '/static/js/app.js',
   '/static/js/offline-sync.js',
   '/static/images/logo.png',
-  '/static/manifest.json'
+  '/static/manifest.json',
+  '/static/vendor/tailwind.min.css',
+  '/static/vendor/fontawesome/css/all.min.css',
+  '/static/vendor/fontawesome/webfonts/fa-solid-900.woff2',
+  '/static/vendor/fontawesome/webfonts/fa-regular-400.woff2',
+  '/static/vendor/html5-qrcode.min.js',
+  '/static/vendor/jspdf.umd.min.js',
+  '/static/vendor/html2canvas.min.js'
 ];
 
 self.addEventListener('install', (event) => {
