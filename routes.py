@@ -191,13 +191,19 @@ def calculate_leave_balance(worker, period_start, period_end):
     accrued_before = months_before * quota
     accrued_total = months_total * quota
 
+    # NULL effective_date means "applies from creation", so bound those rows by
+    # created_at too — otherwise a later adjustment leaks into past payroll months.
+    period_end_ts = datetime.combine(period_end, datetime.max.time())
     manual_adjustment = db.session.query(
         func.coalesce(func.sum(LeaveAdjustment.days), 0.0)
     ).filter(
         LeaveAdjustment.worker_id == worker.id,
         db.or_(
-            LeaveAdjustment.effective_date == None,
-            LeaveAdjustment.effective_date <= period_end
+            db.and_(
+                LeaveAdjustment.effective_date == None,
+                LeaveAdjustment.created_at <= period_end_ts,
+            ),
+            LeaveAdjustment.effective_date <= period_end,
         )
     ).scalar() or 0.0
 
@@ -1388,7 +1394,9 @@ def attendance():
         if not worker_visible_to_user(worker, current_user, on_date=selected_date):
             continue
 
-        assignment = worker.current_assignment
+        # Resolve the assignment active on the viewed date so historical
+        # filtering/display reflects where the worker was then, not today.
+        assignment = next((a for a in worker.assignments if assignment_active_on(a, selected_date)), None)
         if site_filter and (not assignment or assignment.site_id != site_filter):
             continue
 
@@ -1697,7 +1705,8 @@ def mark_attendance():
                 date=attendance_date
             ).first()
 
-            assignment = worker.current_assignment
+            # site_id must reflect the assignment active on the marked date
+            assignment = next((a for a in worker.assignments if assignment_active_on(a, attendance_date)), None)
             if existing:
                 existing.status = status
                 existing.marked_by = current_user.id
@@ -1844,7 +1853,8 @@ def mark_attendance():
                 existing.late_minutes = 0
                 feedback_message = 'Attendance marked successfully.'
         else:
-            assignment = worker.current_assignment
+            # site_id must reflect the assignment active on the marked date
+            assignment = next((a for a in worker.assignments if assignment_active_on(a, attendance_date)), None)
             attendance = AttendanceRecord()
             attendance.worker_id = worker_id
             attendance.date = attendance_date

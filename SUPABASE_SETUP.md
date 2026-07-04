@@ -7,23 +7,25 @@ first start, and the admin user is seeded.
 
 ## 1. Get your connection string
 
-1. Open your Supabase project dashboard:
-   https://supabase.com/dashboard/project/rliifhyxrxmehojjwjcm
+1. Open your Supabase project dashboard (https://supabase.com/dashboard) and
+   select your project.
 2. Click **Connect** (top of the page) — or Settings → Database.
 3. Copy the **URI** connection string. Two options:
 
    **Session pooler (recommended for this app):**
-   ```
-   postgresql://postgres.rliifhyxrxmehojjwjcm:[YOUR-PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres
+   ```text
+   postgresql://postgres.<YOUR-PROJECT-REF>:[YOUR-PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres
    ```
 
    **Direct connection:**
-   ```
-   postgresql://postgres:[YOUR-PASSWORD]@db.rliifhyxrxmehojjwjcm.supabase.co:5432/postgres
+   ```text
+   postgresql://postgres:[YOUR-PASSWORD]@db.<YOUR-PROJECT-REF>.supabase.co:5432/postgres
    ```
 
 4. Replace `[YOUR-PASSWORD]` with your database password
-   (Settings → Database → Reset database password if you don't have it).
+   (Settings → Database → Reset database password if you don't have it), and
+   `<YOUR-PROJECT-REF>` with your project's reference id (shown in the
+   dashboard URL and the Connect dialog).
 
 > The app accepts both `postgres://` and `postgresql://` schemes and adds
 > `sslmode=require` automatically for Supabase hosts.
@@ -32,7 +34,7 @@ first start, and the admin user is seeded.
 
 **Linux / macOS:**
 ```bash
-export DATABASE_URL='postgresql://postgres:YOUR-PASSWORD@db.rliifhyxrxmehojjwjcm.supabase.co:5432/postgres'
+export DATABASE_URL='postgresql://postgres:YOUR-PASSWORD@db.YOUR-PROJECT-REF.supabase.co:5432/postgres'
 export SESSION_SECRET='any-long-random-string'
 export ADMIN_DEFAULT_PASSWORD='choose-admin-password'
 python main.py
@@ -40,7 +42,7 @@ python main.py
 
 **Windows (PowerShell):**
 ```powershell
-$env:DATABASE_URL='postgresql://postgres:YOUR-PASSWORD@db.rliifhyxrxmehojjwjcm.supabase.co:5432/postgres'
+$env:DATABASE_URL='postgresql://postgres:YOUR-PASSWORD@db.YOUR-PROJECT-REF.supabase.co:5432/postgres'
 $env:SESSION_SECRET='any-long-random-string'
 $env:ADMIN_DEFAULT_PASSWORD='choose-admin-password'
 python main.py

@@ -109,36 +109,50 @@ def _apply_schema_patches(inspector):
 
 def _drop_closure_date_unique_constraint(inspector):
     """Legacy SQLite databases created closure_days.date with UNIQUE, which
-    blocks site/project-scoped closures sharing a date. Rebuild the table once."""
+    blocks site/project-scoped closures sharing a date. Rebuild the table once.
+
+    pysqlite implicitly commits around DDL, so the rename/create/copy/drop can
+    never be one true transaction. Instead every step is idempotent and
+    resumable: if a previous attempt crashed midway, the leftover
+    closure_days_old is detected on the next startup and the copy completes
+    without losing rows (INSERT OR IGNORE keys on the preserved primary key)."""
     if not db.engine.url.drivername.startswith('sqlite'):
         return
-    if 'closure_days' not in inspector.get_table_names():
-        return
-    unique_indexes = [
-        idx for idx in inspector.get_indexes('closure_days')
-        if idx.get('unique') and idx.get('column_names') == ['date']
-    ]
-    has_auto_unique = any(
-        'date' in (constraint.get('column_names') or [])
-        for constraint in inspector.get_unique_constraints('closure_days')
-    )
-    if not unique_indexes and not has_auto_unique:
-        return
-    logging.info("Rebuilding closure_days to drop UNIQUE(date) constraint")
+    tables = inspector.get_table_names()
+    resuming = 'closure_days_old' in tables
+    if not resuming:
+        if 'closure_days' not in tables:
+            return
+        unique_indexes = [
+            idx for idx in inspector.get_indexes('closure_days')
+            if idx.get('unique') and idx.get('column_names') == ['date']
+        ]
+        has_auto_unique = any(
+            'date' in (constraint.get('column_names') or [])
+            for constraint in inspector.get_unique_constraints('closure_days')
+        )
+        if not unique_indexes and not has_auto_unique:
+            return
+        logging.info("Rebuilding closure_days to drop UNIQUE(date) constraint")
+    else:
+        logging.info("Resuming interrupted closure_days rebuild")
     try:
-        db.session.execute(text("ALTER TABLE closure_days RENAME TO closure_days_old"))
-        db.metadata.tables['closure_days'].create(db.engine)
-        old_columns = {col['name'] for col in inspector.get_columns('closure_days_old')}
+        if not resuming:
+            db.session.execute(text("ALTER TABLE closure_days RENAME TO closure_days_old"))
+        fresh = inspect(db.engine)
+        if 'closure_days' not in fresh.get_table_names():
+            db.metadata.tables['closure_days'].create(bind=db.session.connection())
+        old_columns = {col['name'] for col in fresh.get_columns('closure_days_old')}
         common = [c.name for c in db.metadata.tables['closure_days'].columns if c.name in old_columns]
         column_list = ', '.join(common)
         db.session.execute(text(
-            f"INSERT INTO closure_days ({column_list}) SELECT {column_list} FROM closure_days_old"
+            f"INSERT OR IGNORE INTO closure_days ({column_list}) SELECT {column_list} FROM closure_days_old"
         ))
         db.session.execute(text("DROP TABLE closure_days_old"))
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        logging.error("Failed to rebuild closure_days: %s", e)
+        logging.error("closure_days rebuild interrupted (will resume on next startup): %s", e)
         raise
 
 with app.app_context():
