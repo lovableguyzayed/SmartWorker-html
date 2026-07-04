@@ -160,8 +160,9 @@
                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent"></textarea>
                 <select name="site_id" id="project-site" class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
                     <option value="">— No site —</option>
-                    {% for site in sites if site.status == 'active' %}
-                    <option value="{{ site.id }}">{{ site.name }}</option>
+                    {# Include archived sites too (marked), so editing a project assigned to an archived site never silently unassigns it #}
+                    {% for site in sites %}
+                    <option value="{{ site.id }}">{{ site.name }}{% if site.status != 'active' %} (archived){% endif %}</option>
                     {% endfor %}
                 </select>
                 <div class="grid grid-cols-2 gap-3">
@@ -254,8 +255,9 @@
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
                 <select name="project_id" id="task-project" class="w-full p-3 border border-lightGray rounded-xl">
                     <option value="">— No project —</option>
-                    {% for project in projects if project.status != 'archived' %}
-                    <option value="{{ project.id }}">{{ project.name }}</option>
+                    {# Archived projects stay listed (marked) so editing a task keeps its assignment #}
+                    {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }}{% if project.status == 'archived' %} (archived){% endif %}</option>
                     {% endfor %}
                 </select>
                 <input type="text" name="category" id="task-category" placeholder="Category (optional)"
@@ -344,9 +346,9 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Sites</label>
                     <div class="max-h-28 overflow-y-auto border border-lightGray rounded-xl p-2 space-y-1" id="att-user-sites">
-                        {% for site in sites if site.status == 'active' %}
-                        <label class="flex items-center text-sm text-gray-700 gap-2 py-0.5">
-                            <input type="checkbox" name="site_ids" value="{{ site.id }}" class="rounded"> {{ site.name }}
+                        {% for site in sites %}
+                        <label class="flex items-center text-sm text-gray-700 gap-2 py-0.5 {{ 'opacity-60' if site.status != 'active' else '' }}">
+                            <input type="checkbox" name="site_ids" value="{{ site.id }}" class="rounded"> {{ site.name }}{% if site.status != 'active' %} (archived){% endif %}
                         </label>
                         {% else %}
                         <div class="text-xs text-gray-400">No sites available — add sites first. Empty = all sites.</div>
@@ -356,12 +358,12 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Projects</label>
                     <div class="max-h-28 overflow-y-auto border border-lightGray rounded-xl p-2 space-y-1" id="att-user-projects">
-                        {% for project in projects if project.status == 'active' %}
-                        <label class="flex items-center text-sm text-gray-700 gap-2 py-0.5">
-                            <input type="checkbox" name="project_ids" value="{{ project.id }}" class="rounded"> {{ project.name }}
+                        {% for project in projects %}
+                        <label class="flex items-center text-sm text-gray-700 gap-2 py-0.5 {{ 'opacity-60' if project.status != 'active' else '' }}">
+                            <input type="checkbox" name="project_ids" value="{{ project.id }}" class="rounded"> {{ project.name }}{% if project.status == 'archived' %} (archived){% elif project.status == 'completed' %} (completed){% endif %}
                         </label>
                         {% else %}
-                        <div class="text-xs text-gray-400">No active projects. Empty = all projects.</div>
+                        <div class="text-xs text-gray-400">No projects yet. Empty = all projects.</div>
                         {% endfor %}
                     </div>
                 </div>

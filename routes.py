@@ -400,6 +400,12 @@ def worker_visible_to_user(worker, user, on_date=None):
 def notify_admin(title, body, category='attendance'):
     db.session.add(Notification(title=title, body=body, category=category))
 
+def safe_redirect_target(value, fallback):
+    """Only allow same-app relative paths; reject external/protocol-relative URLs."""
+    if value and value.startswith('/') and not value.startswith('//') and '\\' not in value:
+        return value
+    return fallback
+
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1638,13 +1644,30 @@ def profile():
     
     return render_template('profile.html', Worker=Worker, AttendanceRecord=AttendanceRecord, date=date)
 
+VALID_ATTENDANCE_STATUSES = ('present', 'absent', 'late', 'leave')
+
+def _attendance_timestamp(attendance_date):
+    """Wall-clock time anchored to the selected attendance date, so backdated
+    entries never mix today's date into check-in/out timestamps."""
+    return datetime.combine(attendance_date, datetime.now().time())
+
 @app.route('/mark_attendance', methods=['POST'])
 @login_required
 def mark_attendance():
     attendance_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
     closures_today = ClosureDay.query.filter_by(date=attendance_date).all()
     marked_via = request.form.get('marked_via', 'manual')
-    redirect_target = request.form.get('redirect_to') or url_for('attendance', date=attendance_date.isoformat())
+    redirect_target = safe_redirect_target(request.form.get('redirect_to'), url_for('attendance', date=attendance_date.isoformat()))
+
+    if request.form.get('status') not in VALID_ATTENDANCE_STATUSES:
+        flash('Invalid attendance status.', 'error')
+        return redirect(redirect_target)
+
+    # Authorized attendance users only record check-ins/check-outs; absent and
+    # leave classifications are administrator decisions.
+    if not current_user.is_admin and request.form.get('status') not in ('present', 'late'):
+        flash('Please contact the Administrator to mark absences or leaves.', 'restricted')
+        return redirect(redirect_target)
 
     company_lock = next(
         (c for c in closures_today if c.scope in (None, '', 'company') and not c.allow_attendance),
@@ -1680,7 +1703,7 @@ def mark_attendance():
                 existing.marked_by = current_user.id
                 existing.marked_via = 'bulk'
                 if status in ('present', 'late'):
-                    existing.check_in_time = datetime.now()
+                    existing.check_in_time = _attendance_timestamp(attendance_date)
                     existing.overtime_minutes = 0
                     existing.late_minutes = 0
                     existing.check_out_time = None
@@ -1694,7 +1717,7 @@ def mark_attendance():
                 attendance.worker_id = worker.id
                 attendance.date = attendance_date
                 attendance.status = status
-                attendance.check_in_time = datetime.now() if status in ('present', 'late') else None
+                attendance.check_in_time = _attendance_timestamp(attendance_date) if status in ('present', 'late') else None
                 attendance.check_out_time = None
                 attendance.overtime_minutes = 0
                 attendance.marked_by = current_user.id
@@ -1733,10 +1756,12 @@ def mark_attendance():
         ).first()
 
         # Authorized attendance users may check workers in/out, but may not
-        # modify a completed record or change an existing status.
+        # modify a completed record or change an existing status. 'present' and
+        # 'late' are the same active shift state (auto-late conversion).
         if existing and not current_user.is_admin:
             is_simple_checkout = (
-                existing.status == status
+                existing.status in ('present', 'late')
+                and status in ('present', 'late')
                 and existing.check_in_time is not None
                 and existing.check_out_time is None
             )
@@ -1752,7 +1777,10 @@ def mark_attendance():
             existing.leave_type = leave_type if status == 'leave' else None
 
             if status in ('present', 'late'):
-                now = datetime.now()
+                now = _attendance_timestamp(attendance_date)
+                same_active_state = (
+                    previous_status in ('present', 'late') and status in ('present', 'late')
+                )
                 if not existing.check_in_time:
                     # First tap acts as check-in.
                     existing.check_in_time = now
@@ -1766,8 +1794,10 @@ def mark_attendance():
                         feedback_message = f'Check-in captured — {existing.late_minutes} min late.'
                     else:
                         feedback_message = 'Check-in captured successfully.'
-                elif existing.check_out_time is None and previous_status == status:
-                    # Second tap on same active status acts as check-out/close.
+                elif existing.check_out_time is None and same_active_state:
+                    # Second tap on an active shift acts as check-out/close.
+                    # Preserve the auto-detected late status through checkout.
+                    existing.status = previous_status
                     existing.check_out_time = now
                     existing.overtime_minutes = calculate_overtime_minutes_for_record(worker, existing)
 
@@ -1819,7 +1849,7 @@ def mark_attendance():
             attendance.worker_id = worker_id
             attendance.date = attendance_date
             attendance.status = status
-            attendance.check_in_time = datetime.now() if status in ('present', 'late') else None
+            attendance.check_in_time = _attendance_timestamp(attendance_date) if status in ('present', 'late') else None
             attendance.check_out_time = None
             attendance.overtime_minutes = 0
             attendance.leave_type = leave_type if status == 'leave' else None
@@ -2309,8 +2339,44 @@ def _toggle_entity_archive(model, entity_id, entity_label):
     flash(f'{entity_label} {state} successfully.', 'success')
     return redirect(url_for('settings'))
 
+def _entity_references(model, entity):
+    """Count live references to a master-data row so deletion never orphans
+    assignments, closures, projects, tasks, or worker records."""
+    refs = []
+    if model is Site:
+        refs = [
+            ('assignment', ProjectAssignment.query.filter_by(site_id=entity.id).count()),
+            ('project', Project.query.filter_by(site_id=entity.id).count()),
+            ('closure', ClosureDay.query.filter_by(site_id=entity.id).count()),
+            ('attendance record', AttendanceRecord.query.filter_by(site_id=entity.id).count()),
+        ]
+    elif model is Project:
+        refs = [
+            ('assignment', ProjectAssignment.query.filter_by(project_id=entity.id).count()),
+            ('task', WorkTask.query.filter_by(project_id=entity.id).count()),
+            ('closure', ClosureDay.query.filter_by(project_id=entity.id).count()),
+        ]
+    elif model is WorkTask:
+        refs = [
+            ('assignment', ProjectAssignment.query.filter_by(task_id=entity.id).count()),
+        ]
+    elif model is Department:
+        refs = [
+            ('worker', Worker.query.filter_by(department=entity.name).count()),
+        ]
+    return [(label, count) for label, count in refs if count]
+
 def _delete_entity(model, entity_id, entity_label):
     entity = model.query.get_or_404(entity_id)
+    used_by = _entity_references(model, entity)
+    if used_by:
+        usage = ', '.join(f'{count} {label}{"s" if count != 1 else ""}' for label, count in used_by)
+        flash(
+            f'Cannot delete this {entity_label.lower()} — it is referenced by {usage}. '
+            f'Archive it instead to keep history intact.',
+            'error'
+        )
+        return redirect(url_for('settings'))
     db.session.delete(entity)
     db.session.commit()
     flash(f'{entity_label} deleted successfully.', 'success')
@@ -2528,7 +2594,7 @@ def transactions_save():
     amount = parse_float(request.form.get('amount'), 0.0)
     txn_date_raw = request.form.get('date')
     description = request.form.get('description', '').strip() or None
-    redirect_to = request.form.get('redirect_to') or url_for('transactions')
+    redirect_to = safe_redirect_target(request.form.get('redirect_to'), url_for('transactions'))
 
     worker = Worker.query.get_or_404(worker_id)
     if txn_type not in TRANSACTION_TYPE_LABELS:
@@ -2568,7 +2634,7 @@ def transactions_cancel(txn_id):
     db.session.commit()
     state = 'cancelled' if txn.status == 'cancelled' else 'restored'
     flash(f'Transaction {state}. Payroll updates automatically.', 'success')
-    return redirect(request.form.get('redirect_to') or url_for('transactions'))
+    return redirect(safe_redirect_target(request.form.get('redirect_to'), url_for('transactions')))
 
 @app.route('/transactions/<int:txn_id>/delete', methods=['POST'])
 @admin_required
@@ -2577,7 +2643,7 @@ def transactions_delete(txn_id):
     db.session.delete(txn)
     db.session.commit()
     flash('Transaction deleted permanently.', 'success')
-    return redirect(request.form.get('redirect_to') or url_for('transactions'))
+    return redirect(safe_redirect_target(request.form.get('redirect_to'), url_for('transactions')))
 
 # ============================================================
 # Worker Modification, Promotion & Leave Adjustment (Admin)
@@ -2682,6 +2748,7 @@ def worker_modify(worker_id):
         db.session.add(LeaveAdjustment(
             worker_id=worker.id, days=days,
             reason=description or 'Manual leave adjustment',
+            effective_date=effective_date,
             created_by=current_user.id,
         ))
         db.session.add(WorkerModification(
@@ -2726,11 +2793,15 @@ def worker_assign(worker_id):
         flash('Choose a project and/or a site for the assignment.', 'error')
         return redirect(url_for('worker_profile', worker_id=worker.id))
 
-    # Close the previous active assignment as a transfer
+    # Close the previous active assignment as a transfer. Assignment ranges are
+    # inclusive, so the old assignment ends the day before the new one starts —
+    # otherwise both count as active on the transfer day in closures/payroll.
     previous = worker.current_assignment
     if previous:
         previous.status = 'transferred'
-        previous.end_date = previous.end_date or start_date
+        if not previous.end_date:
+            handover = start_date - timedelta(days=1)
+            previous.end_date = max(handover, previous.start_date)
 
     assignment = ProjectAssignment(
         worker_id=worker.id,
@@ -2825,7 +2896,7 @@ def attendance_adjust(record_id):
     record.marked_by = current_user.id
     db.session.commit()
     flash(f'Attendance adjusted for {worker.full_name}.', 'success')
-    return redirect(request.form.get('redirect_to') or url_for('attendance', date=record.date.isoformat()))
+    return redirect(safe_redirect_target(request.form.get('redirect_to'), url_for('attendance', date=record.date.isoformat())))
 
 # ============================================================
 # QR Scanner & Manual Employee ID attendance
@@ -2847,14 +2918,22 @@ def api_worker_lookup():
         return jsonify({'success': False, 'message': 'Enter or scan an employee ID.'}), 400
 
     worker = Worker.query.filter(func.upper(Worker.worker_id) == code.upper()).first()
-    if not worker:
-        return jsonify({'success': False, 'message': f'No worker found for ID {code}.'}), 404
-    if worker.status != 'active':
-        return jsonify({'success': False, 'message': f'{worker.full_name} is inactive.'}), 403
-
     today = date.today()
-    if not worker_visible_to_user(worker, current_user, on_date=today):
-        return jsonify({'success': False, 'message': 'This worker is not assigned to your site. Please contact the Administrator.'}), 403
+
+    # Scoped attendance users get one generic failure for missing, inactive and
+    # out-of-scope workers so the endpoint doesn't confirm which IDs exist.
+    if not current_user.is_admin:
+        if (not worker or worker.status != 'active'
+                or not worker_visible_to_user(worker, current_user, on_date=today)):
+            return jsonify({
+                'success': False,
+                'message': 'No matching worker on your site. Check the ID or contact the Administrator.',
+            }), 404
+    else:
+        if not worker:
+            return jsonify({'success': False, 'message': f'No worker found for ID {code}.'}), 404
+        if worker.status != 'active':
+            return jsonify({'success': False, 'message': f'{worker.full_name} is inactive.'}), 403
     record = AttendanceRecord.query.filter_by(worker_id=worker.id, date=today).first()
     assignment = worker.current_assignment
     closure = closure_for_worker_on_date(worker, today)

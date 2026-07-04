@@ -61,10 +61,10 @@
         }
 
         .app-nav-item {
-            width: 3.95rem;
+            width: 3.45rem;
             text-align: center;
             border-radius: 0.95rem;
-            padding: 0.35rem 0.2rem;
+            padding: 0.35rem 0.1rem;
             color: #94a3b8;
         }
 
@@ -99,7 +99,7 @@
         }
 
         .app-nav-fab {
-            width: 3.95rem;
+            width: 3.7rem;
             height: 4rem;
             border-radius: 1rem;
             background: linear-gradient(145deg, #001f3f 0%, #007bff 100%);
@@ -202,11 +202,6 @@
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-users text-xl"></i></span>
                         <span class="app-nav-label">Workers</span>
                     </a>
-                    {% else %}
-                    <a href="{{ url_for('scan') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if scan_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-xl"></i></span>
-                        <span class="app-nav-label">Scan</span>
-                    </a>
                     {% endif %}
 
                     <a href="{{ url_for('attendance') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if attendance_active else '' }}">
@@ -214,10 +209,15 @@
                         <span class="app-nav-label">Attend</span>
                     </a>
 
+                    <a href="{{ url_for('scan') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if scan_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-xl"></i></span>
+                        <span class="app-nav-label">Scan</span>
+                    </a>
+
                     {% if current_user.is_admin %}
                     <a href="{{ url_for('transactions') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-transfer text-xl"></i></span>
-                        <span class="app-nav-label">Transactions</span>
+                        <span class="app-nav-label">Payments</span>
                     </a>
                     {% else %}
                     <a href="{{ url_for('scan') }}?manual=1" class="app-nav-item transition-colors">
