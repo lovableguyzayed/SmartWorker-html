@@ -215,7 +215,7 @@
                             <div class="text-xs text-gray-500">Overtime pay: ₹{{ "%.2f"|format(data.overtime_pay) }}</div>
                         {% endif %}
                         {% if current_user.is_admin and data.attendance %}
-                            <button onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, "{{ data.attendance.status }}", "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", "{{ data.attendance.leave_type or '' }}")'
+                            <button onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }})'
                                     class="mt-1 text-xs text-accent font-medium"><i class="fa-solid fa-pen-to-square mr-1"></i>Adjust times</button>
                         {% endif %}
                     </div>
