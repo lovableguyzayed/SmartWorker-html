@@ -193,7 +193,13 @@ def calculate_leave_balance(worker, period_start, period_end):
 
     manual_adjustment = db.session.query(
         func.coalesce(func.sum(LeaveAdjustment.days), 0.0)
-    ).filter(LeaveAdjustment.worker_id == worker.id).scalar() or 0.0
+    ).filter(
+        LeaveAdjustment.worker_id == worker.id,
+        db.or_(
+            LeaveAdjustment.effective_date == None,
+            LeaveAdjustment.effective_date <= period_end
+        )
+    ).scalar() or 0.0
 
     used_before = AttendanceRecord.query.filter(
         AttendanceRecord.worker_id == worker.id,
@@ -244,6 +250,10 @@ def calculate_delay_penalty(worker, period_start, period_end):
     breakdown = []
     seen_projects = set()
     for assignment in worker.assignments:
+        assignment_start = assignment.start_date
+        assignment_end = assignment.end_date or period_end
+        if assignment_start > period_end or assignment_end < period_start:
+            continue
         project = assignment.project
         if not project or project.id in seen_projects:
             continue
@@ -254,8 +264,8 @@ def calculate_delay_penalty(worker, period_start, period_end):
             continue
         overdue_start = project.deadline + timedelta(days=1)
         overdue_end = project.completion_date or period_end
-        charge_start = max(overdue_start, period_start)
-        charge_end = min(overdue_end, period_end)
+        charge_start = max(overdue_start, period_start, assignment_start)
+        charge_end = min(overdue_end, period_end, assignment_end)
         if charge_end < charge_start:
             continue
         days = (charge_end - charge_start).days + 1
@@ -359,15 +369,26 @@ def closure_for_worker_on_date(worker, on_date, closures=None):
     locked = [c for c in applicable if not c.allow_attendance]
     return locked[0] if locked else applicable[0]
 
-def worker_visible_to_user(worker, user):
-    """Attendance users only see workers assigned to their sites/projects."""
+def worker_visible_to_user(worker, user, on_date=None):
+    """Attendance users only see workers assigned to their sites/projects.
+
+    Args:
+        worker: Worker to check
+        user: User to check access for
+        on_date: Date context for historical assignment lookup. If None, uses current assignment.
+    """
     if user.is_admin:
         return True
     site_ids = user.site_id_list
     project_ids = user.project_id_list
     if not site_ids and not project_ids:
         return True
-    assignment = worker.current_assignment
+
+    if on_date:
+        assignment = next((a for a in worker.assignments if assignment_active_on(a, on_date)), None)
+    else:
+        assignment = worker.current_assignment
+
     if not assignment:
         return False
     if site_ids and assignment.site_id in site_ids:
@@ -1358,7 +1379,7 @@ def attendance():
 
     for worker in workers:
         # Attendance users only see workers on their assigned sites/projects
-        if not worker_visible_to_user(worker, current_user):
+        if not worker_visible_to_user(worker, current_user, on_date=selected_date):
             continue
 
         assignment = worker.current_assignment
@@ -1693,7 +1714,7 @@ def mark_attendance():
 
         worker = Worker.query.get_or_404(worker_id)
 
-        if not worker_visible_to_user(worker, current_user):
+        if not worker_visible_to_user(worker, current_user, on_date=attendance_date):
             flash('Please contact the Administrator to make changes.', 'restricted')
             return redirect(url_for('attendance', date=attendance_date.isoformat()))
 
@@ -2830,10 +2851,10 @@ def api_worker_lookup():
         return jsonify({'success': False, 'message': f'No worker found for ID {code}.'}), 404
     if worker.status != 'active':
         return jsonify({'success': False, 'message': f'{worker.full_name} is inactive.'}), 403
-    if not worker_visible_to_user(worker, current_user):
-        return jsonify({'success': False, 'message': 'This worker is not assigned to your site. Please contact the Administrator.'}), 403
 
     today = date.today()
+    if not worker_visible_to_user(worker, current_user, on_date=today):
+        return jsonify({'success': False, 'message': 'This worker is not assigned to your site. Please contact the Administrator.'}), 403
     record = AttendanceRecord.query.filter_by(worker_id=worker.id, date=today).first()
     assignment = worker.current_assignment
     closure = closure_for_worker_on_date(worker, today)

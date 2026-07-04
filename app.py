@@ -48,6 +48,7 @@ csrf.init_app(app)
 SCHEMA_PATCHES = {
     'users': [
         ('phone', "VARCHAR(20)"),
+        ('role', "VARCHAR(20) DEFAULT 'attendance'"),
         ('assigned_site_ids', "TEXT"),
         ('assigned_project_ids', "TEXT"),
         ('created_by', "INTEGER"),
@@ -82,6 +83,9 @@ SCHEMA_PATCHES = {
         ('marked_by', "INTEGER"),
         ('marked_via', "VARCHAR(15) DEFAULT 'manual'"),
     ],
+    'leave_adjustments': [
+        ('effective_date', "DATE"),
+    ],
 }
 
 def _apply_schema_patches(inspector):
@@ -114,17 +118,21 @@ def _drop_closure_date_unique_constraint(inspector):
     if not unique_indexes and not has_auto_unique:
         return
     logging.info("Rebuilding closure_days to drop UNIQUE(date) constraint")
-    db.session.execute(text("ALTER TABLE closure_days RENAME TO closure_days_old"))
-    db.session.commit()
-    db.metadata.tables['closure_days'].create(db.engine)
-    old_columns = {col['name'] for col in inspector.get_columns('closure_days_old')}
-    common = [c.name for c in db.metadata.tables['closure_days'].columns if c.name in old_columns]
-    column_list = ', '.join(common)
-    db.session.execute(text(
-        f"INSERT INTO closure_days ({column_list}) SELECT {column_list} FROM closure_days_old"
-    ))
-    db.session.execute(text("DROP TABLE closure_days_old"))
-    db.session.commit()
+    try:
+        db.session.execute(text("ALTER TABLE closure_days RENAME TO closure_days_old"))
+        db.metadata.tables['closure_days'].create(db.engine)
+        old_columns = {col['name'] for col in inspector.get_columns('closure_days_old')}
+        common = [c.name for c in db.metadata.tables['closure_days'].columns if c.name in old_columns]
+        column_list = ', '.join(common)
+        db.session.execute(text(
+            f"INSERT INTO closure_days ({column_list}) SELECT {column_list} FROM closure_days_old"
+        ))
+        db.session.execute(text("DROP TABLE closure_days_old"))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.error("Failed to rebuild closure_days: %s", e)
+        raise
 
 with app.app_context():
     # Make sure to import the models here or their tables won't be created

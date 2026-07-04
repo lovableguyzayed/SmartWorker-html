@@ -12,7 +12,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20), nullable=True)
     password_hash = db.Column(db.String(256), nullable=False)
     full_name = db.Column(db.String(100), nullable=False)
-    role = db.Column(db.String(20), default='admin')  # admin, manager, attendance
+    role = db.Column(db.String(20), default='attendance')  # admin, manager, attendance
     # Attendance-user scoping (comma-separated ids). Empty = all sites/projects.
     assigned_site_ids = db.Column(db.Text, nullable=True)
     assigned_project_ids = db.Column(db.Text, nullable=True)
@@ -28,21 +28,31 @@ class User(UserMixin, db.Model):
 
     @property
     def is_admin(self):
-        return (self.role or 'admin') in ('admin', 'manager')
+        return self.role in ('admin', 'manager')
 
     @property
     def site_id_list(self):
         raw = (self.assigned_site_ids or '').strip()
         if not raw:
             return []
-        return [int(x) for x in raw.split(',') if x.strip().isdigit()]
+        ids = []
+        for token in raw.split(','):
+            token = token.strip()
+            if token.isdigit():
+                ids.append(int(token))
+        return ids
 
     @property
     def project_id_list(self):
         raw = (self.assigned_project_ids or '').strip()
         if not raw:
             return []
-        return [int(x) for x in raw.split(',') if x.strip().isdigit()]
+        ids = []
+        for token in raw.split(','):
+            token = token.strip()
+            if token.isdigit():
+                ids.append(int(token))
+        return ids
 
 class CompanySetting(db.Model):
     """Singleton row holding company identity shown on PDFs and reports."""
@@ -165,6 +175,7 @@ class LeaveAdjustment(db.Model):
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     days = db.Column(db.Float, nullable=False)  # positive = credit, negative = debit
     reason = db.Column(db.Text, nullable=True)
+    effective_date = db.Column(db.Date, nullable=True)  # when the adjustment applies; None = from creation date
     created_by = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -293,6 +304,9 @@ class Worker(db.Model):
 
 class AttendanceRecord(db.Model):
     __tablename__ = 'attendance_records'
+    __table_args__ = (
+        db.UniqueConstraint('worker_id', 'date', name='uq_attendance_worker_date'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)

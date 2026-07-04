@@ -34,9 +34,13 @@
     <preference name="ShowSplashScreenSpinner" value="false" />
     <preference name="LoadUrlTimeoutValue" value="60000" />
 
-    <!-- Replace with your deployed server URL before building -->
-    <allow-navigation href="https://YOUR_REPLIT_APP_URL.replit.app/*" />
+    <!-- IMPORTANT: Update these URLs before building for production.
+         Replace the placeholder with your actual deployed server domain.
+         Example: https://smartworker-yourname.replit.app
+         Keep localhost for development builds. -->
+    <allow-navigation href="https://smartworker-yourname.replit.app/*" />
     <allow-navigation href="http://localhost/*" />
+    <allow-navigation href="http://127.0.0.1/*" />
     <allow-intent href="tel:*" />
     <allow-intent href="mailto:*" />
 
@@ -45,5 +49,9 @@
     <plugin name="cordova-plugin-splashscreen" spec="^6.0.0" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
 
-    <access origin="https://*" />
+    <!-- Restrict network access to only the backend API domain for security.
+         Update the origin below to match your deployed server URL. -->
+    <access origin="https://smartworker-yourname.replit.app" />
+    <access origin="http://localhost" />
+    <access origin="http://127.0.0.1" />
 </widget>
