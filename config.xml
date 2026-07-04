@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.smartworker.app" version="1.0.0"
+<widget id="com.smartworker.app" version="1.1.0"
         xmlns="http://www.w3.org/ns/widgets"
+        xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:cdv="http://cordova.apache.org/ns/1.0">
 
     <name>SmartWorker</name>
@@ -11,8 +12,14 @@
 
     <platform name="android">
         <allow-intent href="market:*" />
-        <preference name="android-minSdkVersion" value="22" />
+        <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="34" />
+        <preference name="AndroidXEnabled" value="true" />
+        <!-- Camera permission for the in-app QR scanner (getUserMedia in WebView) -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.CAMERA" />
+            <uses-feature android:name="android.hardware.camera" android:required="false" />
+        </config-file>
     </platform>
 
     <preference name="DisallowOverscroll" value="true" />
@@ -25,20 +32,18 @@
     <preference name="SplashScreenDelay" value="2000" />
     <preference name="AutoHideSplashScreen" value="true" />
     <preference name="ShowSplashScreenSpinner" value="false" />
+    <preference name="LoadUrlTimeoutValue" value="60000" />
 
+    <!-- Replace with your deployed server URL before building -->
     <allow-navigation href="https://YOUR_REPLIT_APP_URL.replit.app/*" />
     <allow-navigation href="http://localhost/*" />
-    <allow-intent href="http://*/*" />
-    <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />
     <allow-intent href="mailto:*" />
 
-    <plugin name="cordova-plugin-whitelist" spec="^1.3.4" />
+    <!-- cordova-plugin-whitelist removed: deprecated and built into cordova-android 10+ -->
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     <plugin name="cordova-plugin-splashscreen" spec="^6.0.0" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
-    <plugin name="cordova-sqlite-storage" spec="^6.0.0" />
 
-    <access origin="*" />
-    <content src="index.html" />
+    <access origin="https://*" />
 </widget>

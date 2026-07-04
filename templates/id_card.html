@@ -45,7 +45,10 @@
             <div class="relative z-10">
                 <!-- Header -->
                 <div class="text-center mb-6">
-                    <div class="text-xl font-bold text-white mb-1">SmartWorker</div>
+                    {% if company and company.logo %}
+                    <img src="{{ company.logo }}" alt="logo" class="w-10 h-10 mx-auto mb-1 rounded-lg object-contain bg-white/10 p-0.5">
+                    {% endif %}
+                    <div class="text-xl font-bold text-white mb-1">{{ company.name if company else 'SmartWorker' }}</div>
                     <div class="text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full inline-block">Employee ID Card</div>
                 </div>
                 

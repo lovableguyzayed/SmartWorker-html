@@ -6,11 +6,18 @@ import csv
 import random
 import calendar as _cal
 from datetime import datetime, date, timedelta
+from functools import wraps
 from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from sqlalchemy import func
 from werkzeug.utils import secure_filename
 from app import app, db, csrf
-from models import User, Worker, AttendanceRecord, ClosureDay, PayrollRecord
+from models import (
+    User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
+    CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
+    WorkerModification, LeaveAdjustment, WorkerTransaction, Notification,
+    TRANSACTION_EARNING_TYPES, TRANSACTION_DEDUCTION_TYPES,
+)
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -128,26 +135,25 @@ def is_half_day_record(worker, attendance_record):
     return pay_mode == 'half_day'
 
 def calculate_overtime_minutes_for_record(worker, attendance_record):
-    if (
-        worker.pay_type != 'daily'
-        or
-        not worker.overtime_enabled
-        or not attendance_record
-    ):
+    if not worker.overtime_enabled or not attendance_record:
         return 0
 
     worked_minutes = calculate_worked_minutes_for_record(attendance_record)
     if worked_minutes <= 0:
         return 0
     scheduled_minutes = calculate_scheduled_minutes_for_day(worker, attendance_record.date)
+    if scheduled_minutes <= 0:
+        # No shift configured — fall back to standard working hours
+        scheduled_minutes = int(worker.standard_working_hours or 8) * 60
     return max(worked_minutes - scheduled_minutes, 0)
+
+def get_late_grace_minutes(worker):
+    return max(parse_int(getattr(worker, 'late_grace_minutes', 10), 10), 0)
 
 def calculate_late_minutes_for_record(worker, attendance_record):
     if (
-        worker.pay_type != 'daily'
-        or
         not attendance_record
-        or attendance_record.status != 'late'
+        or attendance_record.status not in ('present', 'late')
         or not attendance_record.check_in_time
         or not worker.start_time
     ):
@@ -156,6 +162,117 @@ def calculate_late_minutes_for_record(worker, attendance_record):
     shift_start = datetime.combine(attendance_record.date, worker.start_time)
     late_minutes = int((attendance_record.check_in_time - shift_start).total_seconds() // 60)
     return max(late_minutes, 0)
+
+def is_late_check_in(worker, attendance_date, check_in_time):
+    """True when a check-in falls after shift start plus grace time."""
+    if not worker.start_time or not check_in_time:
+        return False
+    shift_start = datetime.combine(attendance_date, worker.start_time)
+    return check_in_time > shift_start + timedelta(minutes=get_late_grace_minutes(worker))
+
+def _months_in_range(start_date, end_date):
+    """Whole months from start_date's month through end_date's month, inclusive."""
+    if end_date < start_date:
+        return 0
+    return (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
+
+def calculate_leave_balance(worker, period_start, period_end):
+    """Full leave ledger from the joining date through the given payroll month.
+
+    Unused monthly quota accumulates automatically. Extra leaves first consume
+    the accumulated balance; only leaves beyond quota + accumulated balance are
+    chargeable against salary. Manual HR adjustments (LeaveAdjustment) are
+    credited/debited on top."""
+    quota = int(worker.allowed_leaves_per_month or 0)
+    join_date = worker.join_date or period_start
+
+    months_total = _months_in_range(join_date, period_end)
+    months_before = max(months_total - 1, 0)
+    accrued_before = months_before * quota
+    accrued_total = months_total * quota
+
+    manual_adjustment = db.session.query(
+        func.coalesce(func.sum(LeaveAdjustment.days), 0.0)
+    ).filter(LeaveAdjustment.worker_id == worker.id).scalar() or 0.0
+
+    used_before = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker.id,
+        AttendanceRecord.status == 'leave',
+        AttendanceRecord.date < period_start,
+    ).count()
+
+    used_this_month = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker.id,
+        AttendanceRecord.status == 'leave',
+        AttendanceRecord.date >= period_start,
+        AttendanceRecord.date <= period_end,
+    ).count()
+
+    balance_before = accrued_before + manual_adjustment - used_before
+    available_this_month = max(balance_before, 0) + quota
+    chargeable_days = max(used_this_month - available_this_month, 0)
+    balance_after = balance_before + quota - used_this_month
+
+    return {
+        'monthly_quota': quota,
+        'months_accrued': months_total,
+        'accrued_total': accrued_total,
+        'manual_adjustment': round(manual_adjustment, 2),
+        'used_before': used_before,
+        'used_this_month': used_this_month,
+        'balance_before': round(balance_before, 2),
+        'available_this_month': round(available_this_month, 2),
+        'chargeable_days': chargeable_days,
+        'balance_after': round(balance_after, 2),
+    }
+
+def get_period_transactions(worker, period_start, period_end):
+    return WorkerTransaction.query.filter(
+        WorkerTransaction.worker_id == worker.id,
+        WorkerTransaction.status == 'active',
+        WorkerTransaction.date >= period_start,
+        WorkerTransaction.date <= period_end,
+    ).order_by(WorkerTransaction.date).all()
+
+def calculate_delay_penalty(worker, period_start, period_end):
+    """Per-day project delay penalty for project-based workers. Only overdue
+    days falling inside this payroll period are charged, so a delay spanning
+    months is never double-billed."""
+    if worker.pay_type != 'project':
+        return 0.0, []
+    penalty_total = 0.0
+    breakdown = []
+    seen_projects = set()
+    for assignment in worker.assignments:
+        project = assignment.project
+        if not project or project.id in seen_projects:
+            continue
+        seen_projects.add(project.id)
+        if not project.deadline or project.penalty_type not in ('fixed', 'percent'):
+            continue
+        if not project.penalty_value:
+            continue
+        overdue_start = project.deadline + timedelta(days=1)
+        overdue_end = project.completion_date or period_end
+        charge_start = max(overdue_start, period_start)
+        charge_end = min(overdue_end, period_end)
+        if charge_end < charge_start:
+            continue
+        days = (charge_end - charge_start).days + 1
+        if project.penalty_type == 'fixed':
+            per_day = float(project.penalty_value)
+        else:
+            per_day = (float(project.penalty_value) / 100.0) * float(worker.project_rate or 0)
+        amount = round(days * per_day, 2)
+        if amount > 0:
+            penalty_total += amount
+            breakdown.append({
+                'project': project.name,
+                'days': days,
+                'per_day': round(per_day, 2),
+                'amount': amount,
+            })
+    return round(penalty_total, 2), breakdown
 
 def normalize_mobile_number(value):
     return ''.join(char for char in (value or '') if char.isdigit())
@@ -187,6 +304,81 @@ def generate_unique_username(full_name, email):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+def admin_required(view):
+    """Restrict a view to admin/manager accounts. Authorized attendance users
+    are bounced back with the standard contact-administrator popup."""
+    @wraps(view)
+    @login_required
+    def wrapped(*args, **kwargs):
+        if not current_user.is_admin:
+            flash('Please contact the Administrator to make changes.', 'restricted')
+            return redirect(url_for('attendance'))
+        return view(*args, **kwargs)
+    return wrapped
+
+@app.context_processor
+def inject_globals():
+    company = CompanySetting.query.first()
+    unread = 0
+    if current_user.is_authenticated and current_user.is_admin:
+        unread = Notification.query.filter_by(is_read=False).count()
+    return dict(company=company, unread_notifications=unread)
+
+def assignment_active_on(assignment, on_date):
+    if assignment.start_date and assignment.start_date > on_date:
+        return False
+    if assignment.end_date and assignment.end_date < on_date:
+        return False
+    if not assignment.end_date and assignment.status not in ('active',):
+        # Ended assignments without an explicit end date only cover their start day
+        return assignment.start_date == on_date
+    return True
+
+def closure_applies_to_worker(closure, worker, on_date=None):
+    """Company closures hit everyone; site/project closures only workers
+    assigned to that site/project on the closure date."""
+    if closure.scope in (None, '', 'company'):
+        return True
+    check_date = on_date or closure.date
+    for assignment in worker.assignments:
+        if not assignment_active_on(assignment, check_date):
+            continue
+        if closure.scope == 'site' and closure.site_id and assignment.site_id == closure.site_id:
+            return True
+        if closure.scope == 'project' and closure.project_id and assignment.project_id == closure.project_id:
+            return True
+    return False
+
+def closure_for_worker_on_date(worker, on_date, closures=None):
+    if closures is None:
+        closures = ClosureDay.query.filter_by(date=on_date).all()
+    applicable = [c for c in closures if closure_applies_to_worker(c, worker, on_date)]
+    if not applicable:
+        return None
+    # A locked closure takes precedence over an attendance-allowed one
+    locked = [c for c in applicable if not c.allow_attendance]
+    return locked[0] if locked else applicable[0]
+
+def worker_visible_to_user(worker, user):
+    """Attendance users only see workers assigned to their sites/projects."""
+    if user.is_admin:
+        return True
+    site_ids = user.site_id_list
+    project_ids = user.project_id_list
+    if not site_ids and not project_ids:
+        return True
+    assignment = worker.current_assignment
+    if not assignment:
+        return False
+    if site_ids and assignment.site_id in site_ids:
+        return True
+    if project_ids and assignment.project_id in project_ids:
+        return True
+    return False
+
+def notify_admin(title, body, category='attendance'):
+    db.session.add(Notification(title=title, body=body, category=category))
+
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -202,6 +394,9 @@ def login():
         ).first()
         
         if user and user.check_password(password):
+            if (user.status or 'active') != 'active':
+                flash('This account has been disabled. Please contact the Administrator.', 'error')
+                return render_template('login.html')
             login_user(user, remember=True)
             clear_login_otp_session()
             next_page = request.args.get('next')
@@ -497,7 +692,10 @@ def workers():
     if department:
         query = query.filter_by(department=department)
     
-    workers_list = query.order_by(Worker.full_name).all()
+    workers_list = [
+        w for w in query.order_by(Worker.full_name).all()
+        if worker_visible_to_user(w, current_user)
+    ]
     departments = db.session.query(Worker.department).distinct().all()
     
     return render_template('workers.html',
@@ -510,24 +708,50 @@ def workers():
 @login_required
 def worker_profile(worker_id):
     worker = Worker.query.get_or_404(worker_id)
-    
+
+    if not worker_visible_to_user(worker, current_user):
+        flash('Please contact the Administrator to make changes.', 'restricted')
+        return redirect(url_for('attendance'))
+
     # Get recent attendance
     recent_attendance = AttendanceRecord.query.filter_by(
         worker_id=worker_id
     ).order_by(AttendanceRecord.date.desc()).limit(30).all()
-    
+
     # Calculate statistics
-    this_month = date.today().replace(day=1)
+    today = date.today()
+    this_month = today.replace(day=1)
     month_attendance = AttendanceRecord.query.filter(
         AttendanceRecord.worker_id == worker_id,
         AttendanceRecord.date >= this_month,
         AttendanceRecord.status == 'present'
     ).count()
-    
+
+    # Leave ledger (salaried workers)
+    _, month_days = _cal.monthrange(today.year, today.month)
+    leave_balance = None
+    if worker.pay_type == 'monthly' and worker.leave_policy_enabled:
+        leave_balance = calculate_leave_balance(worker, this_month, this_month.replace(day=month_days))
+
+    recent_transactions = WorkerTransaction.query.filter_by(
+        worker_id=worker_id, status='active'
+    ).order_by(WorkerTransaction.date.desc()).limit(10).all()
+
+    projects = Project.query.filter(Project.status != 'archived').order_by(Project.name).all()
+    sites = Site.query.filter_by(status='active').order_by(Site.name).all()
+    tasks = WorkTask.query.filter(WorkTask.status != 'archived').order_by(WorkTask.name).all()
+
     return render_template('worker_profile.html',
                          worker=worker,
                          recent_attendance=recent_attendance,
-                         month_attendance=month_attendance)
+                         month_attendance=month_attendance,
+                         leave_balance=leave_balance,
+                         recent_transactions=recent_transactions,
+                         projects=projects,
+                         sites=sites,
+                         tasks=tasks,
+                         txn_earning_types=TRANSACTION_EARNING_TYPES,
+                         txn_deduction_types=TRANSACTION_DEDUCTION_TYPES)
 
 def generate_worker_id(department):
     """Generate unique worker ID based on department"""
@@ -589,7 +813,17 @@ def calculate_attendance_summary(attendance_records):
     )
     return summary
 
-def calculate_pay_summary(worker, attendance_records):
+def calculate_pay_summary(worker, attendance_records, period_start=None, period_end=None):
+    # Derive the payroll month when the caller doesn't pass it explicitly.
+    if period_start is None or period_end is None:
+        if attendance_records:
+            anchor = min(r.date for r in attendance_records)
+        else:
+            anchor = date.today()
+        period_start = anchor.replace(day=1)
+        _, _pdays = _cal.monthrange(period_start.year, period_start.month)
+        period_end = period_start.replace(day=_pdays)
+
     attendance_summary = calculate_attendance_summary(attendance_records)
     present_days = attendance_summary['present_days']
     absent_days = attendance_summary['absent_days']
@@ -666,12 +900,25 @@ def calculate_pay_summary(worker, attendance_records):
             policy_notes.append(
                 f'Pro-rata minute-based daily wage applied for {prorated_days} day(s) after grace window.'
             )
-    elif worker.pay_type == 'monthly':
+    leave_balance = None
+    if worker.pay_type == 'monthly' and worker.leave_policy_enabled:
+        leave_balance = calculate_leave_balance(worker, period_start, period_end)
+
+    if worker.pay_type == 'monthly':
         base_pay = float(worker.monthly_salary or 0)
         if worker.leave_policy_enabled and worker.leave_deduction_per_day is not None:
-            extra_leave_days = max(0, leave_days - int(worker.allowed_leaves_per_month or 0))
+            # Extra leaves first consume the balance accumulated since joining;
+            # salary is only deducted once quota + accumulated balance run out.
+            extra_leave_days = leave_balance['chargeable_days'] if leave_balance else max(
+                0, leave_days - int(worker.allowed_leaves_per_month or 0)
+            )
             leave_deductions = extra_leave_days * float(worker.leave_deduction_per_day or 0)
-            policy_notes.append('Monthly salary applies leave deduction after allowed leaves.')
+            if leave_balance and leave_balance['balance_before'] > 0 and leave_days > (worker.allowed_leaves_per_month or 0):
+                policy_notes.append(
+                    f"Accumulated leave balance ({leave_balance['balance_before']:g} day(s)) "
+                    'adjusted before salary deduction.'
+                )
+            policy_notes.append('Monthly salary applies leave deduction after quota and accumulated balance.')
         else:
             policy_notes.append('Monthly salary with leave policy disabled.')
     elif worker.pay_type == 'hourly':
@@ -705,16 +952,15 @@ def calculate_pay_summary(worker, attendance_records):
     closure_extra_pay = 0.0
     closure_day_breakdown = []  # [{'date': date, 'reason': str, 'amount': float}]
     if getattr(worker, 'closure_extra_pay_enabled', False) and attendance_records:
-        record_dates = [r.date for r in attendance_records]
-        month_start = min(record_dates).replace(day=1)
-        _, _days = _cal.monthrange(month_start.year, month_start.month)
-        month_end = month_start.replace(day=_days)
         closure_records_list = ClosureDay.query.filter(
-            ClosureDay.date >= month_start,
-            ClosureDay.date <= month_end,
+            ClosureDay.date >= period_start,
+            ClosureDay.date <= period_end,
             ClosureDay.allow_attendance == True,
         ).all()
-        closure_day_info = {c.date: c.reason for c in closure_records_list}
+        closure_day_info = {
+            c.date: c.reason for c in closure_records_list
+            if closure_applies_to_worker(c, worker)
+        }
         if closure_day_info:
             pct = float(getattr(worker, 'closure_extra_percentage', 0) or 0) / 100.0
             method = (getattr(worker, 'closure_calculation_method', 'daily_percent') or 'daily_percent')
@@ -769,15 +1015,36 @@ def calculate_pay_summary(worker, attendance_records):
 
     base_pay += closure_extra_pay
 
-    estimated_pay = base_pay + overtime_pay - deductions
+    # Transactions (advances, loans, bonuses, recoveries, ...) for this period
+    period_transactions = get_period_transactions(worker, period_start, period_end)
+    transaction_earnings = sum(t.amount for t in period_transactions if t.is_earning)
+    transaction_deductions = sum(t.amount for t in period_transactions if not t.is_earning)
+    if transaction_earnings > 0:
+        policy_notes.append('Bonus/extra payment transactions added to pay.')
+    if transaction_deductions > 0:
+        policy_notes.append('Advance/loan/deduction transactions recovered from pay.')
+
+    # Project delay penalty
+    delay_penalty, delay_breakdown = calculate_delay_penalty(worker, period_start, period_end)
+    if delay_penalty > 0:
+        policy_notes.append('Project delay penalty applied.')
+
+    deductions = leave_deductions + late_deductions + delay_penalty
+    estimated_pay = base_pay + overtime_pay + transaction_earnings - deductions - transaction_deductions
     policy_note = ' '.join(policy_notes)
-    
+
     return {
         'pay_type': worker.pay_type,
         'base_pay': round(base_pay, 2),
         'overtime_pay': round(overtime_pay, 2),
         'leave_deductions': round(leave_deductions, 2),
         'late_deductions': round(late_deductions, 2),
+        'delay_penalty': delay_penalty,
+        'delay_breakdown': delay_breakdown,
+        'transaction_earnings': round(transaction_earnings, 2),
+        'transaction_deductions': round(transaction_deductions, 2),
+        'transactions': period_transactions,
+        'leave_balance': leave_balance,
         'deductions': round(deductions, 2),
         'estimated_pay': round(estimated_pay, 2),
         'paid_days': paid_days,
@@ -800,7 +1067,7 @@ def calculate_pay_summary(worker, attendance_records):
     }
 
 @app.route('/add_worker', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def add_worker():
     if request.method == 'POST':
         # Generate worker ID
@@ -920,12 +1187,51 @@ def add_worker():
     
     return render_template('edit_worker.html', worker=None)
 
+WORKER_TRACKED_FIELDS = (
+    ('position', 'Designation'),
+    ('department', 'Department'),
+    ('employee_type', 'Worker Category'),
+    ('pay_type', 'Pay Type'),
+    ('daily_rate', 'Daily Rate'),
+    ('monthly_salary', 'Monthly Salary'),
+    ('hourly_rate', 'Hourly Rate'),
+    ('project_rate', 'Project Rate'),
+    ('allowed_leaves_per_month', 'Allowed Leaves / Month'),
+)
+
+def log_worker_changes(worker, before_values):
+    """Write a permanent WorkerModification row for each tracked field change."""
+    for field, label in WORKER_TRACKED_FIELDS:
+        old = before_values.get(field)
+        new = getattr(worker, field)
+        if str(old if old is not None else '') == str(new if new is not None else ''):
+            continue
+        if field in ('pay_type', 'employee_type'):
+            mod_type = 'category_change'
+        elif field == 'position':
+            mod_type = 'promotion' if before_values.get('position') else 'profile_edit'
+        elif field in ('daily_rate', 'monthly_salary', 'hourly_rate', 'project_rate'):
+            mod_type = 'salary_change'
+        else:
+            mod_type = 'profile_edit'
+        db.session.add(WorkerModification(
+            worker_id=worker.id,
+            mod_type=mod_type,
+            field_name=label,
+            old_value=str(old) if old is not None else None,
+            new_value=str(new) if new is not None else None,
+            description=f'{label} changed',
+            effective_date=date.today(),
+            created_by=current_user.id,
+        ))
+
 @app.route('/edit_worker/<int:worker_id>', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def edit_worker(worker_id):
     worker = Worker.query.get_or_404(worker_id)
-    
+
     if request.method == 'POST':
+        before_values = {field: getattr(worker, field) for field, _ in WORKER_TRACKED_FIELDS}
         # Update worker details
         worker.full_name = request.form['full_name']
         worker.phone = request.form['phone']
@@ -1028,11 +1334,12 @@ def edit_worker(worker_id):
                 return redirect(url_for('edit_worker', worker_id=worker_id))
         
         worker.updated_at = datetime.utcnow()
-        
+
+        log_worker_changes(worker, before_values)
         db.session.commit()
         flash(f'Worker {worker.full_name} updated successfully', 'success')
         return redirect(url_for('worker_profile', worker_id=worker_id))
-    
+
     return render_template('edit_worker.html', worker=worker)
 
 @app.route('/attendance')
@@ -1040,17 +1347,35 @@ def edit_worker(worker_id):
 def attendance():
     selected_date = request.args.get('date', date.today().isoformat())
     selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
-    
+    site_filter = parse_int(request.args.get('site'), 0)
+    marker_filter = parse_int(request.args.get('marked_by'), 0)
+    search = (request.args.get('search') or '').strip().lower()
+
     # Get all workers and their attendance for the selected date
-    workers = Worker.query.filter_by(status='active').all()
+    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    closures_today = ClosureDay.query.filter_by(date=selected_date).all()
     attendance_data = []
-    
+
     for worker in workers:
+        # Attendance users only see workers on their assigned sites/projects
+        if not worker_visible_to_user(worker, current_user):
+            continue
+
+        assignment = worker.current_assignment
+        if site_filter and (not assignment or assignment.site_id != site_filter):
+            continue
+
+        if search and search not in worker.full_name.lower() and search not in worker.worker_id.lower():
+            continue
+
         attendance = AttendanceRecord.query.filter_by(
             worker_id=worker.id,
             date=selected_date
         ).first()
-        
+
+        if marker_filter and (not attendance or attendance.marked_by != marker_filter):
+            continue
+
         # compute wages and overtime for display
         wage = 0.0
         pay_mode = 'none'
@@ -1064,34 +1389,59 @@ def attendance():
                 else:
                     units = attendance.overtime_minutes / 60.0
                 overtime_pay = units * float(worker.overtime_rate)
-        
+
         attendance_data.append({
             'worker': worker,
             'attendance': attendance,
+            'assignment': assignment,
+            'closure': closure_for_worker_on_date(worker, selected_date, closures_today),
             'wage': wage,
             'pay_mode': pay_mode,
             'overtime_pay': overtime_pay,
         })
-    
-    # Check if it's a closure day
-    closure = ClosureDay.query.filter_by(date=selected_date).first()
-    
+
+    # Company-wide closure banner (per-worker closures shown inline)
+    closure = next((c for c in closures_today if c.scope in (None, '', 'company')), None)
+
+    sites = Site.query.filter_by(status='active').order_by(Site.name).all()
+    attendance_users = User.query.filter(User.role == 'attendance').order_by(User.full_name).all()
+
     return render_template('attendance.html',
                          attendance_data=attendance_data,
                          selected_date=selected_date,
                          closure=closure,
+                         sites=sites,
+                         attendance_users=attendance_users,
+                         site_filter=site_filter,
+                         marker_filter=marker_filter,
+                         search=search,
                          timedelta=timedelta)
 
 @app.route('/closures', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def closures():
     if request.method == 'POST':
         closure_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
         reason = request.form['reason'].strip()
         closure_type = request.form.get('type', 'holiday').strip().lower()
         allow_attendance = 'allow_attendance' in request.form
-        
-        existing = ClosureDay.query.filter_by(date=closure_date).first()
+        scope = request.form.get('scope', 'company')
+        if scope not in ('company', 'site', 'project'):
+            scope = 'company'
+        site_id = parse_int(request.form.get('site_id'), 0) or None
+        project_id = parse_int(request.form.get('project_id'), 0) or None
+        if scope == 'site' and not site_id:
+            scope = 'company'
+        if scope == 'project' and not project_id:
+            scope = 'company'
+        if scope != 'site':
+            site_id = None
+        if scope != 'project':
+            project_id = None
+
+        existing = ClosureDay.query.filter_by(
+            date=closure_date, scope=scope, site_id=site_id, project_id=project_id
+        ).first()
         if existing:
             existing.reason = reason
             existing.type = closure_type
@@ -1102,21 +1452,28 @@ def closures():
             closure.date = closure_date
             closure.reason = reason
             closure.type = closure_type
+            closure.scope = scope
+            closure.site_id = site_id
+            closure.project_id = project_id
             closure.allow_attendance = allow_attendance
             db.session.add(closure)
             flash('Closure day added successfully', 'success')
-        
+
         db.session.commit()
         return redirect(url_for('closures'))
-    
+
     upcoming_closures = ClosureDay.query.filter(
         ClosureDay.date >= date.today()
     ).order_by(ClosureDay.date).all()
-    
-    return render_template('closures.html', closures=upcoming_closures, date=date)
+
+    sites = Site.query.filter_by(status='active').order_by(Site.name).all()
+    projects = Project.query.filter(Project.status != 'archived').order_by(Project.name).all()
+
+    return render_template('closures.html', closures=upcoming_closures, date=date,
+                           sites=sites, projects=projects)
 
 @app.route('/worker/<int:worker_id>/deactivate', methods=['POST'])
-@login_required
+@admin_required
 def deactivate_worker(worker_id):
     worker = Worker.query.get_or_404(worker_id)
     if worker.status == 'active':
@@ -1130,19 +1487,23 @@ def deactivate_worker(worker_id):
     return redirect(url_for('worker_profile', worker_id=worker_id))
 
 @app.route('/worker/<int:worker_id>/delete', methods=['POST'])
-@login_required
+@admin_required
 def delete_worker(worker_id):
     worker = Worker.query.get_or_404(worker_id)
     name = worker.full_name
     AttendanceRecord.query.filter_by(worker_id=worker_id).delete()
     PayrollRecord.query.filter_by(worker_id=worker_id).delete()
+    ProjectAssignment.query.filter_by(worker_id=worker_id).delete()
+    WorkerModification.query.filter_by(worker_id=worker_id).delete()
+    LeaveAdjustment.query.filter_by(worker_id=worker_id).delete()
+    WorkerTransaction.query.filter_by(worker_id=worker_id).delete()
     db.session.delete(worker)
     db.session.commit()
     flash(f'{name} has been permanently deleted.', 'success')
     return redirect(url_for('workers'))
 
 @app.route('/closures/<int:closure_id>/delete', methods=['POST'])
-@login_required
+@admin_required
 def delete_closure(closure_id):
     closure = ClosureDay.query.get_or_404(closure_id)
     db.session.delete(closure)
@@ -1151,7 +1512,7 @@ def delete_closure(closure_id):
     return redirect(url_for('closures'))
 
 @app.route('/worker_attendance/<int:worker_id>')
-@login_required
+@admin_required
 def worker_attendance(worker_id):
     worker = Worker.query.get_or_404(worker_id)
     
@@ -1178,14 +1539,17 @@ def worker_attendance(worker_id):
         calendar_data[record.date.day] = record
     
     attendance_summary = calculate_attendance_summary(attendance_records)
-    pay_summary = calculate_pay_summary(worker, attendance_records)
+    pay_summary = calculate_pay_summary(worker, attendance_records, start_date, end_date)
 
     # Closure days for the month — keyed by day-of-month for easy template lookup
     closure_days_list = ClosureDay.query.filter(
         ClosureDay.date >= start_date,
         ClosureDay.date <= end_date,
     ).all()
-    closure_days = {c.date.day: c for c in closure_days_list}
+    closure_days = {
+        c.date.day: c for c in closure_days_list
+        if closure_applies_to_worker(c, worker)
+    }
 
     return render_template('worker_attendance.html',
                          worker=worker,
@@ -1201,7 +1565,7 @@ def worker_attendance(worker_id):
                          date=date)
 
 @app.route('/id_card/<int:worker_id>', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def id_card(worker_id):
     worker = Worker.query.get_or_404(worker_id)
     
@@ -1257,36 +1621,53 @@ def profile():
 @login_required
 def mark_attendance():
     attendance_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
-    closure = ClosureDay.query.filter_by(date=attendance_date).first()
-    
-    if closure and not closure.allow_attendance:
+    closures_today = ClosureDay.query.filter_by(date=attendance_date).all()
+    marked_via = request.form.get('marked_via', 'manual')
+    redirect_target = request.form.get('redirect_to') or url_for('attendance', date=attendance_date.isoformat())
+
+    company_lock = next(
+        (c for c in closures_today if c.scope in (None, '', 'company') and not c.allow_attendance),
+        None,
+    )
+    if company_lock:
         flash(
-            f"Attendance is locked on this closure day ({closure.reason}).",
+            f"Attendance is locked on this closure day ({company_lock.reason}).",
             'error'
         )
-        return redirect(url_for('attendance', date=attendance_date.isoformat()))
+        return redirect(redirect_target)
 
     if 'bulk_action' in request.form:
+        if not current_user.is_admin:
+            flash('Please contact the Administrator to make changes.', 'restricted')
+            return redirect(url_for('attendance', date=attendance_date.isoformat()))
         # Bulk attendance marking
         status = request.form['status']
-        
+
         workers = Worker.query.filter_by(status='active').all()
         for worker in workers:
+            worker_closure = closure_for_worker_on_date(worker, attendance_date, closures_today)
+            if worker_closure and not worker_closure.allow_attendance:
+                continue
             existing = AttendanceRecord.query.filter_by(
                 worker_id=worker.id,
                 date=attendance_date
             ).first()
-            
+
+            assignment = worker.current_assignment
             if existing:
                 existing.status = status
+                existing.marked_by = current_user.id
+                existing.marked_via = 'bulk'
                 if status in ('present', 'late'):
                     existing.check_in_time = datetime.now()
                     existing.overtime_minutes = 0
+                    existing.late_minutes = 0
                     existing.check_out_time = None
                 else:
                     existing.check_in_time = None
                     existing.check_out_time = None
                     existing.overtime_minutes = 0
+                    existing.late_minutes = 0
             else:
                 attendance = AttendanceRecord()
                 attendance.worker_id = worker.id
@@ -1295,28 +1676,59 @@ def mark_attendance():
                 attendance.check_in_time = datetime.now() if status in ('present', 'late') else None
                 attendance.check_out_time = None
                 attendance.overtime_minutes = 0
+                attendance.marked_by = current_user.id
+                attendance.marked_via = 'bulk'
+                attendance.site_id = assignment.site_id if assignment else None
                 db.session.add(attendance)
-        
+
         db.session.commit()
         flash(f'Bulk attendance marked as {status} for all workers', 'success')
     else:
         # Individual attendance marking
         worker_id = parse_int(request.form.get('worker_id'))
         status = request.form['status']
+        leave_type = request.form.get('leave_type') or None
         feedback_message = None
         feedback_category = 'success'
-        
+
         worker = Worker.query.get_or_404(worker_id)
+
+        if not worker_visible_to_user(worker, current_user):
+            flash('Please contact the Administrator to make changes.', 'restricted')
+            return redirect(url_for('attendance', date=attendance_date.isoformat()))
+
+        worker_closure = closure_for_worker_on_date(worker, attendance_date, closures_today)
+        if worker_closure and not worker_closure.allow_attendance:
+            flash(
+                f"Attendance is locked for {worker.full_name} on this closure day ({worker_closure.reason}).",
+                'error'
+            )
+            return redirect(redirect_target)
 
         # Check if attendance already exists
         existing = AttendanceRecord.query.filter_by(
             worker_id=worker_id,
             date=attendance_date
         ).first()
-        
+
+        # Authorized attendance users may check workers in/out, but may not
+        # modify a completed record or change an existing status.
+        if existing and not current_user.is_admin:
+            is_simple_checkout = (
+                existing.status == status
+                and existing.check_in_time is not None
+                and existing.check_out_time is None
+            )
+            if not is_simple_checkout:
+                flash('Please contact the Administrator to make changes.', 'restricted')
+                return redirect(redirect_target)
+
         if existing:
             previous_status = existing.status
             existing.status = status
+            existing.marked_by = current_user.id
+            existing.marked_via = marked_via
+            existing.leave_type = leave_type if status == 'leave' else None
 
             if status in ('present', 'late'):
                 now = datetime.now()
@@ -1325,7 +1737,14 @@ def mark_attendance():
                     existing.check_in_time = now
                     existing.check_out_time = None
                     existing.overtime_minutes = 0
-                    feedback_message = 'Check-in captured successfully.'
+                    # Grace-time aware auto-late detection
+                    if status == 'present' and is_late_check_in(worker, attendance_date, now):
+                        existing.status = 'late'
+                    existing.late_minutes = calculate_late_minutes_for_record(worker, existing)
+                    if existing.status == 'late' and existing.late_minutes > 0:
+                        feedback_message = f'Check-in captured — {existing.late_minutes} min late.'
+                    else:
+                        feedback_message = 'Check-in captured successfully.'
                 elif existing.check_out_time is None and previous_status == status:
                     # Second tap on same active status acts as check-out/close.
                     existing.check_out_time = now
@@ -1365,13 +1784,16 @@ def mark_attendance():
                     # Re-open attendance when status changes.
                     existing.check_out_time = None
                     existing.overtime_minutes = 0
+                    existing.late_minutes = calculate_late_minutes_for_record(worker, existing)
                     feedback_message = 'Attendance status updated successfully.'
             else:
                 existing.check_in_time = None
                 existing.check_out_time = None
                 existing.overtime_minutes = 0
+                existing.late_minutes = 0
                 feedback_message = 'Attendance marked successfully.'
         else:
+            assignment = worker.current_assignment
             attendance = AttendanceRecord()
             attendance.worker_id = worker_id
             attendance.date = attendance_date
@@ -1379,14 +1801,37 @@ def mark_attendance():
             attendance.check_in_time = datetime.now() if status in ('present', 'late') else None
             attendance.check_out_time = None
             attendance.overtime_minutes = 0
+            attendance.leave_type = leave_type if status == 'leave' else None
+            attendance.marked_by = current_user.id
+            attendance.marked_via = marked_via
+            attendance.site_id = assignment.site_id if assignment else None
+            if status == 'present' and is_late_check_in(worker, attendance_date, attendance.check_in_time):
+                attendance.status = 'late'
+            attendance.late_minutes = calculate_late_minutes_for_record(worker, attendance)
             db.session.add(attendance)
-            feedback_message = 'Check-in captured successfully.' if status in ('present', 'late') else 'Attendance marked successfully.'
-        
+            if attendance.status == 'late' and attendance.late_minutes > 0:
+                feedback_message = f'Check-in captured — {attendance.late_minutes} min late.'
+            elif status in ('present', 'late'):
+                feedback_message = 'Check-in captured successfully.'
+            else:
+                feedback_message = 'Attendance marked successfully.'
+
+        # Notify admins when a site attendance user records attendance
+        if not current_user.is_admin:
+            site = worker.current_site
+            notify_admin(
+                f'Attendance: {worker.full_name} — {status}',
+                f'{current_user.full_name} marked {worker.full_name} ({worker.worker_id}) as {status} '
+                f'on {attendance_date.strftime("%d %b %Y")}'
+                + (f' at {site.name}' if site else '')
+                + (f' via {marked_via.replace("_", " ")}' if marked_via != 'manual' else ''),
+            )
+
         db.session.commit()
         if feedback_message:
             flash(feedback_message, feedback_category)
-    
-    return redirect(url_for('attendance', date=attendance_date.isoformat()))
+
+    return redirect(redirect_target)
 
 def _build_payroll_rows(month, year):
     workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
@@ -1409,10 +1854,13 @@ def _build_payroll_rows(month, year):
         ).all()
 
         att_summary = calculate_attendance_summary(records)
-        pay_summary = calculate_pay_summary(worker, records)
+        pay_summary = calculate_pay_summary(worker, records, start_date, end_date)
 
-        gross_pay = round(pay_summary['base_pay'] + pay_summary['overtime_pay'], 2)
-        deductions = pay_summary['deductions']
+        gross_pay = round(
+            pay_summary['base_pay'] + pay_summary['overtime_pay'] + pay_summary['transaction_earnings'],
+            2,
+        )
+        deductions = round(pay_summary['deductions'] + pay_summary['transaction_deductions'], 2)
         net_pay = pay_summary['estimated_pay']
 
         existing_record = PayrollRecord.query.filter_by(
@@ -1462,7 +1910,7 @@ MONTH_NAMES = [
 
 
 @app.route('/payroll')
-@login_required
+@admin_required
 def payroll():
     today = date.today()
     try:
@@ -1488,7 +1936,7 @@ def payroll():
 
 
 @app.route('/payroll/save', methods=['POST'])
-@login_required
+@admin_required
 def payroll_save():
     today = date.today()
     try:
@@ -1544,7 +1992,7 @@ def payroll_save():
 
 
 @app.route('/payroll/<int:record_id>/toggle_paid', methods=['POST'])
-@login_required
+@admin_required
 def payroll_toggle_paid(record_id):
     record = PayrollRecord.query.get_or_404(record_id)
     record.status = 'pending' if record.status == 'paid' else 'paid'
@@ -1559,7 +2007,7 @@ def payroll_toggle_paid(record_id):
 
 
 @app.route('/payroll/slip/<int:worker_id>')
-@login_required
+@admin_required
 def payroll_slip(worker_id):
     worker = Worker.query.get_or_404(worker_id)
     today = date.today()
@@ -1581,7 +2029,7 @@ def payroll_slip(worker_id):
 
     calendar_data = {r.date.day: r for r in records}
     att_summary = calculate_attendance_summary(records)
-    pay_summary = calculate_pay_summary(worker, records)
+    pay_summary = calculate_pay_summary(worker, records, start_date, end_date)
 
     payroll_record = PayrollRecord.query.filter_by(
         worker_id=worker.id, month=month, year=year
@@ -1606,7 +2054,7 @@ def payroll_slip(worker_id):
 
 
 @app.route('/payroll/export.csv')
-@login_required
+@admin_required
 def payroll_export():
     today = date.today()
     try:
@@ -1674,7 +2122,7 @@ def payroll_export():
 
 
 @app.route('/export_data')
-@login_required
+@admin_required
 def export_data():
     # Create CSV response
     output = io.StringIO()
@@ -1734,3 +2182,761 @@ def export_data():
     response.headers['Content-Disposition'] = f'attachment; filename=smartworker_data_{date.today().isoformat()}.csv'
     
     return response
+
+
+# ============================================================
+# Company Settings & Master Data Management (Admin)
+# ============================================================
+
+COMPANY_LOGO_UPLOAD_DIR = os.path.join(app.static_folder, 'uploads', 'company')
+
+@app.route('/settings')
+@admin_required
+def settings():
+    company = CompanySetting.query.first()
+    sites = Site.query.order_by(Site.status, Site.name).all()
+    projects = Project.query.order_by(Project.status, Project.name).all()
+    tasks = WorkTask.query.order_by(WorkTask.status, WorkTask.name).all()
+    departments = Department.query.order_by(Department.status, Department.name).all()
+    attendance_users = User.query.filter_by(role='attendance').order_by(User.full_name).all()
+    return render_template('settings.html',
+                           company=company,
+                           sites=sites,
+                           projects=projects,
+                           tasks=tasks,
+                           departments=departments,
+                           attendance_users=attendance_users,
+                           date=date)
+
+@app.route('/settings/company', methods=['POST'])
+@admin_required
+def settings_company():
+    company = CompanySetting.query.first()
+    if not company:
+        company = CompanySetting()
+        db.session.add(company)
+    company.name = request.form.get('name', 'SmartWorker').strip() or 'SmartWorker'
+    company.address = request.form.get('address', '').strip() or None
+    company.phone = request.form.get('phone', '').strip() or None
+    company.email = request.form.get('email', '').strip() or None
+    company.website = request.form.get('website', '').strip() or None
+    company.gst_number = request.form.get('gst_number', '').strip() or None
+    company.registration_number = request.form.get('registration_number', '').strip() or None
+
+    logo = request.files.get('logo')
+    if logo and logo.filename:
+        filename = secure_filename(logo.filename)
+        if not allowed_image_file(filename):
+            flash('Please upload a valid logo image (JPG, JPEG, PNG, GIF, or WEBP).', 'error')
+            return redirect(url_for('settings'))
+        os.makedirs(COMPANY_LOGO_UPLOAD_DIR, exist_ok=True)
+        extension = filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"logo_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{extension}"
+        logo.save(os.path.join(COMPANY_LOGO_UPLOAD_DIR, unique_filename))
+        company.logo = url_for('static', filename=f'uploads/company/{unique_filename}')
+
+    db.session.commit()
+    flash('Company settings saved. They will appear on all PDFs and reports.', 'success')
+    return redirect(url_for('settings'))
+
+def _save_entity(model, entity_label):
+    """Shared add/edit handler for sites, projects, tasks and departments."""
+    entity_id = parse_int(request.form.get('id'), 0)
+    if entity_id:
+        entity = model.query.get_or_404(entity_id)
+    else:
+        entity = model()
+        db.session.add(entity)
+
+    entity.name = request.form.get('name', '').strip()
+    if not entity.name:
+        flash(f'{entity_label} name is required.', 'error')
+        db.session.rollback()
+        return redirect(url_for('settings'))
+
+    if model is Site:
+        entity.address = request.form.get('address', '').strip() or None
+        entity.contact_person = request.form.get('contact_person', '').strip() or None
+        entity.contact_phone = request.form.get('contact_phone', '').strip() or None
+    elif model is Project:
+        entity.description = request.form.get('description', '').strip() or None
+        entity.site_id = parse_int(request.form.get('site_id'), 0) or None
+        for field in ('start_date', 'end_date', 'deadline', 'completion_date'):
+            raw = request.form.get(field)
+            setattr(entity, field, datetime.strptime(raw, '%Y-%m-%d').date() if raw else None)
+        penalty_type = request.form.get('penalty_type', 'none')
+        entity.penalty_type = penalty_type if penalty_type in ('none', 'fixed', 'percent') else 'none'
+        entity.penalty_value = max(parse_float(request.form.get('penalty_value'), 0.0), 0.0)
+        requested_status = request.form.get('status', entity.status or 'active')
+        if requested_status in ('active', 'completed', 'archived'):
+            entity.status = requested_status
+        if entity.completion_date and entity.status == 'active':
+            entity.status = 'completed'
+    elif model is WorkTask:
+        entity.project_id = parse_int(request.form.get('project_id'), 0) or None
+        entity.category = request.form.get('category', '').strip() or None
+
+    db.session.commit()
+    flash(f'{entity_label} saved successfully.', 'success')
+    return redirect(url_for('settings'))
+
+def _toggle_entity_archive(model, entity_id, entity_label):
+    entity = model.query.get_or_404(entity_id)
+    entity.status = 'active' if entity.status == 'archived' else 'archived'
+    db.session.commit()
+    state = 'restored' if entity.status == 'active' else 'archived'
+    flash(f'{entity_label} {state} successfully.', 'success')
+    return redirect(url_for('settings'))
+
+def _delete_entity(model, entity_id, entity_label):
+    entity = model.query.get_or_404(entity_id)
+    db.session.delete(entity)
+    db.session.commit()
+    flash(f'{entity_label} deleted successfully.', 'success')
+    return redirect(url_for('settings'))
+
+@app.route('/settings/site/save', methods=['POST'])
+@admin_required
+def settings_site_save():
+    return _save_entity(Site, 'Site')
+
+@app.route('/settings/site/<int:entity_id>/archive', methods=['POST'])
+@admin_required
+def settings_site_archive(entity_id):
+    return _toggle_entity_archive(Site, entity_id, 'Site')
+
+@app.route('/settings/site/<int:entity_id>/delete', methods=['POST'])
+@admin_required
+def settings_site_delete(entity_id):
+    return _delete_entity(Site, entity_id, 'Site')
+
+@app.route('/settings/project/save', methods=['POST'])
+@admin_required
+def settings_project_save():
+    return _save_entity(Project, 'Project')
+
+@app.route('/settings/project/<int:entity_id>/archive', methods=['POST'])
+@admin_required
+def settings_project_archive(entity_id):
+    return _toggle_entity_archive(Project, entity_id, 'Project')
+
+@app.route('/settings/project/<int:entity_id>/delete', methods=['POST'])
+@admin_required
+def settings_project_delete(entity_id):
+    return _delete_entity(Project, entity_id, 'Project')
+
+@app.route('/settings/task/save', methods=['POST'])
+@admin_required
+def settings_task_save():
+    return _save_entity(WorkTask, 'Task')
+
+@app.route('/settings/task/<int:entity_id>/archive', methods=['POST'])
+@admin_required
+def settings_task_archive(entity_id):
+    return _toggle_entity_archive(WorkTask, entity_id, 'Task')
+
+@app.route('/settings/task/<int:entity_id>/delete', methods=['POST'])
+@admin_required
+def settings_task_delete(entity_id):
+    return _delete_entity(WorkTask, entity_id, 'Task')
+
+@app.route('/settings/department/save', methods=['POST'])
+@admin_required
+def settings_department_save():
+    return _save_entity(Department, 'Department')
+
+@app.route('/settings/department/<int:entity_id>/archive', methods=['POST'])
+@admin_required
+def settings_department_archive(entity_id):
+    return _toggle_entity_archive(Department, entity_id, 'Department')
+
+@app.route('/settings/department/<int:entity_id>/delete', methods=['POST'])
+@admin_required
+def settings_department_delete(entity_id):
+    return _delete_entity(Department, entity_id, 'Department')
+
+# ============================================================
+# Authorized Attendance Users (Admin)
+# ============================================================
+
+@app.route('/settings/attendance_user/save', methods=['POST'])
+@admin_required
+def settings_attendance_user_save():
+    user_id = parse_int(request.form.get('id'), 0)
+    full_name = request.form.get('full_name', '').strip()
+    mobile = normalize_mobile_number(request.form.get('mobile'))
+    password = request.form.get('password', '')
+    site_ids = ','.join(request.form.getlist('site_ids'))
+    project_ids = ','.join(request.form.getlist('project_ids'))
+
+    if not full_name:
+        flash('Full name is required for an attendance user.', 'error')
+        return redirect(url_for('settings'))
+    if not is_valid_mobile_number(mobile):
+        flash('Please enter a valid mobile number for the attendance user.', 'error')
+        return redirect(url_for('settings'))
+
+    duplicate = User.query.filter(User.phone == mobile, User.id != user_id).first()
+    if duplicate:
+        flash('This mobile number is already registered to another account.', 'error')
+        return redirect(url_for('settings'))
+
+    if user_id:
+        user = User.query.get_or_404(user_id)
+        if user.role != 'attendance':
+            flash('Only attendance users can be edited here.', 'error')
+            return redirect(url_for('settings'))
+    else:
+        if not password or len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return redirect(url_for('settings'))
+        user = User()
+        user.username = generate_unique_username(full_name, f"{mobile}@attendance.local")
+        user.email = f"{mobile}@attendance.local"
+        user.role = 'attendance'
+        user.created_by = current_user.id
+        db.session.add(user)
+
+    user.full_name = full_name
+    user.phone = mobile
+    user.assigned_site_ids = site_ids or None
+    user.assigned_project_ids = project_ids or None
+    if password:
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            db.session.rollback()
+            return redirect(url_for('settings'))
+        user.set_password(password)
+
+    db.session.commit()
+    flash(f'Attendance user {full_name} saved. They can log in with their mobile number.', 'success')
+    return redirect(url_for('settings'))
+
+@app.route('/settings/attendance_user/<int:user_id>/toggle', methods=['POST'])
+@admin_required
+def settings_attendance_user_toggle(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.role != 'attendance':
+        flash('Only attendance users can be managed here.', 'error')
+        return redirect(url_for('settings'))
+    user.status = 'disabled' if (user.status or 'active') == 'active' else 'active'
+    db.session.commit()
+    flash(f'{user.full_name} is now {user.status}.', 'success')
+    return redirect(url_for('settings'))
+
+@app.route('/settings/attendance_user/<int:user_id>/delete', methods=['POST'])
+@admin_required
+def settings_attendance_user_delete(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.role != 'attendance':
+        flash('Only attendance users can be deleted here.', 'error')
+        return redirect(url_for('settings'))
+    db.session.delete(user)
+    db.session.commit()
+    flash('Attendance user deleted.', 'success')
+    return redirect(url_for('settings'))
+
+# ============================================================
+# Transactions Module (Admin)
+# ============================================================
+
+TRANSACTION_TYPE_LABELS = {
+    'advance': 'Advance Salary',
+    'loan': 'Loan',
+    'cash_advance': 'Cash Advance',
+    'recovery': 'Recovery',
+    'deduction': 'Deduction',
+    'bonus': 'Bonus',
+    'extra_payment': 'Extra Payment',
+    'incentive': 'Incentive',
+    'refreshment': 'Refreshment Allowance',
+}
+
+@app.route('/transactions')
+@admin_required
+def transactions():
+    today = date.today()
+    try:
+        month = max(1, min(12, int(request.args.get('month', today.month))))
+        year = max(2020, min(2099, int(request.args.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+    worker_filter = parse_int(request.args.get('worker'), 0)
+
+    _, days_in_month = _cal.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, days_in_month)
+
+    query = WorkerTransaction.query.filter(
+        WorkerTransaction.date >= start_date,
+        WorkerTransaction.date <= end_date,
+    )
+    if worker_filter:
+        query = query.filter(WorkerTransaction.worker_id == worker_filter)
+    txns = query.order_by(WorkerTransaction.date.desc(), WorkerTransaction.id.desc()).all()
+
+    total_earnings = sum(t.amount for t in txns if t.status == 'active' and t.is_earning)
+    total_deductions = sum(t.amount for t in txns if t.status == 'active' and not t.is_earning)
+
+    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    years = list(range(2024, today.year + 2))
+    months = [(i, MONTH_NAMES[i - 1]) for i in range(1, 13)]
+
+    return render_template('transactions.html',
+                           transactions=txns,
+                           workers=workers,
+                           month=month,
+                           year=year,
+                           years=years,
+                           months=months,
+                           month_name=MONTH_NAMES[month - 1],
+                           worker_filter=worker_filter,
+                           total_earnings=round(total_earnings, 2),
+                           total_deductions=round(total_deductions, 2),
+                           type_labels=TRANSACTION_TYPE_LABELS,
+                           earning_types=TRANSACTION_EARNING_TYPES,
+                           deduction_types=TRANSACTION_DEDUCTION_TYPES,
+                           today=today)
+
+@app.route('/transactions/save', methods=['POST'])
+@admin_required
+def transactions_save():
+    txn_id = parse_int(request.form.get('id'), 0)
+    worker_id = parse_int(request.form.get('worker_id'), 0)
+    txn_type = request.form.get('txn_type', '')
+    amount = parse_float(request.form.get('amount'), 0.0)
+    txn_date_raw = request.form.get('date')
+    description = request.form.get('description', '').strip() or None
+    redirect_to = request.form.get('redirect_to') or url_for('transactions')
+
+    worker = Worker.query.get_or_404(worker_id)
+    if txn_type not in TRANSACTION_TYPE_LABELS:
+        flash('Please choose a valid transaction type.', 'error')
+        return redirect(redirect_to)
+    if amount <= 0:
+        flash('Transaction amount must be greater than zero.', 'error')
+        return redirect(redirect_to)
+    try:
+        txn_date = datetime.strptime(txn_date_raw, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        txn_date = date.today()
+
+    if txn_id:
+        txn = WorkerTransaction.query.get_or_404(txn_id)
+    else:
+        txn = WorkerTransaction()
+        txn.created_by = current_user.id
+        db.session.add(txn)
+
+    txn.worker_id = worker.id
+    txn.txn_type = txn_type
+    txn.amount = amount
+    txn.date = txn_date
+    txn.description = description
+    db.session.commit()
+
+    label = TRANSACTION_TYPE_LABELS[txn_type]
+    flash(f'{label} of ₹{amount:,.2f} saved for {worker.full_name}. Payroll updates automatically.', 'success')
+    return redirect(redirect_to)
+
+@app.route('/transactions/<int:txn_id>/cancel', methods=['POST'])
+@admin_required
+def transactions_cancel(txn_id):
+    txn = WorkerTransaction.query.get_or_404(txn_id)
+    txn.status = 'cancelled' if txn.status == 'active' else 'active'
+    db.session.commit()
+    state = 'cancelled' if txn.status == 'cancelled' else 'restored'
+    flash(f'Transaction {state}. Payroll updates automatically.', 'success')
+    return redirect(request.form.get('redirect_to') or url_for('transactions'))
+
+@app.route('/transactions/<int:txn_id>/delete', methods=['POST'])
+@admin_required
+def transactions_delete(txn_id):
+    txn = WorkerTransaction.query.get_or_404(txn_id)
+    db.session.delete(txn)
+    db.session.commit()
+    flash('Transaction deleted permanently.', 'success')
+    return redirect(request.form.get('redirect_to') or url_for('transactions'))
+
+# ============================================================
+# Worker Modification, Promotion & Leave Adjustment (Admin)
+# ============================================================
+
+@app.route('/worker/<int:worker_id>/modify', methods=['POST'])
+@admin_required
+def worker_modify(worker_id):
+    worker = Worker.query.get_or_404(worker_id)
+    mod_type = request.form.get('mod_type', 'other')
+    description = request.form.get('description', '').strip() or None
+    effective_raw = request.form.get('effective_date')
+    try:
+        effective_date = datetime.strptime(effective_raw, '%Y-%m-%d').date() if effective_raw else date.today()
+    except ValueError:
+        effective_date = date.today()
+
+    if mod_type == 'promotion':
+        new_position = request.form.get('new_position', '').strip()
+        new_salary = parse_float(request.form.get('new_salary'), 0.0)
+        old_position = worker.position
+        changes = []
+        if new_position and new_position != worker.position:
+            worker.position = new_position
+            changes.append(f'Designation: {old_position} → {new_position}')
+            db.session.add(WorkerModification(
+                worker_id=worker.id, mod_type='promotion', field_name='Designation',
+                old_value=old_position, new_value=new_position,
+                description=description or 'Promotion',
+                effective_date=effective_date, created_by=current_user.id,
+            ))
+        if new_salary > 0:
+            field_map = {
+                'daily': 'daily_rate', 'monthly': 'monthly_salary',
+                'hourly': 'hourly_rate', 'project': 'project_rate',
+            }
+            field = field_map.get(worker.pay_type, 'monthly_salary')
+            old_salary = getattr(worker, field)
+            setattr(worker, field, new_salary)
+            changes.append(f'Salary: {old_salary or 0:g} → {new_salary:g}')
+            db.session.add(WorkerModification(
+                worker_id=worker.id, mod_type='salary_change', field_name=field.replace('_', ' ').title(),
+                old_value=str(old_salary) if old_salary is not None else None,
+                new_value=str(new_salary),
+                description=description or 'Salary revision with promotion',
+                effective_date=effective_date, created_by=current_user.id,
+            ))
+        if not changes:
+            flash('Nothing to update — enter a new designation and/or salary.', 'warning')
+            return redirect(url_for('worker_profile', worker_id=worker.id))
+        worker.updated_at = datetime.utcnow()
+        db.session.commit()
+        flash(f'Promotion recorded for {worker.full_name}: ' + '; '.join(changes), 'success')
+
+    elif mod_type == 'salary_change':
+        new_salary = parse_float(request.form.get('new_salary'), 0.0)
+        if new_salary <= 0:
+            flash('Please enter the new salary amount.', 'error')
+            return redirect(url_for('worker_profile', worker_id=worker.id))
+        field_map = {
+            'daily': 'daily_rate', 'monthly': 'monthly_salary',
+            'hourly': 'hourly_rate', 'project': 'project_rate',
+        }
+        field = field_map.get(worker.pay_type, 'monthly_salary')
+        old_salary = getattr(worker, field)
+        setattr(worker, field, new_salary)
+        worker.updated_at = datetime.utcnow()
+        db.session.add(WorkerModification(
+            worker_id=worker.id, mod_type='salary_change', field_name=field.replace('_', ' ').title(),
+            old_value=str(old_salary) if old_salary is not None else None,
+            new_value=str(new_salary),
+            description=description or 'Salary increment',
+            effective_date=effective_date, created_by=current_user.id,
+        ))
+        db.session.commit()
+        flash(f'Salary updated for {worker.full_name}. Payroll recalculates automatically.', 'success')
+
+    elif mod_type in ('bonus', 'incentive', 'refreshment', 'extra_payment'):
+        amount = parse_float(request.form.get('amount'), 0.0)
+        if amount <= 0:
+            flash('Please enter the payment amount.', 'error')
+            return redirect(url_for('worker_profile', worker_id=worker.id))
+        db.session.add(WorkerTransaction(
+            worker_id=worker.id, txn_type=mod_type, amount=amount,
+            date=effective_date, description=description,
+            created_by=current_user.id,
+        ))
+        db.session.add(WorkerModification(
+            worker_id=worker.id, mod_type=mod_type, field_name='Payment',
+            new_value=f'₹{amount:,.2f}',
+            description=description or TRANSACTION_TYPE_LABELS.get(mod_type, mod_type).title(),
+            effective_date=effective_date, created_by=current_user.id,
+        ))
+        db.session.commit()
+        flash(f'{TRANSACTION_TYPE_LABELS.get(mod_type, mod_type).title()} of ₹{amount:,.2f} added for {worker.full_name}.', 'success')
+
+    elif mod_type == 'leave_grant':
+        days = parse_float(request.form.get('days'), 0.0)
+        if days == 0:
+            flash('Please enter the number of leave days to credit or debit.', 'error')
+            return redirect(url_for('worker_profile', worker_id=worker.id))
+        db.session.add(LeaveAdjustment(
+            worker_id=worker.id, days=days,
+            reason=description or 'Manual leave adjustment',
+            created_by=current_user.id,
+        ))
+        db.session.add(WorkerModification(
+            worker_id=worker.id, mod_type='leave_grant', field_name='Leave Balance',
+            new_value=f'{days:+g} day(s)',
+            description=description or 'Manual leave balance adjustment',
+            effective_date=effective_date, created_by=current_user.id,
+        ))
+        db.session.commit()
+        flash(f'Leave balance adjusted by {days:+g} day(s) for {worker.full_name}.', 'success')
+
+    else:
+        db.session.add(WorkerModification(
+            worker_id=worker.id, mod_type='other', field_name=None,
+            description=description or 'Record note',
+            effective_date=effective_date, created_by=current_user.id,
+        ))
+        db.session.commit()
+        flash('Modification note recorded.', 'success')
+
+    return redirect(url_for('worker_profile', worker_id=worker.id))
+
+# ============================================================
+# Project / Site Assignment (Admin)
+# ============================================================
+
+@app.route('/worker/<int:worker_id>/assign', methods=['POST'])
+@admin_required
+def worker_assign(worker_id):
+    worker = Worker.query.get_or_404(worker_id)
+    project_id = parse_int(request.form.get('project_id'), 0) or None
+    site_id = parse_int(request.form.get('site_id'), 0) or None
+    task_id = parse_int(request.form.get('task_id'), 0) or None
+    notes = request.form.get('notes', '').strip() or None
+    start_raw = request.form.get('start_date')
+    try:
+        start_date = datetime.strptime(start_raw, '%Y-%m-%d').date() if start_raw else date.today()
+    except ValueError:
+        start_date = date.today()
+
+    if not project_id and not site_id:
+        flash('Choose a project and/or a site for the assignment.', 'error')
+        return redirect(url_for('worker_profile', worker_id=worker.id))
+
+    # Close the previous active assignment as a transfer
+    previous = worker.current_assignment
+    if previous:
+        previous.status = 'transferred'
+        previous.end_date = previous.end_date or start_date
+
+    assignment = ProjectAssignment(
+        worker_id=worker.id,
+        project_id=project_id,
+        site_id=site_id,
+        task_id=task_id,
+        start_date=start_date,
+        notes=notes,
+        created_by=current_user.id,
+    )
+    db.session.add(assignment)
+
+    target = []
+    if project_id:
+        project = Project.query.get(project_id)
+        if project:
+            target.append(f'project {project.name}')
+    if site_id:
+        site = Site.query.get(site_id)
+        if site:
+            target.append(f'site {site.name}')
+    db.session.add(WorkerModification(
+        worker_id=worker.id, mod_type='assignment', field_name='Assignment',
+        old_value=None, new_value=' / '.join(target) or None,
+        description=notes or ('Assigned to ' + ' and '.join(target) if target else 'Assignment'),
+        effective_date=start_date, created_by=current_user.id,
+    ))
+    db.session.commit()
+    flash(f'{worker.full_name} assigned to ' + ' and '.join(target) + '.', 'success')
+    return redirect(url_for('worker_profile', worker_id=worker.id))
+
+@app.route('/worker/<int:worker_id>/assignment/<int:assignment_id>/end', methods=['POST'])
+@admin_required
+def worker_assignment_end(worker_id, assignment_id):
+    assignment = ProjectAssignment.query.get_or_404(assignment_id)
+    if assignment.worker_id != worker_id:
+        flash('Assignment does not belong to this worker.', 'error')
+        return redirect(url_for('worker_profile', worker_id=worker_id))
+    assignment.status = 'completed'
+    assignment.end_date = date.today()
+    db.session.commit()
+    flash('Assignment marked as completed.', 'success')
+    return redirect(url_for('worker_profile', worker_id=worker_id))
+
+# ============================================================
+# Attendance time adjustment (Admin only)
+# ============================================================
+
+@app.route('/attendance/<int:record_id>/adjust', methods=['POST'])
+@admin_required
+def attendance_adjust(record_id):
+    record = AttendanceRecord.query.get_or_404(record_id)
+    worker = Worker.query.get_or_404(record.worker_id)
+
+    status = request.form.get('status', record.status)
+    if status in ('present', 'absent', 'late', 'leave'):
+        record.status = status
+
+    def _parse_time_field(name):
+        raw = (request.form.get(name) or '').strip()
+        if not raw:
+            return None
+        try:
+            parsed = datetime.strptime(raw, '%H:%M').time()
+        except ValueError:
+            return None
+        return datetime.combine(record.date, parsed)
+
+    if record.status in ('present', 'late'):
+        check_in = _parse_time_field('check_in_time')
+        check_out = _parse_time_field('check_out_time')
+        record.check_in_time = check_in
+        record.check_out_time = check_out
+        if check_in and check_out and check_out <= check_in:
+            # Overnight shift — checkout lands on the next day
+            record.check_out_time = check_out + timedelta(days=1)
+        if record.status == 'present' and check_in and is_late_check_in(worker, record.date, check_in):
+            record.status = 'late'
+        record.late_minutes = calculate_late_minutes_for_record(worker, record)
+        record.overtime_minutes = (
+            calculate_overtime_minutes_for_record(worker, record)
+            if record.check_out_time else 0
+        )
+    else:
+        record.check_in_time = None
+        record.check_out_time = None
+        record.overtime_minutes = 0
+        record.late_minutes = 0
+        record.leave_type = request.form.get('leave_type') or record.leave_type
+
+    record.notes = request.form.get('notes', '').strip() or record.notes
+    record.marked_by = current_user.id
+    db.session.commit()
+    flash(f'Attendance adjusted for {worker.full_name}.', 'success')
+    return redirect(request.form.get('redirect_to') or url_for('attendance', date=record.date.isoformat()))
+
+# ============================================================
+# QR Scanner & Manual Employee ID attendance
+# ============================================================
+
+@app.route('/scan')
+@login_required
+def scan():
+    return render_template('scan.html', today=date.today())
+
+@app.route('/api/worker_lookup')
+@login_required
+def api_worker_lookup():
+    """Resolve a QR payload or manually typed employee ID to a worker."""
+    code = (request.args.get('code') or '').strip()
+    if code.upper().startswith('SMARTWORKER:'):
+        code = code.split(':', 1)[1].strip()
+    if not code:
+        return jsonify({'success': False, 'message': 'Enter or scan an employee ID.'}), 400
+
+    worker = Worker.query.filter(func.upper(Worker.worker_id) == code.upper()).first()
+    if not worker:
+        return jsonify({'success': False, 'message': f'No worker found for ID {code}.'}), 404
+    if worker.status != 'active':
+        return jsonify({'success': False, 'message': f'{worker.full_name} is inactive.'}), 403
+    if not worker_visible_to_user(worker, current_user):
+        return jsonify({'success': False, 'message': 'This worker is not assigned to your site. Please contact the Administrator.'}), 403
+
+    today = date.today()
+    record = AttendanceRecord.query.filter_by(worker_id=worker.id, date=today).first()
+    assignment = worker.current_assignment
+    closure = closure_for_worker_on_date(worker, today)
+
+    return jsonify({
+        'success': True,
+        'worker': {
+            'id': worker.id,
+            'worker_id': worker.worker_id,
+            'name': worker.full_name,
+            'position': worker.position,
+            'department': worker.department,
+            'photo': worker.profile_image,
+            'profile_url': url_for('worker_profile', worker_id=worker.id),
+            'site': assignment.site.name if assignment and assignment.site else None,
+            'project': assignment.project.name if assignment and assignment.project else None,
+        },
+        'attendance': {
+            'status': record.status if record else None,
+            'check_in': record.check_in_time.strftime('%H:%M') if record and record.check_in_time else None,
+            'check_out': record.check_out_time.strftime('%H:%M') if record and record.check_out_time else None,
+            'can_check_in': not record or not record.check_in_time,
+            'can_check_out': bool(record and record.check_in_time and not record.check_out_time
+                                  and record.status in ('present', 'late')),
+        },
+        'closure': {
+            'reason': closure.reason,
+            'locked': not closure.allow_attendance,
+        } if closure else None,
+    })
+
+# ============================================================
+# Notifications (Admin)
+# ============================================================
+
+@app.route('/notifications')
+@admin_required
+def notifications():
+    items = Notification.query.order_by(Notification.created_at.desc()).limit(100).all()
+    return render_template('notifications.html', notifications=items)
+
+@app.route('/notifications/mark_read', methods=['POST'])
+@admin_required
+def notifications_mark_read():
+    Notification.query.filter_by(is_read=False).update({'is_read': True})
+    db.session.commit()
+    return redirect(url_for('notifications'))
+
+# ============================================================
+# Professional Worker PDF Report
+# ============================================================
+
+@app.route('/worker/<int:worker_id>/report')
+@admin_required
+def worker_report(worker_id):
+    worker = Worker.query.get_or_404(worker_id)
+    today = date.today()
+
+    # Attendance summary for the last 6 months
+    monthly_history = []
+    for offset in range(5, -1, -1):
+        anchor_month = (today.month - offset - 1) % 12 + 1
+        anchor_year = today.year + ((today.month - offset - 1) // 12)
+        m_start = date(anchor_year, anchor_month, 1)
+        _, m_days = _cal.monthrange(anchor_year, anchor_month)
+        m_end = date(anchor_year, anchor_month, m_days)
+        if m_end < worker.join_date:
+            continue
+        records = AttendanceRecord.query.filter(
+            AttendanceRecord.worker_id == worker.id,
+            AttendanceRecord.date >= m_start,
+            AttendanceRecord.date <= m_end,
+        ).all()
+        att = calculate_attendance_summary(records)
+        pay = calculate_pay_summary(worker, records, m_start, m_end)
+        monthly_history.append({
+            'label': f'{MONTH_NAMES[anchor_month - 1]} {anchor_year}',
+            'att': att,
+            'pay': pay,
+        })
+
+    _, month_days = _cal.monthrange(today.year, today.month)
+    leave_balance = None
+    if worker.pay_type == 'monthly' and worker.leave_policy_enabled:
+        leave_balance = calculate_leave_balance(
+            worker, today.replace(day=1), today.replace(day=month_days)
+        )
+
+    all_transactions = WorkerTransaction.query.filter_by(
+        worker_id=worker.id
+    ).order_by(WorkerTransaction.date.desc()).all()
+
+    payroll_history = PayrollRecord.query.filter_by(
+        worker_id=worker.id
+    ).order_by(PayrollRecord.year.desc(), PayrollRecord.month.desc()).limit(12).all()
+
+    return render_template('worker_report.html',
+                           worker=worker,
+                           monthly_history=monthly_history,
+                           leave_balance=leave_balance,
+                           all_transactions=all_transactions,
+                           payroll_history=payroll_history,
+                           type_labels=TRANSACTION_TYPE_LABELS,
+                           month_names=MONTH_NAMES,
+                           today=today,
+                           date=date)

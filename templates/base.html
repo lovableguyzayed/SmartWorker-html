@@ -173,6 +173,7 @@
         {% if messages %}
             <div id="flash-messages" class="fixed top-4 right-4 z-50 space-y-2">
                 {% for category, message in messages %}
+                    {% if category != 'restricted' %}
                     {% if category == 'error' %}
                         {% set bg = 'bg-red-500' %}{% set icon = 'fa-circle-xmark' %}
                     {% elif category == 'warning' %}
@@ -191,23 +192,24 @@
                             </button>
                         </div>
                     </div>
+                    {% endif %}
                 {% endfor %}
             </div>
         {% endif %}
     {% endwith %}
 
-    {% set main_screens_check = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip'] %}
-    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens_check %}pb-32{% endif %}">
+    {% set main_screens = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip', 'transactions', 'settings', 'scan', 'notifications'] %}
+    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens %}pb-32{% endif %}">
         {% block content %}{% endblock %}
-        
-        {% set main_screens = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip'] %}
+
         {% if current_user.is_authenticated and request.endpoint in main_screens %}
         {% set home_active = request.endpoint == 'dashboard' %}
         {% set workers_active = request.endpoint == 'workers' %}
         {% set attendance_active = request.endpoint == 'attendance' %}
-        {% set transactions_active = request.endpoint == 'closures' %}
+        {% set transactions_active = request.endpoint == 'transactions' %}
+        {% set scan_active = request.endpoint == 'scan' %}
         {% set profile_active = request.endpoint == 'profile' %}
-        <!-- Bottom Navigation (main screens only) -->
+        <!-- Bottom Navigation (main screens only) — permanently fixed, never scrolls -->
         <nav class="app-bottom-nav fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm">
             <div class="app-bottom-nav-frame">
                 <div class="app-nav-row">
@@ -216,20 +218,34 @@
                         <span class="app-nav-label">Home</span>
                     </a>
 
+                    {% if current_user.is_admin %}
                     <a href="{{ url_for('workers') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if workers_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-users text-xl"></i></span>
                         <span class="app-nav-label">Workers</span>
                     </a>
+                    {% else %}
+                    <a href="{{ url_for('scan') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if scan_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-xl"></i></span>
+                        <span class="app-nav-label">Scan</span>
+                    </a>
+                    {% endif %}
 
                     <a href="{{ url_for('attendance') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if attendance_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
                         <span class="app-nav-label">Attend</span>
                     </a>
 
-                    <a href="{{ url_for('closures') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-times text-xl"></i></span>
-                        <span class="app-nav-label">Closures</span>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('transactions') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-transfer text-xl"></i></span>
+                        <span class="app-nav-label">Transactions</span>
                     </a>
+                    {% else %}
+                    <a href="{{ url_for('scan') }}?manual=1" class="app-nav-item transition-colors">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-keyboard text-xl"></i></span>
+                        <span class="app-nav-label">ID Entry</span>
+                    </a>
+                    {% endif %}
 
                     <a href="{{ url_for('profile') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if profile_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-user text-xl"></i></span>
@@ -240,6 +256,25 @@
         </nav>
         {% endif %}
     </div>
+
+    <!-- Restricted access popup (authorized attendance users) -->
+    {% with restricted_messages = get_flashed_messages(category_filter=['restricted']) %}
+    {% if restricted_messages %}
+    <div id="restricted-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-lock text-2xl text-red-500"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Access Restricted</h3>
+            <p class="text-gray-600 text-sm mb-6">{{ restricted_messages[0] }}</p>
+            <button onclick="document.getElementById('restricted-modal').remove()"
+                    class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
+                OK
+            </button>
+        </div>
+    </div>
+    {% endif %}
+    {% endwith %}
     
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

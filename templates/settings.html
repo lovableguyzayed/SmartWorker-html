@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('profile') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Settings</div>
+                <div class="text-sm opacity-90">Company, Sites, Projects &amp; Users</div>
+            </div>
+        </div>
+        <a href="{{ url_for('closures') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Closure Days">
+            <i class="fa-solid fa-calendar-times text-lg"></i>
+        </a>
+    </div>
+
+    <!-- Section Tabs -->
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-2 border border-white/20 flex gap-1 overflow-x-auto">
+        <button onclick="showSection('company')" data-tab="company" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold bg-white text-primary">Company</button>
+        <button onclick="showSection('sites')" data-tab="sites" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Sites</button>
+        <button onclick="showSection('projects')" data-tab="projects" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Projects</button>
+        <button onclick="showSection('tasks')" data-tab="tasks" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Tasks</button>
+        <button onclick="showSection('departments')" data-tab="departments" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Depts</button>
+        <button onclick="showSection('users')" data-tab="users" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Users</button>
+    </div>
+</header>
+
+<main class="p-4 pb-32 space-y-6">
+    <!-- ══════════ Company Section ══════════ -->
+    <section id="section-company" class="settings-section space-y-4">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-1">Company Details</h3>
+            <p class="text-xs text-gray-500 mb-4">Shown automatically on worker PDFs, payroll slips, salary reports and attendance reports.</p>
+            <form method="POST" action="{{ url_for('settings_company') }}" enctype="multipart/form-data" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="flex items-center space-x-4">
+                    <div class="w-16 h-16 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                        {% if company and company.logo %}
+                            <img src="{{ company.logo }}" alt="Logo" class="w-full h-full object-contain">
+                        {% else %}
+                            <i class="fa-solid fa-building text-2xl text-gray-400"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Company Logo</label>
+                        <input type="file" name="logo" accept="image/*" class="w-full text-xs text-gray-600">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                    <input type="text" name="name" value="{{ company.name if company else '' }}" required
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <textarea name="address" rows="2" class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">{{ company.address or '' if company else '' }}</textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                        <input type="tel" name="phone" value="{{ company.phone or '' if company else '' }}"
+                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" name="email" value="{{ company.email or '' if company else '' }}"
+                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Website <span class="text-gray-400">(optional)</span></label>
+                    <input type="text" name="website" value="{{ company.website or '' if company else '' }}"
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">GST No. <span class="text-gray-400">(optional)</span></label>
+                        <input type="text" name="gst_number" value="{{ company.gst_number or '' if company else '' }}"
+                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Reg. No. <span class="text-gray-400">(optional)</span></label>
+                        <input type="text" name="registration_number" value="{{ company.registration_number or '' if company else '' }}"
+                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
+                    <i class="fa-solid fa-save mr-2"></i>Save Company Settings
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- ══════════ Sites Section ══════════ -->
+    <section id="section-sites" class="settings-section hidden space-y-4">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Site</h3>
+            <form method="POST" action="{{ url_for('settings_site_save') }}" class="space-y-3" id="site-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" id="site-id" value="">
+                <input type="text" name="name" id="site-name" placeholder="Site name" required
+                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <input type="text" name="address" id="site-address" placeholder="Address (optional)"
+                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" name="contact_person" id="site-contact" placeholder="Contact person"
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                    <input type="tel" name="contact_phone" id="site-phone" placeholder="Contact phone"
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                </div>
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Site</button>
+            </form>
+        </div>
+        <div class="space-y-3">
+            {% for site in sites %}
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if site.status == 'archived' else '' }}">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-gray-800 truncate">{{ site.name }}
+                            {% if site.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">Archived</span>{% endif %}
+                        </div>
+                        {% if site.address %}<div class="text-xs text-gray-500 truncate">{{ site.address }}</div>{% endif %}
+                        {% if site.contact_person %}<div class="text-xs text-gray-500">{{ site.contact_person }}{% if site.contact_phone %} • {{ site.contact_phone }}{% endif %}</div>{% endif %}
+                    </div>
+                    <div class="flex items-center space-x-1 ml-2">
+                        <button onclick='editSite({{ site.id }}, {{ site.name|tojson }}, {{ (site.address or "")|tojson }}, {{ (site.contact_person or "")|tojson }}, {{ (site.contact_phone or "")|tojson }})'
+                                class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <form method="POST" action="{{ url_for('settings_site_archive', entity_id=site.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center" title="Archive/Restore"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('settings_site_delete', entity_id=site.id) }}" onsubmit="return confirm('Delete this site permanently?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-sm text-gray-500 py-6">No sites yet. Add your first site above.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ══════════ Projects Section ══════════ -->
+    <section id="section-projects" class="settings-section hidden space-y-4">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Project</h3>
+            <form method="POST" action="{{ url_for('settings_project_save') }}" class="space-y-3" id="project-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" id="project-id" value="">
+                <input type="text" name="name" id="project-name" placeholder="Project name" required
+                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <textarea name="description" id="project-description" rows="2" placeholder="Description (optional)"
+                          class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent"></textarea>
+                <select name="site_id" id="project-site" class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                    <option value="">— No site —</option>
+                    {% for site in sites if site.status == 'active' %}
+                    <option value="{{ site.id }}">{{ site.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Start date</label>
+                        <input type="date" name="start_date" id="project-start" class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">End date</label>
+                        <input type="date" name="end_date" id="project-end" class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Deadline</label>
+                        <input type="date" name="deadline" id="project-deadline" class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Completion date</label>
+                        <input type="date" name="completion_date" id="project-completion" class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                </div>
+                <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
+                    <div class="text-xs font-semibold text-orange-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Delay Penalty (project-based workers)</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <select name="penalty_type" id="project-penalty-type" class="w-full p-2.5 border border-orange-200 rounded-xl text-sm">
+                            <option value="none">No penalty</option>
+                            <option value="fixed">Fixed ₹ / delayed day</option>
+                            <option value="percent">% of project rate / day</option>
+                        </select>
+                        <input type="number" name="penalty_value" id="project-penalty-value" step="0.01" min="0" placeholder="Value"
+                               class="w-full p-2.5 border border-orange-200 rounded-xl text-sm">
+                    </div>
+                </div>
+                <select name="status" id="project-status" class="w-full p-3 border border-lightGray rounded-xl">
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="archived">Archived</option>
+                </select>
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Project</button>
+            </form>
+        </div>
+        <div class="space-y-3">
+            {% for project in projects %}
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if project.status == 'archived' else '' }}">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-gray-800 truncate">{{ project.name }}
+                            <span class="text-xs px-2 py-0.5 rounded-full ml-1
+                                {{ 'bg-green-100 text-green-700' if project.status == 'active' else ('bg-blue-100 text-blue-700' if project.status == 'completed' else 'bg-gray-200 text-gray-600') }}">
+                                {{ project.status.title() }}</span>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            {% if project.site %}{{ project.site.name }} • {% endif %}
+                            {% if project.start_date %}{{ project.start_date.strftime('%d %b %y') }}{% endif %}
+                            {% if project.deadline %} → deadline {{ project.deadline.strftime('%d %b %y') }}{% endif %}
+                        </div>
+                        {% if project.deadline and project.delay_days > 0 %}
+                        <div class="text-xs text-red-600 font-medium mt-0.5"><i class="fa-solid fa-clock mr-1"></i>{{ project.delay_days }} day(s) delayed</div>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center space-x-1 ml-2">
+                        <button onclick='editProject({{ project.id }}, {{ project.name|tojson }}, {{ (project.description or "")|tojson }}, {{ project.site_id or 0 }}, "{{ project.start_date.isoformat() if project.start_date else '' }}", "{{ project.end_date.isoformat() if project.end_date else '' }}", "{{ project.deadline.isoformat() if project.deadline else '' }}", "{{ project.completion_date.isoformat() if project.completion_date else '' }}", "{{ project.penalty_type }}", {{ project.penalty_value or 0 }}, "{{ project.status }}")'
+                                class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <form method="POST" action="{{ url_for('settings_project_archive', entity_id=project.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center" title="Archive/Restore"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('settings_project_delete', entity_id=project.id) }}" onsubmit="return confirm('Delete this project permanently?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-sm text-gray-500 py-6">No projects yet. Add your first project above.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ══════════ Tasks Section ══════════ -->
+    <section id="section-tasks" class="settings-section hidden space-y-4">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Task</h3>
+            <form method="POST" action="{{ url_for('settings_task_save') }}" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" id="task-id" value="">
+                <input type="text" name="name" id="task-name" placeholder="Task name" required
+                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <select name="project_id" id="task-project" class="w-full p-3 border border-lightGray rounded-xl">
+                    <option value="">— No project —</option>
+                    {% for project in projects if project.status != 'archived' %}
+                    <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="category" id="task-category" placeholder="Category (optional)"
+                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Task</button>
+            </form>
+        </div>
+        <div class="space-y-3">
+            {% for task in tasks %}
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if task.status == 'archived' else '' }}">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-gray-800 truncate">{{ task.name }}
+                            {% if task.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">Archived</span>{% endif %}
+                        </div>
+                        <div class="text-xs text-gray-500">{% if task.project %}{{ task.project.name }}{% endif %}{% if task.category %} • {{ task.category }}{% endif %}</div>
+                    </div>
+                    <div class="flex items-center space-x-1 ml-2">
+                        <button onclick='editTask({{ task.id }}, {{ task.name|tojson }}, {{ task.project_id or 0 }}, {{ (task.category or "")|tojson }})'
+                                class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <form method="POST" action="{{ url_for('settings_task_archive', entity_id=task.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('settings_task_delete', entity_id=task.id) }}" onsubmit="return confirm('Delete this task permanently?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-sm text-gray-500 py-6">No tasks yet. Add your first task above.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ══════════ Departments Section ══════════ -->
+    <section id="section-departments" class="settings-section hidden space-y-4">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Department</h3>
+            <form method="POST" action="{{ url_for('settings_department_save') }}" class="flex gap-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="name" placeholder="Department name" required
+                       class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <button type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">Add</button>
+            </form>
+        </div>
+        <div class="space-y-3">
+            {% for dept in departments %}
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 flex items-center justify-between {{ 'opacity-60' if dept.status == 'archived' else '' }}">
+                <div class="font-semibold text-gray-800">{{ dept.name }}
+                    {% if dept.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">Archived</span>{% endif %}
+                </div>
+                <div class="flex items-center space-x-1">
+                    <form method="POST" action="{{ url_for('settings_department_archive', entity_id=dept.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                    </form>
+                    <form method="POST" action="{{ url_for('settings_department_delete', entity_id=dept.id) }}" onsubmit="return confirm('Delete this department?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-sm text-gray-500 py-6">No departments yet. Worker forms also accept free-text departments.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ══════════ Attendance Users Section ══════════ -->
+    <section id="section-users" class="settings-section hidden space-y-4">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-1">Authorized Attendance Users</h3>
+            <p class="text-xs text-gray-500 mb-4">These users log in with their mobile number. They can only mark attendance, scan QR codes and view workers on their assigned sites — nothing else.</p>
+            <form method="POST" action="{{ url_for('settings_attendance_user_save') }}" class="space-y-3" id="att-user-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" id="att-user-id" value="">
+                <input type="text" name="full_name" id="att-user-name" placeholder="Full name" required
+                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <input type="tel" name="mobile" id="att-user-mobile" placeholder="Mobile number (login ID)" required
+                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <input type="password" name="password" id="att-user-password" placeholder="Password (leave blank to keep current)"
+                       class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Sites</label>
+                    <div class="max-h-28 overflow-y-auto border border-lightGray rounded-xl p-2 space-y-1" id="att-user-sites">
+                        {% for site in sites if site.status == 'active' %}
+                        <label class="flex items-center text-sm text-gray-700 gap-2 py-0.5">
+                            <input type="checkbox" name="site_ids" value="{{ site.id }}" class="rounded"> {{ site.name }}
+                        </label>
+                        {% else %}
+                        <div class="text-xs text-gray-400">No sites available — add sites first. Empty = all sites.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Projects</label>
+                    <div class="max-h-28 overflow-y-auto border border-lightGray rounded-xl p-2 space-y-1" id="att-user-projects">
+                        {% for project in projects if project.status == 'active' %}
+                        <label class="flex items-center text-sm text-gray-700 gap-2 py-0.5">
+                            <input type="checkbox" name="project_ids" value="{{ project.id }}" class="rounded"> {{ project.name }}
+                        </label>
+                        {% else %}
+                        <div class="text-xs text-gray-400">No active projects. Empty = all projects.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Attendance User</button>
+            </form>
+        </div>
+        <div class="space-y-3">
+            {% for auser in attendance_users %}
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if auser.status == 'disabled' else '' }}">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-gray-800 truncate">{{ auser.full_name }}
+                            <span class="text-xs px-2 py-0.5 rounded-full ml-1 {{ 'bg-green-100 text-green-700' if (auser.status or 'active') == 'active' else 'bg-red-100 text-red-700' }}">
+                                {{ (auser.status or 'active').title() }}</span>
+                        </div>
+                        <div class="text-xs text-gray-500"><i class="fa-solid fa-mobile-screen mr-1"></i>{{ auser.phone }}</div>
+                        <div class="text-xs text-gray-500">
+                            Sites: {{ auser.site_id_list|length if auser.site_id_list else 'All' }} •
+                            Projects: {{ auser.project_id_list|length if auser.project_id_list else 'All' }}
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1 ml-2">
+                        <button onclick='editAttendanceUser({{ auser.id }}, {{ auser.full_name|tojson }}, {{ (auser.phone or "")|tojson }}, {{ auser.site_id_list|tojson }}, {{ auser.project_id_list|tojson }})'
+                                class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <form method="POST" action="{{ url_for('settings_attendance_user_toggle', user_id=auser.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center" title="Enable/Disable"><i class="fa-solid fa-power-off text-xs"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('settings_attendance_user_delete', user_id=auser.id) }}" onsubmit="return confirm('Delete this attendance user?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-sm text-gray-500 py-6">No attendance users yet.</div>
+            {% endfor %}
+        </div>
+    </section>
+</main>
+
+<script>
+function showSection(name) {
+    document.querySelectorAll('.settings-section').forEach(el => el.classList.add('hidden'));
+    document.getElementById('section-' + name).classList.remove('hidden');
+    document.querySelectorAll('.settings-tab').forEach(el => {
+        const active = el.dataset.tab === name;
+        el.classList.toggle('bg-white', active);
+        el.classList.toggle('text-primary', active);
+        el.classList.toggle('text-white/80', !active);
+    });
+    try { sessionStorage.setItem('settings_tab', name); } catch (e) {}
+}
+
+function editSite(id, name, address, contact, phone) {
+    showSection('sites');
+    document.getElementById('site-id').value = id;
+    document.getElementById('site-name').value = name;
+    document.getElementById('site-address').value = address;
+    document.getElementById('site-contact').value = contact;
+    document.getElementById('site-phone').value = phone;
+    document.getElementById('site-name').scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+function editProject(id, name, description, siteId, start, end, deadline, completion, penaltyType, penaltyValue, status) {
+    showSection('projects');
+    document.getElementById('project-id').value = id;
+    document.getElementById('project-name').value = name;
+    document.getElementById('project-description').value = description;
+    document.getElementById('project-site').value = siteId || '';
+    document.getElementById('project-start').value = start;
+    document.getElementById('project-end').value = end;
+    document.getElementById('project-deadline').value = deadline;
+    document.getElementById('project-completion').value = completion;
+    document.getElementById('project-penalty-type').value = penaltyType || 'none';
+    document.getElementById('project-penalty-value').value = penaltyValue || '';
+    document.getElementById('project-status').value = status || 'active';
+    document.getElementById('project-name').scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+function editTask(id, name, projectId, category) {
+    showSection('tasks');
+    document.getElementById('task-id').value = id;
+    document.getElementById('task-name').value = name;
+    document.getElementById('task-project').value = projectId || '';
+    document.getElementById('task-category').value = category;
+    document.getElementById('task-name').scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+function editAttendanceUser(id, name, mobile, siteIds, projectIds) {
+    showSection('users');
+    document.getElementById('att-user-id').value = id;
+    document.getElementById('att-user-name').value = name;
+    document.getElementById('att-user-mobile').value = mobile;
+    document.getElementById('att-user-password').value = '';
+    document.querySelectorAll('#att-user-sites input[type="checkbox"]').forEach(cb => {
+        cb.checked = siteIds.includes(parseInt(cb.value, 10));
+    });
+    document.querySelectorAll('#att-user-projects input[type="checkbox"]').forEach(cb => {
+        cb.checked = projectIds.includes(parseInt(cb.value, 10));
+    });
+    document.getElementById('att-user-name').scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    let tab = 'company';
+    try { tab = sessionStorage.getItem('settings_tab') || 'company'; } catch (e) {}
+    showSection(tab);
+});
+</script>
+{% endblock %}

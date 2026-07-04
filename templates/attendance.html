@@ -27,37 +27,71 @@
             </div>
         </div>
         <div class="flex items-center space-x-3">
+            <a href="{{ url_for('scan') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="QR Scanner">
+                <i class="fa-solid fa-qrcode text-lg"></i>
+            </a>
+            {% if current_user.is_admin %}
             <a href="{{ url_for('closures') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                 <i class="fa-solid fa-calendar-times text-lg"></i>
             </a>
             <button onclick="showBulkActions()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                 <i class="fa-solid fa-tasks text-lg"></i>
             </button>
+            {% endif %}
         </div>
     </div>
     
     <!-- Date Selection -->
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
-        <form method="GET" class="flex items-center space-x-3">
+        <form method="GET" id="attendance-filter-form">
+        <div class="flex items-center space-x-3">
             <div class="flex-1">
                 <label class="block text-xs text-white/70 mb-1">Select Date</label>
                 <div class="relative">
                     <i class="fa-solid fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70"></i>
-                    <input type="date" name="date" value="{{ selected_date }}" 
+                    <input type="date" name="date" value="{{ selected_date }}"
                            class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50"
                            onchange="this.form.submit()">
                 </div>
             </div>
             <div class="flex items-end space-x-2">
-                <a href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat()) }}" 
+                <a href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
                    class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
                     <i class="fa-solid fa-chevron-left text-white"></i>
                 </a>
-                <a href="{{ url_for('attendance', date=(selected_date + timedelta(days=1)).isoformat()) }}" 
+                <a href="{{ url_for('attendance', date=(selected_date + timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
                    class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
                     <i class="fa-solid fa-chevron-right text-white"></i>
                 </a>
             </div>
+        </div>
+
+        <!-- Search + filters -->
+        <div class="mt-3 space-y-2">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm"></i>
+                <input type="search" name="search" value="{{ search }}" placeholder="Search name or employee ID…"
+                       class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 text-sm focus:ring-2 focus:ring-white/50">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                {% if sites %}
+                <select name="site" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                    <option value="0" class="text-gray-800">All sites</option>
+                    {% for site in sites %}
+                    <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+                {% if current_user.is_admin and attendance_users %}
+                <select name="marked_by" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                    <option value="0" class="text-gray-800">All markers</option>
+                    {% for auser in attendance_users %}
+                    <option value="{{ auser.id }}" {{ 'selected' if auser.id == marker_filter }} class="text-gray-800">{{ auser.full_name }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
         </form>
         
         <div class="mt-3 text-center">
@@ -144,30 +178,52 @@
                     </div>
                     
                     <div class="flex-1">
-                        <div class="font-semibold text-gray-800">{{ data.worker.full_name }}</div>
+                        <a href="{{ url_for('worker_profile', worker_id=data.worker.id) }}" class="font-semibold text-gray-800">{{ data.worker.full_name }}</a>
                         <div class="text-sm text-gray-600">{{ data.worker.worker_id }} • {{ data.worker.department }}</div>
-                        {% if closure and closure.allow_attendance and data.attendance and data.attendance.status in ('present', 'late') and data.worker.closure_extra_pay_enabled %}
+                        {% if data.assignment and data.assignment.site %}
+                            <div class="text-xs text-gray-500"><i class="fa-solid fa-location-dot mr-1"></i>{{ data.assignment.site.name }}{% if data.assignment.project %} • {{ data.assignment.project.name }}{% endif %}</div>
+                        {% elif data.assignment and data.assignment.project %}
+                            <div class="text-xs text-gray-500"><i class="fa-solid fa-diagram-project mr-1"></i>{{ data.assignment.project.name }}</div>
+                        {% endif %}
+                        {% if data.closure %}
+                            <div class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium {{ 'bg-red-100 text-red-700' if not data.closure.allow_attendance else 'bg-orange-100 text-orange-700' }}">
+                                <i class="fa-solid fa-calendar-times mr-1"></i>{{ data.closure.reason }}{{ ' (locked)' if not data.closure.allow_attendance }}
+                            </div>
+                        {% endif %}
+                        {% if data.closure and data.closure.allow_attendance and data.attendance and data.attendance.status in ('present', 'late') and data.worker.closure_extra_pay_enabled %}
                             <div class="inline-flex items-center mt-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
                                 <i class="fa-solid fa-star mr-1 text-orange-500"></i>Closure Bonus
                             </div>
                         {% endif %}
                         {% if data.attendance and data.attendance.check_in_time %}
-                            <div class="text-xs text-gray-500">Check-in: {{ data.attendance.check_in_time.strftime('%H:%M') }}</div>
+                            <div class="text-xs text-gray-500">Check-in: {{ data.attendance.check_in_time.strftime('%H:%M') }}
+                                {% if data.attendance.late_minutes and data.attendance.late_minutes > 0 %}<span class="text-amber-600 font-medium">({{ data.attendance.late_minutes }}m late)</span>{% endif %}
+                            </div>
                         {% endif %}
                         {% if data.attendance and data.attendance.check_out_time %}
-                            <div class="text-xs text-gray-500">Check-out: {{ data.attendance.check_out_time.strftime('%H:%M') }}</div>
+                            <div class="text-xs text-gray-500">Check-out: {{ data.attendance.check_out_time.strftime('%H:%M') }}
+                                {% if data.attendance.worked_minutes > 0 %}• {{ (data.attendance.worked_minutes // 60) }}h {{ (data.attendance.worked_minutes % 60) }}m{% endif %}
+                            </div>
                         {% endif %}
-                        {% if data.wage is not none and data.wage > 0 %}
+                        {% if data.attendance and data.attendance.status == 'leave' and data.attendance.leave_type %}
+                            <div class="text-xs text-blue-600 capitalize">{{ data.attendance.leave_type }} leave</div>
+                        {% endif %}
+                        {% if data.wage is not none and data.wage > 0 and current_user.is_admin %}
                             <div class="text-xs text-gray-500">Pay: ₹{{ "%.2f"|format(data.wage) }} ({{ data.pay_mode.replace('_',' ')|title }})</div>
                         {% endif %}
-                        {% if data.overtime_pay and data.overtime_pay > 0 %}
+                        {% if data.overtime_pay and data.overtime_pay > 0 and current_user.is_admin %}
                             <div class="text-xs text-gray-500">Overtime pay: ₹{{ "%.2f"|format(data.overtime_pay) }}</div>
+                        {% endif %}
+                        {% if current_user.is_admin and data.attendance %}
+                            <button onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, "{{ data.attendance.status }}", "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", "{{ data.attendance.leave_type or '' }}")'
+                                    class="mt-1 text-xs text-accent font-medium"><i class="fa-solid fa-pen-to-square mr-1"></i>Adjust times</button>
                         {% endif %}
                     </div>
                 </div>
-                
+
                 <div class="flex items-center space-x-2">
-                    {% if not closure or closure.allow_attendance %}
+                    {% set row_locked = data.closure and not data.closure.allow_attendance %}
+                    {% if not row_locked %}
                     <form method="POST" action="{{ url_for('mark_attendance') }}" class="flex space-x-1">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="worker_id" value="{{ data.worker.id }}">
@@ -268,6 +324,63 @@
     </div>
 </div>
 
+{% if current_user.is_admin %}
+<!-- Adjust Attendance Times Modal (Admin only) -->
+<div id="adjust-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
+            <div class="text-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Adjust Attendance</h3>
+                <p class="text-gray-600 text-sm" id="adjust-worker-name"></p>
+            </div>
+            <form method="POST" id="adjust-form" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select name="status" id="adjust-status" class="w-full p-3 border border-lightGray rounded-xl" onchange="toggleAdjustFields()">
+                        <option value="present">Present</option>
+                        <option value="late">Late</option>
+                        <option value="absent">Absent</option>
+                        <option value="leave">Leave</option>
+                    </select>
+                </div>
+                <div id="adjust-time-fields" class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+                        <input type="time" name="check_in_time" id="adjust-checkin" class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+                        <input type="time" name="check_out_time" id="adjust-checkout" class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                </div>
+                <div id="adjust-leave-field" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                    <select name="leave_type" id="adjust-leave-type" class="w-full p-3 border border-lightGray rounded-xl">
+                        <option value="">Unspecified</option>
+                        <option value="casual">Casual</option>
+                        <option value="sick">Sick</option>
+                        <option value="paid">Paid</option>
+                        <option value="unpaid">Unpaid</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Note <span class="text-gray-400">(optional)</span></label>
+                    <input type="text" name="notes" class="w-full p-3 border border-lightGray rounded-xl" placeholder="Reason for adjustment">
+                </div>
+                <p class="text-xs text-gray-500">Late minutes and overtime are recalculated automatically from the worker's shift settings.</p>
+                <div class="flex space-x-3 pt-1">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save</button>
+                    <button type="button" onclick="hideAdjustModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
 function showBulkActions() {
     document.getElementById('bulk-actions-modal').classList.remove('hidden');
@@ -275,6 +388,29 @@ function showBulkActions() {
 
 function hideBulkActions() {
     document.getElementById('bulk-actions-modal').classList.add('hidden');
+}
+
+function openAdjustModal(recordId, workerName, status, checkIn, checkOut, leaveType) {
+    const modal = document.getElementById('adjust-modal');
+    if (!modal) return;
+    document.getElementById('adjust-form').action = '/attendance/' + recordId + '/adjust';
+    document.getElementById('adjust-worker-name').textContent = workerName;
+    document.getElementById('adjust-status').value = status;
+    document.getElementById('adjust-checkin').value = checkIn;
+    document.getElementById('adjust-checkout').value = checkOut;
+    document.getElementById('adjust-leave-type').value = leaveType;
+    toggleAdjustFields();
+    modal.classList.remove('hidden');
+}
+
+function hideAdjustModal() {
+    document.getElementById('adjust-modal').classList.add('hidden');
+}
+
+function toggleAdjustFields() {
+    const status = document.getElementById('adjust-status').value;
+    document.getElementById('adjust-time-fields').classList.toggle('hidden', status !== 'present' && status !== 'late');
+    document.getElementById('adjust-leave-field').classList.toggle('hidden', status !== 'leave');
 }
 </script>
 {% endblock %}
