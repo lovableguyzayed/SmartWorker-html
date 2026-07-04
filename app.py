@@ -31,7 +31,14 @@ app.secret_key = _secret
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # configure the database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///smartworker.db")
+_db_url = os.environ.get("DATABASE_URL", "sqlite:///smartworker.db")
+# Supabase/Heroku style URLs use the legacy postgres:// scheme SQLAlchemy 2.x rejects
+if _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+# Supabase requires TLS; add sslmode when the URL doesn't specify one
+if _db_url.startswith("postgresql") and "supabase.co" in _db_url and "sslmode=" not in _db_url:
+    _db_url += ("&" if "?" in _db_url else "?") + "sslmode=require"
+app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
