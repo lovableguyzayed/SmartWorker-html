@@ -41,6 +41,14 @@
             padding: 0 0.75rem calc(0.7rem + env(safe-area-inset-bottom));
         }
 
+        /* Bottom clearance for the fixed nav — defined here (not as a Tailwind
+           utility) so it can never be purged out of the compiled CSS, and so
+           it tracks the device safe-area (gesture bars) on every screen size.
+           Nav total height: 5.1rem frame + 0.7rem padding + safe-area inset. */
+        .has-bottom-nav {
+            padding-bottom: calc(7rem + env(safe-area-inset-bottom)) !important;
+        }
+
         .app-bottom-nav-frame {
             position: relative;
             overflow: hidden;
@@ -178,7 +186,7 @@
     {% endwith %}
 
     {% set main_screens = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip', 'transactions', 'settings', 'scan', 'notifications'] %}
-    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens %}pb-28{% endif %}">
+    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens %}has-bottom-nav{% endif %}">
         {% block content %}{% endblock %}
     </div>
 
