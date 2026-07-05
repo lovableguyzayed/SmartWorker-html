@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartworker-v7';
+const CACHE_NAME = 'smartworker-v8';
 const STATIC_ASSETS = [
   '/login',
   '/static/css/custom.css',
@@ -55,6 +55,24 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(request.url);
+
+  // Supabase Storage images (worker photos, company logo): cache-first so
+  // they render instantly and remain visible offline. Filenames are unique
+  // per upload, so stale cache entries are never wrong.
+  if (url.origin !== self.location.origin) {
+    if (url.hostname.endsWith('.supabase.co')) {
+      event.respondWith(
+        caches.match(request).then((cached) =>
+          cached || fetch(request).then((res) => {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            return res;
+          })
+        )
+      );
+    }
+    return; // other cross-origin requests (fonts) go straight to the network
+  }
 
   // Static assets: cache-first, populate on miss
   if (url.pathname.startsWith('/static/')) {

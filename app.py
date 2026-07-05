@@ -181,6 +181,11 @@ with app.app_context():
     _drop_closure_date_unique_constraint(inspector)
     _enable_supabase_rls()
 
+    # Move any images still on the local filesystem into Supabase Storage
+    # (no-op unless SUPABASE_URL + SUPABASE_SERVICE_KEY are configured).
+    import storage as _storage
+    _storage.migrate_local_uploads(app, db)
+
     logging.info("Database tables created")
 
     # Initialize admin user if not exists

@@ -12,6 +12,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
 from app import app, db, csrf
+import storage
 from models import (
     User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
@@ -50,13 +51,22 @@ def save_worker_profile_image(file_storage, worker_id):
     filename = secure_filename(file_storage.filename or '')
     if not allowed_image_file(filename):
         raise ValueError('Please upload a valid image (JPG, JPEG, PNG, GIF, or WEBP).')
-    
-    os.makedirs(WORKER_IMAGE_UPLOAD_DIR, exist_ok=True)
+
     extension = filename.rsplit('.', 1)[1].lower()
     unique_filename = f"{worker_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.{extension}"
+
+    # Supabase Storage when configured (persists across Render deploys);
+    # local static/uploads fallback otherwise (development/preview).
+    if storage.storage_enabled():
+        return storage.upload_image(
+            f'workers/{unique_filename}',
+            file_storage.read(),
+            file_storage.mimetype,
+        )
+
+    os.makedirs(WORKER_IMAGE_UPLOAD_DIR, exist_ok=True)
     destination = os.path.join(WORKER_IMAGE_UPLOAD_DIR, unique_filename)
     file_storage.save(destination)
-    
     return url_for('static', filename=f'uploads/workers/{unique_filename}')
 
 def parse_float(value, default=0.0):
@@ -2293,11 +2303,15 @@ def settings_company():
         if not allowed_image_file(filename):
             flash('Please upload a valid logo image (JPG, JPEG, PNG, GIF, or WEBP).', 'error')
             return redirect(url_for('settings'))
-        os.makedirs(COMPANY_LOGO_UPLOAD_DIR, exist_ok=True)
         extension = filename.rsplit('.', 1)[1].lower()
         unique_filename = f"logo_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{extension}"
-        logo.save(os.path.join(COMPANY_LOGO_UPLOAD_DIR, unique_filename))
-        company.logo = url_for('static', filename=f'uploads/company/{unique_filename}')
+        if storage.storage_enabled():
+            company.logo = storage.upload_image(
+                f'company/{unique_filename}', logo.read(), logo.mimetype)
+        else:
+            os.makedirs(COMPANY_LOGO_UPLOAD_DIR, exist_ok=True)
+            logo.save(os.path.join(COMPANY_LOGO_UPLOAD_DIR, unique_filename))
+            company.logo = url_for('static', filename=f'uploads/company/{unique_filename}')
 
     db.session.commit()
     flash('Company settings saved. They will appear on all PDFs and reports.', 'success')

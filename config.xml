@@ -52,6 +52,8 @@
     <!-- Restrict network access to only the backend API domain for security.
          Update the origin below to match your deployed server URL. -->
     <access origin="https://smartworker-yourname.replit.app" />
+    <!-- Supabase Storage serves worker photos and the company logo -->
+    <access origin="https://*.supabase.co" />
     <access origin="http://localhost" />
     <access origin="http://127.0.0.1" />
 </widget>

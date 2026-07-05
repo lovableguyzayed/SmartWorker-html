@@ -4,9 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <!-- All CSS/JS is served from the app itself (vendored locally) — no CDN hosts needed.
-       Keep this URL in sync with APP_URL below and config.xml <allow-navigation>. -->
+       *.supabase.co is allowed for images stored in Supabase Storage.
+       Keep the app URL in sync with APP_URL below and config.xml <allow-navigation>. -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self' https://smartworker-yourname.replit.app https://fonts.googleapis.com https://fonts.gstatic.com data: blob: 'unsafe-inline'">
+    content="default-src 'self' https://smartworker-yourname.replit.app https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com data: blob: 'unsafe-inline'">
   <title>SmartWorker</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
