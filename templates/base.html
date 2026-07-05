@@ -61,10 +61,10 @@
         }
 
         .app-nav-item {
-            width: 3.45rem;
+            width: 3.95rem;
             text-align: center;
             border-radius: 0.95rem;
-            padding: 0.35rem 0.1rem;
+            padding: 0.35rem 0.15rem;
             color: #94a3b8;
         }
 
@@ -216,15 +216,10 @@
                         <span class="app-nav-label">Scan QR</span>
                     </a>
 
-                    <a href="{{ url_for('attendance') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if attendance_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
-                        <span class="app-nav-label">Attend</span>
-                    </a>
-
                     {% if current_user.is_admin %}
                     <a href="{{ url_for('transactions') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-transfer text-xl"></i></span>
-                        <span class="app-nav-label">Payments</span>
+                        <span class="app-nav-label">Transactions</span>
                     </a>
                     {% else %}
                     <a href="{{ url_for('scan') }}?manual=1" class="app-nav-item transition-colors">
