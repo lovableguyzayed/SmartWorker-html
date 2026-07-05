@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Assignments - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('workers') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Assignments</div>
+                <div class="text-sm opacity-90">Assign &amp; transfer workers to sites, projects, tasks</div>
+            </div>
+        </div>
+        <a href="{{ url_for('settings') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Manage sites & projects">
+            <i class="fa-solid fa-gear text-lg"></i>
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <form method="GET" class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 space-y-2">
+        <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm"></i>
+            <input type="search" name="search" value="{{ search }}" placeholder="Search name or employee ID…"
+                   class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 text-sm focus:ring-2 focus:ring-white/50">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <select name="site" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                <option value="0" class="text-gray-800">All sites</option>
+                {% for site in sites %}
+                <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
+                {% endfor %}
+            </select>
+            <select name="project" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                <option value="0" class="text-gray-800">All projects</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}" {{ 'selected' if project.id == project_filter }} class="text-gray-800">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+            {% for value, label in [('all', 'All'), ('assigned', 'Assigned'), ('unassigned', 'Unassigned')] %}
+            <button type="submit" name="show" value="{{ value }}"
+                    class="py-2 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/80 border border-white/30' }}">
+                {{ label }}
+            </button>
+            {% endfor %}
+        </div>
+    </form>
+</header>
+
+<main class="p-4 pb-8 space-y-3">
+    <!-- Summary -->
+    <section class="grid grid-cols-2 gap-3">
+        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-3 rounded-2xl text-center">
+            <div class="text-xl font-bold">{{ assigned_count }}</div>
+            <div class="text-xs opacity-90">Assigned</div>
+        </div>
+        <div class="bg-gradient-to-br from-amber-500 to-orange-500 text-white p-3 rounded-2xl text-center">
+            <div class="text-xl font-bold">{{ rows|length - assigned_count }}</div>
+            <div class="text-xs opacity-90">Unassigned</div>
+        </div>
+    </section>
+
+    {% for row in rows %}
+    {% set worker = row.worker %}
+    {% set assignment = row.assignment %}
+    <section class="bg-white rounded-2xl shadow border border-gray-100 p-4">
+        <div class="flex items-center space-x-3">
+            <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
+                {% if worker.profile_image %}
+                    <img src="{{ worker.profile_image }}" class="w-full h-full object-cover">
+                {% else %}
+                    {{ worker.full_name[0] }}
+                {% endif %}
+            </div>
+            <div class="flex-1 min-w-0">
+                <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="font-semibold text-gray-800 truncate block">{{ worker.full_name }}</a>
+                <div class="text-xs text-gray-500">{{ worker.worker_id }} • {{ worker.position }}</div>
+                {% if assignment %}
+                <div class="text-xs text-gray-600 mt-0.5">
+                    <i class="fa-solid fa-location-dot text-accent mr-1"></i>{{ assignment.site.name if assignment.site else '—' }}
+                    {% if assignment.project %} • <i class="fa-solid fa-diagram-project text-accent mr-1"></i>{{ assignment.project.name }}{% endif %}
+                    {% if assignment.task %} • {{ assignment.task.name }}{% endif %}
+                </div>
+                <div class="text-[11px] text-gray-400">Since {{ assignment.start_date.strftime('%d %b %Y') }}</div>
+                {% else %}
+                <div class="text-xs text-amber-600 font-medium mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>Not assigned</div>
+                {% endif %}
+            </div>
+            <div class="flex flex-col gap-1.5 shrink-0">
+                <button onclick='openAssignModal({{ worker.id }}, {{ worker.full_name|tojson }}, {{ (assignment.site_id if assignment else 0) or 0 }}, {{ (assignment.project_id if assignment else 0) or 0 }}, {{ (assignment.task_id if assignment else 0) or 0 }})'
+                        class="px-3 py-2 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
+                    <i class="fa-solid fa-{{ 'shuffle' if assignment else 'plus' }} mr-1"></i>{{ 'Transfer' if assignment else 'Assign' }}
+                </button>
+                {% if assignment %}
+                <form method="POST" action="{{ url_for('worker_assignment_end', worker_id=worker.id, assignment_id=assignment.id) }}"
+                      onsubmit="return confirm('End the current assignment for {{ worker.full_name }}?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
+                    <button class="w-full px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors">
+                        <i class="fa-solid fa-flag-checkered mr-1"></i>End
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+    {% else %}
+    <div class="text-center text-sm text-gray-500 py-10">
+        <i class="fa-solid fa-users-slash text-3xl text-gray-300 mb-3 block"></i>
+        No workers match these filters.
+    </div>
+    {% endfor %}
+</main>
+
+<!-- Assign / Transfer Modal -->
+<div id="assign-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-end justify-center">
+    <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Assign <span id="assign-worker-name" class="text-accent"></span></h3>
+            <button onclick="closeAssignModal()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" id="assign-form" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Site</label>
+                <select name="site_id" id="assign-site" class="w-full p-3 border border-lightGray rounded-xl">
+                    <option value="">— No site —</option>
+                    {% for site in sites %}
+                    <option value="{{ site.id }}">{{ site.name }}{% if site.status != 'active' %} (archived){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Project</label>
+                <select name="project_id" id="assign-project" class="w-full p-3 border border-lightGray rounded-xl">
+                    <option value="">— No project —</option>
+                    {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }}{% if project.status == 'archived' %} (archived){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Task <span class="text-gray-400">(optional)</span></label>
+                <select name="task_id" id="assign-task" class="w-full p-3 border border-lightGray rounded-xl">
+                    <option value="">— No task —</option>
+                    {% for task in tasks %}
+                    <option value="{{ task.id }}">{{ task.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+                <input type="date" name="start_date" value="{{ today.isoformat() }}" class="w-full p-3 border border-lightGray rounded-xl">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Notes <span class="text-gray-400">(optional)</span></label>
+                <input type="text" name="notes" placeholder="e.g. Transferred for finishing work"
+                       class="w-full p-3 border border-lightGray rounded-xl">
+            </div>
+            <p class="text-[11px] text-gray-400">If the worker already has an active assignment, it is closed automatically as a transfer the day before the new start date.</p>
+            <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
+                <i class="fa-solid fa-check mr-2"></i>Save Assignment
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAssignModal(workerId, workerName, siteId, projectId, taskId) {
+    document.getElementById('assign-worker-name').textContent = workerName;
+    document.getElementById('assign-form').action = '/worker/' + workerId + '/assign';
+    document.getElementById('assign-site').value = siteId || '';
+    document.getElementById('assign-project').value = projectId || '';
+    document.getElementById('assign-task').value = taskId || '';
+    const modal = document.getElementById('assign-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+function closeAssignModal() {
+    const modal = document.getElementById('assign-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+document.getElementById('assign-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'assign-modal') closeAssignModal();
+});
+</script>
+{% endblock %}

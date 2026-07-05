@@ -178,11 +178,17 @@
     {% endwith %}
 
     {% set main_screens = ['dashboard', 'workers', 'attendance', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip', 'transactions', 'settings', 'scan', 'notifications'] %}
-    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens %}pb-32{% endif %}">
+    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens %}pb-28{% endif %}">
         {% block content %}{% endblock %}
+    </div>
 
-        {% if current_user.is_authenticated and request.endpoint in main_screens %}
-        {% set home_active = request.endpoint == 'dashboard' %}
+    {#
+      The nav lives OUTSIDE #mobile-app on purpose: that container runs a
+      slide-in animation whose transform would otherwise become the containing
+      block for position:fixed, making the nav scroll with the page.
+    #}
+    {% if current_user.is_authenticated and request.endpoint in main_screens %}
+    {% set home_active = request.endpoint == 'dashboard' %}
         {% set workers_active = request.endpoint == 'workers' %}
         {% set attendance_active = request.endpoint == 'attendance' %}
         {% set transactions_active = request.endpoint == 'transactions' %}
@@ -204,14 +210,15 @@
                     </a>
                     {% endif %}
 
-                    <a href="{{ url_for('attendance') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if attendance_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
-                        <span class="app-nav-label">Attend</span>
+                    <!-- Center button: QR Scanner (scan-to-attend is the primary action) -->
+                    <a href="{{ url_for('scan') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if scan_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-2xl"></i></span>
+                        <span class="app-nav-label">Scan QR</span>
                     </a>
 
-                    <a href="{{ url_for('scan') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if scan_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-xl"></i></span>
-                        <span class="app-nav-label">Scan</span>
+                    <a href="{{ url_for('attendance') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if attendance_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
+                        <span class="app-nav-label">Attend</span>
                     </a>
 
                     {% if current_user.is_admin %}
@@ -233,8 +240,7 @@
                 </div>
             </div>
         </nav>
-        {% endif %}
-    </div>
+    {% endif %}
 
     <!-- Restricted access popup (authorized attendance users) -->
     {% with restricted_messages = get_flashed_messages(category_filter=['restricted']) %}

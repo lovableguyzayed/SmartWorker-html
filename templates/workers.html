@@ -14,9 +14,16 @@
                 <div class="text-sm opacity-90">Manage Employee Records</div>
             </div>
         </div>
-        <a href="{{ url_for('add_worker') }}" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/30">
-            <i class="fa-solid fa-plus mr-2"></i>Add Worker
-        </a>
+        <div class="flex items-center space-x-2">
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('assignments') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Assignments">
+                <i class="fa-solid fa-diagram-project text-lg"></i>
+            </a>
+            {% endif %}
+            <a href="{{ url_for('add_worker') }}" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/30">
+                <i class="fa-solid fa-plus mr-2"></i>Add Worker
+            </a>
+        </div>
     </div>
     
     <!-- Search and Filter -->
@@ -43,7 +50,7 @@
     </div>
 </header>
 
-<main class="p-4 pb-32">
+<main class="p-4 pb-8">
     {% if workers %}
     <div class="space-y-4">
         {% for worker in workers %}

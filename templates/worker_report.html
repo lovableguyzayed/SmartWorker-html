@@ -9,15 +9,22 @@
     body, #mobile-app { background: white !important; max-width: 100% !important; }
     .report-page { box-shadow: none !important; border: none !important; margin: 0 !important; }
     @page { margin: 12mm; }
+    /* Keep logical blocks together across page breaks */
+    .report-page section { break-inside: avoid; page-break-inside: avoid; }
+    .report-table tr { break-inside: avoid; page-break-inside: avoid; }
 }
 .report-section-title {
     font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
     color: #007BFF; font-weight: 700; border-bottom: 2px solid #007BFF;
     padding-bottom: 4px; margin-bottom: 10px;
 }
-.report-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+/* Fixed layout + wrapping so long names/notes/addresses never spill past
+   the page edge — they wrap inside their column instead. */
+.report-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; table-layout: fixed; }
 .report-table th { background: #f1f5f9; color: #334155; text-align: left; padding: 6px 8px; font-weight: 600; }
-.report-table td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+.report-table td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b; vertical-align: top; }
+.report-table th, .report-table td { word-wrap: break-word; overflow-wrap: anywhere; }
+.report-page { overflow-wrap: anywhere; }
 </style>
 {% endblock %}
 

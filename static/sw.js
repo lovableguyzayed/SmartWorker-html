@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartworker-v5';
+const CACHE_NAME = 'smartworker-v6';
 const STATIC_ASSETS = [
   '/login',
   '/static/css/custom.css',
@@ -14,6 +14,13 @@ const STATIC_ASSETS = [
   '/static/vendor/jspdf.umd.min.js',
   '/static/vendor/html2canvas.min.js'
 ];
+
+// After a form submit (attendance, payroll, settings…) the next page loads
+// must come from the network so the user sees their change. Outside that
+// window, navigations are served cache-first for an instant native feel and
+// silently revalidated in the background.
+const MUTATION_WINDOW_MS = 15000;
+let lastMutationAt = 0;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -31,12 +38,25 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+function cachePage(request, response) {
+  // Never cache auth redirects (e.g. /dashboard answered by /login) or errors
+  if (!response || !response.ok || response.redirected) return response;
+  const clone = response.clone();
+  caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+  return response;
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+
+  if (request.method !== 'GET') {
+    lastMutationAt = Date.now();
+    return; // POST/PUT/DELETE go straight to the network (offline-sync.js queues them)
+  }
+
   const url = new URL(request.url);
 
-  if (request.method !== 'GET') return;
-
+  // Static assets: cache-first, populate on miss
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
       caches.match(request).then((cached) =>
@@ -50,15 +70,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const isNavigation = request.mode === 'navigate';
+  const recentlyMutated = Date.now() - lastMutationAt < MUTATION_WINDOW_MS;
+
+  if (isNavigation && !recentlyMutated) {
+    // Instant open: serve cached page immediately, refresh cache in background
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const network = fetch(request)
+          .then((res) => cachePage(request, res))
+          .catch(() => cached || caches.match('/login'));
+        if (cached) {
+          event.waitUntil(network.catch(() => {}));
+          return cached;
+        }
+        return network;
+      })
+    );
+    return;
+  }
+
+  // Fresh-data path: network-first with cache fallback for offline
   event.respondWith(
     fetch(request)
-      .then((res) => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return res;
-      })
+      .then((res) => cachePage(request, res))
       .catch(() =>
         caches.match(request).then((cached) =>
           cached || caches.match('/login')

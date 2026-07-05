@@ -41,7 +41,12 @@
     #mobile-app { max-width: 100% !important; padding: 0 !important; }
     .slip-wrapper { box-shadow: none !important; border: none !important; }
     header, nav { display: none !important; }
+    @page { margin: 12mm; }
+    .slip-wrapper section { break-inside: avoid; page-break-inside: avoid; }
 }
+/* Long descriptions/names wrap inside their row instead of overflowing */
+.slip-wrapper, .pay-row { overflow-wrap: anywhere; word-wrap: break-word; }
+.pay-row > :first-child { padding-right: 0.5rem; }
 </style>
 {% endblock %}
 
@@ -72,7 +77,7 @@
     </div>
 </header>
 
-<main class="p-4 pb-32 space-y-4">
+<main class="p-4 pb-8 space-y-4">
 
     <!-- ===== SLIP CARD (captured for PDF) ===== -->
     <div id="payroll-slip-content" class="slip-wrapper bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
@@ -465,12 +470,23 @@ function downloadPDF() {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-        const pageW = 210;
-        const margins = 15;
+        const pageW = 210, pageH = 297, margins = 15;
         const imgW = pageW - margins * 2;
         const imgH = (canvas.height * imgW) / canvas.width;
+        const usableH = pageH - margins * 2;
 
-        pdf.addImage(imgData, 'PNG', margins, 15, imgW, imgH);
+        // Paginate: long slips continue on additional pages instead of
+        // overflowing past the bottom of a single page.
+        let heightLeft = imgH;
+        let position = margins;
+        pdf.addImage(imgData, 'PNG', margins, position, imgW, imgH);
+        heightLeft -= usableH;
+        while (heightLeft > 0) {
+            pdf.addPage();
+            position = margins - (imgH - heightLeft);
+            pdf.addImage(imgData, 'PNG', margins, position, imgW, imgH);
+            heightLeft -= usableH;
+        }
         pdf.save('{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf');
     }).catch(() => {
         btn.forEach(el => el.style.visibility = '');

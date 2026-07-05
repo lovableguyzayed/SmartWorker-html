@@ -645,12 +645,15 @@ def register():
             flash('Mobile number already registered', 'error')
             return render_template('register.html')
         
-        # Create new user
+        # Create new user. Self-registration creates an administrator account
+        # (site attendance users are created by the admin in Settings and get
+        # the restricted 'attendance' role there).
         user = User()
         user.username = generate_unique_username(full_name, email)
         user.email = email
         user.phone = mobile
         user.full_name = full_name
+        user.role = 'admin'
         user.set_password(password)
         
         db.session.add(user)
@@ -2801,7 +2804,8 @@ def worker_assign(worker_id):
 
     if not project_id and not site_id:
         flash('Choose a project and/or a site for the assignment.', 'error')
-        return redirect(url_for('worker_profile', worker_id=worker.id))
+        return redirect(safe_redirect_target(request.form.get('redirect_to'),
+                                             url_for('worker_profile', worker_id=worker.id)))
 
     # Close the previous active assignment as a transfer. Assignment ranges are
     # inclusive, so the old assignment ends the day before the new one starts —
@@ -2841,7 +2845,44 @@ def worker_assign(worker_id):
     ))
     db.session.commit()
     flash(f'{worker.full_name} assigned to ' + ' and '.join(target) + '.', 'success')
-    return redirect(url_for('worker_profile', worker_id=worker.id))
+    return redirect(safe_redirect_target(request.form.get('redirect_to'),
+                                         url_for('worker_profile', worker_id=worker.id)))
+
+@app.route('/assignments')
+@admin_required
+def assignments():
+    """Dedicated screen to assign, transfer and manage workers across
+    sites/projects/tasks without opening each profile individually."""
+    site_filter = parse_int(request.args.get('site'), 0)
+    project_filter = parse_int(request.args.get('project'), 0)
+    search = (request.args.get('search') or '').strip().lower()
+    show = request.args.get('show', 'all')  # all | assigned | unassigned
+
+    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    rows = []
+    for worker in workers:
+        assignment = worker.current_assignment
+        if site_filter and (not assignment or assignment.site_id != site_filter):
+            continue
+        if project_filter and (not assignment or assignment.project_id != project_filter):
+            continue
+        if show == 'assigned' and not assignment:
+            continue
+        if show == 'unassigned' and assignment:
+            continue
+        if search and search not in worker.full_name.lower() and search not in worker.worker_id.lower():
+            continue
+        rows.append({'worker': worker, 'assignment': assignment})
+
+    sites = Site.query.order_by(Site.name).all()
+    projects = Project.query.order_by(Project.name).all()
+    tasks = WorkTask.query.order_by(WorkTask.name).all()
+    assigned_count = sum(1 for r in rows if r['assignment'])
+    return render_template('assignments.html', rows=rows, sites=sites,
+                           projects=projects, tasks=tasks,
+                           site_filter=site_filter, project_filter=project_filter,
+                           search=request.args.get('search', ''), show=show,
+                           assigned_count=assigned_count, today=date.today())
 
 @app.route('/worker/<int:worker_id>/assignment/<int:assignment_id>/end', methods=['POST'])
 @admin_required
@@ -2854,7 +2895,8 @@ def worker_assignment_end(worker_id, assignment_id):
     assignment.end_date = date.today()
     db.session.commit()
     flash('Assignment marked as completed.', 'success')
-    return redirect(url_for('worker_profile', worker_id=worker_id))
+    return redirect(safe_redirect_target(request.form.get('redirect_to'),
+                                         url_for('worker_profile', worker_id=worker_id)))
 
 # ============================================================
 # Attendance time adjustment (Admin only)
