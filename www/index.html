@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- All CSS/JS is served from the app itself (vendored locally) — no CDN hosts needed.
+       *.supabase.co is allowed for images stored in Supabase Storage.
+       Keep the app URL in sync with APP_URL below and config.xml <allow-navigation>. -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self' https://YOUR_REPLIT_APP_URL.replit.app https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com data: blob: 'unsafe-inline' 'unsafe-eval'">
+    content="default-src 'self' https://smartworker-yourname.replit.app https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com data: blob: 'unsafe-inline'">
   <title>SmartWorker</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -55,7 +58,8 @@
   <button class="retry-btn" id="retry-btn" onclick="loadApp()">Retry</button>
 
   <script>
-    var APP_URL = 'https://YOUR_REPLIT_APP_URL.replit.app';
+    // Set this to your deployed server URL (same value as config.xml <allow-navigation>)
+    var APP_URL = 'https://smartworker-yourname.replit.app';
 
     function loadApp() {
       document.getElementById('spinner').style.display = 'block';

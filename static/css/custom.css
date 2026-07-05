@@ -1,19 +1,5 @@
 /* SmartWorker Custom Styles */
 
-/* ── Page transition progress bar ── */
-#nav-progress {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 3px;
-    width: 0%;
-    background: linear-gradient(90deg, #007BFF, #00c6ff);
-    z-index: 99999;
-    opacity: 0;
-    transition: width 0.25s ease, opacity 0.2s ease;
-    border-radius: 0 2px 2px 0;
-}
-
 /* ── Page content slides in on every load ── */
 @keyframes pageSlideIn {
     from { opacity: 0; transform: translateY(6px); }

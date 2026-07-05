@@ -51,6 +51,25 @@ python main.py
 **Replit / hosting platforms:** add the same three variables in the
 Secrets/Environment settings panel.
 
+## Optional: image storage in Supabase Storage (recommended on Render)
+
+Hosts with ephemeral filesystems (Render, most container platforms) lose
+files saved to `static/uploads/` on every deploy. Set these two additional
+variables and the app stores worker photos and the company logo in a public
+Supabase Storage bucket instead, keeping only the public URL in the database:
+
+| Variable | Where to find it |
+|---|---|
+| `SUPABASE_URL` | Supabase dashboard → Settings → API → **Project URL** (e.g. `https://<YOUR-PROJECT-REF>.supabase.co`) |
+| `SUPABASE_SERVICE_KEY` | Settings → API → **service_role** key (keep secret — server-side only, never put it in client code) |
+
+On startup the app automatically:
+- creates the `smartworker-media` bucket (public) if missing,
+- migrates any images still sitting in `static/uploads/` into the bucket and
+  rewrites their database paths to the public URLs.
+
+Set `SUPABASE_STORAGE_BUCKET` to override the bucket name.
+
 ## 3. First start
 
 On the first run against an empty database the app:

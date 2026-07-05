@@ -425,58 +425,38 @@ const SmartWorker = {
     }
 };
 
-// ── Native-feel page transition ──────────────────────────────
-const NavProgress = {
-    bar: null,
-    timer: null,
+// ── Native-feel instant navigation ───────────────────────────
+// No visible loading bar (native apps don't have one). Instead, pages are
+// silently prefetched into the service worker cache the moment a link is
+// touched/hovered, so the actual navigation is served from cache instantly.
+const NavPrefetch = {
+    prefetched: new Set(),
 
     init() {
-        this.bar = document.createElement('div');
-        this.bar.id = 'nav-progress';
-        document.body.prepend(this.bar);
-
-        document.addEventListener('click', (e) => {
+        const warm = (e) => {
             const link = e.target.closest('a[href]');
             if (!link) return;
             const href = link.getAttribute('href');
             if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
             if (link.target === '_blank') return;
+            let url;
             try {
-                const url = new URL(href, window.location.origin);
+                url = new URL(href, window.location.origin);
                 if (url.origin !== window.location.origin) return;
             } catch (_) { return; }
-            this.start();
-        });
-
-        document.addEventListener('submit', () => this.start());
-        window.addEventListener('pageshow', () => this.done());
-    },
-
-    start() {
-        clearTimeout(this.timer);
-        this.bar.style.opacity = '1';
-        this.bar.style.width = '0%';
-        // animate to 80% quickly, hold there until done
-        requestAnimationFrame(() => {
-            this.bar.style.transition = 'width 0.3s ease';
-            this.bar.style.width = '75%';
-        });
-    },
-
-    done() {
-        this.bar.style.transition = 'width 0.15s ease';
-        this.bar.style.width = '100%';
-        this.timer = setTimeout(() => {
-            this.bar.style.opacity = '0';
-            setTimeout(() => { this.bar.style.width = '0%'; }, 250);
-        }, 200);
+            if (this.prefetched.has(url.pathname + url.search)) return;
+            this.prefetched.add(url.pathname + url.search);
+            fetch(url.href, { credentials: 'same-origin' }).catch(() => {});
+        };
+        document.addEventListener('touchstart', warm, { passive: true });
+        document.addEventListener('mouseover', warm, { passive: true });
     }
 };
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     SmartWorker.init();
-    NavProgress.init();
+    NavPrefetch.init();
 });
 
 // Expose SmartWorker globally for use in templates

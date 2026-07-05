@@ -31,7 +31,7 @@
     </div>
 </header>
 
-<main class="p-4 pb-32">
+<main class="p-4 pb-8">
     <!-- ID Card Preview -->
     <section class="mb-6">
         <div id="employee-id-card" class="bg-gradient-to-br from-primary to-accent text-white rounded-3xl p-6 relative overflow-hidden shadow-2xl border border-white/20">
@@ -264,11 +264,17 @@ function downloadPDF() {
             format: 'a4'
         });
         
-        const imgWidth = 180;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let imgWidth = 180;
+        let imgHeight = (canvas.height * imgWidth) / canvas.width;
+        // Fit to page: shrink proportionally if taller than the printable area
+        const maxHeight = 257; // 297mm - 20mm top - 20mm bottom
+        if (imgHeight > maxHeight) {
+            imgWidth = imgWidth * (maxHeight / imgHeight);
+            imgHeight = maxHeight;
+        }
         const x = (210 - imgWidth) / 2; // Center horizontally
         const y = 20;
-        
+
         pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
         pdf.save('{{ worker.full_name }}_ID_Card.pdf');
         hideDownloadModal();

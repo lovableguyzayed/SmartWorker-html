@@ -54,7 +54,7 @@
     </div>
 </header>
 
-<main class="p-4 pb-32 space-y-6">
+<main class="p-4 pb-8 space-y-6">
     <!-- Quick Stats -->
     <section class="grid grid-cols-2 gap-4">
         {% set total_workers = Worker.query.filter_by(status='active').count() %}

@@ -27,16 +27,18 @@ The APK connects to your live server, so deploy first:
 
 ## Step 2: Update Your App URL (2 files)
 
-Replace `YOUR_REPLIT_APP_URL` in these two files with your real deployed URL:
+Replace `smartworker-yourname.replit.app` with your real deployed domain in
+these places:
 
-**`config.xml`** — find this line:
+**`config.xml`** — the `<allow-navigation>` and `<access origin>` lines:
 ```xml
-<allow-navigation href="https://YOUR_REPLIT_APP_URL.replit.app/*" />
+<allow-navigation href="https://smartworker-yourname.replit.app/*" />
+<access origin="https://smartworker-yourname.replit.app" />
 ```
 
-**`www/index.html`** — find this line:
+**`www/index.html`** — the CSP `<meta>` tag near the top, and this line:
 ```javascript
-var APP_URL = 'https://YOUR_REPLIT_APP_URL.replit.app';
+var APP_URL = 'https://smartworker-yourname.replit.app';
 ```
 
 ---
@@ -56,19 +58,15 @@ Open a terminal in the extracted project folder:
 # Install Cordova globally
 npm install -g cordova
 
-# Install project dependencies
-npm install
-
-# Add Android platform
+# Add Android platform — this also auto-installs the plugins declared
+# in package.json (network-information, splashscreen, statusbar)
 cordova platform add android
-
-# Install required plugins
-cordova plugin add cordova-plugin-whitelist
-cordova plugin add cordova-plugin-network-information
-cordova plugin add cordova-plugin-splashscreen
-cordova plugin add cordova-plugin-statusbar
-cordova plugin add cordova-sqlite-storage
 ```
+
+> Note: `cordova-plugin-whitelist` is NOT needed (deprecated — its features are
+> built into cordova-android 10+), and no SQLite plugin is required (offline
+> storage uses the WebView's built-in IndexedDB/localStorage via the app's
+> service worker and sync script).
 
 ---
 
