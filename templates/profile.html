@@ -18,9 +18,14 @@
             <button onclick="showEditModal()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                 <i class="fa-solid fa-edit text-lg"></i>
             </button>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('settings') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Settings">
+                <i class="fa-solid fa-gear text-lg"></i>
+            </a>
             <a href="{{ url_for('export_data') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Export Data">
                 <i class="fa-solid fa-download text-lg"></i>
             </a>
+            {% endif %}
         </div>
     </div>
     
@@ -99,12 +104,43 @@
             </div>
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Role</span>
-                <span class="font-medium text-accent capitalize">{{ current_user.role }}</span>
+                <span class="font-medium text-accent capitalize">{{ 'System Administrator' if current_user.role == 'admin' else current_user.role }}</span>
             </div>
+            {% if current_user.phone %}
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Mobile</span>
+                <span class="font-medium text-gray-800">{{ current_user.phone }}</span>
+            </div>
+            {% endif %}
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Member Since</span>
                 <span class="font-medium text-gray-800">{{ current_user.created_at.strftime('%B %Y') if current_user.created_at else 'N/A' }}</span>
             </div>
+        </div>
+    </section>
+
+    <!-- Permissions -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Permissions</h3>
+        <div class="space-y-2">
+            {% if current_user.is_admin %}
+                {% for perm in ['Manage workers & payroll', 'Mark and edit attendance', 'Company settings & closures', 'Transactions & reports', 'Manage attendance users'] %}
+                <div class="flex items-center text-sm text-gray-700">
+                    <i class="fa-solid fa-circle-check text-green-500 mr-2"></i>{{ perm }}
+                </div>
+                {% endfor %}
+            {% else %}
+                {% for perm in ['Mark attendance', 'Scan QR codes', 'View workers on assigned sites'] %}
+                <div class="flex items-center text-sm text-gray-700">
+                    <i class="fa-solid fa-circle-check text-green-500 mr-2"></i>{{ perm }}
+                </div>
+                {% endfor %}
+                {% for perm in ['Edit attendance', 'Modify payroll', 'Change worker records', 'Admin settings'] %}
+                <div class="flex items-center text-sm text-gray-400">
+                    <i class="fa-solid fa-circle-xmark text-red-400 mr-2"></i>{{ perm }}
+                </div>
+                {% endfor %}
+            {% endif %}
         </div>
     </section>
 
@@ -120,14 +156,36 @@
                 <i class="fa-solid fa-key mr-2"></i>
                 Change Password
             </button>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('settings') }}" class="flex items-center justify-center p-4 bg-gray-500/10 text-gray-700 rounded-2xl hover:bg-gray-500/20 transition-colors">
+                <i class="fa-solid fa-gear mr-2"></i>
+                Settings
+            </a>
             <a href="{{ url_for('workers') }}" class="flex items-center justify-center p-4 bg-purple-500/10 text-purple-600 rounded-2xl hover:bg-purple-500/20 transition-colors">
                 <i class="fa-solid fa-users mr-2"></i>
                 Manage Workers
+            </a>
+            <a href="{{ url_for('notifications') }}" class="flex items-center justify-center p-4 bg-blue-500/10 text-blue-600 rounded-2xl hover:bg-blue-500/20 transition-colors relative">
+                <i class="fa-solid fa-bell mr-2"></i>
+                Notifications
+                {% if unread_notifications %}
+                <span class="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
+                {% endif %}
             </a>
             <button onclick="exportData()" class="flex items-center justify-center p-4 bg-green-500/10 text-green-600 rounded-2xl hover:bg-green-500/20 transition-colors">
                 <i class="fa-solid fa-download mr-2"></i>
                 Export Data
             </button>
+            {% else %}
+            <a href="{{ url_for('scan') }}" class="flex items-center justify-center p-4 bg-purple-500/10 text-purple-600 rounded-2xl hover:bg-purple-500/20 transition-colors">
+                <i class="fa-solid fa-qrcode mr-2"></i>
+                QR Scanner
+            </a>
+            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500/10 text-green-600 rounded-2xl hover:bg-green-500/20 transition-colors">
+                <i class="fa-solid fa-calendar-check mr-2"></i>
+                Attendance
+            </a>
+            {% endif %}
         </div>
     </section>
 

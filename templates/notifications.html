@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('dashboard') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Notifications</div>
+                <div class="text-sm opacity-90">Attendance activity from all sites</div>
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('notifications_mark_read') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Mark all read">
+                <i class="fa-solid fa-check-double text-lg"></i>
+            </button>
+        </form>
+    </div>
+</header>
+
+<main class="p-4 pb-32">
+    {% if notifications %}
+    <div class="space-y-3">
+        {% for item in notifications %}
+        <div class="bg-white rounded-2xl shadow border p-4 {{ 'border-accent/40' if not item.is_read else 'border-gray-100 opacity-70' }}">
+            <div class="flex items-start space-x-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                    {{ 'bg-blue-100 text-blue-600' if item.category == 'attendance' else 'bg-gray-100 text-gray-500' }}">
+                    <i class="fa-solid {{ 'fa-calendar-check' if item.category == 'attendance' else 'fa-circle-info' }}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-gray-800 text-sm">{{ item.title }}</div>
+                    {% if item.body %}<div class="text-xs text-gray-600 mt-0.5">{{ item.body }}</div>{% endif %}
+                    <div class="text-xs text-gray-400 mt-1">{{ item.created_at.strftime('%d %b %Y, %H:%M') }} UTC</div>
+                </div>
+                {% if not item.is_read %}<span class="w-2.5 h-2.5 bg-accent rounded-full shrink-0 mt-1"></span>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-bell-slash text-3xl text-gray-400"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Notifications</h3>
+        <p class="text-gray-600">Attendance marked by site users will appear here.</p>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}

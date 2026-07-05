@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}{{ worker.full_name }} — Profile Report{% endblock %}
+
+{% block head %}
+<style>
+@media print {
+    .no-print { display: none !important; }
+    body, #mobile-app { background: white !important; max-width: 100% !important; }
+    .report-page { box-shadow: none !important; border: none !important; margin: 0 !important; }
+    @page { margin: 12mm; }
+}
+.report-section-title {
+    font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #007BFF; font-weight: 700; border-bottom: 2px solid #007BFF;
+    padding-bottom: 4px; margin-bottom: 10px;
+}
+.report-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+.report-table th { background: #f1f5f9; color: #334155; text-align: left; padding: 6px 8px; font-weight: 600; }
+.report-table td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="no-print bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl mb-4">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <div class="text-xl font-semibold">Profile Report</div>
+                <div class="text-sm opacity-90">{{ worker.full_name }}</div>
+            </div>
+        </div>
+        <button onclick="window.print()" class="px-4 py-2 bg-white text-primary rounded-xl font-semibold text-sm">
+            <i class="fa-solid fa-file-pdf mr-1"></i>Save PDF
+        </button>
+    </div>
+</div>
+
+<div class="report-page bg-white mx-4 mb-8 rounded-2xl shadow-lg border border-gray-100 p-6">
+    <!-- Company letterhead -->
+    <div class="flex items-center justify-between border-b-4 border-primary pb-4 mb-5">
+        <div class="flex items-center gap-3">
+            {% if company and company.logo %}
+                <img src="{{ company.logo }}" alt="logo" class="w-12 h-12 object-contain">
+            {% endif %}
+            <div>
+                <div class="text-lg font-extrabold text-primary leading-tight">{{ company.name if company else 'SmartWorker' }}</div>
+                {% if company and company.address %}<div class="text-[0.65rem] text-gray-500">{{ company.address }}</div>{% endif %}
+                <div class="text-[0.65rem] text-gray-500">
+                    {% if company and company.phone %}{{ company.phone }}{% endif %}
+                    {% if company and company.email %} • {{ company.email }}{% endif %}
+                    {% if company and company.gst_number %} • GST: {{ company.gst_number }}{% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="text-right">
+            <div class="text-[0.6rem] uppercase tracking-widest text-gray-400 font-bold">Employee Report</div>
+            <div class="text-[0.65rem] text-gray-500">{{ today.strftime('%d %B %Y') }}</div>
+        </div>
+    </div>
+
+    <!-- Identity -->
+    <div class="flex items-center gap-4 mb-6">
+        {% if worker.profile_image %}
+            <img src="{{ worker.profile_image }}" class="w-20 h-20 rounded-xl object-cover border-2 border-primary/20">
+        {% else %}
+            <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-3xl font-bold">
+                {{ worker.full_name[0] }}
+            </div>
+        {% endif %}
+        <div class="flex-1">
+            <div class="text-xl font-bold text-gray-900">{{ worker.full_name }}</div>
+            <div class="text-sm text-gray-600">{{ worker.position }} • {{ worker.department }}</div>
+            <div class="flex flex-wrap gap-2 mt-1.5">
+                <span class="text-[0.65rem] bg-primary text-white px-2 py-0.5 rounded-full font-semibold">{{ worker.worker_id }}</span>
+                <span class="text-[0.65rem] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">{{ worker.employee_type }}</span>
+                <span class="text-[0.65rem] px-2 py-0.5 rounded-full font-semibold {{ 'bg-green-100 text-green-700' if worker.status == 'active' else 'bg-red-100 text-red-700' }}">{{ worker.status.title() }}</span>
+            </div>
+        </div>
+        {% if worker.qr_code %}
+        <img src="{{ worker.qr_code }}" class="w-20 h-20 shrink-0" alt="QR">
+        {% endif %}
+    </div>
+
+    <!-- Personal & employment details -->
+    <div class="mb-6">
+        <div class="report-section-title">Personal &amp; Employment Details</div>
+        <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+            <div class="flex justify-between"><span class="text-gray-500">Phone</span><span class="font-medium">{{ worker.phone }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Email</span><span class="font-medium">{{ worker.email or '—' }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Joined</span><span class="font-medium">{{ worker.join_date.strftime('%d %b %Y') }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Pay Type</span><span class="font-medium capitalize">{{ worker.pay_type }}</span></div>
+            {% if worker.pay_type == 'daily' %}
+            <div class="flex justify-between"><span class="text-gray-500">Daily Rate</span><span class="font-medium">₹{{ "%.2f"|format(worker.daily_rate or 0) }}</span></div>
+            {% elif worker.pay_type == 'monthly' %}
+            <div class="flex justify-between"><span class="text-gray-500">Monthly Salary</span><span class="font-medium">₹{{ "%.2f"|format(worker.monthly_salary or 0) }}</span></div>
+            {% elif worker.pay_type == 'hourly' %}
+            <div class="flex justify-between"><span class="text-gray-500">Hourly Rate</span><span class="font-medium">₹{{ "%.2f"|format(worker.hourly_rate or 0) }}</span></div>
+            {% else %}
+            <div class="flex justify-between"><span class="text-gray-500">Project Rate</span><span class="font-medium">₹{{ "%.2f"|format(worker.project_rate or 0) }}</span></div>
+            {% endif %}
+            {% if worker.address %}
+            <div class="col-span-2 flex justify-between"><span class="text-gray-500">Address</span><span class="font-medium text-right">{{ worker.address }}</span></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Current assignment + Leave -->
+    <div class="grid grid-cols-2 gap-4 mb-6">
+        <div>
+            <div class="report-section-title">Current Assignment</div>
+            {% set assignment = worker.current_assignment %}
+            {% if assignment %}
+            <div class="text-xs space-y-1">
+                {% if assignment.project %}<div class="flex justify-between"><span class="text-gray-500">Project</span><span class="font-medium">{{ assignment.project.name }}</span></div>{% endif %}
+                {% if assignment.site %}<div class="flex justify-between"><span class="text-gray-500">Site</span><span class="font-medium">{{ assignment.site.name }}</span></div>{% endif %}
+                {% if assignment.task %}<div class="flex justify-between"><span class="text-gray-500">Task</span><span class="font-medium">{{ assignment.task.name }}</span></div>{% endif %}
+                <div class="flex justify-between"><span class="text-gray-500">Since</span><span class="font-medium">{{ assignment.start_date.strftime('%d %b %Y') }}</span></div>
+            </div>
+            {% else %}
+            <div class="text-xs text-gray-400">Not currently assigned.</div>
+            {% endif %}
+        </div>
+        <div>
+            <div class="report-section-title">Leave Balance</div>
+            {% if leave_balance %}
+            <div class="text-xs space-y-1">
+                <div class="flex justify-between"><span class="text-gray-500">Monthly Quota</span><span class="font-medium">{{ leave_balance.monthly_quota }} day(s)</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Accrued (since joining)</span><span class="font-medium">{{ leave_balance.accrued_total }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Manual Adjustments</span><span class="font-medium">{{ leave_balance.manual_adjustment }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Used This Month</span><span class="font-medium">{{ leave_balance.used_this_month }}</span></div>
+                <div class="flex justify-between border-t pt-1"><span class="text-gray-700 font-semibold">Available Balance</span><span class="font-bold text-primary">{{ leave_balance.balance_after }}</span></div>
+            </div>
+            {% else %}
+            <div class="text-xs text-gray-400">Leave policy not applicable.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Project & site history -->
+    <div class="mb-6">
+        <div class="report-section-title">Project &amp; Site History</div>
+        {% if worker.assignments %}
+        <table class="report-table">
+            <thead><tr><th>Project / Site</th><th>Task</th><th>From</th><th>To</th><th>Days</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for a in worker.assignments %}
+                <tr>
+                    <td>{{ a.project.name if a.project else '' }}{% if a.project and a.site %} / {% endif %}{{ a.site.name if a.site else '' }}</td>
+                    <td>{{ a.task.name if a.task else '—' }}</td>
+                    <td>{{ a.start_date.strftime('%d %b %y') }}</td>
+                    <td>{{ a.end_date.strftime('%d %b %y') if a.end_date else 'Ongoing' }}</td>
+                    <td>{{ a.worked_days() }}</td>
+                    <td class="capitalize">{{ a.status }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-xs text-gray-400">No project or site assignments recorded.</div>
+        {% endif %}
+    </div>
+
+    <!-- Promotions & modifications -->
+    <div class="mb-6">
+        <div class="report-section-title">Promotions &amp; Modification History</div>
+        {% if worker.modifications %}
+        <table class="report-table">
+            <thead><tr><th>Date</th><th>Type</th><th>Change</th><th>Details</th></tr></thead>
+            <tbody>
+                {% for m in worker.modifications %}
+                <tr>
+                    <td>{{ (m.effective_date or m.created_at.date()).strftime('%d %b %y') }}</td>
+                    <td class="capitalize">{{ m.mod_type.replace('_', ' ') }}</td>
+                    <td>{% if m.field_name %}{{ m.field_name }}{% if m.old_value or m.new_value %}: {{ m.old_value or '—' }} → {{ m.new_value or '—' }}{% endif %}{% else %}—{% endif %}</td>
+                    <td>{{ m.description or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-xs text-gray-400">No modifications recorded since joining.</div>
+        {% endif %}
+    </div>
+
+    <!-- Attendance & pay summary, last 6 months -->
+    <div class="mb-6">
+        <div class="report-section-title">Attendance &amp; Pay — Last 6 Months</div>
+        {% if monthly_history %}
+        <table class="report-table">
+            <thead><tr><th>Month</th><th>P</th><th>L</th><th>A</th><th>Lv</th><th>OT (min)</th><th>Net Pay</th></tr></thead>
+            <tbody>
+                {% for row in monthly_history %}
+                <tr>
+                    <td>{{ row.label }}</td>
+                    <td>{{ row.att.present_days }}</td>
+                    <td>{{ row.att.late_days }}</td>
+                    <td>{{ row.att.absent_days }}</td>
+                    <td>{{ row.att.leave_days }}</td>
+                    <td>{{ row.pay.overtime_minutes }}</td>
+                    <td class="font-semibold">₹{{ "%.2f"|format(row.pay.estimated_pay) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="text-[0.6rem] text-gray-400 mt-1">P = Present, L = Late, A = Absent, Lv = Leave. Net pay includes overtime, transactions and deductions.</div>
+        {% else %}
+        <div class="text-xs text-gray-400">No attendance history yet.</div>
+        {% endif %}
+    </div>
+
+    <!-- Saved payroll history -->
+    {% if payroll_history %}
+    <div class="mb-6">
+        <div class="report-section-title">Saved Payroll Records</div>
+        <table class="report-table">
+            <thead><tr><th>Period</th><th>Days</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for p in payroll_history %}
+                <tr>
+                    <td>{{ month_names[p.month - 1][:3] }} {{ p.year }}</td>
+                    <td>{{ p.present_days }}/{{ p.total_days }}</td>
+                    <td>₹{{ "%.2f"|format(p.gross_pay) }}</td>
+                    <td>₹{{ "%.2f"|format(p.deductions) }}</td>
+                    <td class="font-semibold">₹{{ "%.2f"|format(p.net_pay) }}</td>
+                    <td class="capitalize">{{ p.status }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Transactions -->
+    <div class="mb-6">
+        <div class="report-section-title">Transaction History</div>
+        {% if all_transactions %}
+        <table class="report-table">
+            <thead><tr><th>Date</th><th>Type</th><th>Notes</th><th style="text-align:right">Amount</th></tr></thead>
+            <tbody>
+                {% for t in all_transactions %}
+                <tr class="{{ 'line-through opacity-50' if t.status == 'cancelled' else '' }}">
+                    <td>{{ t.date.strftime('%d %b %y') }}</td>
+                    <td>{{ type_labels.get(t.txn_type, t.txn_type) }}</td>
+                    <td>{{ t.description or '—' }}</td>
+                    <td style="text-align:right" class="font-semibold {{ 'text-green-600' if t.is_earning else 'text-red-600' }}">
+                        {{ '+' if t.is_earning else '−' }}₹{{ "%.2f"|format(t.amount) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-xs text-gray-400">No transactions recorded.</div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="border-t border-gray-200 pt-3 flex items-center justify-between text-[0.6rem] text-gray-400">
+        <span>Generated by {{ company.name if company else 'SmartWorker' }} — Worker Management System</span>
+        <span>{{ today.strftime('%d %b %Y') }}</span>
+    </div>
+</div>
+{% endblock %}

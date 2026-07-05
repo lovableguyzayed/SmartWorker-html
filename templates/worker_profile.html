@@ -14,6 +14,7 @@
                 <div class="text-sm opacity-90">Employee Information</div>
             </div>
         </div>
+        {% if current_user.is_admin %}
         <div class="flex items-center space-x-3">
             <a href="{{ url_for('edit_worker', worker_id=worker.id) }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                 <i class="fa-solid fa-edit text-lg"></i>
@@ -22,6 +23,7 @@
                 <i class="fa-solid fa-ellipsis-v text-lg"></i>
             </button>
         </div>
+        {% endif %}
     </div>
     
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
@@ -51,24 +53,49 @@
 </header>
 
 <main class="p-4 pb-32 space-y-4">
+    {% if current_user.is_admin %}
     <!-- Quick Actions -->
     <section class="grid grid-cols-3 gap-3">
-        <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" 
+        <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}"
            class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
             <div class="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center mb-2">
                 <i class="fa-solid fa-calendar-check text-accent text-xl"></i>
             </div>
             <span class="text-sm font-medium text-gray-800">Attendance</span>
         </a>
-        
-        <a href="{{ url_for('id_card', worker_id=worker.id) }}" 
+
+        <a href="{{ url_for('id_card', worker_id=worker.id) }}"
            class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
             <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-2">
                 <i class="fa-solid fa-id-card text-purple-500 text-xl"></i>
             </div>
             <span class="text-sm font-medium text-gray-800">ID Card</span>
         </a>
-        
+
+        <a href="{{ url_for('worker_report', worker_id=worker.id) }}"
+           class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+            <div class="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center mb-2">
+                <i class="fa-solid fa-file-pdf text-red-500 text-xl"></i>
+            </div>
+            <span class="text-sm font-medium text-gray-800">PDF Report</span>
+        </a>
+    </section>
+
+    <section class="grid grid-cols-3 gap-3">
+        <button onclick="showModifyModal()"
+           class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+            <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-2">
+                <i class="fa-solid fa-arrow-up-right-dots text-amber-500 text-xl"></i>
+            </div>
+            <span class="text-sm font-medium text-gray-800">Promote</span>
+        </button>
+        <button onclick="showAssignModal()"
+           class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+            <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-2">
+                <i class="fa-solid fa-diagram-project text-blue-500 text-xl"></i>
+            </div>
+            <span class="text-sm font-medium text-gray-800">Assign</span>
+        </button>
         <a href="{{ url_for('payroll') }}"
            class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
             <div class="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-2">
@@ -77,6 +104,96 @@
             <span class="text-sm font-medium text-gray-800">Payroll</span>
         </a>
     </section>
+    {% endif %}
+
+    <!-- Current Assignment -->
+    {% set assignment = worker.current_assignment %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-semibold text-gray-800">Current Assignment</h3>
+            {% if current_user.is_admin %}
+            <button onclick="showAssignModal()" class="text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>Assign</button>
+            {% endif %}
+        </div>
+        {% if assignment %}
+        <div class="space-y-2 text-sm">
+            {% if assignment.project %}
+            <div class="flex justify-between"><span class="text-gray-600">Project</span><span class="font-medium text-gray-800">{{ assignment.project.name }}</span></div>
+            {% if assignment.project.deadline %}
+            <div class="flex justify-between"><span class="text-gray-600">Project Deadline</span>
+                <span class="font-medium {{ 'text-red-600' if assignment.project.delay_days > 0 else 'text-gray-800' }}">
+                    {{ assignment.project.deadline.strftime('%d %b %Y') }}{% if assignment.project.delay_days > 0 %} ({{ assignment.project.delay_days }}d delayed){% endif %}
+                </span></div>
+            {% endif %}
+            {% endif %}
+            {% if assignment.site %}
+            <div class="flex justify-between"><span class="text-gray-600">Site</span><span class="font-medium text-gray-800">{{ assignment.site.name }}</span></div>
+            {% endif %}
+            {% if assignment.task %}
+            <div class="flex justify-between"><span class="text-gray-600">Task</span><span class="font-medium text-gray-800">{{ assignment.task.name }}</span></div>
+            {% endif %}
+            <div class="flex justify-between"><span class="text-gray-600">Since</span><span class="font-medium text-gray-800">{{ assignment.start_date.strftime('%d %b %Y') }} ({{ assignment.worked_days() }} days)</span></div>
+        </div>
+        {% if current_user.is_admin %}
+        <form method="POST" action="{{ url_for('worker_assignment_end', worker_id=worker.id, assignment_id=assignment.id) }}" class="mt-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="w-full py-2.5 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors">
+                <i class="fa-solid fa-flag-checkered mr-1"></i>Mark Assignment Completed
+            </button>
+        </form>
+        {% endif %}
+        {% else %}
+        <div class="text-sm text-gray-500">Not assigned to any project or site.</div>
+        {% endif %}
+
+        {% if worker.assignments|length > (1 if assignment else 0) %}
+        <details class="mt-3">
+            <summary class="text-sm text-accent font-medium cursor-pointer">Assignment history ({{ worker.assignments|length }})</summary>
+            <div class="mt-2 space-y-2">
+                {% for a in worker.assignments %}
+                <div class="p-3 bg-gray-50 rounded-xl text-xs">
+                    <div class="font-medium text-gray-800">
+                        {{ a.project.name if a.project else '' }}{% if a.project and a.site %} / {% endif %}{{ a.site.name if a.site else '' }}
+                        <span class="capitalize text-gray-500">• {{ a.status }}</span>
+                    </div>
+                    <div class="text-gray-500">{{ a.start_date.strftime('%d %b %y') }} → {{ a.end_date.strftime('%d %b %y') if a.end_date else 'ongoing' }} ({{ a.worked_days() }} days){% if a.task %} • {{ a.task.name }}{% endif %}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
+    </section>
+
+    {% if leave_balance %}
+    <!-- Leave Balance (accumulates from joining date) -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-semibold text-gray-800">Leave Balance</h3>
+            {% if current_user.is_admin %}
+            <button onclick="showLeaveModal()" class="text-accent text-sm font-medium"><i class="fa-solid fa-pen mr-1"></i>Adjust</button>
+            {% endif %}
+        </div>
+        <div class="grid grid-cols-3 gap-3 mb-3">
+            <div class="text-center p-3 bg-blue-50 rounded-2xl">
+                <div class="text-xl font-bold text-blue-600">{{ leave_balance.balance_after }}</div>
+                <div class="text-xs text-gray-600">Available</div>
+            </div>
+            <div class="text-center p-3 bg-green-50 rounded-2xl">
+                <div class="text-xl font-bold text-green-600">{{ leave_balance.accrued_total }}</div>
+                <div class="text-xs text-gray-600">Accrued</div>
+            </div>
+            <div class="text-center p-3 bg-amber-50 rounded-2xl">
+                <div class="text-xl font-bold text-amber-600">{{ leave_balance.used_before + leave_balance.used_this_month }}</div>
+                <div class="text-xs text-gray-600">Used</div>
+            </div>
+        </div>
+        <div class="text-xs text-gray-500">
+            Unused monthly leaves ({{ leave_balance.monthly_quota }}/month) accumulate automatically since joining.
+            Extra leaves consume this balance before any salary deduction.
+            {% if leave_balance.manual_adjustment %}Includes {{ leave_balance.manual_adjustment }} day(s) manual adjustment.{% endif %}
+        </div>
+    </section>
+    {% endif %}
 
     <!-- Personal Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
@@ -259,7 +376,203 @@
         </div>
     </section>
     {% endif %}
+
+    {% if current_user.is_admin %}
+    <!-- Recent Transactions -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Transactions</h3>
+            <a href="{{ url_for('transactions', worker=worker.id) }}" class="text-accent text-sm font-medium">Manage</a>
+        </div>
+        {% if recent_transactions %}
+        <div class="space-y-2">
+            {% for txn in recent_transactions[:5] %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div>
+                    <div class="text-sm font-medium text-gray-800">{{ txn.txn_type.replace('_', ' ')|title }}</div>
+                    <div class="text-xs text-gray-500">{{ txn.date.strftime('%d %b %Y') }}{% if txn.description %} • {{ txn.description }}{% endif %}</div>
+                </div>
+                <div class="font-semibold {{ 'text-green-600' if txn.is_earning else 'text-red-600' }}">
+                    {{ '+' if txn.is_earning else '−' }}₹{{ "%.2f"|format(txn.amount) }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-sm text-gray-500">No transactions yet. Advances, loans and bonuses will appear here.</div>
+        {% endif %}
+    </section>
+
+    <!-- Modification & Promotion History -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Modification History</h3>
+            <button onclick="showModifyModal()" class="text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>New</button>
+        </div>
+        {% if worker.modifications %}
+        <div class="space-y-2">
+            {% for m in worker.modifications[:8] %}
+            <div class="p-3 bg-gray-50 rounded-xl">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                        {{ 'bg-amber-100 text-amber-700' if m.mod_type == 'promotion' else ('bg-green-100 text-green-700' if m.mod_type == 'salary_change' else ('bg-purple-100 text-purple-700' if m.mod_type == 'category_change' else 'bg-blue-100 text-blue-700')) }}">
+                        {{ m.mod_type.replace('_', ' ')|title }}</span>
+                    <span class="text-xs text-gray-400">{{ (m.effective_date or m.created_at.date()).strftime('%d %b %Y') }}</span>
+                </div>
+                <div class="text-sm text-gray-800 mt-1">
+                    {% if m.field_name %}<b>{{ m.field_name }}</b>{% if m.old_value or m.new_value %}: {{ m.old_value or '—' }} → {{ m.new_value or '—' }}{% endif %}{% endif %}
+                </div>
+                {% if m.description %}<div class="text-xs text-gray-500">{{ m.description }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-sm text-gray-500">No modifications yet. Promotions, salary changes and category changes are logged here permanently.</div>
+        {% endif %}
+    </section>
+    {% endif %}
 </main>
+
+{% if current_user.is_admin %}
+<!-- Promote / Modify Modal -->
+<div id="modify-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+            <div class="text-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Modify Worker</h3>
+                <p class="text-gray-600 text-sm">All changes are recorded permanently</p>
+            </div>
+            <form method="POST" action="{{ url_for('worker_modify', worker_id=worker.id) }}" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Modification Type</label>
+                    <select name="mod_type" id="mod-type" onchange="toggleModFields()" class="w-full p-3 border border-lightGray rounded-xl">
+                        <option value="promotion">Promotion (designation + salary)</option>
+                        <option value="salary_change">Salary Increment</option>
+                        <option value="bonus">One-time Bonus</option>
+                        <option value="incentive">Special Incentive</option>
+                        <option value="refreshment">Refreshment Allowance</option>
+                        <option value="extra_payment">Extra Payment</option>
+                        <option value="leave_grant">Extra Leave / Leave Adjustment</option>
+                        <option value="other">Other Note</option>
+                    </select>
+                </div>
+                <div id="mod-position-field">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New Designation</label>
+                    <input type="text" name="new_position" placeholder="e.g. Senior Supervisor" value=""
+                           class="w-full p-3 border border-lightGray rounded-xl">
+                </div>
+                <div id="mod-salary-field">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New {{ worker.pay_type|title }} Salary / Rate (₹)</label>
+                    <input type="number" name="new_salary" step="0.01" min="0" class="w-full p-3 border border-lightGray rounded-xl">
+                </div>
+                <div id="mod-amount-field" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+                    <input type="number" name="amount" step="0.01" min="0" class="w-full p-3 border border-lightGray rounded-xl">
+                </div>
+                <div id="mod-days-field" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Leave Days (+ credit / − debit)</label>
+                    <input type="number" name="days" step="0.5" class="w-full p-3 border border-lightGray rounded-xl" placeholder="e.g. 2 or -1">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Effective Date</label>
+                    <input type="date" name="effective_date" class="w-full p-3 border border-lightGray rounded-xl">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea name="description" rows="2" class="w-full p-3 border border-lightGray rounded-xl" placeholder="Reason / details"></textarea>
+                </div>
+                <div class="flex space-x-3 pt-1">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save</button>
+                    <button type="button" onclick="hideModifyModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Project/Site Modal -->
+<div id="assign-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+            <div class="text-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Assign Worker</h3>
+                <p class="text-gray-600 text-sm">Current assignment will be closed as a transfer</p>
+            </div>
+            <form method="POST" action="{{ url_for('worker_assign', worker_id=worker.id) }}" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                    <select name="project_id" class="w-full p-3 border border-lightGray rounded-xl">
+                        <option value="">— None —</option>
+                        {% for p in projects if p.status == 'active' %}
+                        <option value="{{ p.id }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Site</label>
+                    <select name="site_id" class="w-full p-3 border border-lightGray rounded-xl">
+                        <option value="">— None —</option>
+                        {% for s in sites %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+                    <select name="task_id" class="w-full p-3 border border-lightGray rounded-xl">
+                        <option value="">— None —</option>
+                        {% for t in tasks %}
+                        <option value="{{ t.id }}">{{ t.name }}{% if t.project %} ({{ t.project.name }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input type="date" name="start_date" class="w-full p-3 border border-lightGray rounded-xl">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <input type="text" name="notes" class="w-full p-3 border border-lightGray rounded-xl" placeholder="Optional">
+                </div>
+                <div class="flex space-x-3 pt-1">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Assign</button>
+                    <button type="button" onclick="hideAssignModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Adjustment Modal -->
+<div id="leave-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
+            <div class="text-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Adjust Leave Balance</h3>
+                <p class="text-gray-600 text-sm">Credit or debit accumulated leave days</p>
+            </div>
+            <form method="POST" action="{{ url_for('worker_modify', worker_id=worker.id) }}" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mod_type" value="leave_grant">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Days (+ credit / − debit)</label>
+                    <input type="number" name="days" step="0.5" required class="w-full p-3 border border-lightGray rounded-xl" placeholder="e.g. 2 or -1">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                    <input type="text" name="description" class="w-full p-3 border border-lightGray rounded-xl" placeholder="e.g. Approved extra leave">
+                </div>
+                <div class="flex space-x-3 pt-1">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save</button>
+                    <button type="button" onclick="hideLeaveModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Worker Actions Modal -->
 <div id="worker-actions-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
@@ -329,6 +642,38 @@ function showWorkerActionsModal() {
 }
 function hideWorkerActionsModal() {
     document.getElementById('worker-actions-modal').classList.add('hidden');
+}
+function showModifyModal() {
+    const m = document.getElementById('modify-modal');
+    if (m) { m.classList.remove('hidden'); toggleModFields(); }
+}
+function hideModifyModal() {
+    document.getElementById('modify-modal').classList.add('hidden');
+}
+function showAssignModal() {
+    const m = document.getElementById('assign-modal');
+    if (m) m.classList.remove('hidden');
+}
+function hideAssignModal() {
+    document.getElementById('assign-modal').classList.add('hidden');
+}
+function showLeaveModal() {
+    const m = document.getElementById('leave-modal');
+    if (m) m.classList.remove('hidden');
+}
+function hideLeaveModal() {
+    document.getElementById('leave-modal').classList.add('hidden');
+}
+function toggleModFields() {
+    const type = document.getElementById('mod-type').value;
+    const isPromotion = type === 'promotion';
+    const isSalary = type === 'salary_change';
+    const isPayment = ['bonus', 'incentive', 'refreshment', 'extra_payment'].includes(type);
+    const isLeave = type === 'leave_grant';
+    document.getElementById('mod-position-field').classList.toggle('hidden', !isPromotion);
+    document.getElementById('mod-salary-field').classList.toggle('hidden', !isPromotion && !isSalary);
+    document.getElementById('mod-amount-field').classList.toggle('hidden', !isPayment);
+    document.getElementById('mod-days-field').classList.toggle('hidden', !isLeave);
 }
 </script>
 {% endblock %}

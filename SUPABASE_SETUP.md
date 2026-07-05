@@ -1,0 +1,74 @@
+# SmartWorker — Supabase Database Setup
+
+The app uses SQLite by default (`instance/smartworker.db`). To run it on your
+Supabase Postgres database instead, you only need to set one environment
+variable — no code changes required. Tables are created automatically on the
+first start, and the admin user is seeded.
+
+## 1. Get your connection string
+
+1. Open your Supabase project dashboard (https://supabase.com/dashboard) and
+   select your project.
+2. Click **Connect** (top of the page) — or Settings → Database.
+3. Copy the **URI** connection string. Two options:
+
+   **Session pooler (recommended for this app):**
+   ```text
+   postgresql://postgres.<YOUR-PROJECT-REF>:[YOUR-PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres
+   ```
+
+   **Direct connection:**
+   ```text
+   postgresql://postgres:[YOUR-PASSWORD]@db.<YOUR-PROJECT-REF>.supabase.co:5432/postgres
+   ```
+
+4. Replace `[YOUR-PASSWORD]` with your database password
+   (Settings → Database → Reset database password if you don't have it), and
+   `<YOUR-PROJECT-REF>` with your project's reference id (shown in the
+   dashboard URL and the Connect dialog).
+
+> The app accepts both `postgres://` and `postgresql://` schemes and adds
+> `sslmode=require` automatically for Supabase hosts.
+
+## 2. Set the environment variable
+
+**Linux / macOS:**
+```bash
+export DATABASE_URL='postgresql://postgres:YOUR-PASSWORD@db.YOUR-PROJECT-REF.supabase.co:5432/postgres'
+export SESSION_SECRET='any-long-random-string'
+export ADMIN_DEFAULT_PASSWORD='choose-admin-password'
+python main.py
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:DATABASE_URL='postgresql://postgres:YOUR-PASSWORD@db.YOUR-PROJECT-REF.supabase.co:5432/postgres'
+$env:SESSION_SECRET='any-long-random-string'
+$env:ADMIN_DEFAULT_PASSWORD='choose-admin-password'
+python main.py
+```
+
+**Replit / hosting platforms:** add the same three variables in the
+Secrets/Environment settings panel.
+
+## 3. First start
+
+On the first run against an empty database the app:
+- creates all tables (workers, attendance, payroll, transactions, sites,
+  projects, closures, notifications, etc.),
+- seeds the default company settings row,
+- creates the `admin` user with `ADMIN_DEFAULT_PASSWORD` (or prints a random
+  one to the console if unset).
+
+Log in as `admin` and change the password from Profile → Change Password.
+
+## Notes
+
+- **Do not commit the connection string** — it contains your database
+  password. Keep it in environment variables/secrets only.
+- The bundled SQLite file (`instance/smartworker.db`) is ignored once
+  `DATABASE_URL` is set; demo data is not migrated automatically.
+- If your network blocks port 5432, use the **transaction pooler** string on
+  port 6543 from the same Connect dialog.
+- `pool_pre_ping` is already enabled, so dropped pooler connections reconnect
+  automatically.

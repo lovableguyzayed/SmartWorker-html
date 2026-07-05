@@ -31,7 +31,14 @@ app.secret_key = _secret
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # configure the database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///smartworker.db")
+_db_url = os.environ.get("DATABASE_URL", "sqlite:///smartworker.db")
+# Supabase/Heroku style URLs use the legacy postgres:// scheme SQLAlchemy 2.x rejects
+if _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+# Supabase requires TLS; add sslmode when the URL doesn't specify one
+if _db_url.startswith("postgresql") and "supabase.co" in _db_url and "sslmode=" not in _db_url:
+    _db_url += ("&" if "?" in _db_url else "?") + "sslmode=require"
+app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
@@ -43,135 +50,122 @@ app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB upload limit
 db.init_app(app)
 csrf.init_app(app)
 
+# Columns added after the initial release. Applied with ALTER TABLE so existing
+# databases upgrade in place without losing data.
+SCHEMA_PATCHES = {
+    'users': [
+        ('phone', "VARCHAR(20)"),
+        ('role', "VARCHAR(20) DEFAULT 'attendance'"),
+        ('assigned_site_ids', "TEXT"),
+        ('assigned_project_ids', "TEXT"),
+        ('created_by', "INTEGER"),
+        ('status', "VARCHAR(20) DEFAULT 'active'"),
+    ],
+    'closure_days': [
+        ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),
+        ('scope', "VARCHAR(20) DEFAULT 'company'"),
+        ('site_id', "INTEGER"),
+        ('project_id', "INTEGER"),
+    ],
+    'workers': [
+        ('project_rate', "FLOAT"),
+        ('late_policy_enabled', "BOOLEAN NOT NULL DEFAULT 0"),
+        ('late_deduction_per_day', "FLOAT"),
+        ('late_deduction_type', "VARCHAR(10) DEFAULT 'day'"),
+        ('late_grace_minutes', "INTEGER DEFAULT 10"),
+        ('no_work_no_pay', "BOOLEAN NOT NULL DEFAULT 1"),
+        ('half_day_rate', "FLOAT"),
+        ('half_day_grace_minutes', "INTEGER NOT NULL DEFAULT 20"),
+        ('monthly_working_days', "INTEGER DEFAULT 26"),
+        ('standard_working_hours', "INTEGER DEFAULT 8"),
+        ('closure_extra_pay_enabled', "BOOLEAN NOT NULL DEFAULT 0"),
+        ('closure_calculation_method', "VARCHAR(20) DEFAULT 'daily_percent'"),
+        ('closure_extra_percentage', "FLOAT DEFAULT 0.0"),
+    ],
+    'attendance_records': [
+        ('late_minutes', "INTEGER DEFAULT 0"),
+        ('leave_type', "VARCHAR(30)"),
+        ('shift', "VARCHAR(30)"),
+        ('site_id', "INTEGER"),
+        ('marked_by', "INTEGER"),
+        ('marked_via', "VARCHAR(15) DEFAULT 'manual'"),
+    ],
+    'leave_adjustments': [
+        ('effective_date', "DATE"),
+    ],
+}
+
+def _apply_schema_patches(inspector):
+    for table, patches in SCHEMA_PATCHES.items():
+        if table not in inspector.get_table_names():
+            continue
+        existing_columns = {col['name'] for col in inspector.get_columns(table)}
+        for column, ddl in patches:
+            if column in existing_columns:
+                continue
+            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+            db.session.commit()
+            logging.info("Added %s column to %s", column, table)
+
+def _drop_closure_date_unique_constraint(inspector):
+    """Legacy SQLite databases created closure_days.date with UNIQUE, which
+    blocks site/project-scoped closures sharing a date. Rebuild the table once.
+
+    pysqlite implicitly commits around DDL, so the rename/create/copy/drop can
+    never be one true transaction. Instead every step is idempotent and
+    resumable: if a previous attempt crashed midway, the leftover
+    closure_days_old is detected on the next startup and the copy completes
+    without losing rows (INSERT OR IGNORE keys on the preserved primary key)."""
+    if not db.engine.url.drivername.startswith('sqlite'):
+        return
+    tables = inspector.get_table_names()
+    resuming = 'closure_days_old' in tables
+    if not resuming:
+        if 'closure_days' not in tables:
+            return
+        unique_indexes = [
+            idx for idx in inspector.get_indexes('closure_days')
+            if idx.get('unique') and idx.get('column_names') == ['date']
+        ]
+        has_auto_unique = any(
+            'date' in (constraint.get('column_names') or [])
+            for constraint in inspector.get_unique_constraints('closure_days')
+        )
+        if not unique_indexes and not has_auto_unique:
+            return
+        logging.info("Rebuilding closure_days to drop UNIQUE(date) constraint")
+    else:
+        logging.info("Resuming interrupted closure_days rebuild")
+    try:
+        if not resuming:
+            db.session.execute(text("ALTER TABLE closure_days RENAME TO closure_days_old"))
+        fresh = inspect(db.engine)
+        if 'closure_days' not in fresh.get_table_names():
+            db.metadata.tables['closure_days'].create(bind=db.session.connection())
+        old_columns = {col['name'] for col in fresh.get_columns('closure_days_old')}
+        common = [c.name for c in db.metadata.tables['closure_days'].columns if c.name in old_columns]
+        column_list = ', '.join(common)
+        db.session.execute(text(
+            f"INSERT OR IGNORE INTO closure_days ({column_list}) SELECT {column_list} FROM closure_days_old"
+        ))
+        db.session.execute(text("DROP TABLE closure_days_old"))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.error("closure_days rebuild interrupted (will resume on next startup): %s", e)
+        raise
+
 with app.app_context():
     # Make sure to import the models here or their tables won't be created
     import models  # noqa: F401
     db.create_all()
-    
-    # Lightweight schema patch for existing DBs.
-    inspector = inspect(db.engine)
-    if 'users' in inspector.get_table_names():
-        user_columns = {col['name'] for col in inspector.get_columns('users')}
-        if 'phone' not in user_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE users "
-                    "ADD COLUMN phone VARCHAR(20)"
-                )
-            )
-            db.session.commit()
-            logging.info("Added phone column to users")
 
-    if 'closure_days' in inspector.get_table_names():
-        closure_columns = {col['name'] for col in inspector.get_columns('closure_days')}
-        if 'allow_attendance' not in closure_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE closure_days "
-                    "ADD COLUMN allow_attendance BOOLEAN NOT NULL DEFAULT 1"
-                )
-            )
-            db.session.commit()
-            logging.info("Added allow_attendance column to closure_days")
-    
-    if 'workers' in inspector.get_table_names():
-        worker_columns = {col['name'] for col in inspector.get_columns('workers')}
-        if 'project_rate' not in worker_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE workers "
-                    "ADD COLUMN project_rate FLOAT"
-                )
-            )
-            db.session.commit()
-            logging.info("Added project_rate column to workers")
-        if 'late_policy_enabled' not in worker_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE workers "
-                    "ADD COLUMN late_policy_enabled BOOLEAN NOT NULL DEFAULT 0"
-                )
-            )
-            db.session.commit()
-            logging.info("Added late_policy_enabled column to workers")
-        if 'late_deduction_per_day' not in worker_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE workers "
-                    "ADD COLUMN late_deduction_per_day FLOAT"
-                )
-            )
-            db.session.commit()
-            logging.info("Added late_deduction_per_day column to workers")
-        if 'late_deduction_type' not in worker_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE workers "
-                    "ADD COLUMN late_deduction_type VARCHAR(10) DEFAULT 'day'"
-                )
-            )
-            db.session.commit()
-            logging.info("Added late_deduction_type column to workers")
-        if 'no_work_no_pay' not in worker_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE workers "
-                    "ADD COLUMN no_work_no_pay BOOLEAN NOT NULL DEFAULT 1"
-                )
-            )
-            db.session.commit()
-            logging.info("Added no_work_no_pay column to workers")
-        if 'half_day_rate' not in worker_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE workers "
-                    "ADD COLUMN half_day_rate FLOAT"
-                )
-            )
-            db.session.commit()
-            logging.info("Added half_day_rate column to workers")
-        if 'half_day_grace_minutes' not in worker_columns:
-            db.session.execute(
-                text(
-                    "ALTER TABLE workers "
-                    "ADD COLUMN half_day_grace_minutes INTEGER NOT NULL DEFAULT 20"
-                )
-            )
-            db.session.commit()
-            logging.info("Added half_day_grace_minutes column to workers")
-        if 'monthly_working_days' not in worker_columns:
-            db.session.execute(
-                text("ALTER TABLE workers ADD COLUMN monthly_working_days INTEGER DEFAULT 26")
-            )
-            db.session.commit()
-            logging.info("Added monthly_working_days column to workers")
-        if 'standard_working_hours' not in worker_columns:
-            db.session.execute(
-                text("ALTER TABLE workers ADD COLUMN standard_working_hours INTEGER DEFAULT 8")
-            )
-            db.session.commit()
-            logging.info("Added standard_working_hours column to workers")
-        if 'closure_extra_pay_enabled' not in worker_columns:
-            db.session.execute(
-                text("ALTER TABLE workers ADD COLUMN closure_extra_pay_enabled BOOLEAN NOT NULL DEFAULT false")
-            )
-            db.session.commit()
-            logging.info("Added closure_extra_pay_enabled column to workers")
-        if 'closure_calculation_method' not in worker_columns:
-            db.session.execute(
-                text("ALTER TABLE workers ADD COLUMN closure_calculation_method VARCHAR(20) DEFAULT 'daily_percent'")
-            )
-            db.session.commit()
-            logging.info("Added closure_calculation_method column to workers")
-        if 'closure_extra_percentage' not in worker_columns:
-            db.session.execute(
-                text("ALTER TABLE workers ADD COLUMN closure_extra_percentage FLOAT DEFAULT 0.0")
-            )
-            db.session.commit()
-            logging.info("Added closure_extra_percentage column to workers")
-    
+    inspector = inspect(db.engine)
+    _apply_schema_patches(inspector)
+    _drop_closure_date_unique_constraint(inspector)
+
     logging.info("Database tables created")
-    
+
     # Initialize admin user if not exists
     if not models.User.query.filter_by(username='admin').first():
         default_pw = os.environ.get('ADMIN_DEFAULT_PASSWORD')
@@ -191,3 +185,9 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         logging.info("Default admin user created")
+
+    # Seed the singleton company settings row
+    if not models.CompanySetting.query.first():
+        db.session.add(models.CompanySetting(name='SmartWorker'))
+        db.session.commit()
+        logging.info("Default company settings created")
