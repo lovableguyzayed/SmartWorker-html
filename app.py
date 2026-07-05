@@ -155,6 +155,22 @@ def _drop_closure_date_unique_constraint(inspector):
         logging.error("closure_days rebuild interrupted (will resume on next startup): %s", e)
         raise
 
+def _enable_supabase_rls():
+    """Supabase exposes public-schema tables through its auto-generated REST
+    API. This app never uses that API (all access goes through Flask, which
+    connects as the table owner and therefore bypasses RLS), so lock every
+    table down: RLS enabled with no policies = deny-all for anon/authenticated
+    API roles. Idempotent; runs only against Supabase hosts."""
+    if 'supabase.co' not in str(db.engine.url):
+        return
+    for table in db.metadata.tables:
+        try:
+            db.session.execute(text(f'ALTER TABLE "{table}" ENABLE ROW LEVEL SECURITY'))
+        except Exception as e:
+            logging.warning("Could not enable RLS on %s: %s", table, e)
+    db.session.commit()
+    logging.info("Row Level Security enabled on all tables (Supabase API locked down)")
+
 with app.app_context():
     # Make sure to import the models here or their tables won't be created
     import models  # noqa: F401
@@ -163,6 +179,7 @@ with app.app_context():
     inspector = inspect(db.engine)
     _apply_schema_patches(inspector)
     _drop_closure_date_unique_constraint(inspector)
+    _enable_supabase_rls()
 
     logging.info("Database tables created")
 
