@@ -58,7 +58,7 @@
             <div class="flex items-center space-x-4">
                 <div class="relative shrink-0">
                     {% if worker.profile_image %}
-                        <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}" class="w-16 h-16 shrink-0 rounded-2xl object-cover object-center">
+                        <img loading="lazy" decoding="async" src="{{ worker.profile_image }}" alt="{{ worker.full_name }}" class="w-16 h-16 shrink-0 rounded-2xl object-cover object-center">
                     {% else %}
                         <div class="w-16 h-16 shrink-0 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center text-white font-bold text-xl">
                             {{ worker.full_name[0] }}

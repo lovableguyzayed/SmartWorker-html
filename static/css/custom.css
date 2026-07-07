@@ -10,6 +10,45 @@
     animation: pageSlideIn 0.18s ease-out both;
 }
 
+/* ── Native touch & scroll feel ── */
+html {
+    overscroll-behavior-y: none;          /* no browser pull-to-refresh glow */
+}
+a, button, input, select, textarea, label {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;           /* no double-tap zoom delay */
+}
+body {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeSpeed;
+}
+
+/* ── Skeleton shimmer (only for uncached screens >150ms) ── */
+@keyframes skShimmer {
+    from { background-position: -200% 0; }
+    to   { background-position: 200% 0; }
+}
+#skeleton-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: #f9fafb;
+    max-width: 24rem;
+    margin: 0 auto;
+    padding: 1rem;
+}
+#skeleton-overlay .sk-bar {
+    border-radius: 1rem;
+    background: linear-gradient(90deg, #eef1f5 25%, #e2e8f0 50%, #eef1f5 75%);
+    background-size: 200% 100%;
+    animation: skShimmer 1.1s linear infinite;
+    margin-bottom: 0.9rem;
+}
+#skeleton-overlay .sk-header { height: 7.5rem; border-radius: 0 0 1.5rem 1.5rem; margin: -1rem -1rem 1rem; }
+#skeleton-overlay .sk-card   { height: 5.5rem; }
+#skeleton-overlay .sk-line   { height: 1.1rem; }
+#skeleton-overlay .sk-line.short { width: 60%; }
+
 /* ── Nav tap feedback: instant highlight ── */
 .app-nav-item:active,
 .app-nav-fab:active {

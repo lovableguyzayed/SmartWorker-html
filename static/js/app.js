@@ -1,5 +1,22 @@
 // SmartWorker Application JavaScript
 
+// ── DOMContentLoaded shim for SPA navigation ─────────────────
+// Page templates register init code via DOMContentLoaded. After the first
+// load the document never re-parses (screens are swapped in place), so any
+// handler registered later runs immediately instead of never firing.
+window.__domReady = false;
+(() => {
+    const origAdd = document.addEventListener.bind(document);
+    document.addEventListener = function (type, fn, opts) {
+        if (type === 'DOMContentLoaded' && window.__domReady) {
+            queueMicrotask(() => fn.call(document, new Event('DOMContentLoaded')));
+            return;
+        }
+        return origAdd(type, fn, opts);
+    };
+    origAdd('DOMContentLoaded', () => { window.__domReady = true; });
+})();
+
 // Global app configuration
 const SmartWorker = {
     config: {
@@ -425,38 +442,206 @@ const SmartWorker = {
     }
 };
 
-// ── Native-feel instant navigation ───────────────────────────
-// No visible loading bar (native apps don't have one). Instead, pages are
-// silently prefetched into the service worker cache the moment a link is
-// touched/hovered, so the actual navigation is served from cache instantly.
-const NavPrefetch = {
-    prefetched: new Set(),
+// ── NativeShell: SPA navigation engine ───────────────────────
+// The WebView loads the document exactly once. Every link tap and form
+// submit afterwards is fetched over XHR and the new screen is swapped into
+// the live document — no full page reloads, no browser loading indicator,
+// no white flash. Combined with the service worker cache this makes screen
+// changes effectively instant, like a native Android activity switch.
+const NativeShell = {
+    loadedAssets: new Set(),
+    skeletonTimer: null,
+    navigating: false,
+
+    PRELOAD_SCREENS: ['/dashboard', '/workers', '/attendance', '/payroll',
+                      '/transactions', '/assignments', '/settings',
+                      '/notifications', '/closures', '/profile'],
 
     init() {
+        // Remember assets already in the document so swaps never re-run them
+        document.querySelectorAll('script[src]').forEach((s) =>
+            this.loadedAssets.add(new URL(s.src, location.href).pathname));
+        document.querySelectorAll('link[rel="stylesheet"]').forEach((l) =>
+            this.loadedAssets.add(new URL(l.href, location.href).pathname));
+
+        document.addEventListener('click', (e) => this.onClick(e));
+        document.addEventListener('submit', (e) => this.onSubmit(e));
+        window.addEventListener('popstate', () => this.visit(location.href, { push: false }));
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+        // Touch-warm prefetch: pages enter the SW cache before the tap lands
         const warm = (e) => {
             const link = e.target.closest('a[href]');
             if (!link) return;
             const href = link.getAttribute('href');
             if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
-            if (link.target === '_blank') return;
-            let url;
             try {
-                url = new URL(href, window.location.origin);
-                if (url.origin !== window.location.origin) return;
-            } catch (_) { return; }
-            if (this.prefetched.has(url.pathname + url.search)) return;
-            this.prefetched.add(url.pathname + url.search);
-            fetch(url.href, { credentials: 'same-origin' }).catch(() => {});
+                const url = new URL(href, location.href);
+                if (url.origin !== location.origin) return;
+                fetch(url.href, { credentials: 'same-origin', headers: { 'Accept': 'text/html' } }).catch(() => {});
+            } catch (_) {}
         };
         document.addEventListener('touchstart', warm, { passive: true });
-        document.addEventListener('mouseover', warm, { passive: true });
+
+        this.preloadMainScreens();
+        // Re-check after each swap: the post-login swap is when the bottom
+        // nav first appears and preloading becomes worthwhile.
+        document.addEventListener('page:load', () => this.preloadMainScreens());
+    },
+
+    // After login, warm every main screen into the SW cache so switching
+    // between them is instant — even on first visit and even offline later.
+    preloadMainScreens() {
+        if (!document.querySelector('nav.app-bottom-nav')) return;
+        if (sessionStorage.getItem('sw-preloaded')) return;
+        sessionStorage.setItem('sw-preloaded', '1');
+        const run = () => {
+            this.PRELOAD_SCREENS
+                .filter((p) => p !== location.pathname)
+                .forEach((path, i) => {
+                    setTimeout(() => {
+                        fetch(path, { credentials: 'same-origin', headers: { 'Accept': 'text/html' } }).catch(() => {});
+                    }, 400 * i);
+                });
+        };
+        ('requestIdleCallback' in window) ? requestIdleCallback(run, { timeout: 3000 }) : setTimeout(run, 1200);
+    },
+
+    onClick(e) {
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        const link = e.target.closest('a[href]');
+        if (!link) return;
+        const href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+        if (link.target && link.target !== '_self') return;
+        if (link.hasAttribute('download') || link.hasAttribute('data-native')) return;
+        let url;
+        try { url = new URL(href, location.href); } catch (_) { return; }
+        if (url.origin !== location.origin) return;
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+        e.preventDefault();
+        this.visit(url.href);
+    },
+
+    onSubmit(e) {
+        if (e.defaultPrevented) return;
+        const form = e.target;
+        if (!(form instanceof HTMLFormElement) || form.hasAttribute('data-native')) return;
+        if (form.target && form.target !== '_self') return;
+        const method = (form.getAttribute('method') || 'get').toUpperCase();
+        // Offline POSTs belong to offline-sync.js (it queues them locally)
+        if (method !== 'GET' && !navigator.onLine) return;
+        let action;
+        try { action = new URL(form.getAttribute('action') || location.href, location.href); } catch (_) { return; }
+        if (action.origin !== location.origin) return;
+        e.preventDefault();
+
+        const fd = new FormData(form);
+        const sub = e.submitter;
+        if (sub && sub.name) fd.append(sub.name, sub.value || '');
+
+        if (method === 'GET') {
+            action.search = new URLSearchParams(fd).toString();
+            this.visit(action.href);
+        } else {
+            this.visit(action.href, { method, body: fd });
+        }
+    },
+
+    async visit(href, opts = {}) {
+        if (this.navigating) return;
+        this.navigating = true;
+        document.dispatchEvent(new Event('page:before-swap'));
+        this.scheduleSkeleton();
+        try {
+            const res = await fetch(href, {
+                method: opts.method || 'GET',
+                body: opts.body || null,
+                credentials: 'same-origin',
+                headers: { 'Accept': 'text/html' },
+                redirect: 'follow',
+            });
+            const html = await res.text();
+            this.render(html, res.url || href, opts.push !== false);
+        } catch (err) {
+            // No network and no cache — do a real navigation as last resort
+            this.cancelSkeleton();
+            this.navigating = false;
+            if ((opts.method || 'GET') === 'GET') location.href = href;
+            return;
+        }
+        this.navigating = false;
+    },
+
+    render(html, url, push) {
+        this.cancelSkeleton();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        // Merge page-specific head assets (print styles, jsPDF, QR library…)
+        doc.querySelectorAll('head link[rel="stylesheet"], head style, head script[src]').forEach((node) => {
+            const key = node.src || node.href;
+            if (key) {
+                const path = new URL(key, location.href).pathname;
+                if (this.loadedAssets.has(path)) return;
+                this.loadedAssets.add(path);
+            }
+            document.head.appendChild(this.executable(node));
+        });
+
+        document.title = doc.title;
+        document.body.innerHTML = doc.body.innerHTML;
+
+        // innerHTML never executes scripts — replace each with a live clone
+        document.body.querySelectorAll('script').forEach((old) => {
+            if (old.src) {
+                const path = new URL(old.src, location.href).pathname;
+                if (this.loadedAssets.has(path)) { old.remove(); return; }
+                this.loadedAssets.add(path);
+            }
+            old.replaceWith(this.executable(old));
+        });
+
+        if (push && url !== location.href) history.pushState({}, '', url);
+        else if (push) history.replaceState({}, '', url);
+        window.scrollTo(0, 0);
+        document.dispatchEvent(new Event('page:load'));
+    },
+
+    executable(node) {
+        if (node.tagName !== 'SCRIPT') return node.cloneNode(true);
+        const s = document.createElement('script');
+        [...node.attributes].forEach((a) => s.setAttribute(a.name, a.value));
+        s.textContent = node.textContent;
+        return s;
+    },
+
+    // Skeleton shimmer — only appears if a screen takes longer than 150ms
+    // (cached screens swap instantly and never show it)
+    scheduleSkeleton() {
+        this.skeletonTimer = setTimeout(() => {
+            if (document.getElementById('skeleton-overlay')) return;
+            const el = document.createElement('div');
+            el.id = 'skeleton-overlay';
+            el.innerHTML = '<div class="sk-bar sk-header"></div>' +
+                           '<div class="sk-bar sk-card"></div>' +
+                           '<div class="sk-bar sk-card"></div>' +
+                           '<div class="sk-bar sk-line"></div>' +
+                           '<div class="sk-bar sk-line short"></div>';
+            document.body.appendChild(el);
+        }, 150);
+    },
+
+    cancelSkeleton() {
+        clearTimeout(this.skeletonTimer);
+        const el = document.getElementById('skeleton-overlay');
+        if (el) el.remove();
     }
 };
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     SmartWorker.init();
-    NavPrefetch.init();
+    NativeShell.init();
 });
 
 // Expose SmartWorker globally for use in templates

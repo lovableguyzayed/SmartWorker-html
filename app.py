@@ -3,6 +3,7 @@ import secrets
 import string
 import logging
 from flask import Flask
+from flask_compress import Compress
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import inspect, text
@@ -49,6 +50,14 @@ app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB upload limit
 # initialize the app with the extensions
 db.init_app(app)
 csrf.init_app(app)
+
+# Gzip/Brotli-compress every response (HTML, CSS, JS, JSON, fonts) — the
+# 144KB of vendored CSS shrinks to ~30KB on the wire. COMPRESS_STREAMS
+# covers static files (served in streaming passthrough mode) and the
+# streaming algorithm list includes gzip for older Android WebViews.
+app.config['COMPRESS_STREAMS'] = True
+app.config['COMPRESS_ALGORITHM_STREAMING'] = ['br', 'gzip', 'deflate']
+Compress(app)
 
 # Columns added after the initial release. Applied with ALTER TABLE so existing
 # databases upgrade in place without losing data.

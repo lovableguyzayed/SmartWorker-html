@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartworker-v9';
+const CACHE_NAME = 'smartworker-v10';
 const STATIC_ASSETS = [
   '/login',
   '/static/css/custom.css',
@@ -88,10 +88,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const isNavigation = request.mode === 'navigate';
+  // SPA screen changes arrive as fetch() with Accept: text/html rather than
+  // real navigations — treat both as page requests for instant cache serving.
+  const isPageRequest = request.mode === 'navigate'
+    || (request.headers.get('accept') || '').includes('text/html');
   const recentlyMutated = Date.now() - lastMutationAt < MUTATION_WINDOW_MS;
 
-  if (isNavigation && !recentlyMutated) {
+  if (isPageRequest && !recentlyMutated) {
     // Instant open: serve cached page immediately, refresh cache in background
     event.respondWith(
       caches.match(request).then((cached) => {
