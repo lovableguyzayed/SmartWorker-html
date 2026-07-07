@@ -69,6 +69,7 @@ SCHEMA_PATCHES = {
         ('assigned_project_ids', "TEXT"),
         ('created_by', "INTEGER"),
         ('status', "VARCHAR(20) DEFAULT 'active'"),
+        ('profile_image', "TEXT"),
     ],
     'closure_days': [
         ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),

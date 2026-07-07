@@ -32,25 +32,48 @@
     <!-- Profile Header -->
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <div class="flex items-center space-x-4">
-            <div class="relative">
+            <div class="relative shrink-0">
+                {% if current_user.profile_image %}
+                <img src="{{ current_user.profile_image }}" alt="{{ current_user.full_name }}"
+                     class="w-20 h-20 rounded-2xl object-cover object-center border-4 border-white/20">
+                {% else %}
                 <div class="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white font-bold text-2xl border-4 border-white/20">
                     {{ current_user.full_name[0] if current_user.full_name else 'A' }}
                 </div>
-                <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
-                    <i class="fa-solid fa-check text-xs text-white"></i>
-                </div>
+                {% endif %}
+                <!-- Tap the camera badge to change the photo -->
+                <label for="avatar-file-input"
+                       class="absolute -bottom-1 -right-1 w-8 h-8 bg-accent rounded-full border-2 border-white flex items-center justify-center cursor-pointer hover:bg-primary transition-colors">
+                    <i class="fa-solid fa-camera text-xs text-white"></i>
+                </label>
             </div>
-            <div class="flex-1">
-                <div class="text-xl font-bold mb-1">{{ current_user.full_name }}</div>
+            <div class="flex-1 min-w-0">
+                <div class="text-xl font-bold mb-1 truncate">{{ current_user.full_name }}</div>
                 <div class="text-sm opacity-90 mb-2">{{ current_user.role.title() }} Account</div>
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center flex-wrap gap-2">
                     <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">@{{ current_user.username }}</div>
                     <div class="text-xs text-white/80 bg-green-500/20 px-2 py-1 rounded-lg border border-green-400/30">
                         <i class="fa-solid fa-check-circle mr-1"></i>Active
                     </div>
+                    {% if current_user.profile_image %}
+                    <form method="POST" action="{{ url_for('profile_remove_avatar') }}" class="inline"
+                          onsubmit="return confirm('Remove your profile photo?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="text-xs text-white/80 bg-red-500/20 px-2 py-1 rounded-lg border border-red-400/30 hover:bg-red-500/30 transition-colors">
+                            <i class="fa-solid fa-trash mr-1"></i>Remove photo
+                        </button>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
+        <!-- Hidden uploader: picking a file submits immediately -->
+        <form id="avatar-upload-form" method="POST" action="{{ url_for('profile_upload_avatar') }}"
+              enctype="multipart/form-data" data-native class="hidden">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="file" id="avatar-file-input" name="avatar" accept="image/*"
+                   onchange="if(this.files.length){document.getElementById('avatar-upload-form').submit();}">
+        </form>
     </div>
 </header>
 

@@ -11,6 +11,7 @@ from flask import render_template, request, redirect, url_for, flash, session, j
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
+from PIL import Image as PILImage, ImageOps as PILImageOps
 from app import app, db, csrf
 import storage
 from models import (
@@ -47,26 +48,67 @@ def allowed_image_file(filename):
     extension = filename.rsplit('.', 1)[1].lower()
     return extension in ALLOWED_IMAGE_EXTENSIONS
 
+def _compress_image(file_storage, max_px=640, quality=80, preserve_alpha=False):
+    """Resize + recompress an uploaded image before storing it.
+
+    - Fixes phone-camera EXIF rotation (photos otherwise appear sideways).
+    - Shrinks multi-megabyte camera photos to a web-sized JPEG/PNG so pages
+      load fast and Supabase uploads don't time out.
+    Returns (bytes, mimetype, extension). On any decode failure it falls back
+    to the original bytes so a valid-but-unusual file is never lost.
+    """
+    try:
+        data = file_storage.read()
+        img = PILImage.open(io.BytesIO(data))
+        img = PILImageOps.exif_transpose(img)  # honor camera orientation
+        has_alpha = img.mode in ('RGBA', 'LA', 'PA') or (
+            img.mode == 'P' and 'transparency' in img.info
+        )
+        if preserve_alpha and has_alpha:
+            img = img.convert('RGBA')
+            if max(img.size) > max_px:
+                img.thumbnail((max_px, max_px), PILImage.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format='PNG', optimize=True)
+            return buf.getvalue(), 'image/png', 'png'
+        img = img.convert('RGB')
+        if max(img.size) > max_px:
+            img.thumbnail((max_px, max_px), PILImage.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=quality, optimize=True)
+        return buf.getvalue(), 'image/jpeg', 'jpg'
+    except Exception:
+        try:
+            file_storage.seek(0)
+            raw = file_storage.read()
+        except Exception:
+            raw = b''
+        ext = (file_storage.filename or '').rsplit('.', 1)[-1].lower() or 'jpg'
+        return raw, (file_storage.mimetype or 'application/octet-stream'), ext
+
+
 def save_worker_profile_image(file_storage, worker_id):
     filename = secure_filename(file_storage.filename or '')
     if not allowed_image_file(filename):
         raise ValueError('Please upload a valid image (JPG, JPEG, PNG, GIF, or WEBP).')
 
-    extension = filename.rsplit('.', 1)[1].lower()
-    unique_filename = f"{worker_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.{extension}"
+    image_data, image_mime, image_ext = _compress_image(file_storage, max_px=640)
+    unique_filename = f"{worker_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.{image_ext}"
 
     # Supabase Storage when configured (persists across Render deploys);
-    # local static/uploads fallback otherwise (development/preview).
+    # local static/uploads fallback otherwise. A storage/network failure is
+    # surfaced as a friendly ValueError instead of a 500 crash.
     if storage.storage_enabled():
-        return storage.upload_image(
-            f'workers/{unique_filename}',
-            file_storage.read(),
-            file_storage.mimetype,
-        )
+        try:
+            return storage.upload_image(f'workers/{unique_filename}', image_data, image_mime)
+        except Exception as exc:
+            app.logger.warning('Supabase image upload failed: %s', exc)
+            raise ValueError('Could not upload the image right now. Please try again.')
 
     os.makedirs(WORKER_IMAGE_UPLOAD_DIR, exist_ok=True)
     destination = os.path.join(WORKER_IMAGE_UPLOAD_DIR, unique_filename)
-    file_storage.save(destination)
+    with open(destination, 'wb') as fh:
+        fh.write(image_data)
     return url_for('static', filename=f'uploads/workers/{unique_filename}')
 
 def parse_float(value, default=0.0):
@@ -1662,8 +1704,54 @@ def profile():
                 flash('Password changed successfully', 'success')
         
         return redirect(url_for('profile'))
-    
+
     return render_template('profile.html', Worker=Worker, AttendanceRecord=AttendanceRecord, date=date)
+
+USER_AVATAR_UPLOAD_DIR = os.path.join(app.static_folder, 'uploads', 'avatars')
+
+
+def save_user_avatar(file_storage, user_id):
+    """Compress + store a user's profile photo (Supabase or local)."""
+    filename = secure_filename(file_storage.filename or '')
+    if not allowed_image_file(filename):
+        raise ValueError('Please upload a valid image (JPG, JPEG, PNG, GIF, or WEBP).')
+    image_data, image_mime, image_ext = _compress_image(file_storage, max_px=256)
+    unique_filename = f"user{user_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.{image_ext}"
+    if storage.storage_enabled():
+        try:
+            return storage.upload_image(f'avatars/{unique_filename}', image_data, image_mime)
+        except Exception as exc:
+            app.logger.warning('Avatar upload failed: %s', exc)
+            raise ValueError('Could not upload the photo right now. Please try again.')
+    os.makedirs(USER_AVATAR_UPLOAD_DIR, exist_ok=True)
+    with open(os.path.join(USER_AVATAR_UPLOAD_DIR, unique_filename), 'wb') as fh:
+        fh.write(image_data)
+    return url_for('static', filename=f'uploads/avatars/{unique_filename}')
+
+
+@app.route('/profile/avatar', methods=['POST'])
+@login_required
+def profile_upload_avatar():
+    photo = request.files.get('avatar')
+    if not photo or not photo.filename:
+        flash('Please choose an image to upload.', 'error')
+        return redirect(url_for('profile'))
+    try:
+        current_user.profile_image = save_user_avatar(photo, current_user.id)
+        db.session.commit()
+        flash('Profile photo updated.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'error')
+    return redirect(url_for('profile'))
+
+
+@app.route('/profile/avatar/remove', methods=['POST'])
+@login_required
+def profile_remove_avatar():
+    current_user.profile_image = None
+    db.session.commit()
+    flash('Profile photo removed.', 'success')
+    return redirect(url_for('profile'))
 
 VALID_ATTENDANCE_STATUSES = ('present', 'absent', 'late', 'leave')
 
@@ -2303,15 +2391,20 @@ def settings_company():
         if not allowed_image_file(filename):
             flash('Please upload a valid logo image (JPG, JPEG, PNG, GIF, or WEBP).', 'error')
             return redirect(url_for('settings'))
-        extension = filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"logo_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{extension}"
-        if storage.storage_enabled():
-            company.logo = storage.upload_image(
-                f'company/{unique_filename}', logo.read(), logo.mimetype)
-        else:
-            os.makedirs(COMPANY_LOGO_UPLOAD_DIR, exist_ok=True)
-            logo.save(os.path.join(COMPANY_LOGO_UPLOAD_DIR, unique_filename))
-            company.logo = url_for('static', filename=f'uploads/company/{unique_filename}')
+        # Logos keep transparency (PNG); compressed to a small square.
+        logo_data, logo_mime, logo_ext = _compress_image(logo, max_px=256, quality=85, preserve_alpha=True)
+        unique_filename = f"logo_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{logo_ext}"
+        try:
+            if storage.storage_enabled():
+                company.logo = storage.upload_image(f'company/{unique_filename}', logo_data, logo_mime)
+            else:
+                os.makedirs(COMPANY_LOGO_UPLOAD_DIR, exist_ok=True)
+                with open(os.path.join(COMPANY_LOGO_UPLOAD_DIR, unique_filename), 'wb') as fh:
+                    fh.write(logo_data)
+                company.logo = url_for('static', filename=f'uploads/company/{unique_filename}')
+        except Exception as exc:
+            app.logger.warning('Logo upload failed: %s', exc)
+            flash('Could not upload the logo right now. Other settings were saved.', 'warning')
 
     db.session.commit()
     flash('Company settings saved. They will appear on all PDFs and reports.', 'success')
