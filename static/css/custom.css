@@ -21,6 +21,15 @@ a, button, input, select, textarea, label {
 body {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeSpeed;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+input, textarea, [contenteditable="true"] {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 /* ── Skeleton shimmer (only for uncached screens >150ms) ── */
