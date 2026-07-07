@@ -3058,6 +3058,26 @@ def attendance_adjust(record_id):
     return redirect(safe_redirect_target(request.form.get('redirect_to'), url_for('attendance', date=record.date.isoformat())))
 
 # ============================================================
+# Service worker (served from root so its scope covers the whole app)
+# ============================================================
+
+@app.route('/sw.js')
+def service_worker():
+    """Serve the service worker from the site root.
+
+    A service worker can only control pages at or below the path it is served
+    from. When it was served from /static/sw.js its scope was /static/, so it
+    never intercepted navigations to /dashboard, /workers, etc. — the page
+    cache did nothing and every screen hit the network. Serving it here with
+    Service-Worker-Allowed: / lets it control the entire origin, so cached
+    pages open instantly and offline works for real screens."""
+    response = make_response(app.send_static_file('sw.js'))
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Service-Worker-Allowed'] = '/'
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
+
+# ============================================================
 # QR Scanner & Manual Employee ID attendance
 # ============================================================
 
