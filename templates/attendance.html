@@ -304,11 +304,12 @@
                     <input type="hidden" name="date" value="{{ selected_date }}">
                     <input type="hidden" name="bulk_action" value="true">
                     
-                    <button type="submit" name="status" value="absent" 
+                    <button type="submit" name="status" value="absent"
                             class="w-full flex items-center justify-center p-4 bg-red-50 rounded-2xl hover:bg-red-100 transition-colors">
                         <i class="fa-solid fa-times text-red-600 mr-3"></i>
                         <span class="font-medium text-gray-800">Mark All Absent</span>
                     </button>
+                </form>
             </div>
             {% else %}
             <div class="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 mb-6">
@@ -392,8 +393,9 @@ function hideBulkActions() {
 
 function openAdjustModal(recordId, workerName, status, checkIn, checkOut, leaveType) {
     const modal = document.getElementById('adjust-modal');
-    if (!modal) return;
-    document.getElementById('adjust-form').action = '/attendance/' + recordId + '/adjust';
+    const form = document.getElementById('adjust-form');
+    if (!modal || !form) return;
+    form.setAttribute('action', '/attendance/' + recordId + '/adjust');
     document.getElementById('adjust-worker-name').textContent = workerName;
     document.getElementById('adjust-status').value = status;
     document.getElementById('adjust-checkin').value = checkIn;

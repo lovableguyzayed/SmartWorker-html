@@ -18,6 +18,7 @@ class User(UserMixin, db.Model):
     assigned_project_ids = db.Column(db.Text, nullable=True)
     created_by = db.Column(db.Integer, nullable=True)
     status = db.Column(db.String(20), default='active')  # active, disabled
+    profile_image = db.Column(db.Text, nullable=True)  # public URL or static path
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):

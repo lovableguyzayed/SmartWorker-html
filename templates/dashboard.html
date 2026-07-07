@@ -21,8 +21,13 @@
                 {% endif %}
             </a>
             {% endif %}
-            <a href="{{ url_for('profile') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <!-- Profile picture beside the bell — real avatar or default icon -->
+            <a href="{{ url_for('profile') }}" class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center border border-white/25 bg-white/10 backdrop-blur-sm shrink-0" title="Profile">
+                {% if current_user.profile_image %}
+                <img src="{{ current_user.profile_image }}" alt="{{ current_user.full_name }}" class="w-full h-full object-cover">
+                {% else %}
                 <i class="fa-solid fa-user text-lg"></i>
+                {% endif %}
             </a>
         </div>
     </div>
