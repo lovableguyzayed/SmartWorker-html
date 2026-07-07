@@ -215,8 +215,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('manual-id').focus();
     }
 });
-window.addEventListener('beforeunload', () => {
-    if (html5Qrcode && scannerRunning) { try { html5Qrcode.stop(); } catch (e) {} }
-});
+function stopScannerCamera() {
+    if (html5Qrcode && scannerRunning) {
+        try { html5Qrcode.stop(); } catch (e) {}
+        scannerRunning = false;
+    }
+}
+window.addEventListener('beforeunload', stopScannerCamera);
+// SPA navigation swaps screens without unloading — release the camera then too
+document.addEventListener('page:before-swap', stopScannerCamera, { once: true });
 </script>
 {% endblock %}

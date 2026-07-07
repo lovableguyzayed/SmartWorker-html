@@ -15,11 +15,18 @@
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="34" />
         <preference name="AndroidXEnabled" value="true" />
+        <!-- Production WebView performance -->
+        <preference name="AndroidInsecureFileModeEnabled" value="false" />
+        <preference name="ResolveServiceWorkerRequests" value="true" />
         <!-- Camera permission for the in-app QR scanner (getUserMedia in WebView) -->
         <config-file target="AndroidManifest.xml" parent="/manifest">
             <uses-permission android:name="android.permission.CAMERA" />
             <uses-feature android:name="android.hardware.camera" android:required="false" />
         </config-file>
+        <!-- GPU rendering + large heap for html2canvas/jsPDF capture buffers -->
+        <edit-config file="AndroidManifest.xml" target="/manifest/application" mode="merge">
+            <application android:hardwareAccelerated="true" android:largeHeap="true" />
+        </edit-config>
     </platform>
 
     <preference name="DisallowOverscroll" value="true" />
@@ -29,10 +36,13 @@
     <preference name="StatusBarBackgroundColor" value="#001F3F" />
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="BackgroundColor" value="0xff001F3F" />
-    <preference name="SplashScreenDelay" value="2000" />
+    <!-- Faster startup: shorter splash, app content shows as soon as ready -->
+    <preference name="SplashScreenDelay" value="800" />
+    <preference name="FadeSplashScreenDuration" value="200" />
     <preference name="AutoHideSplashScreen" value="true" />
     <preference name="ShowSplashScreenSpinner" value="false" />
     <preference name="LoadUrlTimeoutValue" value="60000" />
+    <preference name="KeepRunning" value="true" />
 
     <!-- IMPORTANT: Update these URLs before building for production.
          Replace the placeholder with your actual deployed server domain.

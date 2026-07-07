@@ -41,7 +41,7 @@
                 <div class="flex items-center space-x-4">
                     <div class="w-16 h-16 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
                         {% if company and company.logo %}
-                            <img src="{{ company.logo }}" alt="Logo" class="w-full h-full object-contain">
+                            <img loading="lazy" decoding="async" src="{{ company.logo }}" alt="Logo" class="w-full h-full object-contain">
                         {% else %}
                             <i class="fa-solid fa-building text-2xl text-gray-400"></i>
                         {% endif %}
