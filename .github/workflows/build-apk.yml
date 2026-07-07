@@ -1,0 +1,75 @@
+name: Build Android APK
+
+# Builds the Cordova Android APK on GitHub's runners (which can reach the
+# Android SDK servers). Run it manually from the Actions tab, then download
+# the APK from the run's "Artifacts" section.
+#
+# Optional input `app_url`: your deployed server URL (e.g.
+# https://smartworker-xyz.onrender.com). The APK is a thin shell that loads
+# this URL, so set it to your live backend before building a shippable APK.
+# If left blank, the placeholder in config.xml is used (fine for a test build).
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: 'Deployed server URL the app should load (optional)'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build packages
+        run: |
+          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
+
+      - name: Install Cordova
+        run: npm install -g cordova@12
+
+      - name: Point the app at the deployed URL (if provided)
+        if: ${{ github.event.inputs.app_url != '' }}
+        run: |
+          URL="${{ github.event.inputs.app_url }}"
+          HOST=$(echo "$URL" | sed -E 's~https?://~~; s~/.*~~')
+          echo "Setting app URL to $URL (host $HOST)"
+          sed -i "s~https://smartworker-yourname.replit.app~$URL~g" config.xml www/index.html
+          sed -i "s~smartworker-yourname.replit.app~$HOST~g" config.xml www/index.html
+
+      - name: Add Android platform
+        run: cordova platform add android@13 --no-telemetry
+
+      - name: Build debug APK
+        run: cordova build android --debug --no-telemetry
+
+      - name: Locate APK
+        id: apk
+        run: |
+          APK=$(find platforms/android -name "*.apk" | head -1)
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "Built: $APK"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartWorker-debug-apk
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
