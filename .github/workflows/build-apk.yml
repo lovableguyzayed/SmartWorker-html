@@ -40,7 +40,7 @@ jobs:
 
       - name: Install Android build packages
         run: |
-          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
+          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
 
       - name: Install Cordova
         run: npm install -g cordova@12
@@ -55,7 +55,10 @@ jobs:
           sed -i "s~smartworker-yourname.replit.app~$HOST~g" config.xml www/index.html
 
       - name: Add Android platform
-        run: cordova platform add android@13 --no-telemetry
+        # cordova-android 12 (AGP 8.0 / Gradle 8.0) compiles AndroidX
+        # appcompat cleanly. cordova-android 13's AGP 8.7 toolchain hits an
+        # aapt2 resource-merge bug ("Invalid <color>") on appcompat 1.6.1.
+        run: cordova platform add android@12 --no-telemetry
 
       - name: Build debug APK
         run: cordova build android --debug --no-telemetry
