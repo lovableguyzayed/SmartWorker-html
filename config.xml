@@ -79,6 +79,11 @@
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     <plugin name="cordova-plugin-splashscreen" spec="^6.0.0" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
+    <!-- Requests the Android runtime CAMERA permission so the in-app QR scanner
+         (getUserMedia in the WebView) can open the camera. cordova-android
+         already grants the WebView's permission request, but the OS still
+         requires the app to hold the runtime permission. -->
+    <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
 
     <!-- Restrict network access to only the backend API domain for security.
          Update the origin below to match your deployed server URL. -->

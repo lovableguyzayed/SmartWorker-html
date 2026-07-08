@@ -74,6 +74,17 @@
     }
 
     document.addEventListener('deviceready', function () {
+      // Ask for the camera permission up front so the in-app QR scanner works
+      // once the WebView loads the remote app. Cordova grants the WebView's
+      // getUserMedia request automatically, but Android still requires the app
+      // to hold the CAMERA runtime permission. Best-effort: proceed regardless.
+      try {
+        var perms = window.cordova && cordova.plugins && cordova.plugins.permissions;
+        if (perms && perms.CAMERA) {
+          perms.requestPermission(perms.CAMERA, function () {}, function () {});
+        }
+      } catch (e) {}
+
       var Connection = window.Connection;
       if (navigator.connection && Connection && navigator.connection.type === Connection.NONE) {
         handleOffline();
