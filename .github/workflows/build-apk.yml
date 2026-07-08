@@ -39,8 +39,10 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android build packages
+        # cordova-android 12 targets SDK 33 and requires build-tools 33.0.2
+        # specifically (its cordova.gradle checks for that exact version).
         run: |
-          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
 
       - name: Install Gradle 8.7
         # cordova-android 12 (AGP 8.0) builds AndroidX appcompat cleanly, but
