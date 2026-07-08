@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartworker-v12';
+const CACHE_NAME = 'smartworker-v13';
 const STATIC_ASSETS = [
   '/login',
   '/static/css/custom.css',
@@ -64,8 +64,13 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(
         caches.match(request).then((cached) =>
           cached || fetch(request).then((res) => {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            // Only cache successful image responses — never a 403/404 (e.g.
+            // before Storage is configured), which would otherwise be served
+            // as a permanently broken image even after the bucket is fixed.
+            if (res && res.ok) {
+              const clone = res.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
             return res;
           })
         )
