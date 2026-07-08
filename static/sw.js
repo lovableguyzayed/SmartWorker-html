@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartworker-v13';
+const CACHE_NAME = 'smartworker-v14';
 const STATIC_ASSETS = [
   '/login',
   '/static/css/custom.css',
