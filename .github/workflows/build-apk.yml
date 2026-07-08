@@ -39,8 +39,10 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android build packages
+        # build-tools 35 ships a newer aapt2 that compiles AndroidX appcompat
+        # correctly (build-tools 34's aapt2 fails on appcompat with AGP 8.7).
         run: |
-          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
+          yes | sdkmanager "platform-tools" "platforms;android-35" "platforms;android-34" "build-tools;35.0.0" "build-tools;34.0.0" >/dev/null || true
 
       - name: Install Cordova
         run: npm install -g cordova@12
@@ -55,10 +57,10 @@ jobs:
           sed -i "s~smartworker-yourname.replit.app~$HOST~g" config.xml www/index.html
 
       - name: Add Android platform
-        # cordova-android 12 (AGP 8.0 / Gradle 8.0) compiles AndroidX
-        # appcompat cleanly. cordova-android 13's AGP 8.7 toolchain hits an
-        # aapt2 resource-merge bug ("Invalid <color>") on appcompat 1.6.1.
-        run: cordova platform add android@12 --no-telemetry
+        # cordova-android 13 bootstraps cleanly on the runner's Gradle;
+        # cordova-android 12's scripts use XmlParser, removed in Gradle 9.
+        # The appcompat aapt2 bug is handled by build-tools 35 above.
+        run: cordova platform add android@13 --no-telemetry
 
       - name: Build debug APK
         run: cordova build android --debug --no-telemetry
