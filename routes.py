@@ -7,15 +7,17 @@ import random
 import calendar as _cal
 from datetime import datetime, date, timedelta
 from functools import wraps
-from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage, ImageOps as PILImageOps
 from app import app, db, csrf
 import storage
+import supabase_auth
+import tenancy
 from models import (
-    User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
+    Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
     WorkerModification, LeaveAdjustment, WorkerTransaction, Notification,
     TRANSACTION_EARNING_TYPES, TRANSACTION_DEDUCTION_TYPES,
@@ -26,6 +28,60 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
+
+
+@app.before_request
+def _pin_tenant_account():
+    # Pin the current request to the logged-in user's workspace so every
+    # tenant query/insert is automatically isolated (see tenancy.py).
+    tenancy.set_request_account()
+
+
+def _provision_from_supabase(supa_user, full_name=None, phone=None,
+                             make_account=False, account_name=None):
+    """Find or create the local User row backing a Supabase auth user.
+
+    Idempotent. A brand-new user (or a legacy/local user with the same email)
+    becomes the owner/admin of a workspace Account; that is also how the
+    designated admin 'claims' the migrated legacy data on first Supabase login.
+    """
+    uid = supa_user.get('id')
+    email = (supa_user.get('email') or '').lower()
+
+    user = User.query.filter_by(supabase_uid=uid).first()
+    if not user and email:
+        user = User.query.filter_by(email=email).first()
+
+    def _new_account():
+        acc = Account(name=account_name or full_name or (email.split('@')[0] if email else 'My Workspace'),
+                      owner_uid=uid)
+        db.session.add(acc)
+        db.session.flush()
+        return acc
+
+    if user:
+        # Link the local row to Supabase and ensure it has a workspace.
+        user.supabase_uid = uid
+        if user.account_id is None:
+            user.account_id = _new_account().id
+        db.session.commit()
+        return user
+
+    # Brand-new: create the workspace + its owner/admin user.
+    acc = _new_account()
+    user = User(
+        username=generate_unique_username(full_name, email),
+        email=email,
+        phone=phone,
+        full_name=full_name or (email or 'User'),
+        role='admin',
+        supabase_uid=uid,
+        account_id=acc.id,
+        status='active',
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 WORKER_IMAGE_UPLOAD_DIR = os.path.join(app.static_folder, 'uploads', 'workers')
@@ -100,7 +156,7 @@ def save_worker_profile_image(file_storage, worker_id):
     # surfaced as a friendly ValueError instead of a 500 crash.
     if storage.storage_enabled():
         try:
-            return storage.upload_image(f'workers/{unique_filename}', image_data, image_mime)
+            return storage.upload_image(f'acc{current_user.account_id}/workers/{unique_filename}', image_data, image_mime)
         except Exception as exc:
             app.logger.warning('Supabase image upload failed: %s', exc)
             raise ValueError('Could not upload the image right now. Please try again.')
@@ -386,10 +442,15 @@ def admin_required(view):
 
 @app.context_processor
 def inject_globals():
-    company = CompanySetting.query.first()
+    # Only load workspace-scoped company settings for an authenticated user;
+    # on public pages (login/splash) there is no account context, and querying
+    # would otherwise expose another workspace's company row.
+    company = None
     unread = 0
-    if current_user.is_authenticated and current_user.is_admin:
-        unread = Notification.query.filter_by(is_read=False).count()
+    if current_user.is_authenticated:
+        company = CompanySetting.query.first()
+        if current_user.is_admin:
+            unread = Notification.query.filter_by(is_read=False).count()
     return dict(company=company, unread_notifications=unread)
 
 def assignment_active_on(assignment, on_date):
@@ -464,31 +525,72 @@ def safe_redirect_target(value, fallback):
         return value
     return fallback
 
+# ------------------------------------------------------------------
+# Tenant-safe primary-key lookups.
+#
+# tenancy.py's automatic filter (with_loader_criteria) rewrites SELECT
+# queries, but it does NOT apply to Query.get()/get_or_404() — SQLAlchemy
+# documents that get() consults the identity map / issues an unfiltered
+# PK lookup regardless of loader criteria. Every by-id lookup of a tenant
+# model MUST go through these helpers instead of .get()/.get_or_404(),
+# or a user could reach another workspace's row just by knowing its id.
+# ------------------------------------------------------------------
+from werkzeug.exceptions import abort as _abort
+
+
+def tenant_get_or_404(model, entity_id):
+    account_id = tenancy.current_account_id()
+    return model.query.filter_by(id=entity_id, account_id=account_id).first() or _abort(404)
+
+
+def tenant_get(model, entity_id):
+    if entity_id is None:
+        return None
+    account_id = tenancy.current_account_id()
+    return model.query.filter_by(id=entity_id, account_id=account_id).first()
+
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username'].strip()
+        identifier = request.form['username'].strip()
         password = request.form['password']
-        
-        user = User.query.filter(
+
+        # Resolve any local user matching the identifier (username/email/phone).
+        normalized_phone = normalize_mobile_number(identifier)
+        local = User.query.filter(
             db.or_(
-                User.username == username,
-                User.email == username
+                User.username == identifier,
+                User.email == identifier.lower(),
+                User.phone == normalized_phone,
             )
         ).first()
-        
-        if user and user.check_password(password):
-            if (user.status or 'active') != 'active':
-                flash('This account has been disabled. Please contact the Administrator.', 'error')
+
+        # Supabase is the identity provider for owner/admin accounts (anyone
+        # with a Supabase uid) and for logging in by email. Local-only staff
+        # (attendance users created by an admin) keep their local password.
+        use_supabase = supabase_auth.enabled() and (local is None or local.supabase_uid)
+
+        if use_supabase:
+            email = local.email if local else identifier.lower()
+            result = supabase_auth.sign_in(email, password)
+            if not result['ok']:
+                flash(result.get('error') or 'Invalid email or password', 'error')
                 return render_template('login.html')
-            login_user(user, remember=True)
-            clear_login_otp_session()
-            next_page = request.args.get('next')
-            print(f"Login successful for user: {username}")
-            return redirect(next_page, code=303) if next_page else redirect(url_for('dashboard'), code=303)
+            user = _provision_from_supabase(result['user'])
         else:
-            flash('Invalid username or password', 'error')
+            user = local if (local and local.check_password(password)) else None
+            if not user:
+                flash('Invalid username or password', 'error')
+                return render_template('login.html')
+
+        if (user.status or 'active') != 'active':
+            flash('This account has been disabled. Please contact the Administrator.', 'error')
+            return render_template('login.html')
+        login_user(user, remember=True)
+        clear_login_otp_session()
+        next_page = safe_redirect_target(request.args.get('next'), url_for('dashboard'))
+        return redirect(next_page, code=303)
     else:
         clear_login_otp_session()
 
@@ -665,17 +767,24 @@ def register():
         email = request.form['email'].strip().lower()
         password = request.form['password']
         confirm_password = request.form.get('confirm_password', '')
-        full_name = request.form['full_name']
+        full_name = request.form['full_name'].strip()
+        workspace = request.form.get('business_name', '').strip()
         mobile = normalize_mobile_number(request.form.get('mobile'))
 
+        if not full_name:
+            flash('Please enter your full name', 'error')
+            return render_template('register.html')
         if password != confirm_password:
             flash('Passwords do not match', 'error')
             return render_template('register.html')
-
+        if len(password) < 8:
+            flash('Password must be at least 8 characters', 'error')
+            return render_template('register.html')
         if not is_valid_mobile_number(mobile):
             flash('Please enter a valid mobile number', 'error')
             return render_template('register.html')
 
+        # Mobile OTP verification gate (unchanged from the legacy flow).
         otp_verified = session.get('register_otp_verified')
         otp_mobile = session.get('register_otp_mobile')
         otp_expiry = session.get('register_otp_expires_at')
@@ -687,36 +796,93 @@ def register():
         ):
             flash('Please verify your mobile number with OTP before registering', 'error')
             return render_template('register.html')
-        
-        # Check if user already exists
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered', 'error')
-            return render_template('register.html')
 
         if User.query.filter_by(phone=mobile).first():
             flash('Mobile number already registered', 'error')
             return render_template('register.html')
-        
-        # Create new user. Self-registration creates an administrator account
-        # (site attendance users are created by the admin in Settings and get
-        # the restricted 'attendance' role there).
+
+        account_name = workspace or f"{full_name}'s Workspace"
+
+        if supabase_auth.enabled():
+            # Supabase owns credentials, email verification and recovery.
+            result = supabase_auth.sign_up(email, password, full_name)
+            if not result['ok']:
+                flash(result.get('error') or 'Could not complete registration. Please try again.', 'error')
+                return render_template('register.html')
+
+            # Create the local workspace + owner/admin row (idempotent).
+            user = _provision_from_supabase(
+                result['user'], full_name=full_name, phone=mobile or None,
+                make_account=True, account_name=account_name,
+            )
+            clear_register_otp_session()
+
+            if result.get('needs_confirmation'):
+                flash('Registration successful! Check your email to confirm your account, then log in.', 'success')
+                return redirect(url_for('login'))
+            # Confirmation disabled → Supabase returned a session; log in now.
+            login_user(user, remember=True)
+            return redirect(url_for('dashboard'), code=303)
+
+        # ---- Legacy local fallback (Supabase Auth not configured) ----
+        if User.query.filter_by(email=email).first():
+            flash('Email already registered', 'error')
+            return render_template('register.html')
+        acc = Account(name=account_name)
+        db.session.add(acc)
+        db.session.flush()
         user = User()
         user.username = generate_unique_username(full_name, email)
         user.email = email
-        user.phone = mobile
+        user.phone = mobile or None
         user.full_name = full_name
         user.role = 'admin'
+        user.account_id = acc.id
         user.set_password(password)
-        
         db.session.add(user)
         db.session.commit()
         clear_register_otp_session()
-        
-        flash('Registration successful! Please login using your email or username.', 'success')
+        flash('Registration successful! Please login using your email.', 'success')
         return redirect(url_for('login'))
-    
+
     clear_register_otp_session()
     return render_template('register.html')
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if supabase_auth.enabled() and email:
+            redirect_to = url_for('reset_password', _external=True)
+            supabase_auth.send_recovery(email, redirect_to)
+        # Always report success so we never reveal which emails are registered.
+        flash('If an account exists for that email, a password reset link has been sent.', 'success')
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password', methods=['GET'])
+def reset_password():
+    # The recovery link lands here with the token in the URL fragment; the
+    # page's JS reads it and posts the new password to reset_password_submit.
+    return render_template('reset_password.html')
+
+
+@app.route('/reset-password', methods=['POST'])
+@csrf.exempt
+def reset_password_submit():
+    data = request.get_json(silent=True) or request.form
+    token = (data.get('access_token') or '').strip()
+    new_password = data.get('password', '')
+    if not token or len(new_password) < 8:
+        return jsonify({'success': False, 'message': 'Invalid link or password too short (min 8 characters).'}), 400
+    if not supabase_auth.enabled():
+        return jsonify({'success': False, 'message': 'Password recovery is not available.'}), 400
+    result = supabase_auth.update_password(token, new_password)
+    if not result['ok']:
+        return jsonify({'success': False, 'message': result.get('error') or 'Could not reset password. The link may have expired.'}), 400
+    return jsonify({'success': True, 'message': 'Password updated. You can now log in.'})
 
 @app.route('/logout')
 @login_required
@@ -795,7 +961,7 @@ def workers():
 @app.route('/worker/<int:worker_id>')
 @login_required
 def worker_profile(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
 
     if not worker_visible_to_user(worker, current_user):
         flash('Please contact the Administrator to make changes.', 'restricted')
@@ -1316,7 +1482,7 @@ def log_worker_changes(worker, before_values):
 @app.route('/edit_worker/<int:worker_id>', methods=['GET', 'POST'])
 @admin_required
 def edit_worker(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
 
     if request.method == 'POST':
         before_values = {field: getattr(worker, field) for field, _ in WORKER_TRACKED_FIELDS}
@@ -1494,7 +1660,7 @@ def attendance():
     closure = next((c for c in closures_today if c.scope in (None, '', 'company')), None)
 
     sites = Site.query.filter_by(status='active').order_by(Site.name).all()
-    attendance_users = User.query.filter(User.role == 'attendance').order_by(User.full_name).all()
+    attendance_users = User.query.filter(User.role == 'attendance', User.account_id == current_user.account_id).order_by(User.full_name).all()
 
     return render_template('attendance.html',
                          attendance_data=attendance_data,
@@ -1565,7 +1731,7 @@ def closures():
 @app.route('/worker/<int:worker_id>/deactivate', methods=['POST'])
 @admin_required
 def deactivate_worker(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     if worker.status == 'active':
         worker.status = 'inactive'
         msg = f'{worker.full_name} has been deactivated.'
@@ -1579,7 +1745,7 @@ def deactivate_worker(worker_id):
 @app.route('/worker/<int:worker_id>/delete', methods=['POST'])
 @admin_required
 def delete_worker(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     name = worker.full_name
     AttendanceRecord.query.filter_by(worker_id=worker_id).delete()
     PayrollRecord.query.filter_by(worker_id=worker_id).delete()
@@ -1595,7 +1761,7 @@ def delete_worker(worker_id):
 @app.route('/closures/<int:closure_id>/delete', methods=['POST'])
 @admin_required
 def delete_closure(closure_id):
-    closure = ClosureDay.query.get_or_404(closure_id)
+    closure = tenant_get_or_404(ClosureDay, closure_id)
     db.session.delete(closure)
     db.session.commit()
     flash('Closure day deleted successfully', 'success')
@@ -1604,7 +1770,7 @@ def delete_closure(closure_id):
 @app.route('/worker_attendance/<int:worker_id>')
 @admin_required
 def worker_attendance(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     
     # Get month and year from query params
     month = int(request.args.get('month', date.today().month))
@@ -1657,7 +1823,7 @@ def worker_attendance(worker_id):
 @app.route('/id_card/<int:worker_id>', methods=['GET', 'POST'])
 @admin_required
 def id_card(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     
     if request.method == 'POST':
         if 'regenerate_qr' in request.form:
@@ -1691,17 +1857,31 @@ def profile():
             current_password = request.form['current_password']
             new_password = request.form['new_password']
             confirm_password = request.form['confirm_password']
-            
-            if not current_user.check_password(current_password):
-                flash('Current password is incorrect', 'error')
-            elif new_password != confirm_password:
+
+            if new_password != confirm_password:
                 flash('New passwords do not match', 'error')
-            elif len(new_password) < 6:
-                flash('Password must be at least 6 characters long', 'error')
-            else:
+            elif len(new_password) < 8:
+                flash('Password must be at least 8 characters long', 'error')
+            elif current_user.supabase_uid and supabase_auth.enabled():
+                # Supabase owns this user's credentials. Re-authenticate with the
+                # current password to obtain a fresh access token, then use it to
+                # set the new one — this doubles as the "current password" check.
+                verify = supabase_auth.sign_in(current_user.email, current_password)
+                if not verify['ok']:
+                    flash('Current password is incorrect', 'error')
+                else:
+                    result = supabase_auth.update_password(
+                        verify['session']['access_token'], new_password)
+                    if result['ok']:
+                        flash('Password changed successfully', 'success')
+                    else:
+                        flash(result.get('error') or 'Could not change password. Please try again.', 'error')
+            elif current_user.check_password(current_password):
                 current_user.set_password(new_password)
                 db.session.commit()
                 flash('Password changed successfully', 'success')
+            else:
+                flash('Current password is incorrect', 'error')
         
         return redirect(url_for('profile'))
 
@@ -1719,7 +1899,7 @@ def save_user_avatar(file_storage, user_id):
     unique_filename = f"user{user_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.{image_ext}"
     if storage.storage_enabled():
         try:
-            return storage.upload_image(f'avatars/{unique_filename}', image_data, image_mime)
+            return storage.upload_image(f'acc{current_user.account_id}/avatars/{unique_filename}', image_data, image_mime)
         except Exception as exc:
             app.logger.warning('Avatar upload failed: %s', exc)
             raise ValueError('Could not upload the photo right now. Please try again.')
@@ -1845,7 +2025,7 @@ def mark_attendance():
         feedback_message = None
         feedback_category = 'success'
 
-        worker = Worker.query.get_or_404(worker_id)
+        worker = tenant_get_or_404(Worker, worker_id)
 
         if not worker_visible_to_user(worker, current_user, on_date=attendance_date):
             flash('Please contact the Administrator to make changes.', 'restricted')
@@ -2156,7 +2336,7 @@ def payroll_save():
 @app.route('/payroll/<int:record_id>/toggle_paid', methods=['POST'])
 @admin_required
 def payroll_toggle_paid(record_id):
-    record = PayrollRecord.query.get_or_404(record_id)
+    record = tenant_get_or_404(PayrollRecord, record_id)
     record.status = 'pending' if record.status == 'paid' else 'paid'
     db.session.commit()
     label = 'Paid' if record.status == 'paid' else 'Pending'
@@ -2171,7 +2351,7 @@ def payroll_toggle_paid(record_id):
 @app.route('/payroll/slip/<int:worker_id>')
 @admin_required
 def payroll_slip(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     today = date.today()
     try:
         month = max(1, min(12, int(request.args.get('month', today.month))))
@@ -2360,7 +2540,7 @@ def settings():
     projects = Project.query.order_by(Project.status, Project.name).all()
     tasks = WorkTask.query.order_by(WorkTask.status, WorkTask.name).all()
     departments = Department.query.order_by(Department.status, Department.name).all()
-    attendance_users = User.query.filter_by(role='attendance').order_by(User.full_name).all()
+    attendance_users = User.query.filter_by(role='attendance', account_id=current_user.account_id).order_by(User.full_name).all()
     return render_template('settings.html',
                            company=company,
                            sites=sites,
@@ -2396,7 +2576,7 @@ def settings_company():
         unique_filename = f"logo_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{logo_ext}"
         try:
             if storage.storage_enabled():
-                company.logo = storage.upload_image(f'company/{unique_filename}', logo_data, logo_mime)
+                company.logo = storage.upload_image(f'acc{current_user.account_id}/company/{unique_filename}', logo_data, logo_mime)
             else:
                 os.makedirs(COMPANY_LOGO_UPLOAD_DIR, exist_ok=True)
                 with open(os.path.join(COMPANY_LOGO_UPLOAD_DIR, unique_filename), 'wb') as fh:
@@ -2414,7 +2594,7 @@ def _save_entity(model, entity_label):
     """Shared add/edit handler for sites, projects, tasks and departments."""
     entity_id = parse_int(request.form.get('id'), 0)
     if entity_id:
-        entity = model.query.get_or_404(entity_id)
+        entity = tenant_get_or_404(model, entity_id)
     else:
         entity = model()
         db.session.add(entity)
@@ -2452,7 +2632,7 @@ def _save_entity(model, entity_label):
     return redirect(url_for('settings'))
 
 def _toggle_entity_archive(model, entity_id, entity_label):
-    entity = model.query.get_or_404(entity_id)
+    entity = tenant_get_or_404(model, entity_id)
     entity.status = 'active' if entity.status == 'archived' else 'archived'
     db.session.commit()
     state = 'restored' if entity.status == 'active' else 'archived'
@@ -2487,7 +2667,7 @@ def _entity_references(model, entity):
     return [(label, count) for label, count in refs if count]
 
 def _delete_entity(model, entity_id, entity_label):
-    entity = model.query.get_or_404(entity_id)
+    entity = tenant_get_or_404(model, entity_id)
     used_by = _entity_references(model, entity)
     if used_by:
         usage = ', '.join(f'{count} {label}{"s" if count != 1 else ""}' for label, count in used_by)
@@ -2589,7 +2769,7 @@ def settings_attendance_user_save():
         return redirect(url_for('settings'))
 
     if user_id:
-        user = User.query.get_or_404(user_id)
+        user = User.query.filter_by(id=user_id, account_id=current_user.account_id).first_or_404()
         if user.role != 'attendance':
             flash('Only attendance users can be edited here.', 'error')
             return redirect(url_for('settings'))
@@ -2602,6 +2782,8 @@ def settings_attendance_user_save():
         user.email = f"{mobile}@attendance.local"
         user.role = 'attendance'
         user.created_by = current_user.id
+        # Staff belong to the creating admin's workspace and share its data.
+        user.account_id = current_user.account_id
         db.session.add(user)
 
     user.full_name = full_name
@@ -2622,7 +2804,7 @@ def settings_attendance_user_save():
 @app.route('/settings/attendance_user/<int:user_id>/toggle', methods=['POST'])
 @admin_required
 def settings_attendance_user_toggle(user_id):
-    user = User.query.get_or_404(user_id)
+    user = User.query.filter_by(id=user_id, account_id=current_user.account_id).first_or_404()
     if user.role != 'attendance':
         flash('Only attendance users can be managed here.', 'error')
         return redirect(url_for('settings'))
@@ -2634,7 +2816,7 @@ def settings_attendance_user_toggle(user_id):
 @app.route('/settings/attendance_user/<int:user_id>/delete', methods=['POST'])
 @admin_required
 def settings_attendance_user_delete(user_id):
-    user = User.query.get_or_404(user_id)
+    user = User.query.filter_by(id=user_id, account_id=current_user.account_id).first_or_404()
     if user.role != 'attendance':
         flash('Only attendance users can be deleted here.', 'error')
         return redirect(url_for('settings'))
@@ -2716,7 +2898,7 @@ def transactions_save():
     description = request.form.get('description', '').strip() or None
     redirect_to = safe_redirect_target(request.form.get('redirect_to'), url_for('transactions'))
 
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     if txn_type not in TRANSACTION_TYPE_LABELS:
         flash('Please choose a valid transaction type.', 'error')
         return redirect(redirect_to)
@@ -2729,7 +2911,7 @@ def transactions_save():
         txn_date = date.today()
 
     if txn_id:
-        txn = WorkerTransaction.query.get_or_404(txn_id)
+        txn = tenant_get_or_404(WorkerTransaction, txn_id)
     else:
         txn = WorkerTransaction()
         txn.created_by = current_user.id
@@ -2749,7 +2931,7 @@ def transactions_save():
 @app.route('/transactions/<int:txn_id>/cancel', methods=['POST'])
 @admin_required
 def transactions_cancel(txn_id):
-    txn = WorkerTransaction.query.get_or_404(txn_id)
+    txn = tenant_get_or_404(WorkerTransaction, txn_id)
     txn.status = 'cancelled' if txn.status == 'active' else 'active'
     db.session.commit()
     state = 'cancelled' if txn.status == 'cancelled' else 'restored'
@@ -2759,7 +2941,7 @@ def transactions_cancel(txn_id):
 @app.route('/transactions/<int:txn_id>/delete', methods=['POST'])
 @admin_required
 def transactions_delete(txn_id):
-    txn = WorkerTransaction.query.get_or_404(txn_id)
+    txn = tenant_get_or_404(WorkerTransaction, txn_id)
     db.session.delete(txn)
     db.session.commit()
     flash('Transaction deleted permanently.', 'success')
@@ -2772,7 +2954,7 @@ def transactions_delete(txn_id):
 @app.route('/worker/<int:worker_id>/modify', methods=['POST'])
 @admin_required
 def worker_modify(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     mod_type = request.form.get('mod_type', 'other')
     description = request.form.get('description', '').strip() or None
     effective_raw = request.form.get('effective_date')
@@ -2898,7 +3080,7 @@ def worker_modify(worker_id):
 @app.route('/worker/<int:worker_id>/assign', methods=['POST'])
 @admin_required
 def worker_assign(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     project_id = parse_int(request.form.get('project_id'), 0) or None
     site_id = parse_int(request.form.get('site_id'), 0) or None
     task_id = parse_int(request.form.get('task_id'), 0) or None
@@ -2937,11 +3119,11 @@ def worker_assign(worker_id):
 
     target = []
     if project_id:
-        project = Project.query.get(project_id)
+        project = tenant_get(Project, project_id)
         if project:
             target.append(f'project {project.name}')
     if site_id:
-        site = Site.query.get(site_id)
+        site = tenant_get(Site, site_id)
         if site:
             target.append(f'site {site.name}')
     db.session.add(WorkerModification(
@@ -2994,7 +3176,7 @@ def assignments():
 @app.route('/worker/<int:worker_id>/assignment/<int:assignment_id>/end', methods=['POST'])
 @admin_required
 def worker_assignment_end(worker_id, assignment_id):
-    assignment = ProjectAssignment.query.get_or_404(assignment_id)
+    assignment = tenant_get_or_404(ProjectAssignment, assignment_id)
     if assignment.worker_id != worker_id:
         flash('Assignment does not belong to this worker.', 'error')
         return redirect(url_for('worker_profile', worker_id=worker_id))
@@ -3012,8 +3194,8 @@ def worker_assignment_end(worker_id, assignment_id):
 @app.route('/attendance/<int:record_id>/adjust', methods=['POST'])
 @admin_required
 def attendance_adjust(record_id):
-    record = AttendanceRecord.query.get_or_404(record_id)
-    worker = Worker.query.get_or_404(record.worker_id)
+    record = tenant_get_or_404(AttendanceRecord, record_id)
+    worker = tenant_get_or_404(Worker, record.worker_id)
 
     status = request.form.get('status', record.status)
     if status in ('present', 'absent', 'late', 'leave'):
@@ -3168,7 +3350,7 @@ def notifications_mark_read():
 @app.route('/worker/<int:worker_id>/report')
 @admin_required
 def worker_report(worker_id):
-    worker = Worker.query.get_or_404(worker_id)
+    worker = tenant_get_or_404(Worker, worker_id)
     today = date.today()
 
     # Attendance summary for the last 6 months
