@@ -909,10 +909,12 @@ def dashboard():
         status='present'
     ).count()
     
-    # Get recent attendance records
+    # Today's attendance, most recent check-in first (absent/no-time rows last)
     recent_attendance = db.session.query(AttendanceRecord, Worker).join(
         Worker, AttendanceRecord.worker_id == Worker.id
-    ).filter(AttendanceRecord.date == today).limit(10).all()
+    ).filter(AttendanceRecord.date == today).order_by(
+        AttendanceRecord.check_in_time.desc().nullslast()
+    ).limit(10).all()
     
     # Get upcoming closure days
     upcoming_closures = ClosureDay.query.filter(

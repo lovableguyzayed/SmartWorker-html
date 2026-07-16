@@ -154,34 +154,77 @@
 
     <!-- Today's Attendance -->
     {% if recent_attendance %}
-    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <div class="flex items-center justify-between mb-4">
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between p-4 pb-3">
             <h3 class="text-lg font-semibold text-gray-800">Today's Attendance</h3>
             <a href="{{ url_for('attendance') }}" class="text-accent hover:text-primary text-sm font-medium">View All</a>
         </div>
-        <div class="space-y-3">
-            {% for attendance, worker in recent_attendance[:5] %}
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold">
-                        {{ worker.full_name[0] }}
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-800">{{ worker.full_name }}</div>
-                        <div class="text-sm text-gray-600">{{ worker.worker_id }}</div>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-2">
-                    {% if attendance.status == 'present' %}
-                        <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">Present</div>
-                    {% elif attendance.status == 'absent' %}
-                        <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">Absent</div>
-                    {% elif attendance.status == 'late' %}
-                        <div class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">Late</div>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="text-[0.62rem] uppercase tracking-wider text-gray-400 border-y border-gray-100 bg-gray-50/70">
+                        <th class="pl-4 pr-2 py-2 font-semibold">Worker</th>
+                        <th class="px-1 py-2 font-semibold text-center">Check In</th>
+                        <th class="px-1 py-2 font-semibold text-center">Check Out</th>
+                        <th class="pl-1 pr-4 py-2 font-semibold text-right">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for attendance, worker in recent_attendance %}
+                    <tr class="hover:bg-gray-50/60 transition-colors">
+                        <td class="pl-4 pr-2 py-2.5">
+                            <!-- Photo + name open the worker's full profile -->
+                            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
+                               class="flex items-center space-x-2.5 min-w-0"
+                               title="Open {{ worker.full_name }}'s profile">
+                                {% if worker.profile_image %}
+                                <img loading="lazy" decoding="async" src="{{ worker.profile_image }}"
+                                     alt="{{ worker.full_name }}"
+                                     class="w-9 h-9 shrink-0 rounded-full object-cover object-center ring-2 ring-gray-100">
+                                {% else %}
+                                <span class="w-9 h-9 shrink-0 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                                    {{ worker.full_name[0] }}
+                                </span>
+                                {% endif %}
+                                <span class="min-w-0">
+                                    <span class="block text-sm font-medium text-gray-800 truncate max-w-[6.5rem]">{{ worker.full_name }}</span>
+                                    <span class="block text-[0.66rem] text-gray-500 truncate">{{ worker.worker_id }}</span>
+                                </span>
+                            </a>
+                        </td>
+                        <td class="px-1 py-2.5 text-center whitespace-nowrap">
+                            {% if attendance.check_in_time %}
+                            <span class="text-xs font-semibold text-green-600 tabular-nums">{{ attendance.check_in_time.strftime('%I:%M') }}<span class="text-[0.58rem] font-medium text-green-500/80 ml-0.5">{{ attendance.check_in_time.strftime('%p') }}</span></span>
+                            {% else %}
+                            <span class="text-xs text-gray-300">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-1 py-2.5 text-center whitespace-nowrap">
+                            {% if attendance.check_out_time %}
+                            <span class="text-xs font-semibold text-gray-700 tabular-nums">{{ attendance.check_out_time.strftime('%I:%M') }}<span class="text-[0.58rem] font-medium text-gray-400 ml-0.5">{{ attendance.check_out_time.strftime('%p') }}</span></span>
+                            {% elif attendance.check_in_time %}
+                            <span class="text-[0.66rem] font-medium text-blue-500">On shift</span>
+                            {% else %}
+                            <span class="text-xs text-gray-300">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td class="pl-1 pr-4 py-2.5 text-right">
+                            {% if attendance.status == 'present' %}
+                                <span class="inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">Present</span>
+                            {% elif attendance.status == 'absent' %}
+                                <span class="inline-block bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">Absent</span>
+                            {% elif attendance.status == 'late' %}
+                                <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">Late</span>
+                            {% elif attendance.status == 'leave' %}
+                                <span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">Leave</span>
+                            {% else %}
+                                <span class="inline-block bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">{{ attendance.status|title }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </section>
     {% endif %}
