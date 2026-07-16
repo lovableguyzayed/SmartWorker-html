@@ -279,6 +279,47 @@ with app.app_context():
     import storage as _storage
     _storage.migrate_local_uploads(app, db)
 
+    if not _storage.storage_enabled() and os.environ.get('RENDER'):
+        logging.warning(
+            "SUPABASE_URL / SUPABASE_SERVICE_KEY are not set. Uploaded images "
+            "are being written to Render's EPHEMERAL disk and will be lost on "
+            "the next deploy or restart. Set the Supabase Storage env vars to "
+            "make uploads permanent.")
+
+    # Rows can point at /static/uploads files that no longer exist (uploaded
+    # while Supabase Storage was unconfigured, then wiped by a redeploy). Clear
+    # those references so the UI shows its clean initial-letter fallback instead
+    # of a broken image, and a fresh upload fully replaces them.
+    def _clear_dead_image_paths():
+        marker = '/static/uploads/'
+
+        def _dead(local_url):
+            if not local_url or marker not in local_url:
+                return False
+            rel = local_url.split(marker, 1)[1]
+            return not os.path.isfile(os.path.join(app.static_folder, 'uploads', *rel.split('/')))
+
+        cleared = 0
+        for worker in models.Worker.query.filter(models.Worker.profile_image.like(f'%{marker}%')).all():
+            if _dead(worker.profile_image):
+                worker.profile_image = None
+                cleared += 1
+        for user in models.User.query.filter(models.User.profile_image.like(f'%{marker}%')).all():
+            if _dead(user.profile_image):
+                user.profile_image = None
+                cleared += 1
+        company_rows = models.CompanySetting.query.filter(models.CompanySetting.logo.like(f'%{marker}%')).all()
+        for company in company_rows:
+            if _dead(company.logo):
+                company.logo = None
+                cleared += 1
+        if cleared:
+            db.session.commit()
+            logging.warning("Cleared %d image reference(s) whose files were lost "
+                            "on an earlier redeploy — re-upload those photos.", cleared)
+
+    _clear_dead_image_paths()
+
     logging.info("Database tables created")
 
     # Initialize admin user if not exists
