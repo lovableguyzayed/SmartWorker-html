@@ -105,6 +105,38 @@ SCHEMA_PATCHES = {
     ],
 }
 
+# Multi-tenant migration: every business table gains an account_id, and the
+# users table gains supabase_uid (Supabase Auth link) + account_id. Applied via
+# ALTER TABLE ADD COLUMN so existing databases upgrade in place. Idempotent:
+# _apply_schema_patches skips columns that already exist.
+_TENANT_TABLES = [
+    'company_settings', 'sites', 'departments', 'projects', 'work_tasks',
+    'project_assignments', 'worker_modifications', 'leave_adjustments',
+    'worker_transactions', 'notifications', 'workers', 'attendance_records',
+    'closure_days', 'payroll_records',
+]
+for _t in _TENANT_TABLES:
+    SCHEMA_PATCHES.setdefault(_t, []).append(('account_id', "INTEGER"))
+SCHEMA_PATCHES.setdefault('users', []).extend([
+    ('account_id', "INTEGER"),
+    ('supabase_uid', "VARCHAR(64)"),
+])
+
+
+def _relax_password_not_null():
+    """Supabase-authenticated users have no local password, so users.password_hash
+    must be nullable. Existing Postgres databases created it NOT NULL; drop that.
+    (SQLite dev databases only use the local-password path, which always sets it.)"""
+    if not db.engine.url.drivername.startswith('postgresql'):
+        return
+    try:
+        db.session.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.info("password_hash NOT NULL relax skipped: %s", e)
+
+
 def _apply_schema_patches(inspector):
     for table, patches in SCHEMA_PATCHES.items():
         if table not in inspector.get_table_names():
@@ -181,15 +213,66 @@ def _enable_supabase_rls():
     db.session.commit()
     logging.info("Row Level Security enabled on all tables (Supabase API locked down)")
 
+def _backfill_multitenant():
+    """Assign all pre-migration rows to one legacy workspace so nothing is
+    orphaned when isolation turns on. The owner is the user matching
+    LEGACY_OWNER_EMAIL, else the existing admin. Runs outside a request context,
+    so tenant filtering is inactive and every row is visible. Idempotent: only
+    rows/users whose account_id is still NULL are touched."""
+    import models as m
+
+    tenant_tables = list(_TENANT_TABLES)
+    unowned_users = m.User.query.filter(m.User.account_id.is_(None)).all()
+    has_unowned_rows = any(
+        db.session.execute(
+            text(f"SELECT 1 FROM {t} WHERE account_id IS NULL LIMIT 1")
+        ).first() is not None
+        for t in tenant_tables
+    )
+    if not unowned_users and not has_unowned_rows:
+        return
+
+    legacy_email = (os.environ.get('LEGACY_OWNER_EMAIL') or '').strip().lower() or None
+    owner = None
+    if legacy_email:
+        owner = m.User.query.filter_by(email=legacy_email).first()
+    if not owner:
+        owner = (m.User.query.filter_by(role='admin').first()
+                 or m.User.query.first())
+
+    account = m.Account(
+        name=(f"{owner.full_name}'s Workspace" if owner and owner.full_name else 'Legacy Workspace'),
+        owner_uid=(owner.supabase_uid if owner else None),
+    )
+    db.session.add(account)
+    db.session.flush()
+
+    for u in unowned_users:
+        u.account_id = account.id
+    for t in tenant_tables:
+        db.session.execute(
+            text(f"UPDATE {t} SET account_id = :aid WHERE account_id IS NULL"),
+            {'aid': account.id},
+        )
+    db.session.commit()
+    logging.info("Multi-tenant backfill: assigned legacy data to account %s (%s)",
+                 account.id, account.name)
+
+
 with app.app_context():
     # Make sure to import the models here or their tables won't be created
     import models  # noqa: F401
+    import tenancy
     db.create_all()
 
     inspector = inspect(db.engine)
     _apply_schema_patches(inspector)
+    _relax_password_not_null()
     _drop_closure_date_unique_constraint(inspector)
     _enable_supabase_rls()
+
+    # Wire automatic per-account data isolation (SELECT filter + INSERT stamp).
+    tenancy.register(db)
 
     # Move any images still on the local filesystem into Supabase Storage
     # (no-op unless SUPABASE_URL + SUPABASE_SERVICE_KEY are configured).
@@ -218,8 +301,13 @@ with app.app_context():
         db.session.commit()
         logging.info("Default admin user created")
 
-    # Seed the singleton company settings row
+    # Seed a company settings row if none exists yet (legacy/first-run).
     if not models.CompanySetting.query.first():
         db.session.add(models.CompanySetting(name='SmartWorker'))
         db.session.commit()
         logging.info("Default company settings created")
+
+    # Assign all pre-migration rows (and the default admin) to a workspace so
+    # data isolation has an owner for existing data. Must run last, after the
+    # admin/company rows exist.
+    _backfill_multitenant()

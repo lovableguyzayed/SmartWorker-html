@@ -3,6 +3,22 @@ from app import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
+
+class Account(db.Model):
+    """A tenant workspace. Every piece of business data belongs to exactly one
+    Account. The user who registers owns the account; any staff they invite are
+    Users that belong to the same account and share its data. Data is isolated
+    between accounts (see tenancy.py)."""
+    __tablename__ = 'accounts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False, default='My Workspace')
+    # Supabase auth uid (UUID) of the account owner who created it.
+    owner_uid = db.Column(db.String(64), nullable=True, index=True)
+    status = db.Column(db.String(20), default='active')  # active, suspended
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
@@ -10,7 +26,13 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(20), nullable=True)
-    password_hash = db.Column(db.String(256), nullable=False)
+    # Supabase Auth is the identity provider. Passwords live in Supabase, so the
+    # local hash is now optional (kept for any legacy/local-only accounts).
+    password_hash = db.Column(db.String(256), nullable=True)
+    # Links this app user to its Supabase Auth user (UUID). Unique when set.
+    supabase_uid = db.Column(db.String(64), unique=True, nullable=True, index=True)
+    # Workspace this user belongs to. Null only for legacy rows pre-migration.
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     full_name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(20), default='attendance')  # admin, manager, attendance
     # Attendance-user scoping (comma-separated ids). Empty = all sites/projects.
@@ -25,6 +47,8 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
+        if not self.password_hash:
+            return False
         return check_password_hash(self.password_hash, password)
 
     @property
@@ -60,6 +84,7 @@ class CompanySetting(db.Model):
     __tablename__ = 'company_settings'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     name = db.Column(db.String(150), default='SmartWorker')
     address = db.Column(db.Text, nullable=True)
     phone = db.Column(db.String(30), nullable=True)
@@ -74,6 +99,7 @@ class Site(db.Model):
     __tablename__ = 'sites'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     name = db.Column(db.String(150), nullable=False)
     address = db.Column(db.Text, nullable=True)
     contact_person = db.Column(db.String(100), nullable=True)
@@ -85,6 +111,7 @@ class Department(db.Model):
     __tablename__ = 'departments'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     status = db.Column(db.String(20), default='active')  # active, archived
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -93,6 +120,7 @@ class Project(db.Model):
     __tablename__ = 'projects'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     name = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=True)
     site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)
@@ -120,6 +148,7 @@ class WorkTask(db.Model):
     __tablename__ = 'work_tasks'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     name = db.Column(db.String(150), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
     category = db.Column(db.String(100), nullable=True)
@@ -132,6 +161,7 @@ class ProjectAssignment(db.Model):
     __tablename__ = 'project_assignments'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
     site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)
@@ -157,6 +187,7 @@ class WorkerModification(db.Model):
     __tablename__ = 'worker_modifications'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     mod_type = db.Column(db.String(30), nullable=False)
     # promotion, salary_change, category_change, bonus, incentive, leave_grant, profile_edit, other
@@ -173,6 +204,7 @@ class LeaveAdjustment(db.Model):
     __tablename__ = 'leave_adjustments'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     days = db.Column(db.Float, nullable=False)  # positive = credit, negative = debit
     reason = db.Column(db.Text, nullable=True)
@@ -187,6 +219,7 @@ class WorkerTransaction(db.Model):
     __tablename__ = 'worker_transactions'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     txn_type = db.Column(db.String(30), nullable=False)
     # advance, loan, cash_advance, recovery, deduction, bonus, extra_payment, incentive, refreshment
@@ -208,6 +241,7 @@ class Notification(db.Model):
     __tablename__ = 'notifications'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     title = db.Column(db.String(200), nullable=False)
     body = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(30), default='attendance')  # attendance, system, sync
@@ -218,6 +252,7 @@ class Worker(db.Model):
     __tablename__ = 'workers'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.String(20), unique=True, nullable=False)
     full_name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
@@ -310,6 +345,7 @@ class AttendanceRecord(db.Model):
     )
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     date = db.Column(db.Date, nullable=False)
     check_in_time = db.Column(db.DateTime, nullable=True)
@@ -337,6 +373,7 @@ class ClosureDay(db.Model):
     __tablename__ = 'closure_days'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     date = db.Column(db.Date, nullable=False)
     reason = db.Column(db.String(200), nullable=False)
     type = db.Column(db.String(20), nullable=False)  # holiday, site, project, emergency, maintenance
@@ -353,6 +390,7 @@ class PayrollRecord(db.Model):
     __tablename__ = 'payroll_records'
 
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     month = db.Column(db.Integer, nullable=False)
     year = db.Column(db.Integer, nullable=False)
