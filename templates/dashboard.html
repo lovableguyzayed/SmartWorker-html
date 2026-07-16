@@ -2,6 +2,68 @@
 
 {% block title %}Dashboard - SmartWorker{% endblock %}
 
+{% block head %}
+<style>
+/* Today's Attendance ledger. Self-contained: the vendored Tailwind build is
+   purged, so utilities not present at compile time silently do nothing —
+   everything layout- and size-critical for this section is defined here. */
+.att-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 3.3rem 3.3rem 3.7rem;
+    column-gap: 0.5rem;
+    align-items: center;
+    padding: 0.5rem 1rem;
+}
+.att-headrow {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+    background: rgba(249, 250, 251, 0.8);
+    border-top: 1px solid #f3f4f6;
+    border-bottom: 1px solid #f3f4f6;
+}
+.att-h {
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+.att-name { font-size: 0.8rem; font-weight: 500; color: #1f2937; line-height: 1.25; }
+.att-id   { font-size: 0.6rem; color: #9ca3af; line-height: 1.2; }
+.att-avatar {
+    width: 2rem; height: 2rem; border-radius: 9999px;
+    object-fit: cover; object-position: center;
+    box-shadow: 0 0 0 1px #e5e7eb; flex-shrink: 0;
+}
+.att-avatar-fallback {
+    width: 2rem; height: 2rem; border-radius: 9999px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 0.7rem; font-weight: 600;
+}
+.att-time {
+    font-size: 0.72rem; font-weight: 600;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.att-ampm { font-size: 0.55rem; font-weight: 400; color: #9ca3af; margin-left: 1px; }
+.att-empty { font-size: 0.72rem; color: #d1d5db; }
+.att-live {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    font-size: 0.6rem; font-weight: 500; color: #3b82f6; white-space: nowrap;
+}
+.att-live-dot {
+    width: 0.3rem; height: 0.3rem; border-radius: 9999px; background: #3b82f6;
+    animation: att-pulse 1.6s ease-in-out infinite;
+}
+@keyframes att-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .att-live-dot { animation: none; } }
+.att-status {
+    display: flex; align-items: center; justify-content: flex-end; gap: 0.25rem;
+    font-size: 0.64rem; font-weight: 500; white-space: nowrap;
+}
+.att-dot { width: 0.4rem; height: 0.4rem; border-radius: 9999px; flex-shrink: 0; }
+</style>
+{% endblock %}
+
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
@@ -152,79 +214,76 @@
         </div>
     </section>
 
-    <!-- Today's Attendance -->
+    <!-- Today's Attendance — fixed-grid ledger: columns always align, fits the
+         phone width exactly (no horizontal scrolling), one compact type scale. -->
     {% if recent_attendance %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-        <div class="flex items-center justify-between p-4 pb-3">
-            <h3 class="text-lg font-semibold text-gray-800">Today's Attendance</h3>
-            <a href="{{ url_for('attendance') }}" class="text-accent hover:text-primary text-sm font-medium">View All</a>
+        <div class="flex items-center justify-between px-4 pt-4 pb-2">
+            <h3 class="text-base font-semibold text-gray-800">Today's Attendance</h3>
+            <a href="{{ url_for('attendance') }}" class="text-accent hover:text-primary text-xs font-semibold uppercase tracking-wide">View All</a>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="text-[0.62rem] uppercase tracking-wider text-gray-400 border-y border-gray-100 bg-gray-50/70">
-                        <th class="pl-4 pr-2 py-2 font-semibold">Worker</th>
-                        <th class="px-1 py-2 font-semibold text-center">Check In</th>
-                        <th class="px-1 py-2 font-semibold text-center">Check Out</th>
-                        <th class="pl-1 pr-4 py-2 font-semibold text-right">Status</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    {% for attendance, worker in recent_attendance %}
-                    <tr class="hover:bg-gray-50/60 transition-colors">
-                        <td class="pl-4 pr-2 py-2.5">
-                            <!-- Photo + name open the worker's full profile -->
-                            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
-                               class="flex items-center space-x-2.5 min-w-0"
-                               title="Open {{ worker.full_name }}'s profile">
-                                {% if worker.profile_image %}
-                                <img loading="lazy" decoding="async" src="{{ worker.profile_image }}"
-                                     alt="{{ worker.full_name }}"
-                                     class="w-9 h-9 shrink-0 rounded-full object-cover object-center ring-2 ring-gray-100">
-                                {% else %}
-                                <span class="w-9 h-9 shrink-0 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                                    {{ worker.full_name[0] }}
-                                </span>
-                                {% endif %}
-                                <span class="min-w-0">
-                                    <span class="block text-sm font-medium text-gray-800 truncate max-w-[6.5rem]">{{ worker.full_name }}</span>
-                                    <span class="block text-[0.66rem] text-gray-500 truncate">{{ worker.worker_id }}</span>
-                                </span>
-                            </a>
-                        </td>
-                        <td class="px-1 py-2.5 text-center whitespace-nowrap">
-                            {% if attendance.check_in_time %}
-                            <span class="text-xs font-semibold text-green-600 tabular-nums">{{ attendance.check_in_time.strftime('%I:%M') }}<span class="text-[0.58rem] font-medium text-green-500/80 ml-0.5">{{ attendance.check_in_time.strftime('%p') }}</span></span>
-                            {% else %}
-                            <span class="text-xs text-gray-300">&mdash;</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-1 py-2.5 text-center whitespace-nowrap">
-                            {% if attendance.check_out_time %}
-                            <span class="text-xs font-semibold text-gray-700 tabular-nums">{{ attendance.check_out_time.strftime('%I:%M') }}<span class="text-[0.58rem] font-medium text-gray-400 ml-0.5">{{ attendance.check_out_time.strftime('%p') }}</span></span>
-                            {% elif attendance.check_in_time %}
-                            <span class="text-[0.66rem] font-medium text-blue-500">On shift</span>
-                            {% else %}
-                            <span class="text-xs text-gray-300">&mdash;</span>
-                            {% endif %}
-                        </td>
-                        <td class="pl-1 pr-4 py-2.5 text-right">
-                            {% if attendance.status == 'present' %}
-                                <span class="inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">Present</span>
-                            {% elif attendance.status == 'absent' %}
-                                <span class="inline-block bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">Absent</span>
-                            {% elif attendance.status == 'late' %}
-                                <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">Late</span>
-                            {% elif attendance.status == 'leave' %}
-                                <span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">Leave</span>
-                            {% else %}
-                                <span class="inline-block bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[0.66rem] font-semibold">{{ attendance.status|title }}</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+        <!-- Column headers -->
+        <div class="att-row att-headrow">
+            <span class="att-h">Worker</span>
+            <span class="att-h" style="text-align:center">In</span>
+            <span class="att-h" style="text-align:center">Out</span>
+            <span class="att-h" style="text-align:right">Status</span>
+        </div>
+
+        <div class="divide-y divide-gray-100">
+            {% for attendance, worker in recent_attendance %}
+            <div class="att-row hover:bg-gray-50 transition-colors">
+                <!-- Worker: photo + name open the full profile -->
+                <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
+                   class="flex items-center space-x-2 min-w-0" title="Open {{ worker.full_name }}'s profile">
+                    {% if worker.profile_image %}
+                    <img loading="lazy" decoding="async" src="{{ worker.profile_image }}"
+                         alt="{{ worker.full_name }}" class="att-avatar">
+                    {% else %}
+                    <span class="att-avatar-fallback bg-gradient-to-br from-primary to-accent">
+                        {{ worker.full_name[0] }}
+                    </span>
+                    {% endif %}
+                    <span class="min-w-0">
+                        <span class="att-name block truncate">{{ worker.full_name }}</span>
+                        <span class="att-id block truncate">{{ worker.worker_id }}</span>
+                    </span>
+                </a>
+
+                <!-- Check-in -->
+                <span style="text-align:center">
+                    {% if attendance.check_in_time %}
+                    <span class="att-time" style="color:#16a34a">{{ attendance.check_in_time.strftime('%I:%M').lstrip('0') }}<span class="att-ampm">{{ attendance.check_in_time.strftime('%p').lower() }}</span></span>
+                    {% else %}
+                    <span class="att-empty">&ndash;</span>
+                    {% endif %}
+                </span>
+
+                <!-- Check-out ("shift" with a pulse while still open) -->
+                <span style="text-align:center">
+                    {% if attendance.check_out_time %}
+                    <span class="att-time" style="color:#374151">{{ attendance.check_out_time.strftime('%I:%M').lstrip('0') }}<span class="att-ampm">{{ attendance.check_out_time.strftime('%p').lower() }}</span></span>
+                    {% elif attendance.check_in_time %}
+                    <span class="att-live"><span class="att-live-dot"></span>shift</span>
+                    {% else %}
+                    <span class="att-empty">&ndash;</span>
+                    {% endif %}
+                </span>
+
+                <!-- Status: colored dot + label, quieter than a pill, always aligned -->
+                {% set status_style = {
+                    'present': ('#22c55e', '#15803d', 'Present'),
+                    'absent':  ('#ef4444', '#dc2626', 'Absent'),
+                    'late':    ('#f59e0b', '#d97706', 'Late'),
+                    'leave':   ('#3b82f6', '#2563eb', 'Leave'),
+                } %}
+                {% set dot, color, label = status_style.get(attendance.status, ('#9ca3af', '#6b7280', attendance.status|title)) %}
+                <span class="att-status" style="color: {{ color }}">
+                    <span class="att-dot" style="background: {{ dot }}"></span>{{ label }}
+                </span>
+            </div>
+            {% endfor %}
         </div>
     </section>
     {% endif %}
