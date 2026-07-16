@@ -1,4 +1,5 @@
 from datetime import datetime
+from timeutil import now_ist, today_ist
 from app import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,7 +17,7 @@ class Account(db.Model):
     # Supabase auth uid (UUID) of the account owner who created it.
     owner_uid = db.Column(db.String(64), nullable=True, index=True)
     status = db.Column(db.String(20), default='active')  # active, suspended
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
 
 class User(UserMixin, db.Model):
@@ -41,7 +42,7 @@ class User(UserMixin, db.Model):
     created_by = db.Column(db.Integer, nullable=True)
     status = db.Column(db.String(20), default='active')  # active, disabled
     profile_image = db.Column(db.Text, nullable=True)  # public URL or static path
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -93,7 +94,7 @@ class CompanySetting(db.Model):
     gst_number = db.Column(db.String(50), nullable=True)
     registration_number = db.Column(db.String(50), nullable=True)
     logo = db.Column(db.Text, nullable=True)  # static path or data URI
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
 class Site(db.Model):
     __tablename__ = 'sites'
@@ -105,7 +106,7 @@ class Site(db.Model):
     contact_person = db.Column(db.String(100), nullable=True)
     contact_phone = db.Column(db.String(30), nullable=True)
     status = db.Column(db.String(20), default='active')  # active, archived
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
 class Department(db.Model):
     __tablename__ = 'departments'
@@ -114,7 +115,7 @@ class Department(db.Model):
     account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     status = db.Column(db.String(20), default='active')  # active, archived
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
 class Project(db.Model):
     __tablename__ = 'projects'
@@ -132,7 +133,7 @@ class Project(db.Model):
     penalty_type = db.Column(db.String(10), default='none')  # none, fixed, percent
     penalty_value = db.Column(db.Float, default=0.0)  # per delayed day: amount or % of project rate
     status = db.Column(db.String(20), default='active')  # active, completed, archived
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
     site = db.relationship('Site', backref='projects')
 
@@ -140,8 +141,7 @@ class Project(db.Model):
     def delay_days(self):
         if not self.deadline:
             return 0
-        from datetime import date as _date
-        reference = self.completion_date or _date.today()
+        reference = self.completion_date or today_ist()
         return max((reference - self.deadline).days, 0)
 
 class WorkTask(db.Model):
@@ -153,7 +153,7 @@ class WorkTask(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
     category = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(20), default='active')  # active, completed, archived
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
     project = db.relationship('Project', backref='tasks')
 
@@ -171,15 +171,14 @@ class ProjectAssignment(db.Model):
     status = db.Column(db.String(20), default='active')  # active, completed, transferred
     notes = db.Column(db.Text, nullable=True)
     created_by = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
     project = db.relationship('Project', backref='assignments')
     site = db.relationship('Site', backref='assignments')
     task = db.relationship('WorkTask', backref='assignments')
 
     def worked_days(self, attendance_query=None):
-        from datetime import date as _date
-        end = self.end_date or _date.today()
+        end = self.end_date or today_ist()
         return max((end - self.start_date).days + 1, 0)
 
 class WorkerModification(db.Model):
@@ -197,7 +196,7 @@ class WorkerModification(db.Model):
     description = db.Column(db.Text, nullable=True)
     effective_date = db.Column(db.Date, nullable=True)
     created_by = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
 class LeaveAdjustment(db.Model):
     """Manual HR/Admin credit or debit of a worker's accumulated leave balance."""
@@ -210,7 +209,7 @@ class LeaveAdjustment(db.Model):
     reason = db.Column(db.Text, nullable=True)
     effective_date = db.Column(db.Date, nullable=True)  # when the adjustment applies; None = from creation date
     created_by = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
 TRANSACTION_EARNING_TYPES = ('bonus', 'extra_payment', 'incentive', 'refreshment')
 TRANSACTION_DEDUCTION_TYPES = ('advance', 'loan', 'cash_advance', 'recovery', 'deduction')
@@ -228,8 +227,8 @@ class WorkerTransaction(db.Model):
     description = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), default='active')  # active, cancelled
     created_by = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
+    updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
     worker = db.relationship('Worker', backref='transactions')
 
@@ -246,7 +245,7 @@ class Notification(db.Model):
     body = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(30), default='attendance')  # attendance, system, sync
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
 class Worker(db.Model):
     __tablename__ = 'workers'
@@ -309,8 +308,8 @@ class Worker(db.Model):
     status = db.Column(db.String(20), default='active')  # active, inactive
     profile_image = db.Column(db.Text, nullable=True)
     qr_code = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
+    updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
     # Relationships
     attendance_records = db.relationship('AttendanceRecord', backref='worker', lazy=True)
@@ -359,7 +358,7 @@ class AttendanceRecord(db.Model):
     marked_by = db.Column(db.Integer, nullable=True)  # user id who marked it
     marked_via = db.Column(db.String(15), default='manual')  # manual, qr, worker_id, bulk
     notes = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
     @property
     def worked_minutes(self):
@@ -381,7 +380,7 @@ class ClosureDay(db.Model):
     site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
     allow_attendance = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
     site = db.relationship('Site', backref='closures')
     project = db.relationship('Project', backref='closures')
@@ -401,6 +400,6 @@ class PayrollRecord(db.Model):
     deductions = db.Column(db.Float, default=0)
     net_pay = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, paid
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_ist)
 
     worker = db.relationship('Worker', backref='payroll_records')
