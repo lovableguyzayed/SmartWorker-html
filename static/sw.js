@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartworker-v14';
+const CACHE_NAME = 'smartworker-v15';
 const STATIC_ASSETS = [
   '/login',
   '/static/css/custom.css',
@@ -79,13 +79,17 @@ self.addEventListener('fetch', (event) => {
     return; // other cross-origin requests (fonts) go straight to the network
   }
 
-  // Static assets: cache-first, populate on miss
+  // Static assets: cache-first, populate on miss. Never cache errors — a 404
+  // for an uploaded image (e.g. wiped by a redeploy) must not be pinned in the
+  // cache, or the image stays broken forever even after a successful re-upload.
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
       caches.match(request).then((cached) =>
         cached || fetch(request).then((res) => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return res;
         })
       )

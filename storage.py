@@ -45,7 +45,10 @@ def _request(method, path, data=None, content_type='application/json', timeout=3
 
 
 def ensure_bucket():
-    """Create the public bucket if it doesn't exist yet. Idempotent."""
+    """Create the public bucket if it doesn't exist, and force an existing one
+    public. Idempotent. The public check matters: a bucket created by hand in
+    the Supabase dashboard defaults to PRIVATE, and then every upload succeeds
+    while every public image URL returns 400 — photos 'save' but never display."""
     global _bucket_ready
     if _bucket_ready or not storage_enabled():
         return
@@ -54,9 +57,20 @@ def ensure_bucket():
         _request('POST', '/storage/v1/bucket', data=payload)
         logging.info("Created Supabase Storage bucket '%s'", BUCKET)
     except urllib.error.HTTPError as e:
-        # 400/409 = bucket already exists — fine
+        # 400/409 = bucket already exists — make sure it is public.
         if e.code not in (400, 409):
             raise
+        try:
+            with _request('GET', f'/storage/v1/bucket/{BUCKET}') as resp:
+                info = json.loads(resp.read().decode() or '{}')
+            if not info.get('public'):
+                _request('PUT', f'/storage/v1/bucket/{BUCKET}',
+                         data=json.dumps({'id': BUCKET, 'public': True}).encode())
+                logging.warning(
+                    "Supabase Storage bucket '%s' was PRIVATE — switched it to "
+                    "public so stored image URLs work.", BUCKET)
+        except Exception as check_exc:
+            logging.warning("Could not verify bucket visibility: %s", check_exc)
     _bucket_ready = True
 
 

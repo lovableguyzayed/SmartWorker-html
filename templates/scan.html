@@ -84,9 +84,13 @@
 </main>
 
 <script>
-let html5Qrcode = null;
-let scannerRunning = false;
-let lastScan = { code: null, at: 0 };
+// var, NOT let/const: this script re-executes on every SPA navigation into
+// /scan, and a top-level `let` re-declaration throws a SyntaxError that kills
+// the entire script (scanner dead from the second visit onward). `var` may be
+// legally re-declared and simply resets the state for the fresh screen.
+var html5Qrcode = null;
+var scannerRunning = false;
+var lastScan = { code: null, at: 0 };
 
 function escapeHtml(str) {
     const div = document.createElement('div');
@@ -147,7 +151,7 @@ async function startScanner() {
 async function toggleScanner() {
     if (!html5Qrcode) { startScanner(); return; }
     if (scannerRunning) {
-        await html5Qrcode.stop();
+        try { await html5Qrcode.stop(); } catch (e) {}
         scannerRunning = false;
         setStatus('<i class="fa-solid fa-pause mr-1"></i>Scanner paused — tap the camera button to resume.');
     } else {
@@ -256,12 +260,28 @@ if (!window.__scanBootHooked) {
 }
 function stopScannerCamera() {
     if (html5Qrcode && scannerRunning) {
-        try { html5Qrcode.stop(); } catch (e) {}
+        try {
+            var stopping = html5Qrcode.stop();
+            if (stopping && stopping.catch) stopping.catch(function () {});
+        } catch (e) {}
         scannerRunning = false;
     }
 }
-window.addEventListener('beforeunload', stopScannerCamera);
-// SPA navigation swaps screens without unloading — release the camera then too
-document.addEventListener('page:before-swap', stopScannerCamera, { once: true });
+// Register the lifecycle hooks exactly once, as persistent listeners that look
+// the handler up at call time. The old {once:true} listener was consumed on the
+// first navigation away and never re-armed — leaving the camera locked, so the
+// next visit failed with "camera unavailable" (NotReadableError).
+if (!window.__scanLifecycleHooked) {
+    window.__scanLifecycleHooked = true;
+    window.addEventListener('beforeunload', function () {
+        if (window.stopScannerCamera) window.stopScannerCamera();
+    });
+    // SPA navigation swaps screens without unloading — release the camera on
+    // every departure from this screen, not just the first.
+    document.addEventListener('page:before-swap', function () {
+        if (window.stopScannerCamera) window.stopScannerCamera();
+    });
+}
+window.stopScannerCamera = stopScannerCamera;
 </script>
 {% endblock %}
