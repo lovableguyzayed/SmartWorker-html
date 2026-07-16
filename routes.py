@@ -13,6 +13,7 @@ from sqlalchemy import func
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage, ImageOps as PILImageOps
 from app import app, db, csrf
+from timeutil import IST, now_ist, today_ist, ISTDate
 import storage
 import supabase_auth
 import tenancy
@@ -149,7 +150,7 @@ def save_worker_profile_image(file_storage, worker_id):
         raise ValueError('Please upload a valid image (JPG, JPEG, PNG, GIF, or WEBP).')
 
     image_data, image_mime, image_ext = _compress_image(file_storage, max_px=640)
-    unique_filename = f"{worker_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.{image_ext}"
+    unique_filename = f"{worker_id}_{now_ist().strftime('%Y%m%d%H%M%S%f')}.{image_ext}"
 
     # Supabase Storage when configured (persists across Render deploys);
     # local static/uploads fallback otherwise. A storage/network failure is
@@ -616,7 +617,7 @@ def login_send_otp():
         }), 404
 
     otp_code = f"{random.randint(0, 999999):06d}"
-    expires_at = datetime.utcnow() + timedelta(minutes=5)
+    expires_at = now_ist() + timedelta(minutes=5)
 
     clear_login_otp_session()
     session['login_otp'] = otp_code
@@ -651,7 +652,7 @@ def login_verify_otp():
             'message': 'OTP expired. Please request a new OTP.'
         }), 400
 
-    if datetime.utcnow().timestamp() > float(expires_at):
+    if now_ist().timestamp() > float(expires_at):
         clear_login_otp_session()
         return jsonify({
             'success': False,
@@ -700,7 +701,7 @@ def register_send_otp():
         }), 400
 
     otp_code = f"{random.randint(0, 999999):06d}"
-    expires_at = datetime.utcnow() + timedelta(minutes=5)
+    expires_at = now_ist() + timedelta(minutes=5)
 
     clear_register_otp_session()
     session['register_otp'] = otp_code
@@ -734,7 +735,7 @@ def register_verify_otp():
             'message': 'OTP expired. Please request a new OTP.'
         }), 400
 
-    if datetime.utcnow().timestamp() > float(expires_at):
+    if now_ist().timestamp() > float(expires_at):
         clear_register_otp_session()
         return jsonify({
             'success': False,
@@ -792,7 +793,7 @@ def register():
             not otp_verified
             or otp_mobile != mobile
             or not otp_expiry
-            or datetime.utcnow().timestamp() > float(otp_expiry)
+            or now_ist().timestamp() > float(otp_expiry)
         ):
             flash('Please verify your mobile number with OTP before registering', 'error')
             return render_template('register.html')
@@ -900,7 +901,7 @@ def splash():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    today = date.today()
+    today = today_ist()
     
     # Get statistics
     total_workers = Worker.query.filter_by(status='active').count()
@@ -975,7 +976,7 @@ def worker_profile(worker_id):
     ).order_by(AttendanceRecord.date.desc()).limit(30).all()
 
     # Calculate statistics
-    today = date.today()
+    today = today_ist()
     this_month = today.replace(day=1)
     month_attendance = AttendanceRecord.query.filter(
         AttendanceRecord.worker_id == worker_id,
@@ -1075,7 +1076,7 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         if attendance_records:
             anchor = min(r.date for r in attendance_records)
         else:
-            anchor = date.today()
+            anchor = today_ist()
         period_start = anchor.replace(day=1)
         _, _pdays = _cal.monthrange(period_start.year, period_start.month)
         period_end = period_start.replace(day=_pdays)
@@ -1477,7 +1478,7 @@ def log_worker_changes(worker, before_values):
             old_value=str(old) if old is not None else None,
             new_value=str(new) if new is not None else None,
             description=f'{label} changed',
-            effective_date=date.today(),
+            effective_date=today_ist(),
             created_by=current_user.id,
         ))
 
@@ -1589,7 +1590,7 @@ def edit_worker(worker_id):
                 flash(str(exc), 'error')
                 return redirect(url_for('edit_worker', worker_id=worker_id))
         
-        worker.updated_at = datetime.utcnow()
+        worker.updated_at = now_ist()
 
         log_worker_changes(worker, before_values)
         db.session.commit()
@@ -1601,7 +1602,7 @@ def edit_worker(worker_id):
 @app.route('/attendance')
 @login_required
 def attendance():
-    selected_date = request.args.get('date', date.today().isoformat())
+    selected_date = request.args.get('date', today_ist().isoformat())
     selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
     site_filter = parse_int(request.args.get('site'), 0)
     marker_filter = parse_int(request.args.get('marked_by'), 0)
@@ -1721,13 +1722,13 @@ def closures():
         return redirect(url_for('closures'))
 
     upcoming_closures = ClosureDay.query.filter(
-        ClosureDay.date >= date.today()
+        ClosureDay.date >= today_ist()
     ).order_by(ClosureDay.date).all()
 
     sites = Site.query.filter_by(status='active').order_by(Site.name).all()
     projects = Project.query.filter(Project.status != 'archived').order_by(Project.name).all()
 
-    return render_template('closures.html', closures=upcoming_closures, date=date,
+    return render_template('closures.html', closures=upcoming_closures, date=ISTDate,
                            sites=sites, projects=projects)
 
 @app.route('/worker/<int:worker_id>/deactivate', methods=['POST'])
@@ -1775,8 +1776,8 @@ def worker_attendance(worker_id):
     worker = tenant_get_or_404(Worker, worker_id)
     
     # Get month and year from query params
-    month = int(request.args.get('month', date.today().month))
-    year = int(request.args.get('year', date.today().year))
+    month = int(request.args.get('month', today_ist().month))
+    year = int(request.args.get('year', today_ist().year))
     
     # Get attendance records for the month
     start_date = date(year, month, 1)
@@ -1820,7 +1821,7 @@ def worker_attendance(worker_id):
                          start_date=start_date,
                          end_date=end_date,
                          timedelta=timedelta,
-                         date=date)
+                         date=ISTDate)
 
 @app.route('/id_card/<int:worker_id>', methods=['GET', 'POST'])
 @admin_required
@@ -1831,7 +1832,7 @@ def id_card(worker_id):
         if 'regenerate_qr' in request.form:
             # Generate new QR code
             worker.qr_code = generate_qr_code(worker.worker_id)
-            worker.updated_at = datetime.utcnow()
+            worker.updated_at = now_ist()
             db.session.commit()
             flash('New QR code generated successfully', 'success')
             return redirect(url_for('id_card', worker_id=worker_id))
@@ -1841,7 +1842,7 @@ def id_card(worker_id):
         worker.qr_code = generate_qr_code(worker.worker_id)
         db.session.commit()
     
-    return render_template('id_card.html', worker=worker, date=date, timedelta=timedelta)
+    return render_template('id_card.html', worker=worker, date=ISTDate, timedelta=timedelta)
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -1887,7 +1888,7 @@ def profile():
         
         return redirect(url_for('profile'))
 
-    return render_template('profile.html', Worker=Worker, AttendanceRecord=AttendanceRecord, date=date)
+    return render_template('profile.html', Worker=Worker, AttendanceRecord=AttendanceRecord, date=ISTDate)
 
 USER_AVATAR_UPLOAD_DIR = os.path.join(app.static_folder, 'uploads', 'avatars')
 
@@ -1898,7 +1899,7 @@ def save_user_avatar(file_storage, user_id):
     if not allowed_image_file(filename):
         raise ValueError('Please upload a valid image (JPG, JPEG, PNG, GIF, or WEBP).')
     image_data, image_mime, image_ext = _compress_image(file_storage, max_px=256)
-    unique_filename = f"user{user_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.{image_ext}"
+    unique_filename = f"user{user_id}_{now_ist().strftime('%Y%m%d%H%M%S%f')}.{image_ext}"
     if storage.storage_enabled():
         try:
             return storage.upload_image(f'acc{current_user.account_id}/avatars/{unique_filename}', image_data, image_mime)
@@ -1940,7 +1941,7 @@ VALID_ATTENDANCE_STATUSES = ('present', 'absent', 'late', 'leave')
 def _attendance_timestamp(attendance_date):
     """Wall-clock time anchored to the selected attendance date, so backdated
     entries never mix today's date into check-in/out timestamps."""
-    return datetime.combine(attendance_date, datetime.now().time())
+    return datetime.combine(attendance_date, now_ist().time())
 
 @app.route('/mark_attendance', methods=['POST'])
 @login_required
@@ -2256,7 +2257,7 @@ MONTH_NAMES = [
 @app.route('/payroll')
 @admin_required
 def payroll():
-    today = date.today()
+    today = today_ist()
     try:
         month = max(1, min(12, int(request.args.get('month', today.month))))
         year = max(2020, min(2099, int(request.args.get('year', today.year))))
@@ -2282,7 +2283,7 @@ def payroll():
 @app.route('/payroll/save', methods=['POST'])
 @admin_required
 def payroll_save():
-    today = date.today()
+    today = today_ist()
     try:
         month = max(1, min(12, int(request.form.get('month', today.month))))
         year = max(2020, min(2099, int(request.form.get('year', today.year))))
@@ -2354,7 +2355,7 @@ def payroll_toggle_paid(record_id):
 @admin_required
 def payroll_slip(worker_id):
     worker = tenant_get_or_404(Worker, worker_id)
-    today = date.today()
+    today = today_ist()
     try:
         month = max(1, min(12, int(request.args.get('month', today.month))))
         year = max(2020, min(2099, int(request.args.get('year', today.year))))
@@ -2393,14 +2394,14 @@ def payroll_slip(worker_id):
         pay_summary=pay_summary,
         payroll_record=payroll_record,
         timedelta=timedelta,
-        date=date,
+        date=ISTDate,
     )
 
 
 @app.route('/payroll/export.csv')
 @admin_required
 def payroll_export():
-    today = date.today()
+    today = today_ist()
     try:
         month = max(1, min(12, int(request.args.get('month', today.month))))
         year = max(2020, min(2099, int(request.args.get('year', today.year))))
@@ -2523,7 +2524,7 @@ def export_data():
     # Create response
     response = make_response(output.getvalue())
     response.headers['Content-Type'] = 'text/csv'
-    response.headers['Content-Disposition'] = f'attachment; filename=smartworker_data_{date.today().isoformat()}.csv'
+    response.headers['Content-Disposition'] = f'attachment; filename=smartworker_data_{today_ist().isoformat()}.csv'
     
     return response
 
@@ -2550,7 +2551,7 @@ def settings():
                            tasks=tasks,
                            departments=departments,
                            attendance_users=attendance_users,
-                           date=date)
+                           date=ISTDate)
 
 @app.route('/settings/company', methods=['POST'])
 @admin_required
@@ -2575,7 +2576,7 @@ def settings_company():
             return redirect(url_for('settings'))
         # Logos keep transparency (PNG); compressed to a small square.
         logo_data, logo_mime, logo_ext = _compress_image(logo, max_px=256, quality=85, preserve_alpha=True)
-        unique_filename = f"logo_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{logo_ext}"
+        unique_filename = f"logo_{now_ist().strftime('%Y%m%d%H%M%S')}.{logo_ext}"
         try:
             if storage.storage_enabled():
                 company.logo = storage.upload_image(f'acc{current_user.account_id}/company/{unique_filename}', logo_data, logo_mime)
@@ -2846,7 +2847,7 @@ TRANSACTION_TYPE_LABELS = {
 @app.route('/transactions')
 @admin_required
 def transactions():
-    today = date.today()
+    today = today_ist()
     try:
         month = max(1, min(12, int(request.args.get('month', today.month))))
         year = max(2020, min(2099, int(request.args.get('year', today.year))))
@@ -2910,7 +2911,7 @@ def transactions_save():
     try:
         txn_date = datetime.strptime(txn_date_raw, '%Y-%m-%d').date()
     except (TypeError, ValueError):
-        txn_date = date.today()
+        txn_date = today_ist()
 
     if txn_id:
         txn = tenant_get_or_404(WorkerTransaction, txn_id)
@@ -2961,9 +2962,9 @@ def worker_modify(worker_id):
     description = request.form.get('description', '').strip() or None
     effective_raw = request.form.get('effective_date')
     try:
-        effective_date = datetime.strptime(effective_raw, '%Y-%m-%d').date() if effective_raw else date.today()
+        effective_date = datetime.strptime(effective_raw, '%Y-%m-%d').date() if effective_raw else today_ist()
     except ValueError:
-        effective_date = date.today()
+        effective_date = today_ist()
 
     if mod_type == 'promotion':
         new_position = request.form.get('new_position', '').strip()
@@ -2998,7 +2999,7 @@ def worker_modify(worker_id):
         if not changes:
             flash('Nothing to update — enter a new designation and/or salary.', 'warning')
             return redirect(url_for('worker_profile', worker_id=worker.id))
-        worker.updated_at = datetime.utcnow()
+        worker.updated_at = now_ist()
         db.session.commit()
         flash(f'Promotion recorded for {worker.full_name}: ' + '; '.join(changes), 'success')
 
@@ -3014,7 +3015,7 @@ def worker_modify(worker_id):
         field = field_map.get(worker.pay_type, 'monthly_salary')
         old_salary = getattr(worker, field)
         setattr(worker, field, new_salary)
-        worker.updated_at = datetime.utcnow()
+        worker.updated_at = now_ist()
         db.session.add(WorkerModification(
             worker_id=worker.id, mod_type='salary_change', field_name=field.replace('_', ' ').title(),
             old_value=str(old_salary) if old_salary is not None else None,
@@ -3089,9 +3090,9 @@ def worker_assign(worker_id):
     notes = request.form.get('notes', '').strip() or None
     start_raw = request.form.get('start_date')
     try:
-        start_date = datetime.strptime(start_raw, '%Y-%m-%d').date() if start_raw else date.today()
+        start_date = datetime.strptime(start_raw, '%Y-%m-%d').date() if start_raw else today_ist()
     except ValueError:
-        start_date = date.today()
+        start_date = today_ist()
 
     if not project_id and not site_id:
         flash('Choose a project and/or a site for the assignment.', 'error')
@@ -3173,7 +3174,7 @@ def assignments():
                            projects=projects, tasks=tasks,
                            site_filter=site_filter, project_filter=project_filter,
                            search=request.args.get('search', ''), show=show,
-                           assigned_count=assigned_count, today=date.today())
+                           assigned_count=assigned_count, today=today_ist())
 
 @app.route('/worker/<int:worker_id>/assignment/<int:assignment_id>/end', methods=['POST'])
 @admin_required
@@ -3183,7 +3184,7 @@ def worker_assignment_end(worker_id, assignment_id):
         flash('Assignment does not belong to this worker.', 'error')
         return redirect(url_for('worker_profile', worker_id=worker_id))
     assignment.status = 'completed'
-    assignment.end_date = date.today()
+    assignment.end_date = today_ist()
     db.session.commit()
     flash('Assignment marked as completed.', 'success')
     return redirect(safe_redirect_target(request.form.get('redirect_to'),
@@ -3268,7 +3269,7 @@ def service_worker():
 @app.route('/scan')
 @login_required
 def scan():
-    return render_template('scan.html', today=date.today())
+    return render_template('scan.html', today=today_ist())
 
 @app.route('/api/worker_lookup')
 @login_required
@@ -3281,7 +3282,7 @@ def api_worker_lookup():
         return jsonify({'success': False, 'message': 'Enter or scan an employee ID.'}), 400
 
     worker = Worker.query.filter(func.upper(Worker.worker_id) == code.upper()).first()
-    today = date.today()
+    today = today_ist()
 
     # Scoped attendance users get one generic failure for missing, inactive and
     # out-of-scope workers so the endpoint doesn't confirm which IDs exist.
@@ -3353,7 +3354,7 @@ def notifications_mark_read():
 @admin_required
 def worker_report(worker_id):
     worker = tenant_get_or_404(Worker, worker_id)
-    today = date.today()
+    today = today_ist()
 
     # Attendance summary for the last 6 months
     monthly_history = []
@@ -3402,4 +3403,4 @@ def worker_report(worker_id):
                            type_labels=TRANSACTION_TYPE_LABELS,
                            month_names=MONTH_NAMES,
                            today=today,
-                           date=date)
+                           date=ISTDate)
