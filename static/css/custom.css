@@ -382,3 +382,70 @@ input:checked + .toggle-slider:before {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ============================================================
+   Month calendar — shared by templates/_calendar.html
+   Single definition for every host (attendance day view, worker
+   attendance history, payroll slip). Status colours are the app's
+   existing palette: present green, late amber, absent red, leave blue.
+   ============================================================ */
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    background: #e5e7eb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.cal-cell {
+    background: #fff;
+    min-height: 44px;              /* 44px minimum tap target */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 500;
+    position: relative;
+    color: #1f2937;
+}
+.cal-cell.other   { background: #f9fafb; color: #9ca3af; }
+.cal-cell.present { background: #dcfce7; color: #166534; }
+.cal-cell.absent  { background: #fecaca; color: #991b1b; }
+.cal-cell.late    { background: #fef3c7; color: #92400e; }
+.cal-cell.leave   { background: #dbeafe; color: #1e40af; }
+.cal-cell.header  {
+    background: #f3f4f6; color: #374151; font-weight: 700;
+    font-size: 0.62rem; min-height: 26px; text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Interactive cells only exist where the partial is included with
+   cal_interactive; inert hosts (payslip) never match these. */
+.cal-cell[role="gridcell"][data-date] { cursor: pointer; }
+.cal-cell[role="gridcell"][data-date]:hover { filter: brightness(0.96); }
+
+/* Selection ring is drawn inside the cell so it reads on every status
+   fill, and is a ring rather than a fill so the status colour survives. */
+.cal-cell.cal-selected::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 2.5px solid #001F3F;
+    border-radius: 7px;
+    pointer-events: none;
+}
+.cal-cell.cal-selected { font-weight: 800; }
+.cal-cell.cal-today::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1.5px dashed #6b7280;
+    border-radius: 7px;
+    pointer-events: none;
+}
+.cal-cell:focus-visible { outline: 3px solid #0a84ff; outline-offset: -3px; z-index: 1; }
+.cal-closure-dot {
+    position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+    width: 5px; height: 5px; border-radius: 999px; background: #f97316;
+}
