@@ -5,83 +5,253 @@
 {% block head %}
 <script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
 <style>
-#qr-reader { border-radius: 1.5rem; overflow: hidden; }
-#qr-reader video { border-radius: 1.5rem; object-fit: cover; }
-#qr-reader__dashboard_section_csr button { color: #007BFF; }
+/* Self-contained: the vendored Tailwind build is purged, so utilities that
+   weren't present at compile time silently do nothing. Everything sizing- or
+   layout-critical for this screen is defined here. */
+.scan-header {
+    background: linear-gradient(135deg, #001F3F 0%, #0b3f8f 48%, #0a84ff 100%);
+    color: #fff;
+    padding: 1.25rem 1rem 1.15rem;
+    border-bottom-left-radius: 1.75rem;
+    border-bottom-right-radius: 1.75rem;
+    box-shadow: 0 10px 30px -12px rgba(0, 31, 63, 0.55);
+}
+.scan-title { font-size: 1.6rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; }
+.scan-sub { font-size: 0.82rem; opacity: 0.88; margin-top: 0.15rem; }
+
+.scan-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+}
+.scan-stat {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 0.85rem;
+    padding: 0.55rem 0.25rem 0.5rem;
+    text-align: center;
+    min-height: 3.4rem;
+}
+.scan-stat-num { font-size: 1.25rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.scan-stat-label { font-size: 0.62rem; opacity: 0.85; margin-top: 0.1rem; }
+
+/* Camera viewport ------------------------------------------------------- */
+.cam-wrap {
+    position: relative;
+    border-radius: 1.25rem;
+    overflow: hidden;
+    background: #0d1420;
+    min-height: 15.5rem;
+}
+#qr-reader { width: 100%; min-height: 15.5rem; border: 0; }
+#qr-reader video { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
+#qr-reader img[alt="Info icon"] { display: none; }
+/* Hide the library's own chrome so our frame is the only overlay. */
+#qr-reader__dashboard, #qr-reader__header_message { display: none !important; }
+#qr-shaded-region { display: none !important; }
+
+.cam-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+}
+.cam-frame {
+    position: relative;
+    width: 56%; padding-bottom: 56%;
+    max-width: 12rem;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    border-radius: 1rem;
+}
+.cam-line {
+    position: absolute;
+    left: 6%; right: 6%; top: 50%;
+    height: 2px;
+    background: #22c55e;
+    border-radius: 2px;
+    box-shadow: 0 0 8px 1px rgba(34, 197, 94, 0.75);
+    animation: cam-sweep 2.4s ease-in-out infinite;
+}
+@keyframes cam-sweep {
+    0%, 100% { transform: translateY(-4.6rem); }
+    50%      { transform: translateY(4.6rem); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cam-line { animation: none; }
+}
+.cam-idle {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255, 255, 255, 0.65); font-size: 0.8rem; text-align: center; padding: 1.5rem;
+}
+.cam-controls { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.75rem; }
+.cam-btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    min-height: 2.75rem; padding: 0 0.9rem;
+    border-radius: 0.75rem; border: 1px solid #e5e7eb;
+    background: #f9fafb; color: #374151;
+    font-size: 0.75rem; font-weight: 600;
+}
+.cam-btn:active { background: #f3f4f6; }
+
+.scan-help { text-align: center; font-size: 0.8rem; color: #6b7280; margin-top: 0.75rem; line-height: 1.45; }
+
+/* Result card ----------------------------------------------------------- */
+.res-avatar {
+    width: 3.6rem; height: 3.6rem; flex-shrink: 0;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #001F3F 0%, #0a84ff 100%);
+    color: #fff; font-size: 1.5rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+}
+.res-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.res-name { font-size: 1.15rem; font-weight: 700; color: #111827; line-height: 1.2; }
+.res-meta { font-size: 0.82rem; color: #6b7280; margin-top: 0.1rem; line-height: 1.4; }
+.res-today { font-size: 0.82rem; color: #4b5563; margin-top: 0.1rem; line-height: 1.4; }
+
+.res-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-top: 1rem;
+}
+.res-btn {
+    min-height: 3rem;
+    border-radius: 0.85rem;
+    border: 0;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.15s ease, filter 0.15s ease;
+}
+.res-btn:active:not(:disabled) { filter: brightness(0.93); }
+.res-btn:disabled { opacity: 0.38; }
+.res-btn-green { background: #22c55e; }
+.res-btn-amber { background: #eab308; }
+.res-btn-red   { background: #ef4444; }
+.res-btn-blue  { background: #3b82f6; }
+.res-profile {
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+    min-height: 2.75rem; margin-top: 0.6rem;
+    border-radius: 0.85rem;
+    background: rgba(10, 132, 255, 0.1); color: #0a63c9;
+    font-size: 0.85rem; font-weight: 600;
+}
+
+/* Toast ----------------------------------------------------------------- */
+#scan-toasts {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(7.5rem + env(safe-area-inset-bottom));
+    z-index: 60; width: 100%; max-width: 21rem;
+    padding: 0 1rem; pointer-events: none;
+}
+.scan-toast {
+    color: #fff; font-size: 0.82rem; font-weight: 500;
+    padding: 0.7rem 0.9rem; border-radius: 0.85rem;
+    margin-top: 0.4rem; box-shadow: 0 10px 25px -8px rgba(0,0,0,0.45);
+    animation: toast-in 0.18s ease-out;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateY(6px); } }
+.scan-toast-success { background: #16a34a; }
+.scan-toast-error   { background: #dc2626; }
+.scan-toast-info    { background: #2563eb; }
+.scan-toast-warning { background: #d97706; }
 </style>
 {% endblock %}
 
 {% block content %}
-<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
-    <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-            <a href="{{ url_for('attendance') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                <i class="fa-solid fa-arrow-left text-lg"></i>
-            </a>
-            <div>
-                <div class="text-xl font-semibold">QR Scanner</div>
-                <div class="text-sm opacity-90">Scan ID card or enter Employee ID</div>
-            </div>
+<header class="scan-header">
+    <div class="scan-title">SmartWorker</div>
+    <div class="scan-sub">Scan a worker's ID card to mark attendance</div>
+
+    <!-- Live counts for today, refreshed in place after every mark -->
+    <div class="scan-stats">
+        <div class="scan-stat">
+            <div class="scan-stat-num" id="stat-present">{{ stats.present }}</div>
+            <div class="scan-stat-label">Present</div>
         </div>
-        <button onclick="toggleScanner()" id="scanner-toggle" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-            <i class="fa-solid fa-camera-rotate text-lg"></i>
-        </button>
+        <div class="scan-stat">
+            <div class="scan-stat-num" id="stat-late">{{ stats.late }}</div>
+            <div class="scan-stat-label">Late</div>
+        </div>
+        <div class="scan-stat">
+            <div class="scan-stat-num" id="stat-absent">{{ stats.absent }}</div>
+            <div class="scan-stat-label">Absent</div>
+        </div>
+        <div class="scan-stat">
+            <div class="scan-stat-num" id="stat-open">{{ stats.open }}</div>
+            <div class="scan-stat-label">Open</div>
+        </div>
     </div>
 </header>
 
 <main class="p-4 pb-8 space-y-4">
-    <!-- Scanner -->
+    <!-- Camera -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <div id="qr-reader" class="w-full"></div>
-        <div id="scanner-status" class="text-center text-sm text-gray-500 mt-3">
-            <i class="fa-solid fa-camera mr-1"></i>Starting camera…
+        <div class="cam-wrap">
+            <div id="qr-reader"></div>
+            <div class="cam-overlay" id="cam-overlay">
+                <div class="cam-frame"><div class="cam-line"></div></div>
+            </div>
+            <div class="cam-idle" id="cam-idle">Starting camera…</div>
+        </div>
+        <div class="scan-help" id="scanner-status">Point the camera at the QR code on the ID card.</div>
+        <div class="cam-controls">
+            <button type="button" class="cam-btn" id="cam-flip" onclick="flipCamera()">
+                <i class="fa-solid fa-camera-rotate"></i>Flip camera
+            </button>
+            <button type="button" class="cam-btn" id="cam-pause" onclick="togglePause()">
+                <i class="fa-solid fa-pause"></i><span id="cam-pause-label">Pause</span>
+            </button>
         </div>
     </section>
 
-    <!-- Manual Employee ID entry -->
+    <!-- Manual entry fallback (kept: the only way in when a camera is blocked) -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-sm font-semibold text-gray-800 mb-3"><i class="fa-solid fa-keyboard mr-2 text-accent"></i>Manual Employee ID Entry</h3>
+        <h3 class="text-sm font-semibold text-gray-800 mb-3"><i class="fa-solid fa-keyboard mr-2 text-accent"></i>Enter Employee ID</h3>
         <form onsubmit="return lookupManual(event)" class="flex gap-2">
             <input type="text" id="manual-id" placeholder="e.g. CO001" autocomplete="off" autocapitalize="characters"
                    class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent uppercase">
-            <button type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
+            <button type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors" style="min-height:2.75rem">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
         </form>
     </section>
 
-    <!-- Result card -->
+    <!-- Result -->
     <section id="result-card" class="hidden bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <div class="flex items-center space-x-4 mb-4">
-            <div id="result-photo-wrap" class="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-xl overflow-hidden shrink-0"></div>
+        <div class="flex items-center space-x-3">
+            <div class="res-avatar" id="result-photo-wrap"></div>
             <div class="flex-1 min-w-0">
-                <div class="font-semibold text-gray-800 truncate" id="result-name"></div>
-                <div class="text-xs text-gray-500" id="result-meta"></div>
-                <div class="text-xs text-gray-500" id="result-site"></div>
+                <div class="res-name truncate" id="result-name"></div>
+                <div class="res-meta truncate" id="result-meta"></div>
+                <div class="res-today" id="result-today"></div>
             </div>
         </div>
-        <div id="result-attendance" class="text-xs text-gray-600 bg-gray-50 rounded-xl p-3 mb-4"></div>
-        <div id="result-closure" class="hidden text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-3 mb-4"></div>
-        <div class="grid grid-cols-2 gap-3">
-            <form method="POST" action="{{ url_for('mark_attendance') }}" id="checkin-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="worker_id" id="action-worker-id" value="">
-                <input type="hidden" name="date" value="{{ today.isoformat() }}">
-                <input type="hidden" name="status" id="action-status" value="present">
-                <input type="hidden" name="marked_via" id="action-via" value="qr">
-                <input type="hidden" name="redirect_to" value="{{ url_for('scan') }}">
-                <button type="submit" id="checkin-btn"
-                        class="w-full py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-right-to-bracket mr-1"></i><span id="checkin-label">Check In</span>
-                </button>
-            </form>
-            <a href="#" id="result-profile-link"
-               class="w-full py-3 bg-accent/10 text-accent rounded-xl font-medium text-center hover:bg-accent/20 transition-colors">
-                <i class="fa-solid fa-user mr-1"></i>Open Profile
-            </a>
+
+        <div id="result-site" class="res-meta" style="margin-top:0.5rem"></div>
+        <div id="result-closure" class="hidden text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-3" style="margin-top:0.6rem"></div>
+
+        <div class="res-actions">
+            <button type="button" class="res-btn res-btn-green" id="btn-primary" onclick="markPrimary()">
+                <span id="btn-primary-label">Check in</span>
+            </button>
+            <button type="button" class="res-btn res-btn-amber" id="btn-late" onclick="markAttendance('late')">Late</button>
+            {% if current_user.is_admin %}
+            <button type="button" class="res-btn res-btn-red" id="btn-absent" onclick="markAttendance('absent')">Absent</button>
+            <button type="button" class="res-btn res-btn-blue" id="btn-leave" onclick="markAttendance('leave')">Leave</button>
+            {% endif %}
         </div>
+
+        <a href="#" id="result-profile-link" class="res-profile">
+            <i class="fa-solid fa-user"></i>Open full profile
+        </a>
     </section>
 </main>
+
+<div id="scan-toasts"></div>
 
 <script>
 // var, NOT let/const: this script re-executes on every SPA navigation into
@@ -90,31 +260,67 @@
 // legally re-declared and simply resets the state for the fresh screen.
 var html5Qrcode = null;
 var scannerRunning = false;
+var scannerPaused = false;
+var camFacing = 'environment';
 var lastScan = { code: null, at: 0 };
+var currentWorker = null;
+var currentClosure = null;
+var currentVia = 'qr';
+var SCAN_TODAY = "{{ today.isoformat() }}";
+var SCAN_CSRF = "{{ csrf_token() }}";
 
 function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
+    var div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
     return div.innerHTML;
 }
 
-function setStatus(html) {
-    document.getElementById('scanner-status').innerHTML = html;
+function setStatus(text) {
+    var el = document.getElementById('scanner-status');
+    if (el) el.textContent = text;
+}
+
+function setIdle(text) {
+    var el = document.getElementById('cam-idle');
+    var overlay = document.getElementById('cam-overlay');
+    if (!el) return;
+    if (text) {
+        el.textContent = text;
+        el.style.display = 'flex';
+        if (overlay) overlay.style.display = 'none';
+    } else {
+        el.style.display = 'none';
+        if (overlay) overlay.style.display = 'flex';
+    }
+}
+
+function toast(message, category) {
+    var host = document.getElementById('scan-toasts');
+    if (!host) return;
+    var cls = 'scan-toast-info';
+    if (category === 'success') cls = 'scan-toast-success';
+    else if (category === 'error' || category === 'restricted') cls = 'scan-toast-error';
+    else if (category === 'warning') cls = 'scan-toast-warning';
+    var el = document.createElement('div');
+    el.className = 'scan-toast ' + cls;
+    el.textContent = message;
+    host.appendChild(el);
+    setTimeout(function () { el.remove(); }, 4200);
 }
 
 // The scanner library is a page-specific <head> script. Under SPA navigation
 // it is appended asynchronously, so it may not be ready the instant this code
 // runs. Wait (briefly) for it — loading it ourselves if needed — before
-// declaring it unavailable, so we never show a false "offline" message.
+// declaring it unavailable, so we never show a false failure message.
 function ensureLibraryLoaded() {
-    return new Promise((resolve, reject) => {
+    return new Promise(function (resolve, reject) {
         if (typeof Html5Qrcode !== 'undefined') return resolve();
         if (!document.querySelector('script[src*="html5-qrcode"]')) {
-            const s = document.createElement('script');
+            var s = document.createElement('script');
             s.src = "{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}";
             document.head.appendChild(s);
         }
-        let waited = 0;
+        var waited = 0;
         (function poll() {
             if (typeof Html5Qrcode !== 'undefined') return resolve();
             waited += 100;
@@ -126,41 +332,79 @@ function ensureLibraryLoaded() {
 
 async function startScanner() {
     if (scannerRunning) return;               // already live — don't double-start
-    setStatus('<i class="fa-solid fa-camera mr-1"></i>Starting camera…');
+    setIdle('Starting camera…');
     try {
         await ensureLibraryLoaded();
     } catch (e) {
-        setStatus('<i class="fa-solid fa-triangle-exclamation mr-1 text-amber-500"></i>Couldn\'t load the scanner. Check your connection or use Manual ID entry below.');
+        setIdle('Scanner unavailable');
+        setStatus("Couldn't load the scanner. Check your connection, or enter the Employee ID below.");
         return;
     }
     try {
         html5Qrcode = new Html5Qrcode('qr-reader');
         await html5Qrcode.start(
-            { facingMode: 'environment' },
+            { facingMode: camFacing },
             { fps: 10, qrbox: { width: 220, height: 220 } },
             onScanSuccess,
-            () => {}
+            function () {}
         );
         scannerRunning = true;
-        setStatus('<i class="fa-solid fa-qrcode mr-1 text-green-500"></i>Point the camera at a worker QR code');
+        scannerPaused = false;
+        setIdle('');
+        setStatus('Point the camera at the QR code on the ID card.');
+        setPauseLabel();
     } catch (err) {
-        setStatus('<i class="fa-solid fa-triangle-exclamation mr-1 text-amber-500"></i>Camera unavailable (' + escapeHtml(err.toString()) + '). Use Manual ID entry below.');
+        scannerRunning = false;
+        setIdle('Camera unavailable');
+        setStatus('Camera unavailable (' + escapeHtml(err && err.message ? err.message : err) +
+                  '). Allow camera access in Settings, or enter the Employee ID below.');
     }
 }
 
-async function toggleScanner() {
-    if (!html5Qrcode) { startScanner(); return; }
-    if (scannerRunning) {
-        try { await html5Qrcode.stop(); } catch (e) {}
+async function stopScannerInternal() {
+    if (html5Qrcode && scannerRunning) {
+        try {
+            await html5Qrcode.stop();
+        } catch (e) { /* already stopped */ }
+        try { html5Qrcode.clear(); } catch (e) {}
         scannerRunning = false;
-        setStatus('<i class="fa-solid fa-pause mr-1"></i>Scanner paused — tap the camera button to resume.');
-    } else {
-        startScanner();
     }
+}
+
+// Real front/rear switch — the old handler only paused, despite its icon.
+async function flipCamera() {
+    camFacing = (camFacing === 'environment') ? 'user' : 'environment';
+    await stopScannerInternal();
+    html5Qrcode = null;
+    await startScanner();
+}
+
+async function togglePause() {
+    if (scannerRunning) {
+        await stopScannerInternal();
+        html5Qrcode = null;
+        scannerPaused = true;
+        setIdle('Scanner paused');
+        setStatus('Scanner paused — tap Resume to scan again.');
+    } else {
+        scannerPaused = false;
+        await startScanner();
+    }
+    setPauseLabel();
+}
+
+function setPauseLabel() {
+    var label = document.getElementById('cam-pause-label');
+    var btn = document.getElementById('cam-pause');
+    if (!label || !btn) return;
+    var paused = !scannerRunning;
+    label.textContent = paused ? 'Resume' : 'Pause';
+    var icon = btn.querySelector('i');
+    if (icon) icon.className = paused ? 'fa-solid fa-play' : 'fa-solid fa-pause';
 }
 
 function onScanSuccess(decodedText) {
-    const now = Date.now();
+    var now = Date.now();
     if (decodedText === lastScan.code && now - lastScan.at < 4000) return;
     lastScan = { code: decodedText, at: now };
     if (navigator.vibrate) navigator.vibrate(80);
@@ -169,74 +413,182 @@ function onScanSuccess(decodedText) {
 
 function lookupManual(e) {
     e.preventDefault();
-    const code = document.getElementById('manual-id').value.trim();
+    var code = document.getElementById('manual-id').value.trim();
     if (code) lookupWorker(code, 'worker_id');
     return false;
 }
 
 async function lookupWorker(code, via) {
-    setStatus('<i class="fa-solid fa-spinner fa-spin mr-1"></i>Looking up ' + escapeHtml(code) + '…');
+    setStatus('Looking up ' + code + '…');
+    currentVia = via;
+    var res;
     try {
-        const res = await fetch('/api/worker_lookup?code=' + encodeURIComponent(code), { credentials: 'same-origin' });
-        const data = await res.json();
-        if (!data.success) {
-            setStatus('<i class="fa-solid fa-circle-xmark mr-1 text-red-500"></i>' + escapeHtml(data.message));
-            document.getElementById('result-card').classList.add('hidden');
-            return;
-        }
-        renderResult(data, via);
-        setStatus('<i class="fa-solid fa-circle-check mr-1 text-green-500"></i>Worker found — scan time captured automatically on check-in.');
+        res = await fetch('/api/worker_lookup?code=' + encodeURIComponent(code), { credentials: 'same-origin' });
     } catch (err) {
-        setStatus('<i class="fa-solid fa-wifi-slash mr-1 text-red-500"></i>Offline — attendance will sync when internet returns. Use the Attendance page for offline marking.');
+        setStatus('No connection — check your internet and try again, or mark attendance from the Attendance screen.');
+        return;
     }
+    var data;
+    try {
+        data = await res.json();
+    } catch (err) {
+        setStatus('The server returned an unexpected response. Please try again.');
+        return;
+    }
+    if (!data.success) {
+        setStatus(data.message || 'No matching worker.');
+        document.getElementById('result-card').classList.add('hidden');
+        currentWorker = null;
+        return;
+    }
+    renderResult(data);
+    setStatus('Point the camera at the QR code on the ID card.');
 }
 
-function renderResult(data, via) {
-    const w = data.worker, a = data.attendance;
-    const photoWrap = document.getElementById('result-photo-wrap');
+function renderResult(data) {
+    var w = data.worker;
+    currentWorker = w;
+    currentClosure = data.closure || null;
+
+    var photoWrap = document.getElementById('result-photo-wrap');
     photoWrap.innerHTML = w.photo
-        ? '<img src="' + w.photo + '" class="w-full h-full object-cover">'
-        : w.name.charAt(0);
+        ? '<img src="' + escapeHtml(w.photo) + '" alt="' + escapeHtml(w.name) + '">'
+        : escapeHtml(w.name.charAt(0).toUpperCase());
     document.getElementById('result-name').textContent = w.name;
-    document.getElementById('result-meta').textContent = w.worker_id + ' • ' + w.position + ' • ' + w.department;
-    document.getElementById('result-site').textContent =
-        (w.site ? 'Site: ' + w.site : '') + (w.project ? (w.site ? ' • ' : '') + 'Project: ' + w.project : '');
+    document.getElementById('result-meta').textContent =
+        [w.worker_id, w.position, w.department].filter(Boolean).join(' · ');
+
+    var site = document.getElementById('result-site');
+    var where = [];
+    if (w.site) where.push('Site: ' + w.site);
+    if (w.project) where.push('Project: ' + w.project);
+    site.textContent = where.join(' · ');
+    site.style.display = where.length ? '' : 'none';
+
     document.getElementById('result-profile-link').href = w.profile_url;
-    document.getElementById('action-worker-id').value = w.id;
-    document.getElementById('action-via').value = via;
 
-    let attHtml = '';
+    applyAttendance(data.attendance);
+    var card = document.getElementById('result-card');
+    card.classList.remove('hidden');
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Renders today's line and drives every button's enabled state / label.
+function applyAttendance(a) {
+    var parts = [];
     if (a.status) {
-        attHtml = 'Today: <b class="capitalize">' + a.status + '</b>';
-        if (a.check_in) attHtml += ' • In: <b>' + a.check_in + '</b>';
-        if (a.check_out) attHtml += ' • Out: <b>' + a.check_out + '</b>';
+        parts.push('Today: ' + a.status);
+        if (a.check_in) parts.push('in ' + a.check_in);
+        if (a.check_out) parts.push('out ' + a.check_out);
+        else if (a.shift_open) parts.push('shift open');
     } else {
-        attHtml = 'No attendance marked today yet.';
+        parts.push('Not marked today yet');
     }
-    document.getElementById('result-attendance').innerHTML = attHtml;
+    document.getElementById('result-today').textContent = parts.join(' · ');
 
-    const closureBox = document.getElementById('result-closure');
-    const btn = document.getElementById('checkin-btn');
-    const label = document.getElementById('checkin-label');
-    if (data.closure && data.closure.locked) {
-        closureBox.textContent = 'Closure day: ' + data.closure.reason + ' — attendance locked.';
+    var primary = document.getElementById('btn-primary');
+    var primaryLabel = document.getElementById('btn-primary-label');
+    var late = document.getElementById('btn-late');
+    var absent = document.getElementById('btn-absent');
+    var leave = document.getElementById('btn-leave');
+    var closureBox = document.getElementById('result-closure');
+
+    var locked = !!(currentClosure && currentClosure.locked);
+    if (locked) {
+        closureBox.textContent = 'Closure day: ' + currentClosure.reason + ' — attendance is locked.';
         closureBox.classList.remove('hidden');
-        btn.disabled = true;
     } else {
         closureBox.classList.add('hidden');
-        if (a.can_check_in) {
-            btn.disabled = false; label.textContent = 'Check In';
-            document.getElementById('action-status').value = 'present';
-        } else if (a.can_check_out) {
-            btn.disabled = false; label.textContent = 'Check Out';
-            // Re-posting the current status closes the open shift
-            document.getElementById('action-status').value = a.status;
+    }
+
+    // Green button: check in → check out → done.
+    if (a.can_check_in) {
+        primaryLabel.textContent = 'Check in';
+        primary.dataset.status = 'present';
+        primary.disabled = locked;
+    } else if (a.can_check_out) {
+        primaryLabel.textContent = 'Check out';
+        // Re-posting the active status is what closes the shift server-side.
+        primary.dataset.status = a.status;
+        primary.disabled = locked;
+    } else {
+        primaryLabel.textContent = 'Shift closed';
+        primary.dataset.status = '';
+        primary.disabled = true;
+    }
+
+    // While a shift is open, posting 'late' would close it rather than
+    // reclassify it — so offer Late only as a check-in choice.
+    if (late) late.disabled = locked || !a.can_check_in;
+    if (absent) absent.disabled = locked;
+    if (leave) leave.disabled = locked;
+}
+
+function applyStats(stats) {
+    if (!stats) return;
+    ['present', 'late', 'absent', 'open'].forEach(function (key) {
+        var el = document.getElementById('stat-' + key);
+        if (el && typeof stats[key] === 'number') el.textContent = stats[key];
+    });
+}
+
+function setActionsDisabled(disabled) {
+    ['btn-primary', 'btn-late', 'btn-absent', 'btn-leave'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+    });
+}
+
+function markPrimary() {
+    var status = document.getElementById('btn-primary').dataset.status;
+    if (status) markAttendance(status);
+}
+
+// Marks via JSON so the camera keeps running — a page navigation would tear
+// down the stream and cost a second of black preview on every worker.
+async function markAttendance(status) {
+    if (!currentWorker) return;
+    setActionsDisabled(true);
+    var fd = new FormData();
+    fd.append('csrf_token', SCAN_CSRF);
+    fd.append('worker_id', currentWorker.id);
+    fd.append('date', SCAN_TODAY);
+    fd.append('status', status);
+    fd.append('marked_via', currentVia);
+
+    try {
+        var res = await fetch('/api/mark_attendance', {
+            method: 'POST', body: fd, credentials: 'same-origin'
+        });
+        if (!res.ok) {
+            toast('Could not save attendance (' + res.status + '). Please try again.', 'error');
+            return;
+        }
+        var data = await res.json();
+        applyStats(data.stats);
+        applyAttendance(data.attendance);
+        if (data.messages && data.messages.length) {
+            data.messages.forEach(function (m) { toast(m.text, m.category); });
         } else {
-            btn.disabled = true; label.textContent = 'Shift Closed';
+            toast(data.success ? 'Attendance updated.' : 'Could not update attendance.',
+                  data.success ? 'success' : 'error');
+        }
+        // Let the same card be re-scanned immediately after a state change.
+        lastScan = { code: null, at: 0 };
+    } catch (err) {
+        toast('No connection — attendance was not saved.', 'error');
+    } finally {
+        setActionsDisabled(false);
+        // Re-apply real state (setActionsDisabled(false) enables everything).
+        if (currentWorker) {
+            try {
+                var r = await fetch('/api/worker_lookup?code=' +
+                    encodeURIComponent(currentWorker.worker_id), { credentials: 'same-origin' });
+                var d = await r.json();
+                if (d.success) { currentClosure = d.closure || null; applyAttendance(d.attendance); }
+            } catch (e) { /* leave buttons enabled; next scan refreshes */ }
         }
     }
-    document.getElementById('result-card').classList.remove('hidden');
-    document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // Start the scanner whenever this screen is shown. This script re-executes on
@@ -247,7 +599,7 @@ function bootScanner() {
     if (!document.getElementById('qr-reader')) return;
     startScanner();
     if (new URLSearchParams(window.location.search).get('manual')) {
-        const manual = document.getElementById('manual-id');
+        var manual = document.getElementById('manual-id');
         if (manual) manual.focus();
     }
 }
@@ -258,6 +610,7 @@ if (!window.__scanBootHooked) {
     window.__scanBootHooked = true;
     document.addEventListener('page:load', bootScanner);
 }
+
 function stopScannerCamera() {
     if (html5Qrcode && scannerRunning) {
         try {
@@ -268,16 +621,14 @@ function stopScannerCamera() {
     }
 }
 // Register the lifecycle hooks exactly once, as persistent listeners that look
-// the handler up at call time. The old {once:true} listener was consumed on the
+// the handler up at call time. An {once:true} listener would be consumed on the
 // first navigation away and never re-armed — leaving the camera locked, so the
-// next visit failed with "camera unavailable" (NotReadableError).
+// next visit fails with NotReadableError.
 if (!window.__scanLifecycleHooked) {
     window.__scanLifecycleHooked = true;
     window.addEventListener('beforeunload', function () {
         if (window.stopScannerCamera) window.stopScannerCamera();
     });
-    // SPA navigation swaps screens without unloading — release the camera on
-    // every departure from this screen, not just the first.
     document.addEventListener('page:before-swap', function () {
         if (window.stopScannerCamera) window.stopScannerCamera();
     });
