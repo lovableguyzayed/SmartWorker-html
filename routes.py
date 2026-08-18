@@ -1664,6 +1664,9 @@ def attendance():
             'wage': wage,
             'pay_mode': pay_mode,
             'overtime_pay': overtime_pay,
+            # Single combined status line, built by the same helper the API
+            # uses, so server render and in-place updates can't drift.
+            'meta': attendance_row_meta(worker, attendance),
         })
 
     # Company-wide closure banner (per-worker closures shown inline)
@@ -1675,6 +1678,8 @@ def attendance():
     return render_template('attendance.html',
                          attendance_data=attendance_data,
                          selected_date=selected_date,
+                         today=today_ist(),
+                         stats=_scan_stats(selected_date),
                          closure=closure,
                          sites=sites,
                          attendance_users=attendance_users,
@@ -3284,11 +3289,44 @@ def _attendance_state(record):
         'status': record.status if record else None,
         'check_in': _fmt_clock(record.check_in_time) if record else None,
         'check_out': _fmt_clock(record.check_out_time) if record else None,
+        'overtime_minutes': (record.overtime_minutes or 0) if record else 0,
+        'late_minutes': (record.late_minutes or 0) if record else 0,
         'can_check_in': not record or not record.check_in_time,
         'can_check_out': bool(record and record.check_in_time and not record.check_out_time
                               and record.status in ('present', 'late')),
         'shift_open': bool(record and record.check_in_time and not record.check_out_time),
     }
+
+
+def attendance_row_meta(worker, record):
+    """The single muted line under a worker's name on the entry panel.
+
+    Examples:
+        CO001 · 8:58 AM · shift open
+        CO002 · 9:04 AM → 6:12 PM · +52m
+        CO005 · not marked
+    """
+    parts = [worker.worker_id]
+    if not record:
+        parts.append('not marked')
+        return ' · '.join(parts)
+
+    if record.check_in_time:
+        clock = _fmt_clock(record.check_in_time)
+        if record.check_out_time:
+            clock += ' → ' + _fmt_clock(record.check_out_time)
+        parts.append(clock)
+        if record.late_minutes and record.late_minutes > 0:
+            parts.append(f'{record.late_minutes}m late')
+        if record.check_out_time:
+            if record.overtime_minutes and record.overtime_minutes > 0:
+                parts.append(f'+{record.overtime_minutes}m')
+        else:
+            parts.append('shift open')
+    else:
+        # absent / leave carry no clock times
+        parts.append(record.status)
+    return ' · '.join(parts)
 
 
 def _scan_stats(on_date):
@@ -3383,6 +3421,87 @@ def api_worker_lookup():
     })
 
 
+def _visible_active_workers(on_date):
+    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    return [w for w in workers if worker_visible_to_user(w, current_user, on_date=on_date)]
+
+
+def _attendance_rows(on_date):
+    """Roster state for in-place updates after a bulk action."""
+    rows = []
+    for worker in _visible_active_workers(on_date):
+        record = AttendanceRecord.query.filter_by(worker_id=worker.id, date=on_date).first()
+        closure = closure_for_worker_on_date(worker, on_date)
+        rows.append({
+            'id': worker.id,
+            'status': record.status if record else None,
+            'meta': attendance_row_meta(worker, record),
+            'locked': bool(closure and not closure.allow_attendance),
+        })
+    return rows
+
+
+@app.route('/api/attendance/bulk', methods=['POST'])
+@login_required
+def api_attendance_bulk():
+    """Bulk actions for the entry panel: mark everyone present/absent, or close
+    every open shift at once.
+
+    'close' is the action that had no equivalent anywhere in the app: shifts
+    must be checked out for overtime to be banked, and until now that meant
+    tapping every worker individually. It mirrors the check-out branch of
+    mark_attendance - same timestamp helper, same overtime calculation - and
+    is available to attendance users too, since closing a shift is a check-out
+    rather than an administrative reclassification.
+    """
+    on_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+    action = request.form.get('action')
+
+    if action in ('present', 'absent'):
+        # Reuse mark_attendance's bulk branch verbatim (it reads request.form,
+        # which already carries bulk_action + status from the client).
+        mark_attendance()
+        messages = [{'category': c, 'text': t}
+                    for c, t in get_flashed_messages(with_categories=True)]
+    elif action == 'close':
+        closures_today = ClosureDay.query.filter_by(date=on_date).all()
+        closed = 0
+        overtime_total = 0
+        for worker in _visible_active_workers(on_date):
+            worker_closure = closure_for_worker_on_date(worker, on_date, closures_today)
+            if worker_closure and not worker_closure.allow_attendance:
+                continue
+            record = AttendanceRecord.query.filter_by(worker_id=worker.id, date=on_date).first()
+            if not (record and record.check_in_time and not record.check_out_time
+                    and record.status in ('present', 'late')):
+                continue
+            record.check_out_time = _attendance_timestamp(on_date)
+            record.overtime_minutes = calculate_overtime_minutes_for_record(worker, record)
+            record.marked_by = current_user.id
+            record.marked_via = 'bulk'
+            overtime_total += record.overtime_minutes or 0
+            closed += 1
+        db.session.commit()
+        if closed:
+            text_msg = f'Closed {closed} shift{"s" if closed != 1 else ""}.'
+            if overtime_total:
+                text_msg += f' Overtime banked: {overtime_total} minutes.'
+            messages = [{'category': 'success', 'text': text_msg}]
+        else:
+            messages = [{'category': 'info', 'text': 'No open shifts to close.'}]
+    else:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error', 'text': 'Unknown action.'}]}), 400
+
+    succeeded = not any(m['category'] in ('error', 'restricted') for m in messages)
+    return jsonify({
+        'success': succeeded,
+        'messages': messages,
+        'stats': _scan_stats(on_date),
+        'rows': _attendance_rows(on_date),
+    })
+
+
 @app.route('/api/mark_attendance', methods=['POST'])
 @login_required
 def api_mark_attendance():
@@ -3399,17 +3518,30 @@ def api_mark_attendance():
                 for category, text in get_flashed_messages(with_categories=True)]
     succeeded = not any(m['category'] in ('error', 'restricted') for m in messages)
 
-    today = today_ist()
+    # Mirror the date the mark was actually applied to, so backdated marking
+    # from the roster refreshes the row the user is looking at.
+    try:
+        on_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+    except (KeyError, ValueError):
+        on_date = today_ist()
+
     worker_id = parse_int(request.form.get('worker_id'))
     record = None
+    worker = None
     if worker_id:
-        record = AttendanceRecord.query.filter_by(worker_id=worker_id, date=today).first()
+        record = AttendanceRecord.query.filter_by(worker_id=worker_id, date=on_date).first()
+        worker = tenant_get(Worker, worker_id)
 
     return jsonify({
         'success': succeeded,
         'messages': messages,
-        'stats': _scan_stats(today),
+        'stats': _scan_stats(on_date),
         'attendance': _attendance_state(record),
+        'row': {
+            'id': worker_id,
+            'status': record.status if record else None,
+            'meta': attendance_row_meta(worker, record) if worker else None,
+        },
     })
 
 # ============================================================

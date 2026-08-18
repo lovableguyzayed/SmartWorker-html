@@ -11,6 +11,128 @@
 .calendar-day:hover {
     transform: scale(1.05);
 }
+
+/* Entry panel ----------------------------------------------------------
+   Self-contained: the vendored Tailwind build is purged, so utilities that
+   weren't present at compile time silently do nothing. Everything sizing-
+   and layout-critical for this panel is defined here. */
+.ep-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+.ep-tab {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 2.9rem;
+    border-radius: 0.85rem;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 0.95rem; font-weight: 600;
+}
+.ep-tab-active { background: #001F3F; color: #fff; }
+
+.ep-section-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em;
+    text-transform: uppercase; color: #9ca3af; margin-bottom: 0.6rem;
+}
+.ep-field-label { font-size: 0.85rem; font-weight: 600; color: #1f2937; margin-bottom: 0.4rem; }
+
+.ep-quick { display: flex; gap: 0.6rem; }
+.ep-quick input {
+    flex: 1; min-width: 0; min-height: 3rem;
+    padding: 0 0.9rem;
+    border: 1px solid #e5e7eb; border-radius: 0.8rem;
+    font-size: 1rem; color: #111827; text-transform: uppercase;
+}
+.ep-quick input::placeholder { color: #9ca3af; text-transform: none; }
+.ep-quick input:focus { outline: 2px solid #0a84ff; outline-offset: -1px; }
+.ep-quick button {
+    min-height: 3rem; padding: 0 1.5rem;
+    border: 0; border-radius: 0.8rem;
+    background: #0a7cff; color: #fff;
+    font-size: 1rem; font-weight: 700;
+}
+.ep-quick button:disabled { opacity: 0.5; }
+
+.ep-bulk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 0.7rem; }
+.ep-bulk button {
+    min-height: 2.9rem; padding: 0 0.3rem;
+    border: 1px solid #e5e7eb; border-radius: 0.8rem;
+    background: #fff; color: #374151;
+    font-size: 0.85rem; font-weight: 500;
+}
+.ep-bulk button:disabled { opacity: 0.45; }
+.ep-hint { font-size: 0.85rem; color: #9ca3af; margin-top: 0.7rem; line-height: 1.45; }
+
+.ep-stats { display: flex; gap: 0.4rem; margin-top: 0.9rem; }
+.ep-stat {
+    flex: 1; text-align: center; padding: 0.4rem 0.2rem;
+    border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
+}
+.ep-stat b { display: block; font-size: 1rem; font-variant-numeric: tabular-nums; color: #111827; }
+.ep-stat span { font-size: 0.62rem; color: #9ca3af; }
+
+/* Roster ---------------------------------------------------------------- */
+.ep-row {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #f1f3f5;
+}
+.ep-row:last-child { border-bottom: 0; }
+.ep-row-main { flex: 1; min-width: 0; }
+.ep-name {
+    display: block; font-size: 0.98rem; font-weight: 700; color: #111827; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ep-meta { font-size: 0.8rem; color: #9ca3af; line-height: 1.4; margin-top: 0.1rem; }
+.ep-extra { font-size: 0.72rem; color: #b0b6c0; line-height: 1.4; }
+.ep-chip {
+    display: inline-flex; align-items: center; gap: 0.2rem;
+    font-size: 0.65rem; font-weight: 600; padding: 0.1rem 0.45rem;
+    border-radius: 999px; margin-top: 0.25rem;
+}
+.ep-adjust { font-size: 0.72rem; font-weight: 600; color: #0a7cff; margin-top: 0.2rem; display: inline-block; }
+
+.ep-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
+.ep-pill {
+    /* 36px visual, but ::after grows the hit area to 44px so the row stays
+       compact enough for the name and status line without shrinking the
+       tap target below the accessible minimum. */
+    position: relative;
+    width: 2.25rem; height: 2.25rem;
+    border: 0; border-radius: 0.65rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+    transition: filter 0.12s ease;
+}
+.ep-pill::after { content: ''; position: absolute; inset: -0.25rem; }
+.ep-pill:active:not(:disabled) { filter: brightness(0.92); }
+.ep-pill:disabled { opacity: 0.4; }
+.ep-pill-present { background: #dcfce7; color: #16a34a; }
+.ep-pill-absent  { background: #fee2e2; color: #dc2626; }
+.ep-pill-late    { background: #fef3c7; color: #b45309; }
+.ep-pill-leave   { background: #dbeafe; color: #2563eb; }
+.ep-pill-on.ep-pill-present { background: #22c55e; color: #fff; }
+.ep-pill-on.ep-pill-absent  { background: #ef4444; color: #fff; }
+.ep-pill-on.ep-pill-late    { background: #eab308; color: #fff; }
+.ep-pill-on.ep-pill-leave   { background: #3b82f6; color: #fff; }
+.ep-locked { font-size: 0.7rem; color: #9ca3af; background: #f3f4f6; padding: 0.35rem 0.6rem; border-radius: 0.6rem; }
+
+#ep-toasts {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(7.5rem + env(safe-area-inset-bottom));
+    z-index: 60; width: 100%; max-width: 21rem; padding: 0 1rem; pointer-events: none;
+}
+.ep-toast {
+    color: #fff; font-size: 0.82rem; font-weight: 500;
+    padding: 0.7rem 0.9rem; border-radius: 0.85rem; margin-top: 0.4rem;
+    box-shadow: 0 10px 25px -8px rgba(0,0,0,0.45);
+}
+.ep-toast-success { background: #16a34a; }
+.ep-toast-error   { background: #dc2626; }
+.ep-toast-info    { background: #2563eb; }
+.ep-toast-warning { background: #d97706; }
 </style>
 {% endblock %}
 
@@ -34,9 +156,6 @@
             <a href="{{ url_for('closures') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                 <i class="fa-solid fa-calendar-times text-lg"></i>
             </a>
-            <button onclick="showBulkActions()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                <i class="fa-solid fa-tasks text-lg"></i>
-            </button>
             {% endif %}
         </div>
     </div>
@@ -118,146 +237,100 @@
 </header>
 
 <main class="p-4 pb-8">
+    <!-- Entry panel: the three most common data-entry jobs on one surface.
+         Transaction and Worker open their full existing screens rather than
+         reimplementing them in a tab. -->
+    <div class="ep-tabs">
+        <span class="ep-tab ep-tab-active">Attendance</span>
+        <a href="{{ url_for('transactions') }}" class="ep-tab">Transaction</a>
+        <a href="{{ url_for('add_worker') }}" class="ep-tab">Worker</a>
+    </div>
+
     {% if not closure or closure.allow_attendance %}
-    <!-- Quick Stats -->
-    <section class="grid grid-cols-3 gap-4 mb-6">
-        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl text-center">
-            <div class="text-xl font-bold">{{ attendance_data|selectattr('attendance')|selectattr('attendance.status', 'equalto', 'present')|list|length }}</div>
-            <div class="text-xs opacity-90">Present</div>
+    <section class="mb-5">
+        <div class="ep-section-label">Mark {{ 'today' if selected_date == today else selected_date.strftime('%d %b') }}</div>
+        <div class="ep-field-label">Scan or type employee ID</div>
+        <form class="ep-quick" onsubmit="return quickMark(event)">
+            <input type="text" id="ep-quick-id" placeholder="CO001" autocomplete="off"
+                   autocapitalize="characters" inputmode="text" aria-label="Employee ID">
+            <button type="submit" id="ep-quick-btn">Mark</button>
+        </form>
+
+        <div class="ep-bulk">
+            {% if current_user.is_admin %}
+            <button type="button" onclick="bulkAction('present', this)">All present</button>
+            <button type="button" onclick="bulkAction('absent', this)">All absent</button>
+            {% endif %}
+            <button type="button" onclick="bulkAction('close', this)"
+                    {% if not current_user.is_admin %}style="grid-column: span 3"{% endif %}>Close shifts</button>
         </div>
-        <div class="bg-gradient-to-br from-red-500 to-red-600 text-white p-4 rounded-2xl text-center">
-            <div class="text-xl font-bold">{{ attendance_data|rejectattr('attendance')|list|length + attendance_data|selectattr('attendance')|selectattr('attendance.status', 'equalto', 'absent')|list|length }}</div>
-            <div class="text-xs opacity-90">Absent</div>
-        </div>
-        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-4 rounded-2xl text-center">
-            <div class="text-xl font-bold">{{ attendance_data|selectattr('attendance')|selectattr('attendance.status', 'equalto', 'late')|list|length }}</div>
-            <div class="text-xs opacity-90">Late</div>
+
+        <div class="ep-hint">Tap the same status twice to check out and bank overtime.</div>
+
+        <div class="ep-stats">
+            <div class="ep-stat"><b id="ep-stat-present">{{ stats.present }}</b><span>Present</span></div>
+            <div class="ep-stat"><b id="ep-stat-late">{{ stats.late }}</b><span>Late</span></div>
+            <div class="ep-stat"><b id="ep-stat-absent">{{ stats.absent }}</b><span>Absent</span></div>
+            <div class="ep-stat"><b id="ep-stat-open">{{ stats.open }}</b><span>Open</span></div>
         </div>
     </section>
-
-    <div class="mb-6 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl p-3">
-        Tap Present or Late once for check-in. Tap the same status again to close shift and calculate overtime instantly.
-    </div>
     {% endif %}
 
     <!-- Attendance List -->
     {% if attendance_data %}
-    <div class="space-y-4">
+    <div class="bg-white rounded-3xl shadow-lg border border-gray-100 px-3">
         {% for data in attendance_data %}
-        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <div class="relative shrink-0">
-                        {% if data.worker.profile_image %}
-                            <img loading="lazy" decoding="async" src="{{ data.worker.profile_image }}" alt="{{ data.worker.full_name }}" class="w-12 h-12 shrink-0 rounded-xl object-cover object-center">
-                        {% else %}
-                            <div class="w-12 h-12 shrink-0 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-semibold">
-                                {{ data.worker.full_name[0] }}
-                            </div>
-                        {% endif %}
-                        
-                        {% if data.attendance %}
-                            {% if data.attendance.status == 'present' %}
-                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-                                    <i class="fa-solid fa-check text-xs text-white"></i>
-                                </div>
-                            {% elif data.attendance.status == 'absent' %}
-                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-                                    <i class="fa-solid fa-times text-xs text-white"></i>
-                                </div>
-                            {% elif data.attendance.status == 'late' %}
-                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full border-2 border-white flex items-center justify-center">
-                                    <i class="fa-solid fa-clock text-xs text-white"></i>
-                                </div>
-                            {% endif %}
-                        {% else %}
-                            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-gray-400 rounded-full border-2 border-white flex items-center justify-center">
-                                <i class="fa-solid fa-question text-xs text-white"></i>
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="flex-1">
-                        <a href="{{ url_for('worker_profile', worker_id=data.worker.id) }}" class="font-semibold text-gray-800">{{ data.worker.full_name }}</a>
-                        <div class="text-sm text-gray-600">{{ data.worker.worker_id }} • {{ data.worker.department }}</div>
-                        {% if data.assignment and data.assignment.site %}
-                            <div class="text-xs text-gray-500"><i class="fa-solid fa-location-dot mr-1"></i>{{ data.assignment.site.name }}{% if data.assignment.project %} • {{ data.assignment.project.name }}{% endif %}</div>
-                        {% elif data.assignment and data.assignment.project %}
-                            <div class="text-xs text-gray-500"><i class="fa-solid fa-diagram-project mr-1"></i>{{ data.assignment.project.name }}</div>
-                        {% endif %}
-                        {% if data.closure %}
-                            <div class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium {{ 'bg-red-100 text-red-700' if not data.closure.allow_attendance else 'bg-orange-100 text-orange-700' }}">
-                                <i class="fa-solid fa-calendar-times mr-1"></i>{{ data.closure.reason }}{{ ' (locked)' if not data.closure.allow_attendance }}
-                            </div>
-                        {% endif %}
-                        {% if data.closure and data.closure.allow_attendance and data.attendance and data.attendance.status in ('present', 'late') and data.worker.closure_extra_pay_enabled %}
-                            <div class="inline-flex items-center mt-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
-                                <i class="fa-solid fa-star mr-1 text-orange-500"></i>Closure Bonus
-                            </div>
-                        {% endif %}
-                        {% if data.attendance and data.attendance.check_in_time %}
-                            <div class="text-xs text-gray-500">Check-in: {{ data.attendance.check_in_time.strftime('%H:%M') }}
-                                {% if data.attendance.late_minutes and data.attendance.late_minutes > 0 %}<span class="text-amber-600 font-medium">({{ data.attendance.late_minutes }}m late)</span>{% endif %}
-                            </div>
-                        {% endif %}
-                        {% if data.attendance and data.attendance.check_out_time %}
-                            <div class="text-xs text-gray-500">Check-out: {{ data.attendance.check_out_time.strftime('%H:%M') }}
-                                {% if data.attendance.worked_minutes > 0 %}• {{ (data.attendance.worked_minutes // 60) }}h {{ (data.attendance.worked_minutes % 60) }}m{% endif %}
-                            </div>
-                        {% endif %}
-                        {% if data.attendance and data.attendance.status == 'leave' and data.attendance.leave_type %}
-                            <div class="text-xs text-blue-600 capitalize">{{ data.attendance.leave_type }} leave</div>
-                        {% endif %}
-                        {% if data.wage is not none and data.wage > 0 and current_user.is_admin %}
-                            <div class="text-xs text-gray-500">Pay: ₹{{ "%.2f"|format(data.wage) }} ({{ data.pay_mode.replace('_',' ')|title }})</div>
-                        {% endif %}
-                        {% if data.overtime_pay and data.overtime_pay > 0 and current_user.is_admin %}
-                            <div class="text-xs text-gray-500">Overtime pay: ₹{{ "%.2f"|format(data.overtime_pay) }}</div>
-                        {% endif %}
-                        {% if current_user.is_admin and data.attendance %}
-                            <button onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }})'
-                                    class="mt-1 text-xs text-accent font-medium"><i class="fa-solid fa-pen-to-square mr-1"></i>Adjust times</button>
-                        {% endif %}
-                    </div>
-                </div>
+        {% set row_locked = data.closure and not data.closure.allow_attendance %}
+        <div class="ep-row" data-worker="{{ data.worker.id }}">
+            <div class="ep-row-main">
+                <a href="{{ url_for('worker_profile', worker_id=data.worker.id) }}" class="ep-name">{{ data.worker.full_name }}</a>
+                <!-- One combined status line, built server-side so in-place
+                     updates use exactly the same text. -->
+                <div class="ep-meta" data-role="meta">{{ data.meta }}</div>
 
-                <div class="flex items-center space-x-2">
-                    {% set row_locked = data.closure and not data.closure.allow_attendance %}
-                    {% if not row_locked %}
-                    <form method="POST" action="{{ url_for('mark_attendance') }}" class="flex space-x-1">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="worker_id" value="{{ data.worker.id }}">
-                        <input type="hidden" name="date" value="{{ selected_date }}">
-                        
-                        {% set current_status = data.attendance.status if data.attendance else 'absent' %}
-                        
-                        <button type="submit" name="status" value="present" 
-                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs {{ 'bg-green-500 text-white' if current_status == 'present' else 'bg-green-100 text-green-600 hover:bg-green-200' }}">
-                            <i class="fa-solid fa-check"></i>
-                        </button>
-                        
-                        <button type="submit" name="status" value="absent" 
-                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs {{ 'bg-red-500 text-white' if current_status == 'absent' else 'bg-red-100 text-red-600 hover:bg-red-200' }}">
-                            <i class="fa-solid fa-times"></i>
-                        </button>
-                        
-                        <button type="submit" name="status" value="late" 
-                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs {{ 'bg-yellow-500 text-white' if current_status == 'late' else 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200' }}">
-                            <i class="fa-solid fa-clock"></i>
-                        </button>
-                        
-                        <button type="submit" name="status" value="leave" 
-                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs {{ 'bg-blue-500 text-white' if current_status == 'leave' else 'bg-blue-100 text-blue-600 hover:bg-blue-200' }}">
-                            <i class="fa-solid fa-calendar-days"></i>
-                        </button>
-                    </form>
-                    {% else %}
-                    <div class="bg-gray-100 text-gray-500 px-3 py-1 rounded-lg text-xs">
-                        Closure Day Locked
-                    </div>
-                    {% endif %}
-                </div>
+                {% set extra = [] %}
+                {% if data.assignment and data.assignment.site %}{% set _ = extra.append(data.assignment.site.name ~ (' • ' ~ data.assignment.project.name if data.assignment.project else '')) %}{% endif %}
+                {% if data.attendance and data.attendance.status == 'leave' and data.attendance.leave_type %}{% set _ = extra.append(data.attendance.leave_type|capitalize ~ ' leave') %}{% endif %}
+                {% if current_user.is_admin and data.wage is not none and data.wage > 0 %}{% set _ = extra.append('₹' ~ '%.2f'|format(data.wage)) %}{% endif %}
+                {% if current_user.is_admin and data.overtime_pay and data.overtime_pay > 0 %}{% set _ = extra.append('OT ₹' ~ '%.2f'|format(data.overtime_pay)) %}{% endif %}
+                {% if extra %}<div class="ep-extra">{{ extra|join(' · ') }}</div>{% endif %}
+
+                {% if data.closure %}
+                <span class="ep-chip {{ 'bg-red-100 text-red-700' if not data.closure.allow_attendance else 'bg-orange-100 text-orange-700' }}"
+                      style="background: {{ '#fee2e2' if not data.closure.allow_attendance else '#ffedd5' }}; color: {{ '#b91c1c' if not data.closure.allow_attendance else '#c2410c' }}">
+                    {{ data.closure.reason }}{{ ' (locked)' if not data.closure.allow_attendance }}
+                </span>
+                {% endif %}
+                {% if data.closure and data.closure.allow_attendance and data.attendance and data.attendance.status in ('present', 'late') and data.worker.closure_extra_pay_enabled %}
+                <span class="ep-chip" style="background:#ffedd5;color:#c2410c">Closure bonus</span>
+                {% endif %}
+
+                {% if current_user.is_admin and data.attendance %}
+                <button type="button" class="ep-adjust"
+                        onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }})'>Adjust times</button>
+                {% endif %}
             </div>
+
+            {% if not row_locked %}
+            <div class="ep-pills" data-role="pills">
+                {# No record is NOT the same as marked absent — leave every pill pale. #}
+                {% set current_status = data.attendance.status if data.attendance else none %}
+                {% for value, cls, icon in [
+                    ('present', 'present', 'fa-check'),
+                    ('absent',  'absent',  'fa-xmark'),
+                    ('late',    'late',    'fa-clock'),
+                    ('leave',   'leave',   'fa-house')] %}
+                <button type="button" data-status="{{ value }}"
+                        class="ep-pill ep-pill-{{ cls }}{{ ' ep-pill-on' if current_status == value else '' }}"
+                        aria-label="Mark {{ value }}"
+                        onclick="markWorker({{ data.worker.id }}, '{{ value }}', this)">
+                    <i class="fa-solid {{ icon }}"></i>
+                </button>
+                {% endfor %}
+            </div>
+            {% else %}
+            <span class="ep-locked">Locked</span>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -275,55 +348,6 @@
     </div>
     {% endif %}
 </main>
-
-<!-- Bulk Actions Modal -->
-<div id="bulk-actions-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
-            <div class="text-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">Bulk Actions</h3>
-                <p class="text-gray-600">Apply actions to all workers</p>
-            </div>
-            
-            {% if not closure or closure.allow_attendance %}
-            <div class="space-y-3 mb-6">
-                <form method="POST" action="{{ url_for('mark_attendance') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="date" value="{{ selected_date }}">
-                    <input type="hidden" name="bulk_action" value="true">
-                    
-                    <button type="submit" name="status" value="present" 
-                            class="w-full flex items-center justify-center p-4 bg-green-50 rounded-2xl hover:bg-green-100 transition-colors">
-                        <i class="fa-solid fa-check text-green-600 mr-3"></i>
-                        <span class="font-medium text-gray-800">Mark All Present</span>
-                    </button>
-                </form>
-                
-                <form method="POST" action="{{ url_for('mark_attendance') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="date" value="{{ selected_date }}">
-                    <input type="hidden" name="bulk_action" value="true">
-                    
-                    <button type="submit" name="status" value="absent"
-                            class="w-full flex items-center justify-center p-4 bg-red-50 rounded-2xl hover:bg-red-100 transition-colors">
-                        <i class="fa-solid fa-times text-red-600 mr-3"></i>
-                        <span class="font-medium text-gray-800">Mark All Absent</span>
-                    </button>
-                </form>
-            </div>
-            {% else %}
-            <div class="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 mb-6">
-                Bulk attendance is disabled because this date is configured as a locked closure day.
-            </div>
-            {% endif %}
-            
-            <button onclick="hideBulkActions()" 
-                    class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
-                Cancel
-            </button>
-        </div>
-    </div>
-</div>
 
 {% if current_user.is_admin %}
 <!-- Adjust Attendance Times Modal (Admin only) -->
@@ -382,13 +406,169 @@
 </div>
 {% endif %}
 
+<div id="ep-toasts"></div>
+
 <script>
-function showBulkActions() {
-    document.getElementById('bulk-actions-modal').classList.remove('hidden');
+// var, not let/const: this script re-executes on every SPA navigation back
+// into /attendance, and a top-level let re-declaration throws a SyntaxError
+// that would kill the whole screen.
+var EP_CSRF = "{{ csrf_token() }}";
+var EP_DATE = "{{ selected_date }}";
+
+function epToast(message, category) {
+    var host = document.getElementById('ep-toasts');
+    if (!host) return;
+    var cls = 'ep-toast-info';
+    if (category === 'success') cls = 'ep-toast-success';
+    else if (category === 'error' || category === 'restricted') cls = 'ep-toast-error';
+    else if (category === 'warning') cls = 'ep-toast-warning';
+    var el = document.createElement('div');
+    el.className = 'ep-toast ' + cls;
+    el.textContent = message;
+    host.appendChild(el);
+    setTimeout(function () { el.remove(); }, 4200);
 }
 
-function hideBulkActions() {
-    document.getElementById('bulk-actions-modal').classList.add('hidden');
+function epShowMessages(data, fallback) {
+    if (data.messages && data.messages.length) {
+        data.messages.forEach(function (m) { epToast(m.text, m.category); });
+    } else if (fallback) {
+        epToast(fallback, data.success ? 'success' : 'error');
+    }
+}
+
+function epApplyStats(stats) {
+    if (!stats) return;
+    ['present', 'late', 'absent', 'open'].forEach(function (key) {
+        var el = document.getElementById('ep-stat-' + key);
+        if (el && typeof stats[key] === 'number') el.textContent = stats[key];
+    });
+}
+
+// Repaint one roster row from the server's own view of it.
+function epApplyRow(row) {
+    if (!row || !row.id) return;
+    var el = document.querySelector('.ep-row[data-worker="' + row.id + '"]');
+    if (!el) return;
+    if (row.meta) {
+        var meta = el.querySelector('[data-role="meta"]');
+        if (meta) meta.textContent = row.meta;
+    }
+    el.querySelectorAll('.ep-pill').forEach(function (pill) {
+        pill.classList.toggle('ep-pill-on', pill.dataset.status === row.status);
+    });
+}
+
+function epApplyRows(rows) {
+    (rows || []).forEach(epApplyRow);
+}
+
+function epSetBusy(el, busy) {
+    if (el) el.disabled = busy;
+}
+
+// Marking updates the row in place — no page reload, so the roster position
+// and any typed filter survive.
+async function markWorker(workerId, status, btn) {
+    var row = btn.closest('.ep-row');
+    var pills = row ? row.querySelectorAll('.ep-pill') : [];
+    pills.forEach(function (p) { p.disabled = true; });
+    try {
+        var body = new FormData();
+        body.append('csrf_token', EP_CSRF);
+        body.append('worker_id', workerId);
+        body.append('date', EP_DATE);
+        body.append('status', status);
+        body.append('marked_via', 'manual');
+        var res = await fetch('/api/mark_attendance', {
+            method: 'POST', body: body, credentials: 'same-origin'
+        });
+        if (!res.ok) { epToast('Could not save (' + res.status + ').', 'error'); return; }
+        var data = await res.json();
+        epApplyStats(data.stats);
+        epApplyRow(data.row);
+        epShowMessages(data, data.success ? 'Attendance updated.' : 'Could not update attendance.');
+    } catch (err) {
+        epToast('No connection — attendance was not saved.', 'error');
+    } finally {
+        pills.forEach(function (p) { p.disabled = false; });
+    }
+}
+
+// Type an employee ID and mark without hunting for the row. First tap checks
+// in; a second tap on an open shift checks out, matching the roster pills.
+async function quickMark(event) {
+    event.preventDefault();
+    var input = document.getElementById('ep-quick-id');
+    var btn = document.getElementById('ep-quick-btn');
+    var code = (input.value || '').trim();
+    if (!code) return false;
+    epSetBusy(btn, true);
+    try {
+        var lookup = await fetch('/api/worker_lookup?code=' + encodeURIComponent(code),
+                                 { credentials: 'same-origin' });
+        var found = await lookup.json();
+        if (!found.success) {
+            epToast(found.message || 'No matching worker.', 'error');
+            return false;
+        }
+        // Re-posting the active status is what closes an open shift.
+        var status = found.attendance.can_check_out ? found.attendance.status : 'present';
+        await markWorkerById(found.worker.id, status);
+        input.value = '';
+        input.focus();
+    } catch (err) {
+        epToast('No connection — could not look that ID up.', 'error');
+    } finally {
+        epSetBusy(btn, false);
+    }
+    return false;
+}
+
+async function markWorkerById(workerId, status) {
+    var body = new FormData();
+    body.append('csrf_token', EP_CSRF);
+    body.append('worker_id', workerId);
+    body.append('date', EP_DATE);
+    body.append('status', status);
+    body.append('marked_via', 'worker_id');
+    var res = await fetch('/api/mark_attendance', {
+        method: 'POST', body: body, credentials: 'same-origin'
+    });
+    if (!res.ok) { epToast('Could not save (' + res.status + ').', 'error'); return; }
+    var data = await res.json();
+    epApplyStats(data.stats);
+    epApplyRow(data.row);
+    epShowMessages(data, data.success ? 'Attendance updated.' : 'Could not update attendance.');
+}
+
+// All present / All absent / Close shifts — one tap, no modal.
+async function bulkAction(action, btn) {
+    if (action !== 'close' &&
+        !confirm('Mark every listed worker ' + action + ' for this date?')) return;
+    epSetBusy(btn, true);
+    try {
+        var body = new FormData();
+        body.append('csrf_token', EP_CSRF);
+        body.append('date', EP_DATE);
+        body.append('action', action);
+        if (action !== 'close') {
+            body.append('bulk_action', 'true');   // consumed by mark_attendance
+            body.append('status', action);
+        }
+        var res = await fetch('/api/attendance/bulk', {
+            method: 'POST', body: body, credentials: 'same-origin'
+        });
+        if (!res.ok) { epToast('Could not apply (' + res.status + ').', 'error'); return; }
+        var data = await res.json();
+        epApplyStats(data.stats);
+        epApplyRows(data.rows);
+        epShowMessages(data, 'Done.');
+    } catch (err) {
+        epToast('No connection — nothing was changed.', 'error');
+    } finally {
+        epSetBusy(btn, false);
+    }
 }
 
 function openAdjustModal(recordId, workerName, status, checkIn, checkOut, leaveType) {
