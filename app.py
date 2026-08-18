@@ -123,6 +123,37 @@ SCHEMA_PATCHES.setdefault('users', []).extend([
 ])
 
 
+def _scope_unique_constraints_to_account():
+    """Re-scope globally-unique columns to their workspace.
+
+    workers.worker_id and departments.name were created UNIQUE across the whole
+    table, but employee IDs are generated per workspace — so the second
+    workspace to add e.g. CI001 failed with an IntegrityError. Replace the
+    single-column constraints with composite (account_id, …) unique indexes.
+
+    Postgres only: SQLite cannot drop a column-level UNIQUE without rebuilding
+    the table, and dev databases are recreated from the corrected models.
+    """
+    if not db.engine.url.drivername.startswith('postgresql'):
+        return
+    steps = [
+        'ALTER TABLE workers DROP CONSTRAINT IF EXISTS workers_worker_id_key',
+        'CREATE UNIQUE INDEX IF NOT EXISTS uq_worker_account_worker_id '
+        'ON workers (account_id, worker_id)',
+        'ALTER TABLE departments DROP CONSTRAINT IF EXISTS departments_name_key',
+        'CREATE UNIQUE INDEX IF NOT EXISTS uq_department_account_name '
+        'ON departments (account_id, name)',
+    ]
+    for statement in steps:
+        try:
+            db.session.execute(text(statement))
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            logging.info('Unique-constraint migration step skipped: %s (%s)',
+                         statement[:60], exc)
+
+
 def _relax_password_not_null():
     """Supabase-authenticated users have no local password, so users.password_hash
     must be nullable. Existing Postgres databases created it NOT NULL; drop that.
@@ -268,6 +299,7 @@ with app.app_context():
     inspector = inspect(db.engine)
     _apply_schema_patches(inspector)
     _relax_password_not_null()
+    _scope_unique_constraints_to_account()
     _drop_closure_date_unique_constraint(inspector)
     _enable_supabase_rls()
 

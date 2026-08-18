@@ -1011,24 +1011,31 @@ def worker_profile(worker_id):
                          txn_deduction_types=TRANSACTION_DEDUCTION_TYPES)
 
 def generate_worker_id(department):
-    """Generate unique worker ID based on department"""
-    dept_prefix = department[:2].upper()
-    
-    # Get the highest existing ID for this department
-    existing = Worker.query.filter(
-        Worker.worker_id.like(f'{dept_prefix}%')
-    ).order_by(Worker.worker_id.desc()).first()
-    
-    if existing:
+    """Next free employee ID for this department, within this workspace.
+
+    IDs are unique per workspace (see the composite constraint on Worker), so
+    the scan below runs through the tenant filter and two workspaces can both
+    hold a CI001. Malformed legacy IDs are skipped rather than resetting the
+    sequence to 1 and colliding.
+    """
+    dept_prefix = (department or 'GN')[:2].upper()
+    taken = {
+        w.worker_id for w in
+        Worker.query.filter(Worker.worker_id.like(f'{dept_prefix}%')).all()
+    }
+
+    next_num = 1
+    for worker_id in taken:
         try:
-            last_num = int(existing.worker_id[2:])
-            new_num = last_num + 1
-        except:
-            new_num = 1
-    else:
-        new_num = 1
-    
-    return f"{dept_prefix}{new_num:03d}"
+            next_num = max(next_num, int(worker_id[2:]) + 1)
+        except (ValueError, TypeError):
+            continue
+
+    candidate = f"{dept_prefix}{next_num:03d}"
+    while candidate in taken:
+        next_num += 1
+        candidate = f"{dept_prefix}{next_num:03d}"
+    return candidate
 
 def generate_qr_code(worker_id):
     """Generate QR code for worker"""
