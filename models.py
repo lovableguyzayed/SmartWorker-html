@@ -110,10 +110,15 @@ class Site(db.Model):
 
 class Department(db.Model):
     __tablename__ = 'departments'
+    # Unique per workspace, not globally — two companies may both run a
+    # "Civil" department.
+    __table_args__ = (
+        db.UniqueConstraint('account_id', 'name', name='uq_department_account_name'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
     status = db.Column(db.String(20), default='active')  # active, archived
     created_at = db.Column(db.DateTime, default=now_ist)
 
@@ -249,10 +254,16 @@ class Notification(db.Model):
 
 class Worker(db.Model):
     __tablename__ = 'workers'
+    # Employee IDs are generated per workspace (CI001, CI002…), so they can
+    # only be unique within one. A global constraint made the second workspace
+    # to add a worker in a given department fail with an IntegrityError.
+    __table_args__ = (
+        db.UniqueConstraint('account_id', 'worker_id', name='uq_worker_account_worker_id'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
-    worker_id = db.Column(db.String(20), unique=True, nullable=False)
+    worker_id = db.Column(db.String(20), nullable=False)
     full_name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
     email = db.Column(db.String(120), nullable=True)
