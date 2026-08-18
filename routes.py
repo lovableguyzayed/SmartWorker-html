@@ -7,7 +7,7 @@ import random
 import calendar as _cal
 from datetime import datetime, date, timedelta
 from functools import wraps
-from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g, get_flashed_messages
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
@@ -3266,10 +3266,63 @@ def service_worker():
 # QR Scanner & Manual Employee ID attendance
 # ============================================================
 
+def _fmt_clock(value):
+    """12-hour display time without a leading zero (e.g. 8:58 AM)."""
+    return value.strftime('%I:%M %p').lstrip('0') if value else None
+
+
+def _attendance_state(record):
+    """Today's attendance for one worker, as the scanner UI consumes it."""
+    return {
+        'status': record.status if record else None,
+        'check_in': _fmt_clock(record.check_in_time) if record else None,
+        'check_out': _fmt_clock(record.check_out_time) if record else None,
+        'can_check_in': not record or not record.check_in_time,
+        'can_check_out': bool(record and record.check_in_time and not record.check_out_time
+                              and record.status in ('present', 'late')),
+        'shift_open': bool(record and record.check_in_time and not record.check_out_time),
+    }
+
+
+def _scan_stats(on_date):
+    """Live counters for the scanner header, over the workers this user may see.
+
+    'open' is the count of shifts checked in but not yet checked out. Workers
+    with no record at all count as absent, matching the attendance screen.
+    """
+    workers = Worker.query.filter_by(status='active').all()
+    if not current_user.is_admin:
+        workers = [w for w in workers if worker_visible_to_user(w, current_user, on_date=on_date)]
+    worker_ids = [w.id for w in workers]
+
+    records = []
+    if worker_ids:
+        records = AttendanceRecord.query.filter(
+            AttendanceRecord.date == on_date,
+            AttendanceRecord.worker_id.in_(worker_ids),
+        ).all()
+
+    counts = {}
+    open_shifts = 0
+    for record in records:
+        counts[record.status] = counts.get(record.status, 0) + 1
+        if record.check_in_time and not record.check_out_time:
+            open_shifts += 1
+
+    return {
+        'present': counts.get('present', 0),
+        'late': counts.get('late', 0),
+        # Explicitly-absent plus everyone not marked yet.
+        'absent': counts.get('absent', 0) + (len(worker_ids) - len(records)),
+        'open': open_shifts,
+    }
+
+
 @app.route('/scan')
 @login_required
 def scan():
-    return render_template('scan.html', today=today_ist())
+    today = today_ist()
+    return render_template('scan.html', today=today, stats=_scan_stats(today))
 
 @app.route('/api/worker_lookup')
 @login_required
@@ -3315,18 +3368,41 @@ def api_worker_lookup():
             'site': assignment.site.name if assignment and assignment.site else None,
             'project': assignment.project.name if assignment and assignment.project else None,
         },
-        'attendance': {
-            'status': record.status if record else None,
-            'check_in': record.check_in_time.strftime('%H:%M') if record and record.check_in_time else None,
-            'check_out': record.check_out_time.strftime('%H:%M') if record and record.check_out_time else None,
-            'can_check_in': not record or not record.check_in_time,
-            'can_check_out': bool(record and record.check_in_time and not record.check_out_time
-                                  and record.status in ('present', 'late')),
-        },
+        'attendance': _attendance_state(record),
         'closure': {
             'reason': closure.reason,
             'locked': not closure.allow_attendance,
         } if closure else None,
+    })
+
+
+@app.route('/api/mark_attendance', methods=['POST'])
+@login_required
+def api_mark_attendance():
+    """JSON wrapper around mark_attendance for the scanner screen.
+
+    Posting the normal form would navigate, and a screen swap tears down the
+    camera stream (roughly a second of black preview per worker). This reuses
+    the exact same validation/persistence path — it just reports the outcome as
+    JSON, along with refreshed header counts and the worker's new state, so the
+    scanner can update in place and stay live.
+    """
+    mark_attendance()  # validates, persists and flashes; its redirect is unused
+    messages = [{'category': category, 'text': text}
+                for category, text in get_flashed_messages(with_categories=True)]
+    succeeded = not any(m['category'] in ('error', 'restricted') for m in messages)
+
+    today = today_ist()
+    worker_id = parse_int(request.form.get('worker_id'))
+    record = None
+    if worker_id:
+        record = AttendanceRecord.query.filter_by(worker_id=worker_id, date=today).first()
+
+    return jsonify({
+        'success': succeeded,
+        'messages': messages,
+        'stats': _scan_stats(today),
+        'attendance': _attendance_state(record),
     })
 
 # ============================================================
