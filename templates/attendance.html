@@ -119,6 +119,86 @@
 .ep-pill-on.ep-pill-leave   { background: #3b82f6; color: #fff; }
 .ep-locked { font-size: 0.7rem; color: #9ca3af; background: #f3f4f6; padding: 0.35rem 0.6rem; border-radius: 0.6rem; }
 
+/* Day detail panel ------------------------------------------------------ */
+.dv-navbtn {
+    width: 2.75rem; height: 2.75rem;      /* 44px tap target */
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 0.7rem; color: #4b5563; background: #f9fafb;
+}
+.dv-muted { font-size: 0.82rem; color: #9ca3af; }
+.dv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; }
+.dv-date { font-size: 1.05rem; font-weight: 700; color: #111827; line-height: 1.25; }
+.dv-weekday { font-size: 0.8rem; color: #9ca3af; }
+.dv-chip {
+    font-size: 0.62rem; font-weight: 700; padding: 0.2rem 0.5rem;
+    border-radius: 999px; white-space: nowrap;
+}
+.dv-banner {
+    font-size: 0.78rem; line-height: 1.45; border-radius: 0.75rem;
+    padding: 0.6rem 0.75rem; margin-top: 0.7rem;
+}
+.dv-banner-block { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.dv-banner-warn  { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.dv-banner-info  { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+
+.dv-counts { display: flex; gap: 0.35rem; margin-top: 0.85rem; }
+.dv-count {
+    flex: 1; text-align: center; padding: 0.4rem 0.15rem;
+    border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
+}
+.dv-count b { display: block; font-size: 0.95rem; font-variant-numeric: tabular-nums; color: #111827; }
+.dv-count span { font-size: 0.56rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.03em; }
+
+.dv-section-label {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #9ca3af; margin: 1rem 0 0.5rem;
+}
+.dv-row { padding: 0.7rem 0; border-bottom: 1px solid #f1f3f5; }
+.dv-row:last-child { border-bottom: 0; }
+.dv-row-top { display: flex; align-items: flex-start; gap: 0.6rem; }
+.dv-name { font-size: 0.92rem; font-weight: 700; color: #111827; line-height: 1.3;
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv-sub { font-size: 0.74rem; color: #9ca3af; line-height: 1.4; }
+.dv-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
+.dv-pill {
+    position: relative; width: 2.25rem; height: 2.25rem;
+    border: 0; border-radius: 0.65rem;
+    display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
+}
+.dv-pill::after { content: ''; position: absolute; inset: -0.25rem; }  /* 44px hit area */
+.dv-pill:disabled { opacity: 0.4; }
+.dv-pill-present { background: #dcfce7; color: #16a34a; }
+.dv-pill-absent  { background: #fee2e2; color: #dc2626; }
+.dv-pill-late    { background: #fef3c7; color: #b45309; }
+.dv-pill-leave   { background: #dbeafe; color: #2563eb; }
+.dv-pill-on.dv-pill-present { background: #22c55e; color: #fff; }
+.dv-pill-on.dv-pill-absent  { background: #ef4444; color: #fff; }
+.dv-pill-on.dv-pill-late    { background: #eab308; color: #fff; }
+.dv-pill-on.dv-pill-leave   { background: #3b82f6; color: #fff; }
+
+.dv-times { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
+.dv-times input[type="time"] {
+    flex: 1; min-width: 0; min-height: 2.75rem; padding: 0 0.5rem;
+    border: 1px solid #e5e7eb; border-radius: 0.65rem; font-size: 0.8rem; color: #111827;
+}
+.dv-times button {
+    min-height: 2.75rem; padding: 0 0.8rem; border: 0; border-radius: 0.65rem;
+    background: #001F3F; color: #fff; font-size: 0.76rem; font-weight: 700;
+}
+.dv-times button:disabled { opacity: 0.45; }
+
+.dv-actions { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 0.5rem; margin-top: 0.6rem; }
+.dv-actions button {
+    min-height: 2.75rem; padding: 0 0.3rem; border: 1px solid #e5e7eb;
+    border-radius: 0.75rem; background: #fff; color: #374151;
+    font-size: 0.78rem; font-weight: 600;
+}
+.dv-actions button:disabled { opacity: 0.45; }
+.dv-txn { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.45rem 0;
+          border-bottom: 1px solid #f5f6f8; font-size: 0.78rem; }
+.dv-txn:last-child { border-bottom: 0; }
+.dv-empty { font-size: 0.82rem; color: #9ca3af; padding: 0.5rem 0; }
+
 #ep-toasts {
     position: fixed; left: 50%; transform: translateX(-50%);
     bottom: calc(7.5rem + env(safe-area-inset-bottom));
@@ -240,6 +320,30 @@
     <!-- Entry panel: the three most common data-entry jobs on one surface.
          Transaction and Worker open their full existing screens rather than
          reimplementing them in a tab. -->
+    <!-- Month calendar — click any date to open its detail below it -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
+        <div class="flex items-center justify-between mb-2 px-1">
+            <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
+               class="dv-navbtn" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></a>
+            <div class="text-sm font-semibold text-gray-800">{{ selected_date.strftime('%B %Y') }}</div>
+            <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
+               class="dv-navbtn" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+        {% with cal_month_start = month_start,
+                cal_month = selected_date.month, cal_year = selected_date.year,
+                cal_data = calendar_data, cal_closures = closure_days,
+                cal_selected = selected_date, cal_today = today,
+                cal_interactive = true %}
+            {% include '_calendar.html' %}
+        {% endwith %}
+    </section>
+
+    <!-- Day detail — filled from /api/attendance/day/<date> -->
+    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
+             tabindex="-1" aria-live="polite">
+        <div id="day-panel-body" class="p-4"><div class="dv-muted">Loading day…</div></div>
+    </section>
+
     <div class="ep-tabs">
         <span class="ep-tab ep-tab-active">Attendance</span>
         <a href="{{ url_for('transactions') }}" class="ep-tab">Transaction</a>
@@ -569,6 +673,308 @@ async function bulkAction(action, btn) {
     } finally {
         epSetBusy(btn, false);
     }
+}
+
+// ── Day view ────────────────────────────────────────────────────────────
+// The calendar and the roster share one date: ?date=YYYY-MM-DD drives the
+// server render, the prev/next arrows, the date input and the panel, so they
+// can never disagree.
+var DV_SELECTED = "{{ selected_date }}";
+var DV_IS_ADMIN = {{ 'true' if current_user.is_admin else 'false' }};
+var dvDay = null;
+
+function dvEsc(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+}
+
+async function dvLoad(dateStr, opts) {
+    opts = opts || {};
+    DV_SELECTED = dateStr;
+    dvMarkSelectedCell(dateStr);
+    var body = document.getElementById('day-panel-body');
+    if (!body) return;
+    body.innerHTML = '<div class="dv-muted">Loading ' + dvEsc(dateStr) + '…</div>';
+    try {
+        var res = await fetch('/api/attendance/day/' + encodeURIComponent(dateStr),
+                              { credentials: 'same-origin' });
+        var data = await res.json();
+        if (!data.success) { body.innerHTML = '<div class="dv-empty">' + dvEsc(data.message || 'Could not load this day.') + '</div>'; return; }
+        dvRender(data.day);
+        if (opts.scroll) dvScrollIntoView();
+    } catch (err) {
+        body.innerHTML = '<div class="dv-empty">No connection — could not load this day.</div>';
+    }
+}
+
+// Scroll the panel itself, not the window, so this never fights the page.
+function dvScrollIntoView() {
+    var panel = document.getElementById('day-panel');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function dvMarkSelectedCell(dateStr) {
+    document.querySelectorAll('.cal-cell[data-date]').forEach(function (c) {
+        var on = c.dataset.date === dateStr;
+        c.classList.toggle('cal-selected', on);
+        c.setAttribute('aria-selected', on ? 'true' : 'false');
+        c.tabIndex = on ? 0 : -1;   // roving tabindex
+    });
+}
+
+function dvRender(day) {
+    dvDay = day;
+    var editable = day.editable;
+    var h = '';
+
+    h += '<div class="dv-head"><div><div class="dv-date">' + dvEsc(day.date_label) + '</div>' +
+         '<div class="dv-weekday">' + dvEsc(day.weekday) + (day.is_today ? ' · today' : '') + '</div></div>';
+    h += '<button type="button" class="dv-navbtn" aria-label="Close day detail" onclick="dvClose()">' +
+         '<i class="fa-solid fa-xmark"></i></button></div>';
+
+    (day.closures || []).forEach(function (c) {
+        h += '<div class="dv-banner ' + (c.allow_attendance ? 'dv-banner-warn' : 'dv-banner-block') + '">' +
+             '<b>Closure — ' + dvEsc(c.reason) + '</b> (' + dvEsc(c.type) + ', ' + dvEsc(c.scope) + '). ' +
+             (c.allow_attendance ? 'Attendance is still allowed.' : 'Attendance is locked for this date.') +
+             (DV_IS_ADMIN ? ' <button type="button" class="dv-adjust" style="color:#0a7cff;font-weight:600" onclick="dvRemoveClosure(' + c.id + ')">Remove</button>' : '') +
+             '</div>';
+    });
+    if (!editable && day.reason === 'future') {
+        h += '<div class="dv-banner dv-banner-block">' + dvEsc(day.message) + '</div>';
+    }
+    if (day.payroll_note) {
+        h += '<div class="dv-banner dv-banner-warn">' + dvEsc(day.payroll_note) + '</div>';
+    }
+
+    var c = day.counts;
+    h += '<div class="dv-counts">' +
+         '<div class="dv-count"><b>' + c.present + '</b><span>Present</span></div>' +
+         '<div class="dv-count"><b>' + c.late + '</b><span>Late</span></div>' +
+         '<div class="dv-count"><b>' + c.absent + '</b><span>Absent</span></div>' +
+         '<div class="dv-count"><b>' + c.leave + '</b><span>Leave</span></div>' +
+         '<div class="dv-count"><b>' + c.not_marked + '</b><span>Unmarked</span></div></div>';
+
+    // Bulk actions always name the date they apply to.
+    if (editable) {
+        h += '<div class="dv-actions">';
+        if (DV_IS_ADMIN) {
+            h += '<button type="button" onclick="dvBulk(\'present\', this)">All present</button>' +
+                 '<button type="button" onclick="dvBulk(\'absent\', this)">All absent</button>';
+        }
+        h += '<button type="button" onclick="dvBulk(\'close\', this)"' +
+             (DV_IS_ADMIN ? '' : ' style="grid-column: span 3"') + '>Close shifts</button></div>';
+        h += '<div class="dv-muted" style="margin-top:0.45rem">These apply to <b>' +
+             dvEsc(day.date_label) + '</b>.</div>';
+    }
+
+    h += '<div class="dv-section-label">Workers</div>';
+    if (!day.rows.length) {
+        h += '<div class="dv-empty">No workers were on the roll on this date.</div>';
+    }
+    day.rows.forEach(function (r) {
+        var rowLocked = !editable || r.locked;
+        h += '<div class="dv-row"><div class="dv-row-top"><div style="flex:1;min-width:0">' +
+             '<div class="dv-name">' + dvEsc(r.name) + '</div>' +
+             '<div class="dv-sub">' + dvEsc(r.worker_id) + ' · ' + dvEsc(r.department) +
+             (r.where ? ' · ' + dvEsc(r.where) : '') + '</div>' +
+             '<div class="dv-sub">';
+        // Built from explicit fields rather than re-slicing the roster meta
+        // string, so nothing is reported twice.
+        var bits = [];
+        if (!r.status) {
+            bits.push('not marked');
+        } else if (r.check_in) {
+            bits.push(r.check_in + (r.check_out ? ' → ' + r.check_out : '') );
+            if (!r.check_out) bits.push('shift open');
+        } else {
+            bits.push(r.status);
+        }
+        if (r.worked_minutes) bits.push(r.worked_minutes + 'm worked');
+        if (r.overtime_minutes) bits.push('+' + r.overtime_minutes + 'm OT');
+        if (r.late_minutes) bits.push(r.late_minutes + 'm late');
+        h += dvEsc(bits.join(' · '));
+        h += '</div></div><div class="dv-pills">';
+        [['present','fa-check'],['absent','fa-xmark'],['late','fa-clock'],['leave','fa-house']].forEach(function (p) {
+            h += '<button type="button" class="dv-pill dv-pill-' + p[0] + (r.status === p[0] ? ' dv-pill-on' : '') + '"' +
+                 (rowLocked ? ' disabled' : '') +
+                 ' aria-label="Mark ' + dvEsc(r.name) + ' ' + p[0] + '"' +
+                 ' onclick="dvMark(' + r.id + ',\'' + p[0] + '\', this)">' +
+                 '<i class="fa-solid ' + p[1] + '"></i></button>';
+        });
+        h += '</div></div>';
+        if (!rowLocked) {
+            h += '<div class="dv-times">' +
+                 '<input type="time" value="' + dvEsc(r.check_in_value) + '" aria-label="Check in for ' + dvEsc(r.name) + '" id="dv-in-' + r.id + '">' +
+                 '<input type="time" value="' + dvEsc(r.check_out_value) + '" aria-label="Check out for ' + dvEsc(r.name) + '" id="dv-out-' + r.id + '">' +
+                 '<button type="button" onclick="dvSaveTimes(' + r.id + ', this)">Save</button></div>';
+        }
+        h += '</div>';
+    });
+
+    h += '<div class="dv-section-label">Transactions on this date</div>';
+    if (!day.transactions.length) {
+        h += '<div class="dv-empty">Nothing recorded for this date.</div>';
+    } else {
+        day.transactions.forEach(function (t) {
+            h += '<div class="dv-txn"><span>' + dvEsc(t.worker) + ' · ' + dvEsc(t.type) +
+                 (t.status === 'cancelled' ? ' (cancelled)' : '') + '</span>' +
+                 '<b style="color:' + (t.is_earning ? '#16a34a' : '#dc2626') + '">' +
+                 (t.is_earning ? '+' : '−') + '₹' + t.amount.toFixed(2) + '</b></div>';
+        });
+    }
+
+    if (DV_IS_ADMIN && editable) {
+        h += '<div class="dv-actions" style="grid-template-columns:1fr 1fr">' +
+             '<button type="button" onclick="dvAddTxn()">Add transaction</button>' +
+             '<button type="button" onclick="dvAddClosure()">Add closure</button></div>';
+    }
+
+    document.getElementById('day-panel-body').innerHTML = h;
+}
+
+function dvClose() {
+    var body = document.getElementById('day-panel-body');
+    if (body) body.innerHTML = '<div class="dv-muted">Select a date to see its detail.</div>';
+}
+
+function dvApply(data) {
+    if (data.messages && data.messages.length) {
+        data.messages.forEach(function (m) { epToast(m.text, m.category); });
+    }
+    if (data.day) dvRender(data.day);
+    if (data.stats) epApplyStats(data.stats);
+    if (data.rows) epApplyRows(data.rows);
+}
+
+async function dvPost(url, fields, btn) {
+    if (btn) btn.disabled = true;
+    try {
+        var body = new FormData();
+        body.append('csrf_token', EP_CSRF);
+        body.append('date', DV_SELECTED);
+        Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); });
+        var res = await fetch(url, { method: 'POST', body: body, credentials: 'same-origin' });
+        if (!res.ok) { epToast('Could not save (' + res.status + ').', 'error'); return; }
+        dvApply(await res.json());
+    } catch (err) {
+        epToast('No connection — nothing was saved.', 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+function dvMark(workerId, status, btn) {
+    dvPost('/api/mark_attendance',
+           { worker_id: workerId, status: status, marked_via: 'manual' }, btn);
+}
+
+function dvSaveTimes(workerId, btn) {
+    dvPost('/api/attendance/times', {
+        worker_id: workerId,
+        check_in: (document.getElementById('dv-in-' + workerId) || {}).value || '',
+        check_out: (document.getElementById('dv-out-' + workerId) || {}).value || ''
+    }, btn);
+}
+
+function dvBulk(action, btn) {
+    var label = dvDay ? dvDay.date_label : DV_SELECTED;
+    var verb = action === 'close' ? 'Close every open shift on'
+                                  : 'Mark every listed worker ' + action + ' on';
+    // Bulk overwrites existing records — always confirm, naming the date.
+    if (!confirm(verb + ' ' + label + '?')) return;
+    var fields = { action: action };
+    if (action !== 'close') { fields.bulk_action = 'true'; fields.status = action; }
+    dvPost('/api/attendance/bulk', fields, btn);
+}
+
+function dvAddTxn() {
+    if (!dvDay || !dvDay.rows.length) { epToast('No workers available on this date.', 'error'); return; }
+    var names = dvDay.rows.map(function (r, i) { return (i + 1) + '. ' + r.name; }).join('\n');
+    var pick = prompt('Transaction on ' + dvDay.date_label + '\nWorker number:\n' + names);
+    if (!pick) return;
+    var row = dvDay.rows[parseInt(pick, 10) - 1];
+    if (!row) { epToast('That worker number is not in the list.', 'error'); return; }
+    var type = prompt('Type: advance, loan, cash_advance, recovery, deduction,\n' +
+                      'bonus, extra_payment, incentive, refreshment', 'advance');
+    if (!type) return;
+    var amount = prompt('Amount (₹)');
+    if (!amount) return;
+    dvPost('/api/attendance/transaction',
+           { worker_id: row.id, txn_type: type.trim(), amount: amount.trim(),
+             description: 'Added from the day view' }, null);
+}
+
+function dvAddClosure() {
+    var reason = prompt('Closure reason for ' + (dvDay ? dvDay.date_label : DV_SELECTED));
+    if (!reason) return;
+    var allow = confirm('Allow attendance to still be marked on this closure day?\n' +
+                        'OK = allowed, Cancel = locked');
+    dvPost('/api/attendance/closure',
+           { action: 'add', reason: reason, type: 'holiday', allow_attendance: allow ? 'true' : 'false' }, null);
+}
+
+function dvRemoveClosure(id) {
+    if (!confirm('Remove this closure?')) return;
+    dvPost('/api/attendance/closure', { action: 'remove', closure_id: id }, null);
+}
+
+// Selecting a date updates the URL so a refresh or a shared link reopens it.
+function dvSelect(dateStr, opts) {
+    var url = new URL(window.location.href);
+    url.searchParams.set('date', dateStr);
+    history.pushState({ date: dateStr }, '', url);
+    dvLoad(dateStr, opts || { scroll: true });
+}
+
+function dvCellByDate(dateStr) {
+    return document.querySelector('.cal-cell[data-date="' + dateStr + '"]');
+}
+
+function dvMoveFocus(fromCell, days) {
+    var cells = Array.prototype.slice.call(document.querySelectorAll('.cal-cell[data-date]'));
+    var i = cells.indexOf(fromCell);
+    if (i < 0) return;
+    var next = cells[i + days];
+    if (!next) return;               // stays inside the rendered month
+    next.tabIndex = 0;
+    fromCell.tabIndex = -1;
+    next.focus();
+}
+
+function dvBindCalendar() {
+    var grid = document.querySelector('.cal-grid[role="grid"]');
+    if (!grid || grid.dataset.dvBound) return;
+    grid.dataset.dvBound = '1';
+
+    grid.addEventListener('click', function (e) {
+        var cell = e.target.closest('.cal-cell[data-date]');
+        if (cell) dvSelect(cell.dataset.date);
+    });
+    grid.addEventListener('keydown', function (e) {
+        var cell = e.target.closest ? e.target.closest('.cal-cell[data-date]') : null;
+        if (!cell) return;
+        var moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+        if (moves[e.key] !== undefined) { e.preventDefault(); dvMoveFocus(cell, moves[e.key]); }
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dvSelect(cell.dataset.date); }
+        else if (e.key === 'Escape') { e.preventDefault(); dvClose(); }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && document.getElementById('day-panel-body')) dvClose();
+    });
+    window.addEventListener('popstate', function () {
+        var d = new URLSearchParams(window.location.search).get('date') || DV_SELECTED;
+        dvLoad(d, { scroll: false });
+    });
+
+    // ?date= wins on load; otherwise the server-selected date (today by default).
+    var initial = new URLSearchParams(window.location.search).get('date') || DV_SELECTED;
+    dvLoad(initial, { scroll: false });
+}
+dvBindCalendar();
+if (!window.__dvHooked) {
+    window.__dvHooked = true;
+    document.addEventListener('page:load', dvBindCalendar);
 }
 
 function openAdjustModal(recordId, workerName, status, checkIn, checkOut, leaveType) {

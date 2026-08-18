@@ -3,81 +3,8 @@
 {% block title %}{{ worker.full_name }} Attendance - SmartWorker{% endblock %}
 
 {% block head %}
-<style>
-.calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-    background-color: #e5e7eb;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-.calendar-day {
-    background-color: white;
-    padding: 8px;
-    min-height: 40px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    font-size: 0.875rem;
-}
-
-.calendar-day.other-month {
-    background-color: #f9fafb;
-    color: #9ca3af;
-}
-
-.calendar-day.present {
-    background-color: #dcfce7;
-    color: #166534;
-}
-
-.calendar-day.absent {
-    background-color: #fecaca;
-    color: #991b1b;
-}
-
-.calendar-day.late {
-    background-color: #fef3c7;
-    color: #92400e;
-}
-
-.calendar-day.leave {
-    background-color: #dbeafe;
-    color: #1e40af;
-}
-
-.status-indicator {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-}
-
-.status-indicator.present { background-color: #22c55e; }
-.status-indicator.absent { background-color: #ef4444; }
-.status-indicator.late { background-color: #f59e0b; }
-.status-indicator.leave { background-color: #3b82f6; }
-
-.calendar-day.closure-day {
-    box-shadow: inset 0 0 0 2px #f97316;
-}
-.closure-dot {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: #f97316;
-}
-</style>
+{# Calendar styles are shared: see static/css/custom.css and
+   templates/_calendar.html. Nothing page-specific is needed here. #}
 {% endblock %}
 
 {% block content %}
@@ -142,44 +69,13 @@
             </div>
         </div>
         
-        <!-- Calendar -->
-        <div class="calendar-grid">
-            <!-- Header row -->
-            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Sun</div>
-            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Mon</div>
-            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Tue</div>
-            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Wed</div>
-            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Thu</div>
-            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Fri</div>
-            <div class="calendar-day bg-gray-50 font-semibold text-gray-700">Sat</div>
-            
-            <!-- Calendar days -->
-            {% set first_day = start_date.replace(day=1) %}
-            {% set start_calendar = first_day - timedelta(days=first_day.weekday() + 1) %}
-            {% if first_day.weekday() == 6 %}
-                {% set start_calendar = first_day %}
-            {% endif %}
-            
-            {% for i in range(42) %}
-                {% set current_date = start_calendar + timedelta(days=i) %}
-                {% set is_current_month = current_date.month == start_date.month %}
-                {% set attendance = calendar_data.get(current_date.day) if is_current_month else None %}
-                {% set closure = closure_days.get(current_date.day) if is_current_month else None %}
-                
-                <div class="calendar-day {{ 'other-month' if not is_current_month else '' }} 
-                           {{ attendance.status if attendance and is_current_month else '' }}
-                           {{ 'closure-day' if closure else '' }}"
-                     {% if closure %}title="{{ closure.reason }} ({{ closure.type.title() }})"{% endif %}>
-                    <span>{{ current_date.day }}</span>
-                    {% if closure %}
-                        <div class="closure-dot"></div>
-                    {% endif %}
-                    {% if attendance and is_current_month %}
-                        <div class="status-indicator {{ attendance.status }}"></div>
-                    {% endif %}
-                </div>
-            {% endfor %}
-        </div>
+        <!-- Calendar (shared partial — see templates/_calendar.html) -->
+        {% with cal_month_start = start_date.replace(day=1),
+                cal_month = start_date.month, cal_year = start_date.year,
+                cal_data = calendar_data, cal_closures = closure_days,
+                cal_interactive = false %}
+            {% include '_calendar.html' %}
+        {% endwith %}
         
         <!-- Legend -->
         <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-4 text-xs">

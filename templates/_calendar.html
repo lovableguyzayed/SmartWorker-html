@@ -1,0 +1,49 @@
+{#
+  Shared month calendar.
+
+  Previously duplicated in worker_attendance.html and payroll_slip.html with
+  different class names and different first-day arithmetic. One copy now.
+
+  Parameters
+    cal_month, cal_year   required — the month being rendered
+    cal_data              dict keyed by day-of-month -> AttendanceRecord (or None)
+    cal_closures          dict keyed by day-of-month -> ClosureDay (optional)
+    cal_selected          date currently selected, gets the selection ring (optional)
+    cal_interactive       when true the cells are buttons that open the day panel;
+                          false renders inert cells (payslips rasterise to PDF and
+                          must stay static)
+    cal_today             today's date in IST, for the "today" outline (optional)
+#}
+<div class="cal-grid" {% if cal_interactive %}role="grid" aria-label="Attendance calendar"{% endif %}>
+    {% for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+    <div class="cal-cell header" {% if cal_interactive %}role="columnheader"{% endif %}>{{ d }}</div>
+    {% endfor %}
+
+    {# Sunday-first grid: Python weekday() is Mon=0..Sun=6, so the offset back
+       to the preceding Sunday is (weekday + 1) % 7. #}
+    {% set month_start = cal_month_start %}
+    {% set start_cal = month_start - timedelta(days=((month_start.weekday() + 1) % 7)) %}
+
+    {% for i in range(42) %}
+        {% set cur = start_cal + timedelta(days=i) %}
+        {% set in_month = cur.month == cal_month and cur.year == cal_year %}
+        {% set rec = cal_data.get(cur.day) if (in_month and cal_data) else None %}
+        {% set clo = cal_closures.get(cur.day) if (in_month and cal_closures) else None %}
+        {% set is_selected = cal_selected is defined and cal_selected and cur == cal_selected %}
+        {% set is_today = cal_today is defined and cal_today and cur == cal_today %}
+        {% set status = rec.status if rec else '' %}
+        <div class="cal-cell{{ ' other' if not in_month }}{{ ' ' ~ status if status }}{{ ' cal-selected' if is_selected }}{{ ' cal-today' if is_today and not is_selected }}"
+             {% if cal_interactive and in_month %}
+             role="gridcell"
+             tabindex="{{ '0' if is_selected else '-1' }}"
+             data-date="{{ cur.isoformat() }}"
+             aria-selected="{{ 'true' if is_selected else 'false' }}"
+             aria-label="{{ cur.strftime('%d %B %Y') }}, {{ status if status else 'not marked' }}{% if clo %}, closure: {{ clo.reason }}{% endif %}"
+             {% elif cal_interactive %}
+             role="gridcell" aria-hidden="true"
+             {% endif %}>
+            <span>{{ cur.day }}</span>
+            {% if clo %}<span class="cal-closure-dot" title="{{ clo.reason }}"></span>{% endif %}
+        </div>
+    {% endfor %}
+</div>

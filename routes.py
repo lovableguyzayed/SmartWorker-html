@@ -1675,11 +1675,40 @@ def attendance():
     sites = Site.query.filter_by(status='active').order_by(Site.name).all()
     attendance_users = User.query.filter(User.role == 'attendance', User.account_id == current_user.account_id).order_by(User.full_name).all()
 
+    # Month grid for the interactive calendar, keyed by day-of-month like the
+    # other calendar hosts. Records/closures for the *whole* month, not just
+    # the selected day, so the grid is colour-coded before anything is clicked.
+    month_start = selected_date.replace(day=1)
+    month_end = date(selected_date.year, selected_date.month,
+                     _cal.monthrange(selected_date.year, selected_date.month)[1])
+    visible_ids = [w.id for w in _visible_active_workers(selected_date)]
+    month_records = []
+    if visible_ids:
+        month_records = AttendanceRecord.query.filter(
+            AttendanceRecord.date >= month_start,
+            AttendanceRecord.date <= month_end,
+            AttendanceRecord.worker_id.in_(visible_ids),
+        ).all()
+    # A day's colour is its dominant state: any present/late wins over absent.
+    _priority = {'present': 3, 'late': 2, 'leave': 1, 'absent': 0}
+    calendar_data = {}
+    for rec in month_records:
+        best = calendar_data.get(rec.date.day)
+        if not best or _priority.get(rec.status, -1) > _priority.get(best.status, -1):
+            calendar_data[rec.date.day] = rec
+    closure_days = {
+        c.date.day: c for c in ClosureDay.query.filter(
+            ClosureDay.date >= month_start, ClosureDay.date <= month_end).all()
+    }
+
     return render_template('attendance.html',
                          attendance_data=attendance_data,
                          selected_date=selected_date,
                          today=today_ist(),
                          stats=_scan_stats(selected_date),
+                         calendar_data=calendar_data,
+                         closure_days=closure_days,
+                         month_start=month_start,
                          closure=closure,
                          sites=sites,
                          attendance_users=attendance_users,
@@ -1965,6 +1994,12 @@ def mark_attendance():
 
     if request.form.get('status') not in VALID_ATTENDANCE_STATUSES:
         flash('Invalid attendance status.', 'error')
+        return redirect(redirect_target)
+
+    # A date the client believes is "today" is not evidence. Attendance can
+    # never be recorded ahead of the IST calendar day.
+    if attendance_date > today_ist():
+        flash('That date is in the future — attendance cannot be marked yet.', 'error')
         return redirect(redirect_target)
 
     # Authorized attendance users only record check-ins/check-outs; absent and
@@ -3335,10 +3370,9 @@ def _scan_stats(on_date):
     'open' is the count of shifts checked in but not yet checked out. Workers
     with no record at all count as absent, matching the attendance screen.
     """
-    workers = Worker.query.filter_by(status='active').all()
-    if not current_user.is_admin:
-        workers = [w for w in workers if worker_visible_to_user(w, current_user, on_date=on_date)]
-    worker_ids = [w.id for w in workers]
+    # Same worker set as the day panel and bulk actions, so site/project
+    # scoping and the join-date rule apply to the counters as well.
+    worker_ids = [w.id for w in _visible_active_workers(on_date)]
 
     records = []
     if worker_ids:
@@ -3422,8 +3456,20 @@ def api_worker_lookup():
 
 
 def _visible_active_workers(on_date):
+    """Workers this user may act on for this date.
+
+    Single enforcement point for two rules, so every caller (day payload,
+    bulk actions, counters) inherits them:
+      * attendance-role users only see their assigned sites/projects
+      * a worker hired after the date was not employed then, so they are
+        excluded entirely rather than counted as absent
+    """
     workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
-    return [w for w in workers if worker_visible_to_user(w, current_user, on_date=on_date)]
+    return [
+        w for w in workers
+        if worker_visible_to_user(w, current_user, on_date=on_date)
+        and not (w.join_date and w.join_date > on_date)
+    ]
 
 
 def _attendance_rows(on_date):
@@ -3441,6 +3487,338 @@ def _attendance_rows(on_date):
     return rows
 
 
+def parse_iso_date(value):
+    """Server-side date parsing. The client never decides what today is."""
+    try:
+        return datetime.strptime((value or '').strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _date_editability(on_date):
+    """Whether attendance may be written for this date, and why not.
+
+    Returns (editable, reason, message). 'reason' is machine-readable so the
+    panel can style itself; 'message' is what the user reads.
+    """
+    if on_date > today_ist():
+        return False, 'future', 'This date is in the future — attendance cannot be marked yet.'
+    company_lock = ClosureDay.query.filter_by(date=on_date).filter(
+        ClosureDay.scope.in_(('company', '', None))
+    ).filter(ClosureDay.allow_attendance.is_(False)).first()
+    if company_lock:
+        return False, 'closure_locked', f'Attendance is locked on this closure day ({company_lock.reason}).'
+    return True, 'ok', ''
+
+
+def _payroll_lock_note(on_date):
+    """Warn when editing a month whose payroll has already been generated."""
+    saved = PayrollRecord.query.filter_by(month=on_date.month, year=on_date.year).first()
+    if not saved:
+        return None
+    return (f'Payroll for {MONTH_NAMES[on_date.month - 1]} {on_date.year} has already been '
+            f'generated. Re-generate it so this change is reflected in pay.')
+
+
+def _log_attendance_edit(worker, on_date, field, old_value, new_value):
+    """Audit trail for edits to a past date.
+
+    WorkerModification already carries old/new value, effective date and author,
+    so attendance edits live there rather than in a second log table.
+    """
+    if on_date >= today_ist():
+        return
+    db.session.add(WorkerModification(
+        worker_id=worker.id,
+        mod_type='attendance_edit',
+        field_name=field,
+        old_value=str(old_value) if old_value is not None else None,
+        new_value=str(new_value) if new_value is not None else None,
+        description=f'Attendance {field} edited for {on_date.isoformat()}',
+        effective_date=on_date,
+        created_by=current_user.id,
+    ))
+
+
+def _day_payload(on_date):
+    """Everything the day panel renders, for one date.
+
+    Every write endpoint returns this so the panel refreshes from a single
+    response instead of re-fetching.
+    """
+    editable, reason, message = _date_editability(on_date)
+    closures = ClosureDay.query.filter_by(date=on_date).all()
+    workers = _visible_active_workers(on_date)
+    worker_ids = [w.id for w in workers]
+
+    records = {}
+    if worker_ids:
+        records = {
+            r.worker_id: r for r in AttendanceRecord.query.filter(
+                AttendanceRecord.date == on_date,
+                AttendanceRecord.worker_id.in_(worker_ids),
+            ).all()
+        }
+
+    counts = {'present': 0, 'late': 0, 'absent': 0, 'leave': 0, 'not_marked': 0}
+    rows = []
+    for worker in workers:
+        record = records.get(worker.id)
+        worker_closure = closure_for_worker_on_date(worker, on_date, closures)
+        assignment = next(
+            (a for a in worker.assignments if assignment_active_on(a, on_date)), None)
+
+        if record and record.status in counts:
+            counts[record.status] += 1
+        elif not record:
+            counts['not_marked'] += 1
+
+        where = None
+        if assignment:
+            parts = [p for p in (
+                assignment.site.name if assignment.site else None,
+                assignment.project.name if assignment.project else None,
+            ) if p]
+            where = ' · '.join(parts) or None
+
+        rows.append({
+            'id': worker.id,
+            'name': worker.full_name,
+            'worker_id': worker.worker_id,
+            'department': worker.department,
+            'status': record.status if record else None,
+            'check_in': _fmt_clock(record.check_in_time) if record else None,
+            'check_out': _fmt_clock(record.check_out_time) if record else None,
+            # 24h values for the time inputs, which need HH:MM
+            'check_in_value': record.check_in_time.strftime('%H:%M') if record and record.check_in_time else '',
+            'check_out_value': record.check_out_time.strftime('%H:%M') if record and record.check_out_time else '',
+            'shift_open': bool(record and record.check_in_time and not record.check_out_time),
+            'worked_minutes': record.worked_minutes if record else 0,
+            'overtime_minutes': (record.overtime_minutes or 0) if record else 0,
+            'late_minutes': (record.late_minutes or 0) if record else 0,
+            'where': where,
+            'locked': bool(worker_closure and not worker_closure.allow_attendance),
+            'meta': attendance_row_meta(worker, record),
+        })
+
+    transactions = []
+    if worker_ids:
+        for txn in WorkerTransaction.query.filter(
+            WorkerTransaction.date == on_date,
+            WorkerTransaction.worker_id.in_(worker_ids),
+        ).order_by(WorkerTransaction.id).all():
+            transactions.append({
+                'id': txn.id,
+                'worker': txn.worker.full_name if txn.worker else '',
+                'type': TRANSACTION_TYPE_LABELS.get(txn.txn_type, txn.txn_type.replace('_', ' ').title()),
+                'amount': round(txn.amount, 2),
+                'is_earning': txn.is_earning,
+                'status': txn.status,
+                'description': txn.description or '',
+            })
+
+    return {
+        'date': on_date.isoformat(),
+        'date_label': on_date.strftime('%d %B %Y'),
+        'weekday': on_date.strftime('%A'),
+        'is_today': on_date == today_ist(),
+        'editable': editable,
+        'reason': reason,
+        'message': message,
+        'payroll_note': _payroll_lock_note(on_date),
+        'closures': [{
+            'id': c.id,
+            'reason': c.reason,
+            'type': c.type,
+            'scope': c.scope or 'company',
+            'allow_attendance': bool(c.allow_attendance),
+        } for c in closures],
+        'counts': counts,
+        'rows': rows,
+        'transactions': transactions,
+    }
+
+
+@app.route('/api/attendance/day/<day>')
+@login_required
+def api_attendance_day(day):
+    """Everything the day panel shows for one date."""
+    on_date = parse_iso_date(day)
+    if not on_date:
+        return jsonify({'success': False, 'message': 'Invalid date.'}), 400
+    return jsonify({'success': True, 'day': _day_payload(on_date)})
+
+
+@app.route('/api/attendance/times', methods=['POST'])
+@login_required
+def api_attendance_times():
+    """Edit check-in / check-out for one worker on one date.
+
+    Worked, overtime and late minutes are recomputed from the saved times by
+    the same helpers the normal marking path uses.
+    """
+    on_date = parse_iso_date(request.form.get('date'))
+    if not on_date:
+        return jsonify({'success': False, 'message': 'Invalid date.'}), 400
+
+    editable, _reason, message = _date_editability(on_date)
+    if not editable:
+        return jsonify({'success': False, 'messages': [{'category': 'error', 'text': message}],
+                        'day': _day_payload(on_date)}), 200
+
+    worker = tenant_get_or_404(Worker, parse_int(request.form.get('worker_id')))
+    if not worker_visible_to_user(worker, current_user, on_date=on_date):
+        return jsonify({'success': False,
+                        'messages': [{'category': 'restricted',
+                                      'text': 'Please contact the Administrator to make changes.'}],
+                        'day': _day_payload(on_date)}), 200
+    if worker.join_date and worker.join_date > on_date:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error',
+                                      'text': f'{worker.full_name} had not joined on this date.'}],
+                        'day': _day_payload(on_date)}), 200
+
+    worker_closure = closure_for_worker_on_date(worker, on_date)
+    if worker_closure and not worker_closure.allow_attendance:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error',
+                                      'text': f'Attendance is locked for {worker.full_name} on this closure day.'}],
+                        'day': _day_payload(on_date)}), 200
+
+    def _combine(raw):
+        raw = (raw or '').strip()
+        if not raw:
+            return None
+        try:
+            return datetime.combine(on_date, datetime.strptime(raw, '%H:%M').time())
+        except ValueError:
+            return None
+
+    check_in = _combine(request.form.get('check_in'))
+    check_out = _combine(request.form.get('check_out'))
+    if check_out and not check_in:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error',
+                                      'text': 'A check-out needs a check-in time as well.'}],
+                        'day': _day_payload(on_date)}), 200
+    if check_in and check_out and check_out <= check_in:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error',
+                                      'text': 'Check-out must be later than check-in.'}],
+                        'day': _day_payload(on_date)}), 200
+
+    # Upsert: one record per worker per date (models.py uq_attendance_worker_date)
+    record = AttendanceRecord.query.filter_by(worker_id=worker.id, date=on_date).first()
+    if not record:
+        assignment = next(
+            (a for a in worker.assignments if assignment_active_on(a, on_date)), None)
+        record = AttendanceRecord(
+            worker_id=worker.id, date=on_date,
+            status='present' if check_in else 'absent',
+            marked_by=current_user.id, marked_via='manual',
+            site_id=assignment.site_id if assignment else None,
+        )
+        db.session.add(record)
+
+    _log_attendance_edit(worker, on_date, 'check_in',
+                         _fmt_clock(record.check_in_time), _fmt_clock(check_in))
+    _log_attendance_edit(worker, on_date, 'check_out',
+                         _fmt_clock(record.check_out_time), _fmt_clock(check_out))
+
+    record.check_in_time = check_in
+    record.check_out_time = check_out
+    record.marked_by = current_user.id
+    if check_in and record.status not in ('present', 'late'):
+        record.status = 'present'
+    record.late_minutes = calculate_late_minutes_for_record(worker, record) if check_in else 0
+    record.overtime_minutes = (
+        calculate_overtime_minutes_for_record(worker, record) if check_in and check_out else 0)
+    db.session.commit()
+
+    messages = [{'category': 'success', 'text': f'Times updated for {worker.full_name}.'}]
+    note = _payroll_lock_note(on_date)
+    if note:
+        messages.append({'category': 'warning', 'text': note})
+    return jsonify({'success': True, 'messages': messages, 'day': _day_payload(on_date)})
+
+
+@app.route('/api/attendance/transaction', methods=['POST'])
+@admin_required
+def api_attendance_transaction():
+    """Add a transaction dated to the selected day, from the day panel."""
+    on_date = parse_iso_date(request.form.get('date'))
+    if not on_date:
+        return jsonify({'success': False, 'message': 'Invalid date.'}), 400
+
+    worker = tenant_get_or_404(Worker, parse_int(request.form.get('worker_id')))
+    txn_type = request.form.get('txn_type', '')
+    amount = parse_float(request.form.get('amount'), 0.0)
+
+    if txn_type not in TRANSACTION_TYPE_LABELS:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error', 'text': 'Choose a valid transaction type.'}],
+                        'day': _day_payload(on_date)}), 200
+    if amount <= 0:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error', 'text': 'Amount must be greater than zero.'}],
+                        'day': _day_payload(on_date)}), 200
+
+    txn = WorkerTransaction(
+        worker_id=worker.id, txn_type=txn_type, amount=amount, date=on_date,
+        description=request.form.get('description', '').strip() or None,
+        created_by=current_user.id,
+    )
+    db.session.add(txn)
+    db.session.commit()
+
+    messages = [{'category': 'success',
+                 'text': f'{TRANSACTION_TYPE_LABELS[txn_type]} of ₹{amount:.2f} added for {worker.full_name}.'}]
+    note = _payroll_lock_note(on_date)
+    if note:
+        messages.append({'category': 'warning', 'text': note})
+    return jsonify({'success': True, 'messages': messages, 'day': _day_payload(on_date)})
+
+
+@app.route('/api/attendance/closure', methods=['POST'])
+@admin_required
+def api_attendance_closure():
+    """Add or remove a company-scope closure on the selected day."""
+    on_date = parse_iso_date(request.form.get('date'))
+    if not on_date:
+        return jsonify({'success': False, 'message': 'Invalid date.'}), 400
+
+    action = request.form.get('action', 'add')
+    if action == 'remove':
+        closure = tenant_get(ClosureDay, parse_int(request.form.get('closure_id')))
+        if not closure or closure.date != on_date:
+            return jsonify({'success': False,
+                            'messages': [{'category': 'error', 'text': 'Closure not found for this date.'}],
+                            'day': _day_payload(on_date)}), 200
+        db.session.delete(closure)
+        db.session.commit()
+        return jsonify({'success': True,
+                        'messages': [{'category': 'success', 'text': 'Closure removed.'}],
+                        'day': _day_payload(on_date)})
+
+    reason = request.form.get('reason', '').strip()
+    if not reason:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error', 'text': 'A closure needs a reason.'}],
+                        'day': _day_payload(on_date)}), 200
+    closure_type = request.form.get('type', 'holiday').strip().lower()
+    if closure_type not in ('holiday', 'site', 'project', 'emergency', 'maintenance'):
+        closure_type = 'holiday'
+
+    db.session.add(ClosureDay(
+        date=on_date, reason=reason, type=closure_type, scope='company',
+        allow_attendance=request.form.get('allow_attendance') == 'true',
+    ))
+    db.session.commit()
+    return jsonify({'success': True,
+                    'messages': [{'category': 'success', 'text': f'Closure added for {on_date.strftime("%d %b %Y")}.'}],
+                    'day': _day_payload(on_date)})
+
+
 @app.route('/api/attendance/bulk', methods=['POST'])
 @login_required
 def api_attendance_bulk():
@@ -3454,8 +3832,20 @@ def api_attendance_bulk():
     is available to attendance users too, since closing a shift is a check-out
     rather than an administrative reclassification.
     """
-    on_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+    on_date = parse_iso_date(request.form.get('date'))
+    if not on_date:
+        return jsonify({'success': False, 'message': 'Invalid date.'}), 400
     action = request.form.get('action')
+
+    # 'present'/'absent' inherit mark_attendance's guards; 'close' writes
+    # directly, so it needs the same future/closure check applied here.
+    editable, _reason, block_message = _date_editability(on_date)
+    if not editable:
+        return jsonify({'success': False,
+                        'messages': [{'category': 'error', 'text': block_message}],
+                        'stats': _scan_stats(on_date),
+                        'rows': _attendance_rows(on_date),
+                        'day': _day_payload(on_date)}), 200
 
     if action in ('present', 'absent'):
         # Reuse mark_attendance's bulk branch verbatim (it reads request.form,
@@ -3499,6 +3889,8 @@ def api_attendance_bulk():
         'messages': messages,
         'stats': _scan_stats(on_date),
         'rows': _attendance_rows(on_date),
+        # Full day state so the day panel refreshes from this one response.
+        'day': _day_payload(on_date),
     })
 
 
@@ -3542,6 +3934,8 @@ def api_mark_attendance():
             'status': record.status if record else None,
             'meta': attendance_row_meta(worker, record) if worker else None,
         },
+        # Full day state so the day panel refreshes from this one response.
+        'day': _day_payload(on_date),
     })
 
 # ============================================================

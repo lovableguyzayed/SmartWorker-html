@@ -6,31 +6,11 @@
 <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/html2canvas.min.js') }}"></script>
 <style>
-.cal-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-    background: #e5e7eb;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    overflow: hidden;
-}
-.cal-cell {
-    background: #fff;
-    min-height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.72rem;
-    font-weight: 500;
-    position: relative;
-}
-.cal-cell.other { background: #f9fafb; color: #9ca3af; }
-.cal-cell.present { background: #dcfce7; color: #166534; }
-.cal-cell.absent  { background: #fecaca; color: #991b1b; }
-.cal-cell.late    { background: #fef3c7; color: #92400e; }
-.cal-cell.leave   { background: #dbeafe; color: #1e40af; }
-.cal-cell.header  { background: #f3f4f6; color: #374151; font-weight: 700; font-size: 0.65rem; }
+/* Calendar styles now live in static/css/custom.css (shared with the
+   day view and the worker attendance history). The payslip only needs the
+   cells shorter than the interactive default, since it prints. */
+.slip-wrapper .cal-cell { min-height: 30px; font-size: 0.72rem; }
+.slip-wrapper .cal-cell.header { min-height: 22px; font-size: 0.62rem; }
 
 .pay-row { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid #f3f4f6; }
 .pay-row:last-child { border-bottom: none; }
@@ -168,26 +148,13 @@
                 <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     Attendance Calendar — {{ month_name }} {{ year }}
                 </h4>
-                <div class="cal-grid">
-                    {% for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
-                    <div class="cal-cell header">{{ d }}</div>
-                    {% endfor %}
-
-                    {% set first_day = start_date.replace(day=1) %}
-                    {% set dow = first_day.weekday() %}
-                    {% set start_offset = (dow + 1) % 7 %}
-                    {% if start_offset == 0 and dow != 6 %}{% set start_offset = 0 %}{% endif %}
-                    {% set start_cal = first_day - timedelta(days=start_offset) %}
-
-                    {% for i in range(42) %}
-                        {% set cur = start_cal + timedelta(days=i) %}
-                        {% set in_month = cur.month == month and cur.year == year %}
-                        {% set rec = calendar_data.get(cur.day) if in_month else None %}
-                        <div class="cal-cell {{ 'other' if not in_month else (rec.status if rec else '') }}">
-                            {{ cur.day }}
-                        </div>
-                    {% endfor %}
-                </div>
+                {# Inert: a payslip is rasterised into the PDF and must stay static. #}
+                {% with cal_month_start = start_date.replace(day=1),
+                        cal_month = month, cal_year = year,
+                        cal_data = calendar_data, cal_closures = none,
+                        cal_interactive = false %}
+                    {% include '_calendar.html' %}
+                {% endwith %}
                 <!-- Legend -->
                 <div class="flex items-center justify-center space-x-4 mt-2 text-xs text-gray-500">
                     <span><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>Present</span>
