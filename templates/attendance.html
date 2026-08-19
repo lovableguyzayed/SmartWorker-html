@@ -352,7 +352,7 @@
 
     {% if not closure or closure.allow_attendance %}
     <section class="mb-5">
-        <div class="ep-section-label">Mark {{ 'today' if selected_date == today else selected_date.strftime('%d %b') }}</div>
+        <div class="ep-section-label" id="ep-date-label">Mark {{ 'today' if selected_date == today else selected_date.strftime('%d %b') }}</div>
         <div class="ep-field-label">Scan or type employee ID</div>
         <form class="ep-quick" onsubmit="return quickMark(event)">
             <input type="text" id="ep-quick-id" placeholder="CO001" autocomplete="off"
@@ -702,9 +702,26 @@ async function dvLoad(dateStr, opts) {
         var data = await res.json();
         if (!data.success) { body.innerHTML = '<div class="dv-empty">' + dvEsc(data.message || 'Could not load this day.') + '</div>'; return; }
         dvRender(data.day);
+        // The whole screen follows one date. Without this the entry panel keeps
+        // writing to the date the page was rendered with, so selecting a past
+        // day in the calendar and then using its bulk buttons silently marked
+        // today instead.
+        dvSyncEntryPanel(data);
         if (opts.scroll) dvScrollIntoView();
     } catch (err) {
         body.innerHTML = '<div class="dv-empty">No connection — could not load this day.</div>';
+    }
+}
+
+// Re-point the entry panel (its writes, its roster and its label) at the date
+// the calendar is showing, so one screen never holds two different dates.
+function dvSyncEntryPanel(data) {
+    EP_DATE = data.day.date;
+    if (data.stats) epApplyStats(data.stats);
+    if (data.rows) epApplyRows(data.rows);
+    var label = document.getElementById('ep-date-label');
+    if (label) {
+        label.textContent = 'Mark ' + (data.day.is_today ? 'today' : data.day.date_label);
     }
 }
 
@@ -959,22 +976,26 @@ function dvBindCalendar() {
         else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dvSelect(cell.dataset.date); }
         else if (e.key === 'Escape') { e.preventDefault(); dvClose(); }
     });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && document.getElementById('day-panel-body')) dvClose();
-    });
-    window.addEventListener('popstate', function () {
-        var d = new URLSearchParams(window.location.search).get('date') || DV_SELECTED;
-        dvLoad(d, { scroll: false });
-    });
-
     // ?date= wins on load; otherwise the server-selected date (today by default).
     var initial = new URLSearchParams(window.location.search).get('date') || DV_SELECTED;
     dvLoad(initial, { scroll: false });
 }
 dvBindCalendar();
+// document/window listeners are registered exactly once for the lifetime of
+// the SPA document. They cannot live inside dvBindCalendar: its guard is on
+// the grid element, which is replaced on every soft navigation into this
+// screen, so they accumulated one extra copy per visit — a single Back tap
+// was firing two day fetches after three visits.
 if (!window.__dvHooked) {
     window.__dvHooked = true;
     document.addEventListener('page:load', dvBindCalendar);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && document.getElementById('day-panel-body')) dvClose();
+    });
+    // No popstate handler here on purpose. The SPA engine already listens for
+    // it (static/js/app.js:469) and re-navigates, which re-renders this screen
+    // from the server for the popped ?date= and re-runs dvBindCalendar below.
+    // Adding a second handler made one Back tap fetch the day twice.
 }
 
 function openAdjustModal(recordId, workerName, status, checkIn, checkOut, leaveType) {
