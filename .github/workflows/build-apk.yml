@@ -63,8 +63,13 @@ jobs:
           URL="${{ github.event.inputs.app_url }}"
           HOST=$(echo "$URL" | sed -E 's~https?://~~; s~/.*~~')
           echo "Setting app URL to $URL (host $HOST)"
-          sed -i "s~https://smartworker-yourname.replit.app~$URL~g" config.xml www/index.html
-          sed -i "s~smartworker-yourname.replit.app~$HOST~g" config.xml www/index.html
+          # Rewrite whatever URL is currently baked in (the committed default is
+          # the live Render app). Matching only the old replit placeholder meant
+          # this silently did nothing once the default changed. Every reference
+          # in both files is a full https:// URL, so one substitution covers it.
+          sed -i -E "s~https://[a-z0-9.-]+\.(onrender\.com|replit\.app)~$URL~g" config.xml www/index.html
+          echo "--- resulting app URL ---"
+          grep -n "APP_URL\|allow-navigation\|access origin" www/index.html config.xml | head
 
       - name: Add Android platform
         # android@12 (AGP 8.0) has the aapt2 that compiles appcompat cleanly;
