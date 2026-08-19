@@ -6,6 +6,33 @@
 <!-- Additional libraries for ID card generation -->
 <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/html2canvas.min.js') }}"></script>
+<style>
+/* Without this block the browser Print path printed the app chrome, the
+   download buttons and — because #mobile-app carries min-h-screen — a
+   trailing blank sheet. The card is one page; make print say so. */
+@media print {
+    .no-print, header, nav { display: none !important; }
+    body { background: #fff !important; }
+    #mobile-app {
+        max-width: 100% !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+    main { padding: 0 !important; }
+    /* Print the card and nothing else. The action buttons, "ID Card
+       Information" and "QR Usage Statistics" panels are screen affordances;
+       printing them pushed the sheet 41px past the page and produced a
+       second, near-empty page. */
+    main > section ~ section { display: none !important; }
+    #employee-id-card {
+        break-inside: avoid; page-break-inside: avoid;
+        margin: 0 auto;
+        box-shadow: none !important;
+    }
+    @page { margin: 12mm; }
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -32,6 +59,15 @@
 </header>
 
 <main class="p-4 pb-8">
+    <!-- Export progress: the capture takes a moment and the buttons otherwise
+         look unresponsive, which invites repeat clicks. -->
+    <div id="card-busy" class="hidden no-print fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+        <div class="bg-white rounded-2xl px-6 py-5 shadow-xl flex items-center space-x-3">
+            <i class="fa-solid fa-circle-notch fa-spin text-primary text-xl"></i>
+            <span class="text-sm font-medium text-gray-700">Preparing ID card…</span>
+        </div>
+    </div>
+
     <!-- ID Card Preview -->
     <section class="mb-6">
         <div id="employee-id-card" class="bg-gradient-to-br from-primary to-accent text-white rounded-3xl p-6 relative overflow-hidden shadow-2xl border border-white/20">
@@ -234,74 +270,133 @@ function hideDownloadModal() {
     document.getElementById('download-options-modal').classList.add('hidden');
 }
 
-function downloadPNG() {
-    const element = document.getElementById('employee-id-card');
-    html2canvas(element, {
-        backgroundColor: null,
-        scale: 2,
-        useCORS: true
-    }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = '{{ worker.full_name }}_ID_Card.png';
-        link.href = canvas.toDataURL();
-        link.click();
-        hideDownloadModal();
+/* Filenames are built from a JSON-encoded name, so apostrophes and other
+   punctuation survive instead of arriving as HTML entities. */
+var CARD_NAME = {{ worker.full_name | tojson }};
+var CARD_FILE = CARD_NAME.replace(/\s+/g, '_') + '_ID_Card';
+
+/* html2canvas snapshots whatever is painted at the moment it runs. Without
+   waiting for webfonts (Inter is fetched from a CDN, asynchronously) and for
+   the QR/profile images, the capture can come out with fallback metrics or
+   with an image missing entirely. */
+function cardWaitForAssets(root) {
+    var fontsReady = (document.fonts && document.fonts.ready)
+        ? document.fonts.ready.catch(function () {}) : Promise.resolve();
+    var images = Array.prototype.slice.call(root.querySelectorAll('img'));
+    var imagesReady = Promise.all(images.map(function (img) {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        if (typeof img.decode === 'function') return img.decode().catch(function () {});
+        return new Promise(function (resolve) { img.onload = img.onerror = resolve; });
+    }));
+    return Promise.all([fontsReady, imagesReady]);
+}
+
+function cardBusy(on) {
+    var el = document.getElementById('card-busy');
+    if (el) el.classList.toggle('hidden', !on);
+}
+
+/* Single capture path shared by PNG, PDF and Share, so the three exports can
+   never drift apart in options or resolution. */
+function captureCard() {
+    var element = document.getElementById('employee-id-card');
+    cardBusy(true);
+    return cardWaitForAssets(element).then(function () {
+        // backgroundColor stays null: the card paints its own gradient, so
+        // only the area outside its rounded corners is transparent — which is
+        // what makes the PNG usable on any backdrop. scale 3 (was 2) lifts the
+        // placed PDF from roughly 110dpi to about 160dpi.
+        return html2canvas(element, {
+            backgroundColor: null,
+            scale: 3,
+            useCORS: true,
+            logging: false
+        });
     });
+}
+
+function cardExportFailed(err) {
+    cardBusy(false);
+    hideDownloadModal();
+    console.error('ID card export failed', err);
+    alert('Could not generate the ID card image. Please try again.');
+}
+
+function downloadPNG() {
+    captureCard().then(function (canvas) {
+        var link = document.createElement('a');
+        link.download = CARD_FILE + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        cardBusy(false);
+        hideDownloadModal();
+    }).catch(cardExportFailed);
 }
 
 function downloadPDF() {
-    const element = document.getElementById('employee-id-card');
-    html2canvas(element, {
-        backgroundColor: null,
-        scale: 2,
-        useCORS: true
-    }).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-        });
-        
-        let imgWidth = 180;
-        let imgHeight = (canvas.height * imgWidth) / canvas.width;
-        // Fit to page: shrink proportionally if taller than the printable area
-        const maxHeight = 257; // 297mm - 20mm top - 20mm bottom
-        if (imgHeight > maxHeight) {
-            imgWidth = imgWidth * (maxHeight / imgHeight);
-            imgHeight = maxHeight;
-        }
-        const x = (210 - imgWidth) / 2; // Center horizontally
-        const y = 20;
+    captureCard().then(function (canvas) {
+        // Flatten onto white and JPEG-encode for the PDF only. The card sits
+        // on a white page either way, so this is visually identical to the
+        // transparent PNG while taking the file from ~7MB to a fraction of it.
+        // The PNG download keeps its transparency.
+        var flat = document.createElement('canvas');
+        flat.width = canvas.width; flat.height = canvas.height;
+        var fctx = flat.getContext('2d');
+        fctx.fillStyle = '#ffffff';
+        fctx.fillRect(0, 0, flat.width, flat.height);
+        fctx.drawImage(canvas, 0, 0);
+        var imgData = flat.toDataURL('image/jpeg', 0.94);
+        var jsPDF = window.jspdf.jsPDF;
+        var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-        pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
-        pdf.save('{{ worker.full_name }}_ID_Card.pdf');
+        // Fit inside the printable area on BOTH axes, then centre. Driving the
+        // fit from height first stops the card silently shrinking below the
+        // width it was designed for.
+        var maxWidth = 170;              // 210mm - 20mm each side
+        var maxHeight = 257;             // 297mm - 20mm top and bottom
+        var ratio = canvas.height / canvas.width;
+        var imgWidth = maxWidth;
+        var imgHeight = imgWidth * ratio;
+        if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight / ratio;
+        }
+        var x = (210 - imgWidth) / 2;
+        var y = (297 - imgHeight) / 2;   // centre vertically too
+
+        pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
+        pdf.save(CARD_FILE + '.pdf');
+        cardBusy(false);
         hideDownloadModal();
-    });
+    }).catch(cardExportFailed);
 }
 
 function shareIDCard() {
-    if (navigator.share) {
-        const element = document.getElementById('employee-id-card');
-        html2canvas(element, {
-            backgroundColor: null,
-            scale: 2,
-            useCORS: true
-        }).then(canvas => {
-            canvas.toBlob(blob => {
-                const file = new File([blob], '{{ worker.full_name }}_ID_Card.png', { type: 'image/png' });
-                navigator.share({
-                    title: '{{ worker.full_name }} - SmartWorker ID Card',
-                    text: 'Employee ID Card for {{ worker.full_name }}',
-                    files: [file]
-                });
-            });
-        });
-    } else {
-        // Fallback for browsers that don't support Web Share API
+    if (!navigator.share) {
         alert('Sharing not supported on this device. Use download instead.');
+        return;
     }
+    captureCard().then(function (canvas) {
+        return new Promise(function (resolve, reject) {
+            canvas.toBlob(function (blob) {
+                if (!blob) { reject(new Error('toBlob returned null')); return; }
+                resolve(blob);
+            }, 'image/png');
+        });
+    }).then(function (blob) {
+        var file = new File([blob], CARD_FILE + '.png', { type: 'image/png' });
+        cardBusy(false);
+        return navigator.share({
+            title: CARD_NAME + ' - SmartWorker ID Card',
+            text: 'Employee ID Card for ' + CARD_NAME,
+            files: [file]
+        });
+    }).catch(function (err) {
+        cardBusy(false);
+        // A user dismissing the share sheet rejects too — that is not an error.
+        if (err && err.name === 'AbortError') return;
+        cardExportFailed(err);
+    });
 }
 
 function generateNewQR() {

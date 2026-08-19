@@ -12,8 +12,20 @@
 .slip-wrapper .cal-cell { min-height: 30px; font-size: 0.72rem; }
 .slip-wrapper .cal-cell.header { min-height: 22px; font-size: 0.7rem; }
 
-.pay-row { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid #f3f4f6; }
+.pay-row { display: flex; justify-content: space-between; align-items: baseline; padding: 0.45rem 0; border-bottom: 1px solid #f3f4f6; }
 .pay-row:last-child { border-bottom: none; }
+
+/* Currency columns: a real right-aligned column with fixed-width digits, so
+   amounts of differing length stack on a common right edge instead of only
+   happening to line up because they are the last flex item. */
+.slip-wrapper .amount {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+.pay-row > .amount { min-width: 7.5rem; }
 
 @media print {
     .no-print { display: none !important; }
@@ -22,11 +34,39 @@
     .slip-wrapper { box-shadow: none !important; border: none !important; }
     header, nav { display: none !important; }
     @page { margin: 12mm; }
-    .slip-wrapper section { break-inside: avoid; page-break-inside: avoid; }
+    /* Keep each logical block together. These target the real elements — the
+       slip is built from flex/grid divs, it contains no <section> tags. */
+    .slip-wrapper [data-pdf-block],
+    .slip-wrapper [data-pdf-split],
+    .slip-wrapper .pay-row,
+    .slip-wrapper .cal-grid {
+        break-inside: avoid; page-break-inside: avoid;
+    }
+    /* A heading must never be the last thing on a page. */
+    .slip-wrapper h4 { break-after: avoid; page-break-after: avoid; }
+    .slip-wrapper { orphans: 3; widows: 3; }
+    /* Repeated running header for the browser Print path. Chrome does NOT
+       repaint position:fixed elements on later sheets (verified — page 1
+       only), but it does repeat a <thead> when a table spans pages, so the
+       slip is wrapped in a one-cell table carrying the identity strip.
+       The jsPDF path draws its own native header and page numbers instead. */
+    .print-running-header { display: flex !important; }
+}
+.print-frame { width: 100%; border-collapse: collapse; }
+.print-frame > thead > tr > th { padding: 0 0 6px; text-align: left; font-weight: 400; }
+.print-frame > tbody > tr > td { padding: 0; }
+.print-running-header {
+    display: none;
+    justify-content: space-between; align-items: flex-end;
+    font-size: 9pt; color: #111827;
+    border-bottom: 1px solid #d1d5db; padding-bottom: 4px;
 }
 /* Long descriptions/names wrap inside their row instead of overflowing */
 .slip-wrapper, .pay-row { overflow-wrap: anywhere; word-wrap: break-word; }
 .pay-row > :first-child { padding-right: 0.5rem; }
+/* Tailwind's text-xs ships line-height 1rem (1.333). Loosen it on the slip
+   only, so dense label/date/amount lines stay legible when scaled into a PDF. */
+.slip-wrapper .text-xs, .slip-wrapper .text-\[0\.65rem\], .slip-wrapper .text-\[0\.6rem\] { line-height: 1.45; }
 </style>
 {% endblock %}
 
@@ -59,6 +99,27 @@
 
 <main class="p-4 pb-8 space-y-4">
 
+    <!-- Export progress. The capture takes 1-2s; without this the button
+         looks dead and users click it repeatedly. -->
+    <div id="pdf-busy" class="hidden no-print fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+        <div class="bg-white rounded-2xl px-6 py-5 shadow-xl flex items-center space-x-3">
+            <i class="fa-solid fa-circle-notch fa-spin text-primary text-xl"></i>
+            <span class="text-sm font-medium text-gray-700">Building PDF…</span>
+        </div>
+    </div>
+
+    <!-- The slip sits in a one-cell table so its <thead> — the running header,
+         hidden on screen — repeats on every printed sheet. The table is outside
+         #payroll-slip-content so it never appears in the rasterised PDF. -->
+    <table class="print-frame">
+    <thead><tr><th>
+        <div class="print-running-header">
+            <span><strong>{{ worker.full_name }}</strong> · ID {{ worker.worker_id }}</span>
+            <span>Payslip · {{ month_name }} {{ year }}</span>
+        </div>
+    </th></tr></thead>
+    <tbody><tr><td>
+
     <!-- ===== SLIP CARD (captured for PDF) ===== -->
     <div id="payroll-slip-content" class="slip-wrapper bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
 
@@ -70,12 +131,12 @@
                     <img src="{{ company.logo }}" alt="logo" class="w-9 h-9 rounded-lg object-contain bg-white/10 p-0.5 shrink-0">
                     {% endif %}
                     <div class="min-w-0">
-                        <div class="text-lg font-bold tracking-wide truncate">{{ company.name if company else 'SmartWorker' }}</div>
-                        <div class="text-xs opacity-75 truncate">
+                        <div class="text-lg font-bold tracking-wide leading-snug">{{ company.name if company else 'SmartWorker' }}</div>
+                        <div class="text-xs opacity-75">
                             {% if company and company.address %}{{ company.address }}{% else %}Payroll Department{% endif %}
                         </div>
                         {% if company and (company.phone or company.gst_number) %}
-                        <div class="text-[0.6rem] opacity-70 truncate">
+                        <div class="text-[0.6rem] opacity-70">
                             {% if company.phone %}{{ company.phone }}{% endif %}{% if company.gst_number %} · GST {{ company.gst_number }}{% endif %}
                         </div>
                         {% endif %}
@@ -98,7 +159,7 @@
                 </div>
                 {% endif %}
                 <div class="flex-1 min-w-0">
-                    <div class="font-bold text-base truncate">{{ worker.full_name }}</div>
+                    <div class="font-bold text-base leading-snug">{{ worker.full_name }}</div>
                     <div class="text-xs opacity-80">{{ worker.position }} · {{ worker.department }}</div>
                     <div class="text-xs opacity-70 mt-0.5">ID: {{ worker.worker_id }} · {{ worker.pay_type | capitalize }}</div>
                 </div>
@@ -117,7 +178,7 @@
         <div class="p-4 space-y-4">
 
             <!-- Attendance Summary Grid -->
-            <div>
+            <div data-pdf-block>
                 <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Attendance Summary</h4>
                 <div class="grid grid-cols-5 gap-2 text-center">
                     <div class="bg-green-50 rounded-xl py-2 border border-green-100">
@@ -144,7 +205,7 @@
             </div>
 
             <!-- Calendar -->
-            <div>
+            <div data-pdf-block>
                 <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     Attendance Calendar — {{ month_name }} {{ year }}
                 </h4>
@@ -166,61 +227,62 @@
 
             <!-- Pay Breakdown -->
             <div>
+                <div data-pdf-block>
                 <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pay Breakdown</h4>
                 <div class="bg-gray-50 rounded-2xl p-3 space-y-0">
 
                     {% if worker.pay_type == 'daily' %}
                     <div class="pay-row">
-                        <span class="text-sm text-gray-600">Daily Rate</span>
-                        <span class="text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.daily_rate or 0) }} / day</span>
+                        <span class="text-sm text-gray-600">Daily Rate <span class="text-gray-400">/ day</span></span>
+                        <span class="amount text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.daily_rate or 0) }}</span>
                     </div>
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Full Days</span>
-                        <span class="text-sm font-medium text-gray-800">{{ pay_summary.full_day_days }}</span>
+                        <span class="amount text-sm font-medium text-gray-800">{{ pay_summary.full_day_days }}</span>
                     </div>
                     {% if pay_summary.half_day_days > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Half Days</span>
-                        <span class="text-sm font-medium text-orange-600">{{ pay_summary.half_day_days }}</span>
+                        <span class="amount text-sm font-medium text-orange-600">{{ pay_summary.half_day_days }}</span>
                     </div>
                     {% endif %}
                     {% if pay_summary.prorated_days > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Pro-Rata Days</span>
-                        <span class="text-sm font-medium text-indigo-600">{{ pay_summary.prorated_days }}</span>
+                        <span class="amount text-sm font-medium text-indigo-600">{{ pay_summary.prorated_days }}</span>
                     </div>
                     {% endif %}
                     {% if pay_summary.paid_absent_days > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Paid Absent Days</span>
-                        <span class="text-sm font-medium text-blue-600">{{ pay_summary.paid_absent_days }}</span>
+                        <span class="amount text-sm font-medium text-blue-600">{{ pay_summary.paid_absent_days }}</span>
                     </div>
                     {% endif %}
 
                     {% elif worker.pay_type == 'monthly' %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Monthly Salary</span>
-                        <span class="text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.monthly_salary or 0) }}</span>
+                        <span class="amount text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.monthly_salary or 0) }}</span>
                     </div>
                     <div class="pay-row">
-                        <span class="text-sm text-gray-600">Leave Days</span>
-                        <span class="text-sm font-medium text-gray-800">{{ pay_summary.leave_days }} ({{ pay_summary.extra_leave_days }} extra)</span>
+                        <span class="text-sm text-gray-600">Leave Days <span class="text-gray-400">({{ pay_summary.extra_leave_days }} extra)</span></span>
+                        <span class="amount text-sm font-medium text-gray-800">{{ pay_summary.leave_days }}</span>
                     </div>
 
                     {% elif worker.pay_type == 'hourly' %}
                     <div class="pay-row">
-                        <span class="text-sm text-gray-600">Worked Hours</span>
-                        <span class="text-sm font-medium text-gray-800">{{ "%.2f"|format(pay_summary.worked_minutes / 60) }} hrs</span>
+                        <span class="text-sm text-gray-600">Worked Hours <span class="text-gray-400">hrs</span></span>
+                        <span class="amount text-sm font-medium text-gray-800">{{ "%.2f"|format(pay_summary.worked_minutes / 60) }}</span>
                     </div>
                     <div class="pay-row">
-                        <span class="text-sm text-gray-600">Hourly Rate</span>
-                        <span class="text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.hourly_rate or 0) }} / hr</span>
+                        <span class="text-sm text-gray-600">Hourly Rate <span class="text-gray-400">/ hr</span></span>
+                        <span class="amount text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.hourly_rate or 0) }}</span>
                     </div>
 
                     {% elif worker.pay_type == 'project' %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Project Rate</span>
-                        <span class="text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.project_rate or 0) }}</span>
+                        <span class="amount text-sm font-medium text-gray-800">₹{{ "%.2f"|format(worker.project_rate or 0) }}</span>
                     </div>
                     {% endif %}
 
@@ -235,64 +297,65 @@
                             <i class="fa-solid fa-calendar-xmark text-orange-500 mr-1"></i>
                             Closure Day Bonus ({{ pay_summary.closure_day_breakdown | length }} day{% if pay_summary.closure_day_breakdown | length != 1 %}s{% endif %})
                         </span>
-                        <span class="text-sm font-medium text-orange-600">+&#8377;{{ "%.2f"|format(pay_summary.closure_extra_pay) }}</span>
+                        <span class="amount text-sm font-medium text-orange-600">+&#8377;{{ "%.2f"|format(pay_summary.closure_extra_pay) }}</span>
                     </div>
                     {% endif %}
 
                     {% if pay_summary.overtime_pay > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Overtime ({{ pay_summary.overtime_minutes }} min)</span>
-                        <span class="text-sm font-medium text-green-600">+₹{{ "%.2f"|format(pay_summary.overtime_pay) }}</span>
+                        <span class="amount text-sm font-medium text-green-600">+₹{{ "%.2f"|format(pay_summary.overtime_pay) }}</span>
                     </div>
                     {% endif %}
 
                     {% if pay_summary.transaction_earnings > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Bonus / Extra Payments</span>
-                        <span class="text-sm font-medium text-green-600">+₹{{ "%.2f"|format(pay_summary.transaction_earnings) }}</span>
+                        <span class="amount text-sm font-medium text-green-600">+₹{{ "%.2f"|format(pay_summary.transaction_earnings) }}</span>
                     </div>
                     {% endif %}
 
                     {% if pay_summary.leave_deductions > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Leave Deduction{% if pay_summary.extra_leave_days %} ({{ pay_summary.extra_leave_days }} day(s) beyond balance){% endif %}</span>
-                        <span class="text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.leave_deductions) }}</span>
+                        <span class="amount text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.leave_deductions) }}</span>
                     </div>
                     {% endif %}
 
                     {% if pay_summary.late_deductions > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Late Deduction ({{ pay_summary.late_minutes }} min)</span>
-                        <span class="text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.late_deductions) }}</span>
+                        <span class="amount text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.late_deductions) }}</span>
                     </div>
                     {% endif %}
 
                     {% if pay_summary.delay_penalty > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Project Delay Penalty</span>
-                        <span class="text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.delay_penalty) }}</span>
+                        <span class="amount text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.delay_penalty) }}</span>
                     </div>
                     {% endif %}
 
                     {% if pay_summary.transaction_deductions > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Advances / Loans / Recoveries</span>
-                        <span class="text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.transaction_deductions) }}</span>
+                        <span class="amount text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.transaction_deductions) }}</span>
                     </div>
                     {% endif %}
 
                     {% if pay_summary.deductions + pay_summary.transaction_deductions > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">Total Deductions</span>
-                        <span class="text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.deductions + pay_summary.transaction_deductions) }}</span>
+                        <span class="amount text-sm font-medium text-red-600">−₹{{ "%.2f"|format(pay_summary.deductions + pay_summary.transaction_deductions) }}</span>
                     </div>
                     {% endif %}
+                </div>
                 </div>
 
                 <!-- Leave balance summary (salaried) -->
                 {% if pay_summary.leave_balance %}
                 {% set lb = pay_summary.leave_balance %}
-                <div class="mt-3 bg-blue-50 rounded-2xl border border-blue-100 p-3">
+                <div class="mt-3 bg-blue-50 rounded-2xl border border-blue-100 p-3" data-pdf-block>
                     <div class="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-1.5">
                         <i class="fa-solid fa-umbrella-beach mr-1"></i>Leave Balance (since joining)
                     </div>
@@ -307,18 +370,18 @@
 
                 <!-- Transactions in this period -->
                 {% if pay_summary.transactions %}
-                <div class="mt-3 bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
+                <div class="mt-3 bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden" data-pdf-block>
                     <div class="px-3 py-2 bg-gray-100/80 border-b border-gray-200 text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         <i class="fa-solid fa-money-bill-transfer mr-1"></i>Transactions This Month
                     </div>
                     <div class="divide-y divide-gray-100">
                         {% for txn in pay_summary.transactions %}
-                        <div class="flex items-center justify-between px-3 py-2">
+                        <div class="flex items-center justify-between px-3 py-2" data-pdf-split>
                             <div class="min-w-0">
                                 <span class="text-xs font-medium text-gray-700">{{ txn.txn_type.replace('_', ' ')|title }}</span>
                                 <span class="text-[0.65rem] text-gray-400 ml-1">{{ txn.date.strftime('%d %b') }}</span>
                             </div>
-                            <span class="text-xs font-semibold shrink-0 ml-2 {{ 'text-green-600' if txn.is_earning else 'text-red-600' }}">
+                            <span class="amount text-xs font-semibold ml-2 {{ 'text-green-600' if txn.is_earning else 'text-red-600' }}">
                                 {{ '+' if txn.is_earning else '−' }}₹{{ "%.2f"|format(txn.amount) }}
                             </span>
                         </div>
@@ -329,22 +392,22 @@
 
                 <!-- Closure Day Bonus Breakdown -->
                 {% if pay_summary.closure_day_breakdown %}
-                <div class="mt-3 bg-orange-50 rounded-2xl border border-orange-100 overflow-hidden">
+                <div class="mt-3 bg-orange-50 rounded-2xl border border-orange-100 overflow-hidden" data-pdf-block>
                     <div class="flex items-center justify-between px-3 py-2 bg-orange-100/60 border-b border-orange-100">
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-calendar-xmark text-orange-600 text-sm"></i>
                             <span class="text-xs font-semibold text-orange-800 uppercase tracking-wider">Closure Day Bonus Breakdown</span>
                         </div>
-                        <span class="text-xs font-bold text-orange-700">+&#8377;{{ "%.2f"|format(pay_summary.closure_extra_pay) }}</span>
+                        <span class="amount text-xs font-bold text-orange-700">+&#8377;{{ "%.2f"|format(pay_summary.closure_extra_pay) }}</span>
                     </div>
                     <div class="divide-y divide-orange-100">
                         {% for entry in pay_summary.closure_day_breakdown %}
-                        <div class="flex items-center justify-between px-3 py-2">
+                        <div class="flex items-center justify-between px-3 py-2" data-pdf-split>
                             <div class="flex items-center space-x-2 min-w-0">
                                 <span class="text-xs font-semibold text-orange-700 shrink-0">{{ entry.date.strftime('%d %b') }}</span>
-                                <span class="text-xs text-gray-500 truncate">{{ entry.reason }}</span>
+                                <span class="text-xs text-gray-500">{{ entry.reason }}</span>
                             </div>
-                            <span class="text-xs font-semibold text-orange-600 shrink-0 ml-2">+&#8377;{{ "%.2f"|format(entry.amount) }}</span>
+                            <span class="amount text-xs font-semibold text-orange-600 ml-2">+&#8377;{{ "%.2f"|format(entry.amount) }}</span>
                         </div>
                         {% endfor %}
                     </div>
@@ -352,10 +415,10 @@
                 {% endif %}
 
                 <!-- Net Payable box -->
-                <div class="mt-3 bg-gradient-to-r from-primary to-accent rounded-2xl p-4 text-white flex items-center justify-between">
+                <div class="mt-3 bg-gradient-to-r from-primary to-accent rounded-2xl p-4 text-white flex items-center justify-between" data-pdf-block>
                     <div>
                         <div class="text-xs opacity-75 uppercase tracking-wider">Net Payable</div>
-                        <div class="text-2xl font-bold mt-0.5">₹{{ "%.2f"|format(pay_summary.estimated_pay) }}</div>
+                        <div class="text-2xl font-bold mt-0.5 leading-snug">₹{{ "%.2f"|format(pay_summary.estimated_pay) }}</div>
                     </div>
                     {% if payroll_record and payroll_record.status == 'paid' %}
                     <div class="text-right">
@@ -371,12 +434,13 @@
                 </div>
 
                 {% if pay_summary.policy_note %}
-                <p class="text-xs text-gray-400 mt-2 leading-relaxed px-1">{{ pay_summary.policy_note }}</p>
+                <p class="text-xs text-gray-400 mt-2 leading-relaxed px-1" data-pdf-block>{{ pay_summary.policy_note }}</p>
                 {% endif %}
             </div>
 
-            <!-- Signature row -->
-            <div class="grid grid-cols-2 gap-4 pt-2">
+            <!-- Signature row. keep-prev stops the exporter starting a fresh
+                 page here, so signatures never land alone on a trailing sheet. -->
+            <div class="grid grid-cols-2 gap-4 pt-2" data-pdf-block data-pdf-keep-prev>
                 <div class="text-center">
                     <div class="border-t border-gray-300 pt-2 mt-6"></div>
                     <div class="text-xs text-gray-500">Employer Signature</div>
@@ -388,12 +452,14 @@
             </div>
 
             <!-- Footer stamp -->
-            <div class="text-center text-xs text-gray-400 pt-1 border-t border-gray-100">
+            <div class="text-center text-xs text-gray-400 pt-1 border-t border-gray-100" data-pdf-block data-pdf-keep-prev>
                 Generated by {{ company.name if company else 'SmartWorker' }} · {{ date.today().strftime('%d %B %Y') }}
             </div>
         </div>
     </div>
     <!-- ===== END SLIP CARD ===== -->
+    </td></tr></tbody>
+    </table>
 
     <!-- Action buttons (hidden on print) -->
     <div class="grid grid-cols-2 gap-3 no-print">
@@ -421,44 +487,201 @@ function printSlip() {
     window.print();
 }
 
-function downloadPDF() {
-    const btn = document.querySelectorAll('.no-print');
-    btn.forEach(el => el.style.visibility = 'hidden');
+/* ------------------------------------------------------------------ *
+ * PDF export
+ *
+ * The old exporter rasterised the slip into one tall image and sliced it
+ * every 267mm. That cut is content-blind: it landed inside the attendance
+ * calendar and through a transaction row, and it duplicated 30mm at every
+ * break (the cursor advanced by the margin box while jsPDF clipped at the
+ * page edge).
+ *
+ * This version still rasterises — the slip is CSS-heavy and native jsPDF
+ * text would need an embedded font just to draw the rupee sign — but it
+ * cuts only at boundaries the DOM says are safe:
+ *   [data-pdf-block]     an atomic block, never split
+ *   [data-pdf-split]     a finer row, used only when a block alone is
+ *                        taller than a whole page
+ *   [data-pdf-keep-prev] never start a page with this block
+ * Each page then gets a native-text running header and a "Page N of M"
+ * footer, so a detached sheet is still attributable.
+ * ------------------------------------------------------------------ */
+var PDF_GEOM = {
+    pageW: 210, pageH: 297,
+    marginX: 12,
+    contentTop: 24,      // below the running header band
+    contentBottom: 285,  // above the page-number footer
+    /* Capture width drives the effective type size in the PDF: the slip is
+       rendered at this pixel width and then placed 186mm wide, so a narrower
+       capture means larger printed text and more pages. 560px puts the
+       smallest type on the slip at 9.0pt — the legibility floor. Widening to
+       760px would fit the slip on 2 pages but drops that to 6.7pt. */
+    captureWidth: 560
+};
 
-    const element = document.getElementById('payroll-slip-content');
-    html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-    }).then(canvas => {
-        btn.forEach(el => el.style.visibility = '');
-        const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+/* Fonts and images must be settled before html2canvas snapshots the DOM,
+   otherwise the capture uses fallback metrics or draws a blank image. */
+function pdfWaitForAssets(root) {
+    var fontsReady = (document.fonts && document.fonts.ready)
+        ? document.fonts.ready.catch(function () {}) : Promise.resolve();
+    var images = Array.prototype.slice.call(root.querySelectorAll('img'));
+    var imagesReady = Promise.all(images.map(function (img) {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        if (typeof img.decode === 'function') return img.decode().catch(function () {});
+        return new Promise(function (resolve) { img.onload = img.onerror = resolve; });
+    }));
+    return Promise.all([fontsReady, imagesReady]);
+}
 
-        const pageW = 210, pageH = 297, margins = 15;
-        const imgW = pageW - margins * 2;
-        const imgH = (canvas.height * imgW) / canvas.width;
-        const usableH = pageH - margins * 2;
-
-        // Paginate: long slips continue on additional pages instead of
-        // overflowing past the bottom of a single page.
-        let heightLeft = imgH;
-        let position = margins;
-        pdf.addImage(imgData, 'PNG', margins, position, imgW, imgH);
-        heightLeft -= usableH;
-        while (heightLeft > 0) {
-            pdf.addPage();
-            position = margins - (imgH - heightLeft);
-            pdf.addImage(imgData, 'PNG', margins, position, imgW, imgH);
-            heightLeft -= usableH;
-        }
-        pdf.save('{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf');
-    }).catch(() => {
-        btn.forEach(el => el.style.visibility = '');
-        alert('PDF generation failed. Use Print instead.');
+/* Two frames is enough for layout to settle after the width change. */
+function pdfNextFrame() {
+    return new Promise(function (resolve) {
+        requestAnimationFrame(function () { requestAnimationFrame(resolve); });
     });
+}
+
+/* Collect legal cut offsets (in CSS px from the top of the slip). */
+function pdfCutCandidates(root) {
+    var base = root.getBoundingClientRect().top;
+    var coarse = [], fine = [], keepPrevTops = [];
+    root.querySelectorAll('[data-pdf-block]').forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        coarse.push(r.bottom - base);
+        if (el.hasAttribute('data-pdf-keep-prev')) keepPrevTops.push(r.top - base);
+    });
+    root.querySelectorAll('[data-pdf-split]').forEach(function (el) {
+        fine.push(el.getBoundingClientRect().bottom - base);
+    });
+    coarse.sort(function (a, b) { return a - b; });
+    fine.sort(function (a, b) { return a - b; });
+    return { coarse: coarse, fine: fine, keepPrevTops: keepPrevTops };
+}
+
+/* Greedy: take the lowest legal cut that still fits on the page. */
+function pdfPaginate(cand, totalPx, usablePx) {
+    function best(list, cursor, limit) {
+        var pick = null;
+        for (var i = 0; i < list.length; i++) {
+            var v = list[i];
+            if (v <= cursor + 0.5 || v > limit) continue;
+            // Never cut immediately before a keep-prev block — that would
+            // strand the signature row at the top of a page on its own.
+            var blocked = cand.keepPrevTops.some(function (t) {
+                return Math.abs(t - v) < 4;
+            });
+            if (blocked) continue;
+            if (pick === null || v > pick) pick = v;
+        }
+        return pick;
+    }
+    var pages = [], cursor = 0, guard = 0;
+    while (totalPx - cursor > usablePx && guard++ < 100) {
+        var limit = cursor + usablePx;
+        var cut = best(cand.coarse, cursor, limit);
+        if (cut === null) cut = best(cand.fine, cursor, limit);
+        if (cut === null) cut = limit;   // nothing fits: unavoidable hard cut
+        pages.push({ start: cursor, end: cut });
+        cursor = cut;
+    }
+    pages.push({ start: cursor, end: totalPx });
+    return pages;
+}
+
+function pdfDrawChrome(pdf, geom, pageNo, pageCount) {
+    var name = {{ worker.full_name | tojson }};
+    var meta = 'ID ' + {{ worker.worker_id | tojson }} + '  ·  Payslip ' +
+               {{ month_name | tojson }} + ' ' + {{ year | tojson }};
+    pdf.setTextColor(17, 24, 39);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10.5);
+    pdf.text(name, geom.marginX, 14, { maxWidth: geom.pageW - geom.marginX * 2 - 60 });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text(meta, geom.pageW - geom.marginX, 14, { align: 'right' });
+    pdf.setDrawColor(209, 213, 219);
+    pdf.setLineWidth(0.3);
+    pdf.line(geom.marginX, 18, geom.pageW - geom.marginX, 18);
+
+    pdf.setFontSize(8);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text('Page ' + pageNo + ' of ' + pageCount, geom.pageW / 2, 290, { align: 'center' });
+}
+
+function downloadPDF() {
+    // The busy overlay is .no-print too, but must stay visible during capture.
+    var buttons = Array.prototype.slice.call(
+        document.querySelectorAll('.no-print:not(#pdf-busy)'));
+    var slip = document.getElementById('payroll-slip-content');
+    var geom = PDF_GEOM;
+    var prevWidth = slip.style.width;
+    var prevMaxWidth = slip.style.maxWidth;
+    var busy = document.getElementById('pdf-busy');
+
+    function restore() {
+        slip.style.width = prevWidth;
+        slip.style.maxWidth = prevMaxWidth;
+        buttons.forEach(function (el) { el.style.visibility = ''; });
+        if (busy) busy.classList.add('hidden');
+    }
+
+    if (busy) busy.classList.remove('hidden');
+    buttons.forEach(function (el) { el.style.visibility = 'hidden'; });
+
+    pdfWaitForAssets(slip)
+        .then(function () {
+            // Render at page proportions rather than phone width, so the
+            // payslip does not have to be blown up 2x to fill an A4 column.
+            slip.style.width = geom.captureWidth + 'px';
+            slip.style.maxWidth = 'none';
+            return pdfNextFrame();
+        })
+        .then(function () {
+            var widthPx = slip.getBoundingClientRect().width;
+            var totalPx = slip.getBoundingClientRect().height;
+            var cand = pdfCutCandidates(slip);
+            var imgW = geom.pageW - geom.marginX * 2;
+            var pxPerMm = widthPx / imgW;
+            var usablePx = (geom.contentBottom - geom.contentTop) * pxPerMm;
+            var pages = pdfPaginate(cand, totalPx, usablePx);
+
+            return html2canvas(slip, {
+                scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+                windowWidth: geom.captureWidth
+            }).then(function (canvas) {
+                var scale = canvas.width / widthPx;
+                var jsPDF = window.jspdf.jsPDF;
+                var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+                pages.forEach(function (p, i) {
+                    if (i > 0) pdf.addPage();
+                    var sy = Math.round(p.start * scale);
+                    var sh = Math.max(1, Math.round((p.end - p.start) * scale));
+                    var crop = document.createElement('canvas');
+                    crop.width = canvas.width;
+                    crop.height = sh;
+                    var ctx = crop.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, crop.width, crop.height);
+                    ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
+                    // JPEG, not PNG: the slip is full of gradients and
+                    // antialiased text, which PNG stores terribly — the same
+                    // document came to ~20MB lossless versus well under 1MB
+                    // here, at a quality that is indistinguishable in print.
+                    pdf.addImage(crop.toDataURL('image/jpeg', 0.94), 'JPEG',
+                                 geom.marginX, geom.contentTop, imgW, sh / scale / pxPerMm);
+                    pdfDrawChrome(pdf, geom, i + 1, pages.length);
+                });
+
+                restore();
+                pdf.save('{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf');
+            });
+        })
+        .catch(function (err) {
+            restore();
+            console.error('Payslip PDF export failed', err);
+            alert('PDF generation failed. Use Print instead.');
+        });
 }
 </script>
 {% endblock %}
