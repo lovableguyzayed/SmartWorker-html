@@ -3646,7 +3646,15 @@ def api_attendance_day(day):
     on_date = parse_iso_date(day)
     if not on_date:
         return jsonify({'success': False, 'message': 'Invalid date.'}), 400
-    return jsonify({'success': True, 'day': _day_payload(on_date)})
+    # stats/rows travel with the day so selecting a date can re-point the whole
+    # screen — including the entry panel — at it in one request. Without this
+    # the entry panel keeps writing to the date the page was rendered with.
+    return jsonify({
+        'success': True,
+        'day': _day_payload(on_date),
+        'stats': _scan_stats(on_date),
+        'rows': _attendance_rows(on_date),
+    })
 
 
 @app.route('/api/attendance/times', methods=['POST'])
