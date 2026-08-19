@@ -500,3 +500,200 @@ input:checked + .toggle-slider:before {
 /* Body-text floor. Nothing in the UI drops below 11px, so labels stay
    legible on a phone and survive rasterisation into a PDF. */
 .text-floor { font-size: 0.7rem; }
+
+/* The hidden attribute must beat utility display classes. Tailwind's
+   .flex/.grid/.block set `display`, which outranks the UA's [hidden] rule, so
+   a dialog marked hidden but classed `flex` stays on screen as an invisible
+   full-page overlay that swallows every tap beneath it. */
+[hidden] { display: none !important; }
+
+/* ==========================================================================
+   Multi-selection
+   One visual language for selecting many records on any list screen. Lives
+   here rather than in a template because the vendored Tailwind build is
+   purged — anything cross-screen has to be real CSS.
+   ========================================================================== */
+
+/* Rows become checkbox-like only once selection mode is on. */
+[data-ms-scope] > * [data-ms-item],
+[data-ms-scope] [data-ms-item] {
+    position: relative;
+    transition: box-shadow 0.12s, transform 0.12s, background-color 0.12s;
+}
+
+/* Held-but-not-yet-triggered: confirms the gesture is being registered. */
+[data-ms-item].ms-pressing {
+    transform: scale(0.985);
+    background-color: #f8fafc;
+}
+
+/* The tick sits in a gutter on the left and the row's content shifts to make
+   room. Overlaying it on the corner collided with whatever each screen already
+   put there (status badges, amounts), and a gutter cannot collide with
+   anything regardless of the row's internal layout. */
+.ms-on [data-ms-item] { padding-left: 2.4rem; }
+/* Dense rows (attendance roster) already run tight. The per-row status pills
+   are inert during selection anyway, so hide them rather than squeeze the
+   worker's name — the gutter then costs the row nothing. */
+.ms-on .ep-row { padding-left: 2.1rem; }
+.ms-on .ep-row::after { left: 0.45rem; }
+.ms-on .ep-pills, .ms-on .ep-adjust { display: none; }
+.ms-on [data-ms-item]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0.7rem;
+    transform: translateY(-50%);
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 9999px;
+    border: 2px solid #cbd5e1;
+    background: #fff;
+    z-index: 2;
+    pointer-events: none;
+}
+.ms-on [data-ms-item].ms-picked::after {
+    border-color: #007BFF;
+    background: #007BFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E") center/0.95rem no-repeat;
+}
+
+.ms-on [data-ms-item] {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+.ms-on [data-ms-item].ms-picked {
+    box-shadow: 0 0 0 2px #007BFF inset;
+    background-color: #f0f7ff;
+}
+/* Selection mode owns the row, so inner controls must not look tappable. */
+.ms-on [data-ms-item] a,
+.ms-on [data-ms-item] button,
+.ms-on [data-ms-item] input,
+.ms-on [data-ms-item] select {
+    pointer-events: none;
+}
+
+/* ── The action bar ─────────────────────────────────────────────── */
+.ms-bar {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 100%;
+    max-width: 24rem;
+    z-index: 60;
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.12);
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+.ms-bar[hidden] { display: none; }
+.ms-bar.ms-busy { opacity: 0.6; pointer-events: none; }
+
+.ms-bar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+}
+.ms-count {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #111827;
+}
+.ms-bar-links { display: flex; align-items: center; gap: 0.5rem; }
+.ms-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #007BFF;
+    background: none;
+    border: none;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.5rem;
+}
+.ms-link:active { background: #eff6ff; }
+
+.ms-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+    gap: 0.5rem;
+}
+.ms-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    min-height: 3.25rem;
+    padding: 0.5rem 0.4rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: #f9fafb;
+    color: #374151;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+}
+.ms-action i { font-size: 0.95rem; }
+.ms-action:active:not(:disabled) { background: #eef2f7; transform: scale(0.97); }
+.ms-action:disabled { opacity: 0.45; }
+.ms-action-primary { background: #007BFF; border-color: #007BFF; color: #fff; }
+.ms-action-primary:active:not(:disabled) { filter: brightness(0.94); }
+.ms-action-danger { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.ms-action-good { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+.ms-action-warn { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+
+/* The bar sits where the nav does; hide the nav so they never stack. */
+body.ms-active nav.app-bottom-nav { display: none; }
+/* Long-press must not start a text selection anywhere in a selectable list. */
+[data-ms-scope] { -webkit-touch-callout: none; }
+
+/* Picker dialogs must sit above the action bar. Declared here rather than
+   with an arbitrary z-[70] utility, which is not in the purged Tailwind
+   build and silently does nothing. */
+.ms-prompt { z-index: 70; }
+
+/* Selection-mode hint shown once per screen, above the bar. */
+.ms-hint {
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
+/* ── Toasts for bulk results ────────────────────────────────────── */
+#ms-toasts {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0.75rem;
+    z-index: 80;
+    width: 100%;
+    max-width: 22rem;
+    padding: 0 1rem;
+    pointer-events: none;
+}
+.ms-toast {
+    margin-bottom: 0.5rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #fff;
+    background: #334155;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.22);
+    animation: msToastIn 0.18s ease-out;
+}
+.ms-toast-success { background: #16a34a; }
+.ms-toast-error { background: #dc2626; }
+.ms-toast-restricted { background: #b45309; }
+.ms-toast-warning { background: #b45309; }
+.ms-toast-out { opacity: 0; transition: opacity 0.25s; }
+@keyframes msToastIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: none; }
+}

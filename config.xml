@@ -67,9 +67,9 @@
 
     <!-- IMPORTANT: Update these URLs before building for production.
          Replace the placeholder with your actual deployed server domain.
-         Example: https://smartworker-yourname.replit.app
+         Example: https://smartworker.onrender.com
          Keep localhost for development builds. -->
-    <allow-navigation href="https://smartworker-yourname.replit.app/*" />
+    <allow-navigation href="https://smartworker.onrender.com/*" />
     <allow-navigation href="http://localhost/*" />
     <allow-navigation href="http://127.0.0.1/*" />
     <allow-intent href="tel:*" />
@@ -85,9 +85,15 @@
          requires the app to hold the runtime permission. -->
     <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
 
+    <!-- Android WebView has no download manager and ignores <a download>,
+         so every export (PDF, PNG, CSV) is written with the file plugin and
+         handed to a viewer. Without these the export buttons do nothing. -->
+    <plugin name="cordova-plugin-file" spec="^8.0.0" />
+    <plugin name="cordova-plugin-file-opener2" spec="^4.0.0" />
+
     <!-- Restrict network access to only the backend API domain for security.
          Update the origin below to match your deployed server URL. -->
-    <access origin="https://smartworker-yourname.replit.app" />
+    <access origin="https://smartworker.onrender.com" />
     <!-- Supabase Storage serves worker photos and the company logo -->
     <access origin="https://*.supabase.co" />
     <access origin="http://localhost" />

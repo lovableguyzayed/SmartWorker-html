@@ -4,7 +4,13 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn main:app --bind 0.0.0.0:$PORT
+    # 2 workers so one slow request (a CSV export, a cold Supabase call)
+    # cannot block every other user, which the single default worker did.
+    # 60s timeout: the default 30s can kill a large export or the first
+    # Supabase Storage bucket call. 2 threads each keeps memory within the
+    # free plan's 512MB.
+    startCommand: gunicorn main:app --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 60 --graceful-timeout 30 --access-logfile - --error-logfile -
+    healthCheckPath: /healthz
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION

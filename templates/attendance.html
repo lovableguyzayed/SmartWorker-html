@@ -382,10 +382,13 @@
 
     <!-- Attendance List -->
     {% if attendance_data %}
-    <div class="bg-white rounded-3xl shadow-lg border border-gray-100 px-3">
+    <div class="bg-white rounded-3xl shadow-lg border border-gray-100 px-3"
+         data-ms-scope="attendance" data-ms-noun="worker" data-ms-plural="workers">
         {% for data in attendance_data %}
         {% set row_locked = data.closure and not data.closure.allow_attendance %}
-        <div class="ep-row" data-worker="{{ data.worker.id }}">
+        <div class="ep-row" data-worker="{{ data.worker.id }}"
+             {% if not row_locked %}data-ms-item="{{ data.worker.id }}"
+             data-ms-label="{{ data.worker.full_name }}"{% endif %}>
             <div class="ep-row-main">
                 <a href="{{ url_for('worker_profile', worker_id=data.worker.id) }}" class="ep-name">{{ data.worker.full_name }}</a>
                 <!-- One combined status line, built server-side so in-place
@@ -438,6 +441,28 @@
         </div>
         {% endfor %}
     </div>
+    <p class="ms-hint">Press and hold a worker to mark several at once.</p>
+
+    {# Attendance users may record attendance and close shifts; reclassifying
+       someone as absent or on leave is an administrative decision, so those
+       actions are admin-only here and re-checked in bulk.py. #}
+    {% with sel_scope = 'attendance',
+            sel_endpoint = url_for('bulk_action', scope='attendance'),
+            sel_params = {'date': selected_date.isoformat()},
+            sel_actions = (
+                [{'id': 'present', 'label': 'Present', 'icon': 'fa-check', 'style': 'good'},
+                 {'id': 'late',    'label': 'Late',    'icon': 'fa-clock', 'style': 'warn'}]
+                + ([{'id': 'absent',   'label': 'Absent',   'icon': 'fa-xmark', 'style': 'danger',
+                     'confirm': 'Mark %n %s absent for this date?'},
+                    {'id': 'half_day', 'label': 'Half Day', 'icon': 'fa-adjust'},
+                    {'id': 'leave',    'label': 'Leave',    'icon': 'fa-house',
+                     'confirm': 'Mark %n %s on leave for this date?'}]
+                   if current_user.is_admin else [])
+                + [{'id': 'close', 'label': 'Check Out', 'icon': 'fa-right-from-bracket',
+                    'style': 'primary'}]
+            ) %}
+        {% include '_selection_bar.html' %}
+    {% endwith %}
     {% else %}
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

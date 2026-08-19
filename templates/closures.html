@@ -107,9 +107,10 @@
         </div>
 
         {% if closures %}
-        <div class="space-y-3">
+        <div class="space-y-3" data-ms-scope="closures" data-ms-noun="closure day" data-ms-plural="closure days">
             {% for closure in closures %}
-            <div class="flex items-center justify-between p-4 rounded-2xl border {{ 'bg-red-50 border-red-100' if not closure.allow_attendance else 'bg-green-50 border-green-100' }}">
+            <div class="flex items-center justify-between p-4 rounded-2xl border {{ 'bg-red-50 border-red-100' if not closure.allow_attendance else 'bg-green-50 border-green-100' }}"
+                 data-ms-item="{{ closure.id }}" data-ms-label="{{ closure.reason }}">
                 <div class="flex-1">
                     <div class="flex items-center space-x-2 mb-1">
                         <div class="text-sm font-semibold {{ 'text-red-800' if not closure.allow_attendance else 'text-green-800' }}">
@@ -146,6 +147,19 @@
             </div>
             {% endfor %}
         </div>
+        <p class="ms-hint">Press and hold a closure day to select several at once.</p>
+
+        {% with sel_scope = 'closures',
+                sel_endpoint = url_for('bulk_action', scope='closures'),
+                sel_actions = [
+                    {'id': 'unlock', 'label': 'Allow Attendance', 'icon': 'fa-unlock', 'style': 'good'},
+                    {'id': 'lock',   'label': 'Lock Attendance',  'icon': 'fa-lock',   'style': 'warn',
+                     'confirm': 'Lock attendance on %n %s? Nobody can be marked on those dates.'},
+                    {'id': 'delete', 'label': 'Delete',           'icon': 'fa-trash',  'style': 'danger',
+                     'confirm': 'Delete %n %s?'},
+                ] %}
+            {% include '_selection_bar.html' %}
+        {% endwith %}
         {% else %}
         <div class="text-center text-gray-500 py-6">
             No closure days configured yet.

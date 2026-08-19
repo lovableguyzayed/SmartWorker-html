@@ -1,6 +1,7 @@
 import os
 from app import app
 import routes  # noqa: F401
+import bulk  # noqa: F401  — registers /api/bulk/<scope> for multi-selection
 
 if __name__ == "__main__":
     debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"

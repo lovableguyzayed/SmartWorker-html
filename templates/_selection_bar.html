@@ -1,0 +1,60 @@
+{#
+  Reusable multi-selection action bar.
+
+  Screens include it once per selectable list and pass the actions that make
+  sense for that list — nothing here is screen-specific.
+
+      {% with sel_scope   = 'workers',
+              sel_endpoint = url_for('bulk_action', scope='workers'),
+              sel_actions = [
+                  {'id': 'activate',   'label': 'Activate',   'icon': 'fa-play',  'style': 'good'},
+                  {'id': 'deactivate', 'label': 'Deactivate', 'icon': 'fa-pause', 'style': 'warn',
+                   'confirm': 'Deactivate %n %s?'},
+              ] %}
+          {% include '_selection_bar.html' %}
+      {% endwith %}
+
+  Recognised keys on each action:
+      id      -> posted as `action`
+      label   -> button text
+      icon    -> Font Awesome class
+      style   -> primary | good | warn | danger  (omit for neutral)
+      confirm -> confirmation text; %n = count, %s = noun. Omit for no prompt.
+      max     -> disable the button when more than this many are selected
+      prompt  -> CSS selector of a picker dialog to open before running; every
+                 [data-ms-field] inside it is posted as an extra param
+      params  -> dict of extra fields posted with this action only
+  Optional `sel_params`: dict of fields posted with every action from this bar
+  (the attendance date, the payroll period, …).
+#}
+<div class="ms-bar" hidden
+     data-ms-bar="{{ sel_scope }}"
+     data-ms-endpoint="{{ sel_endpoint }}"
+     {%- for key, value in (sel_params or {}).items() %}
+     data-ms-param-{{ key }}="{{ value }}"
+     {%- endfor %}>
+    <div class="ms-bar-top">
+        <span class="ms-count" data-ms-count>0 selected</span>
+        <div class="ms-bar-links">
+            <button type="button" class="ms-link" data-ms-selectall>Select all</button>
+            <button type="button" class="ms-link" data-ms-cancel>Cancel</button>
+        </div>
+    </div>
+    <div class="ms-actions">
+        {% for a in sel_actions %}
+        <button type="button"
+                class="ms-action{% if a.style %} ms-action-{{ a.style }}{% endif %}"
+                data-ms-action="{{ a.id }}"
+                {% if a.confirm %}data-ms-confirm="{{ a.confirm }}"{% endif %}
+                {% if a.max %}data-ms-max="{{ a.max }}"{% endif %}
+                {% if a.prompt %}data-ms-prompt="{{ a.prompt }}"{% endif %}
+                {%- for key, value in (a.params or {}).items() %}
+                data-ms-param-{{ key }}="{{ value }}"
+                {%- endfor %}
+                disabled>
+            <i class="fa-solid {{ a.icon }}"></i>
+            <span>{{ a.label }}</span>
+        </button>
+        {% endfor %}
+    </div>
+</div>

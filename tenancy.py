@@ -31,25 +31,55 @@ _tenant_models = []
 _EXCLUDE_TABLES = {'accounts', 'users'}
 
 
+# Guard flag on ``g`` marking that we are part-way through resolving the
+# current user. See current_account_id() for why it is needed.
+_RESOLVING = '_tenant_account_resolving'
+
+
 def current_account_id():
     """The account id the current request is allowed to touch, or None when
-    there is no request (startup/CLI) so bootstrap code keeps full access."""
+    there is no request (startup/CLI) so bootstrap code keeps full access.
+
+    Must stay cheap: the ORM hook below calls this on *every* SELECT.
+    """
     if not has_request_context():
         return None
     acc = g.get('account_id', 'unset')
     if acc != 'unset':
         return acc
-    # Not yet set on g but a user is logged in: derive and fail safe.
+
+    # Reaching current_user here runs Flask-Login's user_loader, which issues
+    # a SELECT — and that SELECT re-enters this function through the ORM hook,
+    # which reads current_user again. Each query therefore spawned another user
+    # lookup: measured at 57-61 redundant SELECTs per screen, roughly 90% of
+    # all database traffic. Harmless on local SQLite (~2ms); on Supabase every
+    # one is a network round trip.
+    #
+    # The guard breaks that loop. While resolving we answer -1, which matches
+    # no tenant row, so the fallback fails closed rather than unfiltered.
+    if g.get(_RESOLVING):
+        return -1
+    setattr(g, _RESOLVING, True)
     try:
         if current_user.is_authenticated:
             return current_user.account_id or -1
     except Exception:
         pass
+    finally:
+        setattr(g, _RESOLVING, False)
     return None
 
 
 def set_request_account():
-    """Call from a before_request hook: pin the account for this request."""
+    """Call from a before_request hook: pin the account for this request.
+
+    Pinning a provisional value *before* touching current_user is the point:
+    reading it triggers the user_loader query, which trips the tenant filter
+    while g.account_id does not yet exist. -1 is the fail-closed choice — the
+    only query in that window is the user lookup itself, and ``users`` is
+    never tenant-filtered.
+    """
+    g.account_id = -1
     try:
         if current_user.is_authenticated:
             g.account_id = current_user.account_id or -1

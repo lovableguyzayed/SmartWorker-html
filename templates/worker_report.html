@@ -9,9 +9,27 @@
     body, #mobile-app { background: white !important; max-width: 100% !important; }
     .report-page { box-shadow: none !important; border: none !important; margin: 0 !important; }
     @page { margin: 12mm; }
-    /* Keep logical blocks together across page breaks */
-    .report-page section { break-inside: avoid; page-break-inside: avoid; }
+    /* Keep logical blocks together across page breaks. The report is built
+       from divs — it contains no <section> tags — so target those. */
+    .report-body > div { break-inside: avoid; page-break-inside: avoid; }
     .report-table tr { break-inside: avoid; page-break-inside: avoid; }
+    /* A section title must never be the last thing on a page. */
+    .report-section-title { break-after: avoid; page-break-after: avoid; }
+    .report-page { orphans: 3; widows: 3; }
+    /* Repeated running header. Chrome does NOT repaint position:fixed
+       elements on later sheets (verified — they appear on page 1 only), but
+       it does repeat a <thead> when a table spans pages. So the whole report
+       lives in a one-cell table whose header carries the identity strip. */
+    .print-running-header { display: flex !important; }
+}
+.print-frame { width: 100%; border-collapse: collapse; }
+.print-frame > thead > tr > th { padding: 0 0 6px; text-align: left; font-weight: 400; }
+.print-frame > tbody > tr > .report-body { padding: 0; }
+.print-running-header {
+    display: none;
+    justify-content: space-between; align-items: flex-end;
+    font-size: 9pt; color: #111827;
+    border-bottom: 1px solid #d1d5db; padding-bottom: 4px;
 }
 .report-section-title {
     font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
@@ -24,6 +42,14 @@
 .report-table th { background: #f1f5f9; color: #334155; text-align: left; padding: 6px 8px; font-weight: 600; }
 .report-table td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b; vertical-align: top; }
 .report-table th, .report-table td { word-wrap: break-word; overflow-wrap: anywhere; }
+/* Numeric columns: right-aligned on a real common edge with fixed-width
+   digits, so amounts of differing length stack instead of drifting. Applied
+   to the header too, so the label sits over its own column. */
+.report-table th.num, .report-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
 .report-page { overflow-wrap: anywhere; }
 </style>
 {% endblock %}
@@ -47,6 +73,18 @@
 </div>
 
 <div class="report-page bg-white mx-4 mb-8 rounded-3xl shadow-lg border border-gray-100 p-6">
+<table class="print-frame">
+    <thead>
+        <tr><th>
+            <!-- Hidden on screen; a repeating <thead> is the one mechanism
+                 Chrome reliably paints on every printed sheet. -->
+            <div class="print-running-header">
+                <span><strong>{{ worker.full_name }}</strong> · ID {{ worker.worker_id }}</span>
+                <span>Profile Report</span>
+            </div>
+        </th></tr>
+    </thead>
+    <tbody><tr><td class="report-body">
     <!-- Company letterhead -->
     <div class="flex items-center justify-between border-b-4 border-primary pb-4 mb-5">
         <div class="flex items-center gap-3">
@@ -198,17 +236,17 @@
         <div class="report-section-title">Attendance &amp; Pay — Last 6 Months</div>
         {% if monthly_history %}
         <table class="report-table">
-            <thead><tr><th>Month</th><th>P</th><th>L</th><th>A</th><th>Lv</th><th>OT (min)</th><th>Net Pay</th></tr></thead>
+            <thead><tr><th>Month</th><th class="num">P</th><th class="num">L</th><th class="num">A</th><th class="num">Lv</th><th class="num">OT (min)</th><th class="num">Net Pay</th></tr></thead>
             <tbody>
                 {% for row in monthly_history %}
                 <tr>
                     <td>{{ row.label }}</td>
-                    <td>{{ row.att.present_days }}</td>
-                    <td>{{ row.att.late_days }}</td>
-                    <td>{{ row.att.absent_days }}</td>
-                    <td>{{ row.att.leave_days }}</td>
-                    <td>{{ row.pay.overtime_minutes }}</td>
-                    <td class="font-semibold">₹{{ "%.2f"|format(row.pay.estimated_pay) }}</td>
+                    <td class="num">{{ row.att.present_days }}</td>
+                    <td class="num">{{ row.att.late_days }}</td>
+                    <td class="num">{{ row.att.absent_days }}</td>
+                    <td class="num">{{ row.att.leave_days }}</td>
+                    <td class="num">{{ row.pay.overtime_minutes }}</td>
+                    <td class="num font-semibold">₹{{ "%.2f"|format(row.pay.estimated_pay) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -224,15 +262,15 @@
     <div class="mb-6">
         <div class="report-section-title">Saved Payroll Records</div>
         <table class="report-table">
-            <thead><tr><th>Period</th><th>Days</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Status</th></tr></thead>
+            <thead><tr><th>Period</th><th class="num">Days</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Net</th><th>Status</th></tr></thead>
             <tbody>
                 {% for p in payroll_history %}
                 <tr>
                     <td>{{ month_names[p.month - 1][:3] }} {{ p.year }}</td>
-                    <td>{{ p.present_days }}/{{ p.total_days }}</td>
-                    <td>₹{{ "%.2f"|format(p.gross_pay) }}</td>
-                    <td>₹{{ "%.2f"|format(p.deductions) }}</td>
-                    <td class="font-semibold">₹{{ "%.2f"|format(p.net_pay) }}</td>
+                    <td class="num">{{ p.present_days }}/{{ p.total_days }}</td>
+                    <td class="num">₹{{ "%.2f"|format(p.gross_pay) }}</td>
+                    <td class="num">₹{{ "%.2f"|format(p.deductions) }}</td>
+                    <td class="num font-semibold">₹{{ "%.2f"|format(p.net_pay) }}</td>
                     <td class="capitalize">{{ p.status }}</td>
                 </tr>
                 {% endfor %}
@@ -246,14 +284,14 @@
         <div class="report-section-title">Transaction History</div>
         {% if all_transactions %}
         <table class="report-table">
-            <thead><tr><th>Date</th><th>Type</th><th>Notes</th><th style="text-align:right">Amount</th></tr></thead>
+            <thead><tr><th>Date</th><th>Type</th><th>Notes</th><th class="num">Amount</th></tr></thead>
             <tbody>
                 {% for t in all_transactions %}
                 <tr class="{{ 'line-through opacity-50' if t.status == 'cancelled' else '' }}">
                     <td>{{ t.date.strftime('%d %b %y') }}</td>
                     <td>{{ type_labels.get(t.txn_type, t.txn_type) }}</td>
                     <td>{{ t.description or '—' }}</td>
-                    <td style="text-align:right" class="font-semibold {{ 'text-green-600' if t.is_earning else 'text-red-600' }}">
+                    <td class="num font-semibold {{ 'text-green-600' if t.is_earning else 'text-red-600' }}">
                         {{ '+' if t.is_earning else '−' }}₹{{ "%.2f"|format(t.amount) }}
                     </td>
                 </tr>
@@ -270,5 +308,7 @@
         <span>Generated by {{ company.name if company else 'SmartWorker' }} — Worker Management System</span>
         <span>{{ today.strftime('%d %b %Y') }}</span>
     </div>
+    </td></tr></tbody>
+</table>
 </div>
 {% endblock %}

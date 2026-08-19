@@ -466,7 +466,15 @@ const NativeShell = {
 
         document.addEventListener('click', (e) => this.onClick(e));
         document.addEventListener('submit', (e) => this.onSubmit(e));
-        window.addEventListener('popstate', () => this.visit(location.href, { push: false }));
+        window.addEventListener('popstate', () => {
+            // Back while multi-selection is active means "leave selection
+            // mode", not "leave the screen" — the same convention Android
+            // list apps use. MultiSelect pushed a history entry when it
+            // opened; it consumes this pop itself, so skip navigating.
+            var ms = window.MultiSelect;
+            if (ms && (ms.scope || ms.swallowPop)) { ms.swallowPop = false; return; }
+            this.visit(location.href, { push: false });
+        });
         if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
         // Touch-warm prefetch: pages enter the SW cache before the tap lands
@@ -635,6 +643,54 @@ const NativeShell = {
         clearTimeout(this.skeletonTimer);
         const el = document.getElementById('skeleton-overlay');
         if (el) el.remove();
+    },
+
+    // Android hardware Back. Cordova's default is to exit the app the moment
+    // there is nothing left in history, so one stray tap on the dashboard
+    // closes SmartWorker with no warning and no chance to undo. Give the user
+    // the usual "press again to exit" grace period instead, and let selection
+    // mode and open dialogs consume the press first.
+    initAndroidBack() {
+        if (this._backHooked) return;
+        this._backHooked = true;
+        let armed = 0;
+        document.addEventListener('backbutton', (e) => {
+            e.preventDefault();
+
+            // 1. Selection mode owns Back before anything else.
+            const ms = window.MultiSelect;
+            if (ms && ms.scope) { ms.exit(true); return; }
+
+            // 2. Any visible dialog closes first — closed the same way the
+            //    app itself closes it, so it can be reopened afterwards.
+            //    Multi-select prompts toggle both the .hidden class and the
+            //    attribute; ordinary modals toggle only the class, and setting
+            //    the attribute on those would wedge them shut for good.
+            const shown = (el) => !!el && el.getBoundingClientRect().width > 0;
+
+            const prompt = document.querySelector('.ms-prompt:not(.hidden)');
+            if (shown(prompt)) {
+                if (ms && ms.pending) ms.closePrompt();
+                else { prompt.classList.add('hidden'); prompt.hidden = true; }
+                return;
+            }
+
+            const modal = document.querySelector('[id$="-modal"]:not(.hidden)');
+            if (shown(modal)) { modal.classList.add('hidden'); return; }
+
+            // 3. Somewhere to go back to — go there.
+            if (history.length > 1) { history.back(); return; }
+
+            // 4. At the root: confirm before leaving.
+            if (Date.now() - armed < 2000) {
+                if (navigator.app && navigator.app.exitApp) navigator.app.exitApp();
+                return;
+            }
+            armed = Date.now();
+            if (window.MultiSelect && typeof window.MultiSelect.toast === 'function') {
+                window.MultiSelect.toast('Press back again to exit', 'info');
+            }
+        }, false);
     }
 };
 
@@ -642,6 +698,7 @@ const NativeShell = {
 document.addEventListener('DOMContentLoaded', () => {
     SmartWorker.init();
     NativeShell.init();
+    NativeShell.initAndroidBack();
 });
 
 // Expose SmartWorker globally for use in templates
@@ -666,17 +723,11 @@ window.togglePassword = function(fieldId) {
     }
 };
 
-// Export data function
-window.exportData = function() {
-    if (confirm('Export all worker and attendance data?')) {
-        const link = document.createElement('a');
-        link.href = '/export_data';
-        link.download = `smartworker_data_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-};
+// (The old window.exportData lived here. It shadowed profile.html's own
+//  exportData() — this file loads last — so the Export button always ran the
+//  <a download> version, which does nothing inside the Android WebView and
+//  nothing at all once confirm() is dismissed. profile.html owns it now and
+//  routes it through SmartWorkerSave.)
 
 // Print function
 window.printElement = function(elementId) {

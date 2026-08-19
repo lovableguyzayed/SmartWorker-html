@@ -25,9 +25,9 @@
          block rendering or delay the window load event at app startup. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&display=swap"
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
           media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;500;600;700;800;900&display=swap"></noscript>
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"></noscript>
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
@@ -271,6 +271,12 @@
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
+    {# Delegated from document, so it keeps working after every SPA swap and
+       needs no per-screen initialisation. #}
+    <script src="{{ url_for('static', filename='js/multiselect.js') }}"></script>
+    {# Android's WebView has no download manager; this routes every export
+       through the Cordova file plugins when running inside the APK. #}
+    <script src="{{ url_for('static', filename='js/filesave.js') }}"></script>
     
     <!-- Page-specific JavaScript -->
     {% block scripts %}{% endblock %}
@@ -305,7 +311,11 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                    .then(function(reg) { console.log('SW registered, scope:', reg.scope); })
+                    .then(function(reg) {
+                        // Some WebViews resolve register() with undefined even
+                        // though the worker installed; don't treat that as an error.
+                        console.log('SW registered, scope:', reg && reg.scope);
+                    })
                     .catch(function(err) { console.log('SW error:', err); });
             });
         }

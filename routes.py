@@ -7,9 +7,10 @@ import random
 import calendar as _cal
 from datetime import datetime, date, timedelta
 from functools import wraps
-from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g, get_flashed_messages
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g, get_flashed_messages, has_app_context
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload, joinedload
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage, ImageOps as PILImageOps
 from app import app, db, csrf
@@ -184,6 +185,63 @@ def parse_int(value, default=0):
     except (TypeError, ValueError):
         return default
 
+# Column widths from models.Worker. SQLite ignores VARCHAR limits, but the
+# production database is Postgres, which rejects an over-long value outright —
+# so a 300-character name saves fine in dev and 500s in production. Trim to the
+# column width at the boundary instead.
+WORKER_TEXT_LIMITS = {
+    'full_name': 100, 'phone': 20, 'email': 120,
+    'position': 100, 'department': 50, 'employee_type': 30,
+}
+
+# A pay rate above this is certainly a typo (a mis-keyed extra digit), and a
+# negative one would produce negative payroll.
+MAX_PAY_RATE = 10_000_000
+
+
+def clean_text(value, field, required=False):
+    """Trim, collapse whitespace and cut to the column width."""
+    text = ' '.join((value or '').split())
+    limit = WORKER_TEXT_LIMITS.get(field)
+    if limit:
+        text = text[:limit]
+    return text if (text or not required) else ''
+
+
+def clean_rate(value):
+    """Non-negative, sanely bounded money. Returns (amount, error_or_None)."""
+    if value is None or str(value).strip() == '':
+        return 0.0, None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return 0.0, 'Enter a valid number for the pay rate.'
+    if amount < 0:
+        return 0.0, 'Pay rate cannot be negative.'
+    if amount > MAX_PAY_RATE:
+        return 0.0, f'Pay rate looks wrong — it cannot exceed {MAX_PAY_RATE:,}.'
+    return amount, None
+
+
+def parse_date_or(value, default=None):
+    """Parse an ISO date, falling back instead of raising.
+
+    Every date that reaches a view comes from a query string or a form field,
+    so it is user input and can be anything. Calling datetime.strptime on it
+    directly turns a typo or a stale bookmark into a 500.
+    """
+    try:
+        return datetime.strptime((value or '').strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError, AttributeError):
+        return default
+
+def parse_time_or(value, default=None):
+    """Same contract as parse_date_or, for HH:MM shift times."""
+    try:
+        return datetime.strptime((value or '').strip(), '%H:%M').time()
+    except (TypeError, ValueError, AttributeError):
+        return default
+
 def calculate_scheduled_minutes_for_day(worker, attendance_date):
     if not worker.start_time or not worker.end_time:
         return 0
@@ -285,6 +343,109 @@ def _months_in_range(start_date, end_date):
         return 0
     return (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
 
+def _leave_adjustment_window(period_end):
+    """Adjustments that count towards a period ending on period_end.
+
+    A NULL effective_date means "applies from creation", so those rows are
+    bounded by created_at instead — otherwise an adjustment entered later
+    leaks backwards into an already-closed payroll month.
+    """
+    period_end_ts = datetime.combine(period_end, datetime.max.time())
+    return db.or_(
+        db.and_(
+            LeaveAdjustment.effective_date == None,
+            LeaveAdjustment.created_at <= period_end_ts,
+        ),
+        LeaveAdjustment.effective_date <= period_end,
+    )
+
+
+def prefetch_leave_ledgers(worker_ids, period_start, period_end):
+    """Three grouped queries for the whole roster instead of three per worker.
+
+    calculate_leave_balance reads this cache when it is primed and falls back
+    to its own per-worker queries when it is not, so the numbers are produced
+    by the same expressions either way.
+    """
+    if not has_app_context():
+        return
+    cache = getattr(g, '_leave_ledger_cache', None)
+    if cache is None:
+        cache = g._leave_ledger_cache = {}
+
+    ledgers = {wid: {'manual_adjustment': 0.0, 'used_before': 0, 'used_this_month': 0}
+               for wid in worker_ids}
+    if worker_ids:
+        rows = db.session.query(
+            LeaveAdjustment.worker_id,
+            func.coalesce(func.sum(LeaveAdjustment.days), 0.0),
+        ).filter(
+            LeaveAdjustment.worker_id.in_(worker_ids),
+            _leave_adjustment_window(period_end),
+        ).group_by(LeaveAdjustment.worker_id).all()
+        for worker_id, total in rows:
+            ledgers[worker_id]['manual_adjustment'] = float(total or 0.0)
+
+        leave_counts = db.session.query(
+            AttendanceRecord.worker_id,
+            func.count(AttendanceRecord.id),
+        ).filter(
+            AttendanceRecord.worker_id.in_(worker_ids),
+            AttendanceRecord.status == 'leave',
+            AttendanceRecord.date < period_start,
+        ).group_by(AttendanceRecord.worker_id).all()
+        for worker_id, count in leave_counts:
+            ledgers[worker_id]['used_before'] = int(count)
+
+        month_counts = db.session.query(
+            AttendanceRecord.worker_id,
+            func.count(AttendanceRecord.id),
+        ).filter(
+            AttendanceRecord.worker_id.in_(worker_ids),
+            AttendanceRecord.status == 'leave',
+            AttendanceRecord.date >= period_start,
+            AttendanceRecord.date <= period_end,
+        ).group_by(AttendanceRecord.worker_id).all()
+        for worker_id, count in month_counts:
+            ledgers[worker_id]['used_this_month'] = int(count)
+
+    cache[(period_start, period_end)] = ledgers
+
+
+def _leave_ledger_for(worker_id, period_start, period_end):
+    """One worker's leave counters, from the prefetch cache when it holds them."""
+    if has_app_context():
+        cached = getattr(g, '_leave_ledger_cache', {}).get((period_start, period_end))
+        if cached is not None and worker_id in cached:
+            return cached[worker_id]
+
+    manual_adjustment = db.session.query(
+        func.coalesce(func.sum(LeaveAdjustment.days), 0.0)
+    ).filter(
+        LeaveAdjustment.worker_id == worker_id,
+        _leave_adjustment_window(period_end),
+    ).scalar() or 0.0
+
+    used_before = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker_id,
+        AttendanceRecord.status == 'leave',
+        AttendanceRecord.date < period_start,
+    ).count()
+
+    used_this_month = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker_id,
+        AttendanceRecord.status == 'leave',
+        AttendanceRecord.date >= period_start,
+        AttendanceRecord.date <= period_end,
+    ).count()
+
+    return {
+        'manual_adjustment': float(manual_adjustment),
+        'used_before': used_before,
+        'used_this_month': used_this_month,
+    }
+
+
 def calculate_leave_balance(worker, period_start, period_end):
     """Full leave ledger from the joining date through the given payroll month.
 
@@ -300,34 +461,10 @@ def calculate_leave_balance(worker, period_start, period_end):
     accrued_before = months_before * quota
     accrued_total = months_total * quota
 
-    # NULL effective_date means "applies from creation", so bound those rows by
-    # created_at too — otherwise a later adjustment leaks into past payroll months.
-    period_end_ts = datetime.combine(period_end, datetime.max.time())
-    manual_adjustment = db.session.query(
-        func.coalesce(func.sum(LeaveAdjustment.days), 0.0)
-    ).filter(
-        LeaveAdjustment.worker_id == worker.id,
-        db.or_(
-            db.and_(
-                LeaveAdjustment.effective_date == None,
-                LeaveAdjustment.created_at <= period_end_ts,
-            ),
-            LeaveAdjustment.effective_date <= period_end,
-        )
-    ).scalar() or 0.0
-
-    used_before = AttendanceRecord.query.filter(
-        AttendanceRecord.worker_id == worker.id,
-        AttendanceRecord.status == 'leave',
-        AttendanceRecord.date < period_start,
-    ).count()
-
-    used_this_month = AttendanceRecord.query.filter(
-        AttendanceRecord.worker_id == worker.id,
-        AttendanceRecord.status == 'leave',
-        AttendanceRecord.date >= period_start,
-        AttendanceRecord.date <= period_end,
-    ).count()
+    ledger = _leave_ledger_for(worker.id, period_start, period_end)
+    manual_adjustment = ledger['manual_adjustment']
+    used_before = ledger['used_before']
+    used_this_month = ledger['used_this_month']
 
     balance_before = accrued_before + manual_adjustment - used_before
     available_this_month = max(balance_before, 0) + quota
@@ -347,7 +484,34 @@ def calculate_leave_balance(worker, period_start, period_end):
         'balance_after': round(balance_after, 2),
     }
 
+def prefetch_period_transactions(worker_ids, period_start, period_end):
+    """Load one period's transactions for a whole roster in a single query.
+
+    Payroll asks for these worker by worker; priming this cache first lets
+    get_period_transactions answer from memory instead of re-querying.
+    """
+    if not has_app_context():
+        return
+    cache = getattr(g, '_txn_period_cache', None)
+    if cache is None:
+        cache = g._txn_period_cache = {}
+    bucket = {wid: [] for wid in worker_ids}
+    if worker_ids:
+        for txn in WorkerTransaction.query.filter(
+            WorkerTransaction.worker_id.in_(worker_ids),
+            WorkerTransaction.status == 'active',
+            WorkerTransaction.date >= period_start,
+            WorkerTransaction.date <= period_end,
+        ).order_by(WorkerTransaction.date).all():
+            bucket[txn.worker_id].append(txn)
+    cache[(period_start, period_end)] = bucket
+
+
 def get_period_transactions(worker, period_start, period_end):
+    if has_app_context():
+        bucket = getattr(g, '_txn_period_cache', {}).get((period_start, period_end))
+        if bucket is not None and worker.id in bucket:
+            return bucket[worker.id]
     return WorkerTransaction.query.filter(
         WorkerTransaction.worker_id == worker.id,
         WorkerTransaction.status == 'active',
@@ -453,6 +617,28 @@ def inject_globals():
         if current_user.is_admin:
             unread = Notification.query.filter_by(is_read=False).count()
     return dict(company=company, unread_notifications=unread)
+
+def roster_query(status='active'):
+    """Workers with their assignments (and each assignment's site/project/task)
+    already loaded.
+
+    Every roster screen walks `worker.assignments` and then reads
+    `assignment.site` / `.project` / `.task`, so a plain query costs four extra
+    round-trips per worker. Loading them up front turns that into four queries
+    for the whole page.
+    """
+    return (
+        Worker.query.filter_by(status=status)
+        .options(
+            selectinload(Worker.assignments).options(
+                joinedload(ProjectAssignment.site),
+                joinedload(ProjectAssignment.project),
+                joinedload(ProjectAssignment.task),
+            )
+        )
+        .order_by(Worker.full_name)
+    )
+
 
 def assignment_active_on(assignment, on_date):
     if assignment.start_date and assignment.start_date > on_date:
@@ -1077,6 +1263,25 @@ def calculate_attendance_summary(attendance_records):
     )
     return summary
 
+def _attendance_closures_in_period(period_start, period_end):
+    """Closure days that still allow attendance, cached per request.
+
+    Payroll asks for this once per worker with the same month boundaries every
+    time, so the cache turns a per-worker query into a single one.
+    """
+    cache = getattr(g, '_closure_period_cache', None)
+    if cache is None:
+        cache = g._closure_period_cache = {}
+    key = (period_start, period_end)
+    if key not in cache:
+        cache[key] = ClosureDay.query.filter(
+            ClosureDay.date >= period_start,
+            ClosureDay.date <= period_end,
+            ClosureDay.allow_attendance == True,
+        ).all()
+    return cache[key]
+
+
 def calculate_pay_summary(worker, attendance_records, period_start=None, period_end=None):
     # Derive the payroll month when the caller doesn't pass it explicitly.
     if period_start is None or period_end is None:
@@ -1216,11 +1421,7 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
     closure_extra_pay = 0.0
     closure_day_breakdown = []  # [{'date': date, 'reason': str, 'amount': float}]
     if getattr(worker, 'closure_extra_pay_enabled', False) and attendance_records:
-        closure_records_list = ClosureDay.query.filter(
-            ClosureDay.date >= period_start,
-            ClosureDay.date <= period_end,
-            ClosureDay.allow_attendance == True,
-        ).all()
+        closure_records_list = _attendance_closures_in_period(period_start, period_end)
         closure_day_info = {
             c.date: c.reason for c in closure_records_list
             if closure_applies_to_worker(c, worker)
@@ -1335,20 +1536,30 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
 def add_worker():
     if request.method == 'POST':
         # Generate worker ID
-        worker_id = generate_worker_id(request.form['department'])
+        worker_id = generate_worker_id(request.form.get('department') or 'GEN')
         
         # Create new worker
         worker = Worker()
         worker.worker_id = worker_id
-        worker.full_name = request.form['full_name']
-        worker.phone = request.form['phone']
-        worker.email = request.form.get('email')
-        worker.address = request.form.get('address')
-        worker.position = request.form['position']
-        worker.department = request.form['department']
-        worker.employee_type = request.form['employee_type']
-        worker.join_date = datetime.strptime(request.form['join_date'], '%Y-%m-%d').date()
-        worker.pay_type = request.form['pay_type']
+        worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
+        worker.phone = clean_text(request.form.get('phone'), 'phone')
+        worker.email = clean_text(request.form.get('email'), 'email') or None
+        worker.address = (request.form.get('address') or '').strip() or None
+        worker.position = clean_text(request.form.get('position'), 'position')
+        worker.department = clean_text(request.form.get('department'), 'department')
+        worker.employee_type = clean_text(request.form.get('employee_type'), 'employee_type')
+        missing = [label for label, value in (
+            ('name', worker.full_name), ('phone', worker.phone),
+            ('position', worker.position), ('department', worker.department)) if not value]
+        if missing:
+            flash('Please fill in the ' + ', '.join(missing) + '.', 'error')
+            return redirect(request.url)
+        join_date = parse_date_or(request.form.get('join_date'))
+        if not join_date:
+            flash('Enter a valid joining date.', 'error')
+            return redirect(request.url)
+        worker.join_date = join_date
+        worker.pay_type = request.form.get('pay_type') or 'daily'
         
         # Reset policy fields before applying selected pay-type policy.
         worker.daily_rate = None
@@ -1373,11 +1584,15 @@ def add_worker():
         
         # Set payment details based on pay type
         if worker.pay_type == 'daily':
-            worker.daily_rate = parse_float(request.form.get('daily_rate'))
-            if request.form.get('start_time'):
-                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            if request.form.get('end_time'):
-                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            worker.daily_rate, rate_error = clean_rate(request.form.get('daily_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
+            # Both fields were reset to None above, so an absent or
+            # unparseable time simply leaves the shift unset rather
+            # than raising.
+            worker.start_time = parse_time_or(request.form.get('start_time'))
+            worker.end_time = parse_time_or(request.form.get('end_time'))
 
             worker.overtime_enabled = 'overtime_enabled' in request.form
             if worker.overtime_enabled and request.form.get('overtime_rate'):
@@ -1396,17 +1611,21 @@ def add_worker():
                 worker.half_day_rate = parse_float(worker.daily_rate) / 2.0 if worker.daily_rate else 0.0
             worker.half_day_grace_minutes = min(max(parse_int(request.form.get('half_day_grace_minutes'), 20), 15), 25)
         elif worker.pay_type == 'monthly':
-            worker.monthly_salary = parse_float(request.form.get('monthly_salary'))
+            worker.monthly_salary, rate_error = clean_rate(request.form.get('monthly_salary'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
             if request.form.get('leave_deduction'):
                 worker.leave_deduction_per_day = parse_float(request.form.get('leave_deduction'))
             worker.leave_policy_enabled = 'leave_policy_enabled' in request.form
-            if request.form.get('start_time'):
-                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            if request.form.get('end_time'):
-                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            # Both fields were reset to None above, so an absent or
+            # unparseable time simply leaves the shift unset rather
+            # than raising.
+            worker.start_time = parse_time_or(request.form.get('start_time'))
+            worker.end_time = parse_time_or(request.form.get('end_time'))
             worker.no_work_no_pay = 'no_work_no_pay' in request.form
             if request.form.get('half_day_rate'):
                 worker.half_day_rate = parse_float(request.form.get('half_day_rate'))
@@ -1426,10 +1645,16 @@ def add_worker():
             worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
             worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
         elif worker.pay_type == 'hourly':
-            worker.hourly_rate = parse_float(request.form.get('hourly_rate'))
+            worker.hourly_rate, rate_error = clean_rate(request.form.get('hourly_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
         elif worker.pay_type == 'project':
-            worker.project_rate = parse_float(request.form.get('project_rate'))
+            worker.project_rate, rate_error = clean_rate(request.form.get('project_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
 
         # Optional profile photo upload
         profile_image = request.files.get('profile_image')
@@ -1497,15 +1722,25 @@ def edit_worker(worker_id):
     if request.method == 'POST':
         before_values = {field: getattr(worker, field) for field, _ in WORKER_TRACKED_FIELDS}
         # Update worker details
-        worker.full_name = request.form['full_name']
-        worker.phone = request.form['phone']
-        worker.email = request.form.get('email')
-        worker.address = request.form.get('address')
-        worker.position = request.form['position']
-        worker.department = request.form['department']
-        worker.employee_type = request.form['employee_type']
-        worker.join_date = datetime.strptime(request.form['join_date'], '%Y-%m-%d').date()
-        worker.pay_type = request.form['pay_type']
+        worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
+        worker.phone = clean_text(request.form.get('phone'), 'phone')
+        worker.email = clean_text(request.form.get('email'), 'email') or None
+        worker.address = (request.form.get('address') or '').strip() or None
+        worker.position = clean_text(request.form.get('position'), 'position')
+        worker.department = clean_text(request.form.get('department'), 'department')
+        worker.employee_type = clean_text(request.form.get('employee_type'), 'employee_type')
+        missing = [label for label, value in (
+            ('name', worker.full_name), ('phone', worker.phone),
+            ('position', worker.position), ('department', worker.department)) if not value]
+        if missing:
+            flash('Please fill in the ' + ', '.join(missing) + '.', 'error')
+            return redirect(request.url)
+        join_date = parse_date_or(request.form.get('join_date'))
+        if not join_date:
+            flash('Enter a valid joining date.', 'error')
+            return redirect(request.url)
+        worker.join_date = join_date
+        worker.pay_type = request.form.get('pay_type') or 'daily'
         
         # Reset policy fields before applying selected pay-type policy.
         worker.daily_rate = None
@@ -1530,11 +1765,15 @@ def edit_worker(worker_id):
         
         # Update payment details based on pay type
         if worker.pay_type == 'daily':
-            worker.daily_rate = parse_float(request.form.get('daily_rate'))
-            if request.form.get('start_time'):
-                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            if request.form.get('end_time'):
-                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            worker.daily_rate, rate_error = clean_rate(request.form.get('daily_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
+            # Both fields were reset to None above, so an absent or
+            # unparseable time simply leaves the shift unset rather
+            # than raising.
+            worker.start_time = parse_time_or(request.form.get('start_time'))
+            worker.end_time = parse_time_or(request.form.get('end_time'))
 
             worker.overtime_enabled = 'overtime_enabled' in request.form
             if worker.overtime_enabled and request.form.get('overtime_rate'):
@@ -1553,17 +1792,21 @@ def edit_worker(worker_id):
                 worker.half_day_rate = parse_float(worker.daily_rate) / 2.0 if worker.daily_rate else 0.0
             worker.half_day_grace_minutes = min(max(parse_int(request.form.get('half_day_grace_minutes'), 20), 15), 25)
         elif worker.pay_type == 'monthly':
-            worker.monthly_salary = parse_float(request.form.get('monthly_salary'))
+            worker.monthly_salary, rate_error = clean_rate(request.form.get('monthly_salary'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
             if request.form.get('leave_deduction'):
                 worker.leave_deduction_per_day = parse_float(request.form.get('leave_deduction'))
             worker.leave_policy_enabled = 'leave_policy_enabled' in request.form
-            if request.form.get('start_time'):
-                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            if request.form.get('end_time'):
-                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            # Both fields were reset to None above, so an absent or
+            # unparseable time simply leaves the shift unset rather
+            # than raising.
+            worker.start_time = parse_time_or(request.form.get('start_time'))
+            worker.end_time = parse_time_or(request.form.get('end_time'))
             worker.no_work_no_pay = 'no_work_no_pay' in request.form
             if request.form.get('half_day_rate'):
                 worker.half_day_rate = parse_float(request.form.get('half_day_rate'))
@@ -1583,10 +1826,16 @@ def edit_worker(worker_id):
             worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
             worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
         elif worker.pay_type == 'hourly':
-            worker.hourly_rate = parse_float(request.form.get('hourly_rate'))
+            worker.hourly_rate, rate_error = clean_rate(request.form.get('hourly_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
         elif worker.pay_type == 'project':
-            worker.project_rate = parse_float(request.form.get('project_rate'))
+            worker.project_rate, rate_error = clean_rate(request.form.get('project_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
 
         # Optional profile photo upload (replaces existing photo)
         profile_image = request.files.get('profile_image')
@@ -1609,15 +1858,28 @@ def edit_worker(worker_id):
 @app.route('/attendance')
 @login_required
 def attendance():
-    selected_date = request.args.get('date', today_ist().isoformat())
-    selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+    # A bad ?date= (stale bookmark, hand-edited URL) must not take the screen
+    # down — fall back to today rather than raising.
+    selected_date = parse_date_or(request.args.get('date'), today_ist())
     site_filter = parse_int(request.args.get('site'), 0)
     marker_filter = parse_int(request.args.get('marked_by'), 0)
     search = (request.args.get('search') or '').strip().lower()
 
     # Get all workers and their attendance for the selected date
-    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    workers = roster_query().all()
     closures_today = ClosureDay.query.filter_by(date=selected_date).all()
+
+    # One query for the whole day's records instead of one per worker.
+    records_today = {}
+    if workers:
+        records_today = {
+            r.worker_id: r
+            for r in AttendanceRecord.query.filter(
+                AttendanceRecord.date == selected_date,
+                AttendanceRecord.worker_id.in_([w.id for w in workers]),
+            ).all()
+        }
+
     attendance_data = []
 
     for worker in workers:
@@ -1634,10 +1896,7 @@ def attendance():
         if search and search not in worker.full_name.lower() and search not in worker.worker_id.lower():
             continue
 
-        attendance = AttendanceRecord.query.filter_by(
-            worker_id=worker.id,
-            date=selected_date
-        ).first()
+        attendance = records_today.get(worker.id)
 
         if marker_filter and (not attendance or attendance.marked_by != marker_filter):
             continue
@@ -1721,7 +1980,10 @@ def attendance():
 @admin_required
 def closures():
     if request.method == 'POST':
-        closure_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+        closure_date = parse_date_or(request.form.get('date'))
+        if not closure_date:
+            flash('Enter a valid closure date.', 'error')
+            return redirect(url_for('closures'))
         reason = request.form['reason'].strip()
         closure_type = request.form.get('type', 'holiday').strip().lower()
         allow_attendance = 'allow_attendance' in request.form
@@ -1987,7 +2249,10 @@ def _attendance_timestamp(attendance_date):
 @app.route('/mark_attendance', methods=['POST'])
 @login_required
 def mark_attendance():
-    attendance_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+    attendance_date = parse_date_or(request.form.get('date'))
+    if not attendance_date:
+        flash('Invalid attendance date.', 'error')
+        return redirect(url_for('attendance'))
     closures_today = ClosureDay.query.filter_by(date=attendance_date).all()
     marked_via = request.form.get('marked_via', 'manual')
     redirect_target = safe_redirect_target(request.form.get('redirect_to'), url_for('attendance', date=attendance_date.isoformat()))
@@ -2226,10 +2491,33 @@ def mark_attendance():
     return redirect(redirect_target)
 
 def _build_payroll_rows(month, year):
-    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    workers = roster_query().all()
     _, days_in_month = _cal.monthrange(year, month)
     start_date = date(year, month, 1)
     end_date = date(year, month, days_in_month)
+
+    # The month's attendance and any saved payroll rows, fetched once for the
+    # whole roster instead of twice per worker.
+    worker_ids = [w.id for w in workers]
+    records_by_worker = {w.id: [] for w in workers}
+    saved_by_worker = {}
+    if worker_ids:
+        for record in AttendanceRecord.query.filter(
+            AttendanceRecord.worker_id.in_(worker_ids),
+            AttendanceRecord.date >= start_date,
+            AttendanceRecord.date <= end_date,
+        ).order_by(AttendanceRecord.date).all():
+            records_by_worker[record.worker_id].append(record)
+        saved_by_worker = {
+            p.worker_id: p
+            for p in PayrollRecord.query.filter(
+                PayrollRecord.worker_id.in_(worker_ids),
+                PayrollRecord.month == month,
+                PayrollRecord.year == year,
+            ).all()
+        }
+        prefetch_period_transactions(worker_ids, start_date, end_date)
+        prefetch_leave_ledgers(worker_ids, start_date, end_date)
 
     rows = []
     total_gross = 0.0
@@ -2239,11 +2527,7 @@ def _build_payroll_rows(month, year):
     pending_count = 0
 
     for worker in workers:
-        records = AttendanceRecord.query.filter(
-            AttendanceRecord.worker_id == worker.id,
-            AttendanceRecord.date >= start_date,
-            AttendanceRecord.date <= end_date,
-        ).all()
+        records = records_by_worker.get(worker.id, [])
 
         att_summary = calculate_attendance_summary(records)
         pay_summary = calculate_pay_summary(worker, records, start_date, end_date)
@@ -2255,9 +2539,7 @@ def _build_payroll_rows(month, year):
         deductions = round(pay_summary['deductions'] + pay_summary['transaction_deductions'], 2)
         net_pay = pay_summary['estimated_pay']
 
-        existing_record = PayrollRecord.query.filter_by(
-            worker_id=worker.id, month=month, year=year
-        ).first()
+        existing_record = saved_by_worker.get(worker.id)
 
         if existing_record:
             record_status = existing_record.status
@@ -2664,7 +2946,7 @@ def _save_entity(model, entity_label):
         entity.site_id = parse_int(request.form.get('site_id'), 0) or None
         for field in ('start_date', 'end_date', 'deadline', 'completion_date'):
             raw = request.form.get(field)
-            setattr(entity, field, datetime.strptime(raw, '%Y-%m-%d').date() if raw else None)
+            setattr(entity, field, parse_date_or(raw))
         penalty_type = request.form.get('penalty_type', 'none')
         entity.penalty_type = penalty_type if penalty_type in ('none', 'fixed', 'percent') else 'none'
         entity.penalty_value = max(parse_float(request.form.get('penalty_value'), 0.0), 0.0)
@@ -3197,7 +3479,7 @@ def assignments():
     search = (request.args.get('search') or '').strip().lower()
     show = request.args.get('show', 'all')  # all | assigned | unassigned
 
-    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    workers = roster_query().all()
     rows = []
     for worker in workers:
         assignment = worker.current_assignment
@@ -3464,7 +3746,7 @@ def _visible_active_workers(on_date):
       * a worker hired after the date was not employed then, so they are
         excluded entirely rather than counted as absent
     """
-    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    workers = roster_query().all()
     return [
         w for w in workers
         if worker_visible_to_user(w, current_user, on_date=on_date)
@@ -3474,10 +3756,22 @@ def _visible_active_workers(on_date):
 
 def _attendance_rows(on_date):
     """Roster state for in-place updates after a bulk action."""
+    workers = _visible_active_workers(on_date)
+    records = {}
+    if workers:
+        records = {
+            r.worker_id: r
+            for r in AttendanceRecord.query.filter(
+                AttendanceRecord.date == on_date,
+                AttendanceRecord.worker_id.in_([w.id for w in workers]),
+            ).all()
+        }
+    closures = ClosureDay.query.filter_by(date=on_date).all()
+
     rows = []
-    for worker in _visible_active_workers(on_date):
-        record = AttendanceRecord.query.filter_by(worker_id=worker.id, date=on_date).first()
-        closure = closure_for_worker_on_date(worker, on_date)
+    for worker in workers:
+        record = records.get(worker.id)
+        closure = closure_for_worker_on_date(worker, on_date, closures)
         rows.append({
             'id': worker.id,
             'status': record.status if record else None,
