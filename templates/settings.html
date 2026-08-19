@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('profile') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('profile') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -14,19 +14,19 @@
                 <div class="text-sm opacity-90">Company, Sites, Projects &amp; Users</div>
             </div>
         </div>
-        <a href="{{ url_for('closures') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Closure Days">
+        <a href="{{ url_for('closures') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Closure Days">
             <i class="fa-solid fa-calendar-times text-lg"></i>
         </a>
     </div>
 
     <!-- Section Tabs -->
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-2 border border-white/20 flex gap-1 overflow-x-auto">
-        <button onclick="showSection('company')" data-tab="company" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold bg-white text-primary">Company</button>
-        <button onclick="showSection('sites')" data-tab="sites" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Sites</button>
-        <button onclick="showSection('projects')" data-tab="projects" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Projects</button>
-        <button onclick="showSection('tasks')" data-tab="tasks" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Tasks</button>
-        <button onclick="showSection('departments')" data-tab="departments" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Depts</button>
-        <button onclick="showSection('users')" data-tab="users" class="settings-tab flex-1 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold text-white/80">Users</button>
+        <button onclick="showSection('company')" data-tab="company" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold bg-white text-primary">Company</button>
+        <button onclick="showSection('sites')" data-tab="sites" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Sites</button>
+        <button onclick="showSection('projects')" data-tab="projects" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Projects</button>
+        <button onclick="showSection('tasks')" data-tab="tasks" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Tasks</button>
+        <button onclick="showSection('departments')" data-tab="departments" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Depts</button>
+        <button onclick="showSection('users')" data-tab="users" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Users</button>
     </div>
 </header>
 

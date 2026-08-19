@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('dashboard') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -14,7 +14,7 @@
                 <div class="text-sm opacity-90">Advances, Loans, Bonuses &amp; Deductions</div>
             </div>
         </div>
-        <button onclick="openTxnModal()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+        <button onclick="openTxnModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
             <i class="fa-solid fa-plus text-lg"></i>
         </button>
     </div>
@@ -60,7 +60,7 @@
     {% if transactions %}
     <div class="space-y-3">
         {% for txn in transactions %}
-        <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-50' if txn.status == 'cancelled' else '' }}">
+        <div class="bg-white rounded-3xl shadow border border-gray-100 p-4 {{ 'opacity-50' if txn.status == 'cancelled' else '' }}">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3 flex-1 min-w-0">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0

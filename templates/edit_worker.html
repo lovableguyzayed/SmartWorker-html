@@ -7,7 +7,7 @@
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
             <a href="{% if worker %}{{ url_for('worker_profile', worker_id=worker.id) }}{% else %}{{ url_for('workers') }}{% endif %}" 
-               class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+               class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>

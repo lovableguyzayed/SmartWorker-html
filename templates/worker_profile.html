@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('workers') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('workers') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -16,10 +16,10 @@
         </div>
         {% if current_user.is_admin %}
         <div class="flex items-center space-x-3">
-            <a href="{{ url_for('edit_worker', worker_id=worker.id) }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('edit_worker', worker_id=worker.id) }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-edit text-lg"></i>
             </a>
-            <button onclick="showWorkerActionsModal()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <button onclick="showWorkerActionsModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-ellipsis-v text-lg"></i>
             </button>
         </div>

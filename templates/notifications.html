@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('dashboard') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -16,7 +16,7 @@
         </div>
         <form method="POST" action="{{ url_for('notifications_mark_read') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Mark all read">
+            <button class="icon-btn bg-white/10 backdrop-blur-sm" title="Mark all read">
                 <i class="fa-solid fa-check-double text-lg"></i>
             </button>
         </form>

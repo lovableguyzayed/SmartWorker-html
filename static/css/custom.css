@@ -416,7 +416,7 @@ input:checked + .toggle-slider:before {
 .cal-cell.leave   { background: #dbeafe; color: #1e40af; }
 .cal-cell.header  {
     background: #f3f4f6; color: #374151; font-weight: 700;
-    font-size: 0.62rem; min-height: 26px; text-transform: uppercase;
+    font-size: 0.7rem; min-height: 26px; text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
@@ -449,3 +449,54 @@ input:checked + .toggle-slider:before {
     position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
     width: 5px; height: 5px; border-radius: 999px; background: #f97316;
 }
+
+/* ============================================================
+   Design consistency baseline
+   The vendored Tailwind build is purged, so arbitrary utilities
+   (text-[0.7rem], min-h-[44px]) silently do nothing. Anything that
+   must hold across every screen is therefore defined here.
+   ============================================================ */
+
+/* Form controls: one height (48px), one radius, one border.
+   Previously the same control rendered at 34/40/42/50/52px depending
+   on the screen. Checkboxes and radios keep their intrinsic size. */
+#mobile-app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+#mobile-app select,
+#mobile-app textarea {
+    min-height: 3rem;
+    border-radius: 0.75rem;
+}
+#mobile-app textarea { min-height: 4.5rem; }
+
+/* Primary action button: accent fill, 16px radius, 48px tall.
+   Tall dashboard/ID-card tiles are navigation cards, not buttons, and
+   deliberately keep their own size. */
+.btn-primary,
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    border: 0;
+}
+.btn-primary { background: #007BFF; color: #fff; }
+.btn-primary:active { filter: brightness(0.94); }
+.btn-secondary { background: #f3f4f6; color: #374151; }
+
+/* Minimum tap target. Applied to the round icon buttons that sit in
+   every screen header — they were 40px on all 18 screens. */
+.icon-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 9999px;
+}
+
+/* Body-text floor. Nothing in the UI drops below 11px, so labels stay
+   legible on a phone and survive rasterisation into a PDF. */
+.text-floor { font-size: 0.7rem; }

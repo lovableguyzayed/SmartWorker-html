@@ -10,7 +10,7 @@
    day view and the worker attendance history). The payslip only needs the
    cells shorter than the interactive default, since it prints. */
 .slip-wrapper .cal-cell { min-height: 30px; font-size: 0.72rem; }
-.slip-wrapper .cal-cell.header { min-height: 22px; font-size: 0.62rem; }
+.slip-wrapper .cal-cell.header { min-height: 22px; font-size: 0.7rem; }
 
 .pay-row { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid #f3f4f6; }
 .pay-row:last-child { border-bottom: none; }
@@ -36,7 +36,7 @@
     <div class="flex items-center justify-between">
         <div class="flex items-center space-x-4">
             <a href="{{ url_for('payroll', month=month, year=year) }}"
-               class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+               class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -46,11 +46,11 @@
         </div>
         <div class="flex items-center space-x-2">
             <button onclick="printSlip()"
-                    class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-print text-lg"></i>
             </button>
             <button onclick="downloadPDF()"
-                    class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-file-pdf text-lg"></i>
             </button>
         </div>

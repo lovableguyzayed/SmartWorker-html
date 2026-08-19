@@ -8,14 +8,9 @@
 /* Self-contained: the vendored Tailwind build is purged, so utilities that
    weren't present at compile time silently do nothing. Everything sizing- or
    layout-critical for this screen is defined here. */
-.scan-header {
-    background: linear-gradient(135deg, #001F3F 0%, #0b3f8f 48%, #0a84ff 100%);
-    color: #fff;
-    padding: 1.25rem 1rem 1.15rem;
-    border-bottom-left-radius: 1.75rem;
-    border-bottom-right-radius: 1.75rem;
-    box-shadow: 0 10px 30px -12px rgba(0, 31, 63, 0.55);
-}
+/* Gradient, rounding and shadow come from the shared header classes used
+   by every other screen; only the padding is specific to this one. */
+.scan-header { padding: 1.25rem 1rem 1.15rem; }
 .scan-title { font-size: 1.6rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; }
 .scan-sub { font-size: 0.82rem; opacity: 0.88; margin-top: 0.15rem; }
 
@@ -34,7 +29,7 @@
     min-height: 3.4rem;
 }
 .scan-stat-num { font-size: 1.25rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.scan-stat-label { font-size: 0.62rem; opacity: 0.85; margin-top: 0.1rem; }
+.scan-stat-label { font-size: 0.7rem; opacity: 0.85; margin-top: 0.1rem; }
 
 /* Camera viewport ------------------------------------------------------- */
 .cam-wrap {
@@ -100,7 +95,7 @@
 .res-avatar {
     width: 3.6rem; height: 3.6rem; flex-shrink: 0;
     border-radius: 1rem;
-    background: linear-gradient(135deg, #001F3F 0%, #0a84ff 100%);
+    background: linear-gradient(135deg, #001F3F 0%, #007BFF 100%);
     color: #fff; font-size: 1.5rem; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
@@ -136,7 +131,7 @@
     display: flex; align-items: center; justify-content: center; gap: 0.4rem;
     min-height: 2.75rem; margin-top: 0.6rem;
     border-radius: 0.85rem;
-    background: rgba(10, 132, 255, 0.1); color: #0a63c9;
+    background: rgba(0, 123, 255, 0.1); color: #0056b3;
     font-size: 0.85rem; font-weight: 600;
 }
 
@@ -162,7 +157,7 @@
 {% endblock %}
 
 {% block content %}
-<header class="scan-header">
+<header class="scan-header bg-gradient-to-br from-primary via-blue-900 to-accent text-white rounded-b-3xl shadow-xl">
     <div class="scan-title">SmartWorker</div>
     <div class="scan-sub">Scan a worker's ID card to mark attendance</div>
 
