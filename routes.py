@@ -184,6 +184,25 @@ def parse_int(value, default=0):
     except (TypeError, ValueError):
         return default
 
+def parse_date_or(value, default=None):
+    """Parse an ISO date, falling back instead of raising.
+
+    Every date that reaches a view comes from a query string or a form field,
+    so it is user input and can be anything. Calling datetime.strptime on it
+    directly turns a typo or a stale bookmark into a 500.
+    """
+    try:
+        return datetime.strptime((value or '').strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError, AttributeError):
+        return default
+
+def parse_time_or(value, default=None):
+    """Same contract as parse_date_or, for HH:MM shift times."""
+    try:
+        return datetime.strptime((value or '').strip(), '%H:%M').time()
+    except (TypeError, ValueError, AttributeError):
+        return default
+
 def calculate_scheduled_minutes_for_day(worker, attendance_date):
     if not worker.start_time or not worker.end_time:
         return 0
@@ -1347,7 +1366,11 @@ def add_worker():
         worker.position = request.form['position']
         worker.department = request.form['department']
         worker.employee_type = request.form['employee_type']
-        worker.join_date = datetime.strptime(request.form['join_date'], '%Y-%m-%d').date()
+        join_date = parse_date_or(request.form.get('join_date'))
+        if not join_date:
+            flash('Enter a valid joining date.', 'error')
+            return redirect(request.url)
+        worker.join_date = join_date
         worker.pay_type = request.form['pay_type']
         
         # Reset policy fields before applying selected pay-type policy.
@@ -1374,10 +1397,11 @@ def add_worker():
         # Set payment details based on pay type
         if worker.pay_type == 'daily':
             worker.daily_rate = parse_float(request.form.get('daily_rate'))
-            if request.form.get('start_time'):
-                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            if request.form.get('end_time'):
-                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            # Both fields were reset to None above, so an absent or
+            # unparseable time simply leaves the shift unset rather
+            # than raising.
+            worker.start_time = parse_time_or(request.form.get('start_time'))
+            worker.end_time = parse_time_or(request.form.get('end_time'))
 
             worker.overtime_enabled = 'overtime_enabled' in request.form
             if worker.overtime_enabled and request.form.get('overtime_rate'):
@@ -1403,10 +1427,11 @@ def add_worker():
             if request.form.get('leave_deduction'):
                 worker.leave_deduction_per_day = parse_float(request.form.get('leave_deduction'))
             worker.leave_policy_enabled = 'leave_policy_enabled' in request.form
-            if request.form.get('start_time'):
-                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            if request.form.get('end_time'):
-                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            # Both fields were reset to None above, so an absent or
+            # unparseable time simply leaves the shift unset rather
+            # than raising.
+            worker.start_time = parse_time_or(request.form.get('start_time'))
+            worker.end_time = parse_time_or(request.form.get('end_time'))
             worker.no_work_no_pay = 'no_work_no_pay' in request.form
             if request.form.get('half_day_rate'):
                 worker.half_day_rate = parse_float(request.form.get('half_day_rate'))
@@ -1504,7 +1529,11 @@ def edit_worker(worker_id):
         worker.position = request.form['position']
         worker.department = request.form['department']
         worker.employee_type = request.form['employee_type']
-        worker.join_date = datetime.strptime(request.form['join_date'], '%Y-%m-%d').date()
+        join_date = parse_date_or(request.form.get('join_date'))
+        if not join_date:
+            flash('Enter a valid joining date.', 'error')
+            return redirect(request.url)
+        worker.join_date = join_date
         worker.pay_type = request.form['pay_type']
         
         # Reset policy fields before applying selected pay-type policy.
@@ -1531,10 +1560,11 @@ def edit_worker(worker_id):
         # Update payment details based on pay type
         if worker.pay_type == 'daily':
             worker.daily_rate = parse_float(request.form.get('daily_rate'))
-            if request.form.get('start_time'):
-                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            if request.form.get('end_time'):
-                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            # Both fields were reset to None above, so an absent or
+            # unparseable time simply leaves the shift unset rather
+            # than raising.
+            worker.start_time = parse_time_or(request.form.get('start_time'))
+            worker.end_time = parse_time_or(request.form.get('end_time'))
 
             worker.overtime_enabled = 'overtime_enabled' in request.form
             if worker.overtime_enabled and request.form.get('overtime_rate'):
@@ -1560,10 +1590,11 @@ def edit_worker(worker_id):
             if request.form.get('leave_deduction'):
                 worker.leave_deduction_per_day = parse_float(request.form.get('leave_deduction'))
             worker.leave_policy_enabled = 'leave_policy_enabled' in request.form
-            if request.form.get('start_time'):
-                worker.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            if request.form.get('end_time'):
-                worker.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
+            # Both fields were reset to None above, so an absent or
+            # unparseable time simply leaves the shift unset rather
+            # than raising.
+            worker.start_time = parse_time_or(request.form.get('start_time'))
+            worker.end_time = parse_time_or(request.form.get('end_time'))
             worker.no_work_no_pay = 'no_work_no_pay' in request.form
             if request.form.get('half_day_rate'):
                 worker.half_day_rate = parse_float(request.form.get('half_day_rate'))
@@ -1609,8 +1640,9 @@ def edit_worker(worker_id):
 @app.route('/attendance')
 @login_required
 def attendance():
-    selected_date = request.args.get('date', today_ist().isoformat())
-    selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+    # A bad ?date= (stale bookmark, hand-edited URL) must not take the screen
+    # down — fall back to today rather than raising.
+    selected_date = parse_date_or(request.args.get('date'), today_ist())
     site_filter = parse_int(request.args.get('site'), 0)
     marker_filter = parse_int(request.args.get('marked_by'), 0)
     search = (request.args.get('search') or '').strip().lower()
@@ -1721,7 +1753,10 @@ def attendance():
 @admin_required
 def closures():
     if request.method == 'POST':
-        closure_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+        closure_date = parse_date_or(request.form.get('date'))
+        if not closure_date:
+            flash('Enter a valid closure date.', 'error')
+            return redirect(url_for('closures'))
         reason = request.form['reason'].strip()
         closure_type = request.form.get('type', 'holiday').strip().lower()
         allow_attendance = 'allow_attendance' in request.form
@@ -1987,7 +2022,10 @@ def _attendance_timestamp(attendance_date):
 @app.route('/mark_attendance', methods=['POST'])
 @login_required
 def mark_attendance():
-    attendance_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+    attendance_date = parse_date_or(request.form.get('date'))
+    if not attendance_date:
+        flash('Invalid attendance date.', 'error')
+        return redirect(url_for('attendance'))
     closures_today = ClosureDay.query.filter_by(date=attendance_date).all()
     marked_via = request.form.get('marked_via', 'manual')
     redirect_target = safe_redirect_target(request.form.get('redirect_to'), url_for('attendance', date=attendance_date.isoformat()))
@@ -2664,7 +2702,7 @@ def _save_entity(model, entity_label):
         entity.site_id = parse_int(request.form.get('site_id'), 0) or None
         for field in ('start_date', 'end_date', 'deadline', 'completion_date'):
             raw = request.form.get(field)
-            setattr(entity, field, datetime.strptime(raw, '%Y-%m-%d').date() if raw else None)
+            setattr(entity, field, parse_date_or(raw))
         penalty_type = request.form.get('penalty_type', 'none')
         entity.penalty_type = penalty_type if penalty_type in ('none', 'fixed', 'percent') else 'none'
         entity.penalty_value = max(parse_float(request.form.get('penalty_value'), 0.0), 0.0)

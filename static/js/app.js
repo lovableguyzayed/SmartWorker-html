@@ -466,7 +466,15 @@ const NativeShell = {
 
         document.addEventListener('click', (e) => this.onClick(e));
         document.addEventListener('submit', (e) => this.onSubmit(e));
-        window.addEventListener('popstate', () => this.visit(location.href, { push: false }));
+        window.addEventListener('popstate', () => {
+            // Back while multi-selection is active means "leave selection
+            // mode", not "leave the screen" — the same convention Android
+            // list apps use. MultiSelect pushed a history entry when it
+            // opened; it consumes this pop itself, so skip navigating.
+            var ms = window.MultiSelect;
+            if (ms && (ms.scope || ms.swallowPop)) { ms.swallowPop = false; return; }
+            this.visit(location.href, { push: false });
+        });
         if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
         // Touch-warm prefetch: pages enter the SW cache before the tap lands

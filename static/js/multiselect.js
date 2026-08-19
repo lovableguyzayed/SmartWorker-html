@@ -30,6 +30,8 @@
     var MultiSelect = {
         scope: null,           // active scope name, or null when idle
         pending: null,         // action button waiting on a picker dialog
+        pushedState: false,    // we own one history entry while selecting
+        swallowPop: false,     // set when we retire that entry ourselves
         selected: new Set(),   // ids (as strings) in the active scope
         busy: false,
 
@@ -68,9 +70,16 @@
                 if (bar.parentElement !== document.body) document.body.appendChild(bar);
                 bar.hidden = false;
             }
+            // Give the system Back button something to consume, so it exits
+            // selection mode instead of leaving the screen. app.js checks
+            // this state before it treats a pop as navigation.
+            if (!this.pushedState) {
+                try { history.pushState({ ms: 1 }, '', location.href); this.pushedState = true; }
+                catch (e) { this.pushedState = false; }
+            }
         },
 
-        exit: function () {
+        exit: function (fromPop) {
             this.closePrompt();
             if (!this.scope) return;
             var box = this.container(this.scope);
@@ -85,6 +94,15 @@
             document.body.classList.remove('ms-active');
             this.scope = null;
             this.selected.clear();
+            // Cancel/action exits leave our history entry behind, so step off
+            // it. fromPop means the entry is already gone.
+            if (this.pushedState) {
+                this.pushedState = false;
+                if (!fromPop && !this.leavingPage) {
+                    this.swallowPop = true;
+                    history.back();
+                }
+            }
         },
 
         toggle: function (el) {
@@ -384,6 +402,11 @@
         MultiSelect.toggle(el);
     }, true);
 
+    // System Back: leave selection mode, stay on the screen.
+    window.addEventListener('popstate', function () {
+        if (MultiSelect.scope) MultiSelect.exit(true);
+    });
+
     // Escape is the keyboard equivalent of Cancel.
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && MultiSelect.scope) MultiSelect.exit();
@@ -391,7 +414,13 @@
 
     // Every SPA swap replaces the list that was being selected from, so the
     // selection cannot survive it.
-    document.addEventListener('page:before-swap', function () { MultiSelect.exit(); });
+    document.addEventListener('page:before-swap', function () {
+        // A genuine navigation is under way; drop the selection without
+        // rewinding history, or we would cancel the navigation itself.
+        MultiSelect.leavingPage = true;
+        MultiSelect.exit(true);
+        MultiSelect.leavingPage = false;
+    });
     document.addEventListener('page:load', function () { clearPress(); });
 
     window.MultiSelect = MultiSelect;
