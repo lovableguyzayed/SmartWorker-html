@@ -58,9 +58,10 @@
     </div>
 
     {% if transactions %}
-    <div class="space-y-3">
+    <div class="space-y-3" data-ms-scope="transactions" data-ms-noun="transaction" data-ms-plural="transactions">
         {% for txn in transactions %}
-        <div class="bg-white rounded-3xl shadow border border-gray-100 p-4 {{ 'opacity-50' if txn.status == 'cancelled' else '' }}">
+        <div class="bg-white rounded-3xl shadow border border-gray-100 p-4 {{ 'opacity-50' if txn.status == 'cancelled' else '' }}"
+             data-ms-item="{{ txn.id }}" data-ms-label="{{ txn.worker.full_name }}">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3 flex-1 min-w-0">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
@@ -99,6 +100,19 @@
         </div>
         {% endfor %}
     </div>
+    <p class="ms-hint">Press and hold a transaction to select several at once.</p>
+
+    {% with sel_scope = 'transactions',
+            sel_endpoint = url_for('bulk_action', scope='transactions'),
+            sel_actions = [
+                {'id': 'cancel',  'label': 'Cancel',  'icon': 'fa-ban',          'style': 'warn',
+                 'confirm': 'Cancel %n %s? They stop counting towards payroll but are kept on record.'},
+                {'id': 'restore', 'label': 'Restore', 'icon': 'fa-rotate-left',  'style': 'good'},
+                {'id': 'delete',  'label': 'Delete',  'icon': 'fa-trash',        'style': 'danger',
+                 'confirm': 'Permanently delete %n %s? This cannot be undone.'},
+            ] %}
+        {% include '_selection_bar.html' %}
+    {% endwith %}
     {% else %}
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

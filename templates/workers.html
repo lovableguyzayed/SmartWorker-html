@@ -52,9 +52,10 @@
 
 <main class="p-4 pb-8">
     {% if workers %}
-    <div class="space-y-4">
+    <div class="space-y-4" data-ms-scope="workers" data-ms-noun="worker" data-ms-plural="workers">
         {% for worker in workers %}
-        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4"
+             data-ms-item="{{ worker.id }}" data-ms-label="{{ worker.full_name }}">
             <div class="flex items-center space-x-4">
                 <div class="relative shrink-0">
                     {% if worker.profile_image %}
@@ -121,6 +122,21 @@
         </div>
         {% endfor %}
     </div>
+    <p class="ms-hint">Press and hold a worker to select several at once.</p>
+
+    {% if current_user.is_admin %}
+    {% with sel_scope = 'workers',
+            sel_endpoint = url_for('bulk_action', scope='workers'),
+            sel_actions = [
+                {'id': 'activate',   'label': 'Activate',   'icon': 'fa-play',   'style': 'good'},
+                {'id': 'deactivate', 'label': 'Deactivate', 'icon': 'fa-pause',  'style': 'warn',
+                 'confirm': 'Deactivate %n %s? They will stop appearing in attendance.'},
+                {'id': 'delete',     'label': 'Delete',     'icon': 'fa-trash',  'style': 'danger',
+                 'confirm': 'Permanently delete %n %s and every attendance, payroll and transaction record belonging to them? This cannot be undone.'},
+            ] %}
+        {% include '_selection_bar.html' %}
+    {% endwith %}
+    {% endif %}
     {% else %}
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

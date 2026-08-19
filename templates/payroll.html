@@ -84,7 +84,7 @@
     </section>
 
     <!-- Worker List -->
-    <section class="space-y-3">
+    <section class="space-y-3" data-ms-scope="payroll" data-ms-noun="worker" data-ms-plural="workers">
         <h3 class="text-lg font-semibold text-gray-800 px-1">
             Workers ({{ totals.worker_count }})
         </h3>
@@ -99,7 +99,8 @@
         {% for row in rows %}
         {% set worker = row.worker %}
         {% set pay = row.pay_summary %}
-        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4"
+             data-ms-item="{{ worker.id }}" data-ms-label="{{ worker.full_name }}">
             <!-- Worker header row -->
             <div class="flex items-center justify-between">
                 <a href="{{ url_for('payroll_slip', worker_id=worker.id, month=month, year=year) }}"
@@ -176,5 +177,22 @@
         </div>
         {% endfor %}
     </section>
+
+    {% if rows %}
+    <p class="ms-hint">Press and hold a worker to run payroll for several at once.</p>
+    {% with sel_scope = 'payroll',
+            sel_endpoint = url_for('bulk_action', scope='payroll'),
+            sel_params = {'month': month, 'year': year},
+            sel_actions = [
+                {'id': 'generate', 'label': 'Generate', 'icon': 'fa-file-invoice-dollar',
+                 'style': 'primary',
+                 'confirm': 'Generate payroll for %n %s for this month? Existing figures will be recalculated.'},
+                {'id': 'paid',     'label': 'Mark Paid',    'icon': 'fa-check',       'style': 'good',
+                 'confirm': 'Mark payroll for %n %s as paid?'},
+                {'id': 'pending',  'label': 'Mark Pending', 'icon': 'fa-rotate-left', 'style': 'warn'},
+            ] %}
+        {% include '_selection_bar.html' %}
+    {% endwith %}
+    {% endif %}
 </main>
 {% endblock %}

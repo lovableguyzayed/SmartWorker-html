@@ -116,9 +116,10 @@
                 <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Site</button>
             </form>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-3" data-ms-scope="sites" data-ms-noun="site" data-ms-plural="sites">
             {% for site in sites %}
-            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if site.status == 'archived' else '' }}">
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if site.status == 'archived' else '' }}"
+                 data-ms-item="{{ site.id }}" data-ms-label="{{ site.name }}">
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-gray-800 truncate">{{ site.name }}
@@ -205,9 +206,10 @@
                 <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Project</button>
             </form>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-3" data-ms-scope="projects" data-ms-noun="project" data-ms-plural="projects">
             {% for project in projects %}
-            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if project.status == 'archived' else '' }}">
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if project.status == 'archived' else '' }}"
+                 data-ms-item="{{ project.id }}" data-ms-label="{{ project.name }}">
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-gray-800 truncate">{{ project.name }}
@@ -265,9 +267,10 @@
                 <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Task</button>
             </form>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-3" data-ms-scope="tasks" data-ms-noun="task" data-ms-plural="tasks">
             {% for task in tasks %}
-            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if task.status == 'archived' else '' }}">
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if task.status == 'archived' else '' }}"
+                 data-ms-item="{{ task.id }}" data-ms-label="{{ task.name }}">
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-gray-800 truncate">{{ task.name }}
@@ -306,9 +309,10 @@
                 <button type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">Add</button>
             </form>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-3" data-ms-scope="departments" data-ms-noun="department" data-ms-plural="departments">
             {% for dept in departments %}
-            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 flex items-center justify-between {{ 'opacity-60' if dept.status == 'archived' else '' }}">
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 flex items-center justify-between {{ 'opacity-60' if dept.status == 'archived' else '' }}"
+                 data-ms-item="{{ dept.id }}" data-ms-label="{{ dept.name }}">
                 <div class="font-semibold text-gray-800">{{ dept.name }}
                     {% if dept.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">Archived</span>{% endif %}
                 </div>
@@ -370,9 +374,10 @@
                 <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Attendance User</button>
             </form>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-3" data-ms-scope="attendance-users" data-ms-noun="user" data-ms-plural="users">
             {% for auser in attendance_users %}
-            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if auser.status == 'disabled' else '' }}">
+            <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 {{ 'opacity-60' if auser.status == 'disabled' else '' }}"
+                 data-ms-item="{{ auser.id }}" data-ms-label="{{ auser.full_name }}">
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-gray-800 truncate">{{ auser.full_name }}
@@ -404,6 +409,39 @@
             {% endfor %}
         </div>
     </section>
+
+    <p class="ms-hint">Press and hold any item above to select several at once.</p>
+
+    {% for cfg in [
+        {'scope': 'sites',            'noun': 'site'},
+        {'scope': 'projects',         'noun': 'project'},
+        {'scope': 'tasks',            'noun': 'task'},
+        {'scope': 'departments',      'noun': 'department'},
+    ] %}
+        {% with sel_scope = cfg.scope,
+                sel_endpoint = url_for('bulk_action', scope=cfg.scope),
+                sel_actions = [
+                    {'id': 'archive', 'label': 'Archive', 'icon': 'fa-box-archive', 'style': 'warn',
+                     'confirm': 'Archive %n %s?'},
+                    {'id': 'restore', 'label': 'Restore', 'icon': 'fa-rotate-left', 'style': 'good'},
+                    {'id': 'delete',  'label': 'Delete',  'icon': 'fa-trash',       'style': 'danger',
+                     'confirm': 'Permanently delete %n %s?'},
+                ] %}
+            {% include '_selection_bar.html' %}
+        {% endwith %}
+    {% endfor %}
+
+    {% with sel_scope = 'attendance-users',
+            sel_endpoint = url_for('bulk_action', scope='attendance-users'),
+            sel_actions = [
+                {'id': 'enable',  'label': 'Enable',  'icon': 'fa-power-off', 'style': 'good'},
+                {'id': 'disable', 'label': 'Disable', 'icon': 'fa-ban',       'style': 'warn',
+                 'confirm': 'Disable %n %s? They will not be able to sign in.'},
+                {'id': 'delete',  'label': 'Delete',  'icon': 'fa-trash',     'style': 'danger',
+                 'confirm': 'Permanently delete %n %s?'},
+            ] %}
+        {% include '_selection_bar.html' %}
+    {% endwith %}
 </main>
 
 <script>

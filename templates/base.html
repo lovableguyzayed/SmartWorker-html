@@ -271,6 +271,9 @@
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
+    {# Delegated from document, so it keeps working after every SPA swap and
+       needs no per-screen initialisation. #}
+    <script src="{{ url_for('static', filename='js/multiselect.js') }}"></script>
     
     <!-- Page-specific JavaScript -->
     {% block scripts %}{% endblock %}

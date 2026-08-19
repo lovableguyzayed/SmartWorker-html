@@ -64,10 +64,12 @@
         </div>
     </section>
 
+    <div data-ms-scope="assignments" data-ms-noun="worker" data-ms-plural="workers" class="space-y-4">
     {% for row in rows %}
     {% set worker = row.worker %}
     {% set assignment = row.assignment %}
-    <section class="bg-white rounded-3xl shadow border border-gray-100 p-4">
+    <section class="bg-white rounded-3xl shadow border border-gray-100 p-4"
+             data-ms-item="{{ worker.id }}" data-ms-label="{{ worker.full_name }}">
         <div class="flex items-center space-x-3">
             <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
                 {% if worker.profile_image %}
@@ -114,6 +116,50 @@
         No workers match these filters.
     </div>
     {% endfor %}
+    </div>
+
+    {% if rows %}
+    <p class="ms-hint">Press and hold a worker to assign or end several at once.</p>
+    {% with sel_scope = 'assignments',
+            sel_endpoint = url_for('bulk_action', scope='assignments'),
+            sel_actions = [
+                {'id': 'assign', 'label': 'Assign / Transfer', 'icon': 'fa-shuffle', 'style': 'primary',
+                 'prompt': '#bulk-assign-picker'},
+                {'id': 'end',    'label': 'End Assignment',    'icon': 'fa-flag-checkered', 'style': 'warn',
+                 'confirm': 'End the current assignment for %n %s?'},
+            ] %}
+        {% include '_selection_bar.html' %}
+    {% endwith %}
+
+    {# Bulk assign needs a destination, so the action opens this picker first.
+       The engine posts every [data-ms-field] inside it as an extra param. #}
+    <div id="bulk-assign-picker" hidden
+         class="ms-prompt hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center">
+        <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm">
+            <h3 class="text-lg font-semibold text-gray-800 mb-1">Assign selected workers</h3>
+            <p class="text-xs text-gray-500 mb-4">Any active assignment they already have is closed and replaced.</p>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Site</label>
+            <select data-ms-field="site_id" class="w-full mb-3 px-3 border border-gray-200 rounded-xl">
+                <option value="">— No site —</option>
+                {% for site in sites %}<option value="{{ site.id }}">{{ site.name }}</option>{% endfor %}
+            </select>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+            <select data-ms-field="project_id" class="w-full mb-3 px-3 border border-gray-200 rounded-xl">
+                <option value="">— No project —</option>
+                {% for project in projects %}<option value="{{ project.id }}">{{ project.name }}</option>{% endfor %}
+            </select>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+            <select data-ms-field="task_id" class="w-full mb-4 px-3 border border-gray-200 rounded-xl">
+                <option value="">— No task —</option>
+                {% for task in tasks %}<option value="{{ task.id }}">{{ task.name }}</option>{% endfor %}
+            </select>
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" data-ms-prompt-cancel class="btn-secondary py-3 rounded-xl font-medium">Cancel</button>
+                <button type="button" data-ms-prompt-ok class="btn-primary py-3 rounded-xl font-medium">Assign</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </main>
 
 <!-- Assign / Transfer Modal -->
