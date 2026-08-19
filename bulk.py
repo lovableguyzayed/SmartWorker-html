@@ -22,9 +22,10 @@ from flask_login import current_user, login_required
 
 from app import app, db
 from timeutil import today_ist
-from models import (AttendanceRecord, ClosureDay, Department, Notification,
-                    PayrollRecord, Project, ProjectAssignment, Site, User,
-                    WorkTask, Worker, WorkerTransaction)
+from models import (AttendanceRecord, ClosureDay, Department, LeaveAdjustment,
+                    Notification, PayrollRecord, Project, ProjectAssignment,
+                    Site, User, WorkTask, Worker, WorkerModification,
+                    WorkerTransaction)
 import routes as R
 
 
@@ -209,13 +210,18 @@ def _bulk_workers(action):
                             'success' if touched else 'info')])
 
     if action == 'delete':
-        # Mirrors the single-worker delete: dependent rows go first so the
-        # foreign keys never dangle.
+        # Mirrors delete_worker() exactly: every table with a NOT NULL
+        # worker_id must be cleared first, or SQLAlchemy tries to null the
+        # foreign key and the whole batch fails. WorkerModification and
+        # LeaveAdjustment were missing here, so deleting any worker who had
+        # ever been promoted or had leave adjusted silently did nothing.
         for w in workers:
             AttendanceRecord.query.filter_by(worker_id=w.id).delete()
-            WorkerTransaction.query.filter_by(worker_id=w.id).delete()
-            ProjectAssignment.query.filter_by(worker_id=w.id).delete()
             PayrollRecord.query.filter_by(worker_id=w.id).delete()
+            ProjectAssignment.query.filter_by(worker_id=w.id).delete()
+            WorkerModification.query.filter_by(worker_id=w.id).delete()
+            LeaveAdjustment.query.filter_by(worker_id=w.id).delete()
+            WorkerTransaction.query.filter_by(worker_id=w.id).delete()
             db.session.delete(w)
         db.session.commit()
         return _reply([_msg(f'Deleted {n} {_plural(n, "worker")} and their records.')])

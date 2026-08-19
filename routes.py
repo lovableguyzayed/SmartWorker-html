@@ -184,6 +184,44 @@ def parse_int(value, default=0):
     except (TypeError, ValueError):
         return default
 
+# Column widths from models.Worker. SQLite ignores VARCHAR limits, but the
+# production database is Postgres, which rejects an over-long value outright —
+# so a 300-character name saves fine in dev and 500s in production. Trim to the
+# column width at the boundary instead.
+WORKER_TEXT_LIMITS = {
+    'full_name': 100, 'phone': 20, 'email': 120,
+    'position': 100, 'department': 50, 'employee_type': 30,
+}
+
+# A pay rate above this is certainly a typo (a mis-keyed extra digit), and a
+# negative one would produce negative payroll.
+MAX_PAY_RATE = 10_000_000
+
+
+def clean_text(value, field, required=False):
+    """Trim, collapse whitespace and cut to the column width."""
+    text = ' '.join((value or '').split())
+    limit = WORKER_TEXT_LIMITS.get(field)
+    if limit:
+        text = text[:limit]
+    return text if (text or not required) else ''
+
+
+def clean_rate(value):
+    """Non-negative, sanely bounded money. Returns (amount, error_or_None)."""
+    if value is None or str(value).strip() == '':
+        return 0.0, None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return 0.0, 'Enter a valid number for the pay rate.'
+    if amount < 0:
+        return 0.0, 'Pay rate cannot be negative.'
+    if amount > MAX_PAY_RATE:
+        return 0.0, f'Pay rate looks wrong — it cannot exceed {MAX_PAY_RATE:,}.'
+    return amount, None
+
+
 def parse_date_or(value, default=None):
     """Parse an ISO date, falling back instead of raising.
 
@@ -1354,24 +1392,30 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
 def add_worker():
     if request.method == 'POST':
         # Generate worker ID
-        worker_id = generate_worker_id(request.form['department'])
+        worker_id = generate_worker_id(request.form.get('department') or 'GEN')
         
         # Create new worker
         worker = Worker()
         worker.worker_id = worker_id
-        worker.full_name = request.form['full_name']
-        worker.phone = request.form['phone']
-        worker.email = request.form.get('email')
-        worker.address = request.form.get('address')
-        worker.position = request.form['position']
-        worker.department = request.form['department']
-        worker.employee_type = request.form['employee_type']
+        worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
+        worker.phone = clean_text(request.form.get('phone'), 'phone')
+        worker.email = clean_text(request.form.get('email'), 'email') or None
+        worker.address = (request.form.get('address') or '').strip() or None
+        worker.position = clean_text(request.form.get('position'), 'position')
+        worker.department = clean_text(request.form.get('department'), 'department')
+        worker.employee_type = clean_text(request.form.get('employee_type'), 'employee_type')
+        missing = [label for label, value in (
+            ('name', worker.full_name), ('phone', worker.phone),
+            ('position', worker.position), ('department', worker.department)) if not value]
+        if missing:
+            flash('Please fill in the ' + ', '.join(missing) + '.', 'error')
+            return redirect(request.url)
         join_date = parse_date_or(request.form.get('join_date'))
         if not join_date:
             flash('Enter a valid joining date.', 'error')
             return redirect(request.url)
         worker.join_date = join_date
-        worker.pay_type = request.form['pay_type']
+        worker.pay_type = request.form.get('pay_type') or 'daily'
         
         # Reset policy fields before applying selected pay-type policy.
         worker.daily_rate = None
@@ -1396,7 +1440,10 @@ def add_worker():
         
         # Set payment details based on pay type
         if worker.pay_type == 'daily':
-            worker.daily_rate = parse_float(request.form.get('daily_rate'))
+            worker.daily_rate, rate_error = clean_rate(request.form.get('daily_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             # Both fields were reset to None above, so an absent or
             # unparseable time simply leaves the shift unset rather
             # than raising.
@@ -1420,7 +1467,10 @@ def add_worker():
                 worker.half_day_rate = parse_float(worker.daily_rate) / 2.0 if worker.daily_rate else 0.0
             worker.half_day_grace_minutes = min(max(parse_int(request.form.get('half_day_grace_minutes'), 20), 15), 25)
         elif worker.pay_type == 'monthly':
-            worker.monthly_salary = parse_float(request.form.get('monthly_salary'))
+            worker.monthly_salary, rate_error = clean_rate(request.form.get('monthly_salary'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
@@ -1451,10 +1501,16 @@ def add_worker():
             worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
             worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
         elif worker.pay_type == 'hourly':
-            worker.hourly_rate = parse_float(request.form.get('hourly_rate'))
+            worker.hourly_rate, rate_error = clean_rate(request.form.get('hourly_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
         elif worker.pay_type == 'project':
-            worker.project_rate = parse_float(request.form.get('project_rate'))
+            worker.project_rate, rate_error = clean_rate(request.form.get('project_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
 
         # Optional profile photo upload
         profile_image = request.files.get('profile_image')
@@ -1522,19 +1578,25 @@ def edit_worker(worker_id):
     if request.method == 'POST':
         before_values = {field: getattr(worker, field) for field, _ in WORKER_TRACKED_FIELDS}
         # Update worker details
-        worker.full_name = request.form['full_name']
-        worker.phone = request.form['phone']
-        worker.email = request.form.get('email')
-        worker.address = request.form.get('address')
-        worker.position = request.form['position']
-        worker.department = request.form['department']
-        worker.employee_type = request.form['employee_type']
+        worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
+        worker.phone = clean_text(request.form.get('phone'), 'phone')
+        worker.email = clean_text(request.form.get('email'), 'email') or None
+        worker.address = (request.form.get('address') or '').strip() or None
+        worker.position = clean_text(request.form.get('position'), 'position')
+        worker.department = clean_text(request.form.get('department'), 'department')
+        worker.employee_type = clean_text(request.form.get('employee_type'), 'employee_type')
+        missing = [label for label, value in (
+            ('name', worker.full_name), ('phone', worker.phone),
+            ('position', worker.position), ('department', worker.department)) if not value]
+        if missing:
+            flash('Please fill in the ' + ', '.join(missing) + '.', 'error')
+            return redirect(request.url)
         join_date = parse_date_or(request.form.get('join_date'))
         if not join_date:
             flash('Enter a valid joining date.', 'error')
             return redirect(request.url)
         worker.join_date = join_date
-        worker.pay_type = request.form['pay_type']
+        worker.pay_type = request.form.get('pay_type') or 'daily'
         
         # Reset policy fields before applying selected pay-type policy.
         worker.daily_rate = None
@@ -1559,7 +1621,10 @@ def edit_worker(worker_id):
         
         # Update payment details based on pay type
         if worker.pay_type == 'daily':
-            worker.daily_rate = parse_float(request.form.get('daily_rate'))
+            worker.daily_rate, rate_error = clean_rate(request.form.get('daily_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             # Both fields were reset to None above, so an absent or
             # unparseable time simply leaves the shift unset rather
             # than raising.
@@ -1583,7 +1648,10 @@ def edit_worker(worker_id):
                 worker.half_day_rate = parse_float(worker.daily_rate) / 2.0 if worker.daily_rate else 0.0
             worker.half_day_grace_minutes = min(max(parse_int(request.form.get('half_day_grace_minutes'), 20), 15), 25)
         elif worker.pay_type == 'monthly':
-            worker.monthly_salary = parse_float(request.form.get('monthly_salary'))
+            worker.monthly_salary, rate_error = clean_rate(request.form.get('monthly_salary'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
@@ -1614,10 +1682,16 @@ def edit_worker(worker_id):
             worker.closure_calculation_method = raw_method if raw_method in ('daily_percent', 'hourly_percent', 'minute_percent') else 'daily_percent'
             worker.closure_extra_percentage = max(0.0, parse_float(request.form.get('closure_extra_percentage', '0')) or 0.0)
         elif worker.pay_type == 'hourly':
-            worker.hourly_rate = parse_float(request.form.get('hourly_rate'))
+            worker.hourly_rate, rate_error = clean_rate(request.form.get('hourly_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
         elif worker.pay_type == 'project':
-            worker.project_rate = parse_float(request.form.get('project_rate'))
+            worker.project_rate, rate_error = clean_rate(request.form.get('project_rate'))
+            if rate_error:
+                flash(rate_error, 'error')
+                return redirect(request.url)
 
         # Optional profile photo upload (replaces existing photo)
         profile_image = request.files.get('profile_image')
