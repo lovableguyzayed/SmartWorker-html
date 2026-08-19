@@ -627,7 +627,30 @@ if (!window.__scanLifecycleHooked) {
     document.addEventListener('page:before-swap', function () {
         if (window.stopScannerCamera) window.stopScannerCamera();
     });
+
+    // Android reclaims the camera when the app goes to the background. Without
+    // this the user switches apps, comes back, and the preview is a dead black
+    // rectangle with no error — the scanner looks broken. Release on pause and
+    // start again on resume, but only while the scanner screen is showing.
+    var onScreen = function () { return !!document.getElementById('qr-reader'); };
+    document.addEventListener('pause', function () {
+        if (window.stopScannerCamera) window.stopScannerCamera();
+    }, false);
+    document.addEventListener('resume', function () {
+        if (onScreen() && window.startScanner) {
+            setTimeout(function () { window.startScanner(); }, 300);
+        }
+    }, false);
+    // Same situation when the tab/WebView is merely hidden rather than paused.
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            if (window.stopScannerCamera) window.stopScannerCamera();
+        } else if (onScreen() && window.startScanner) {
+            setTimeout(function () { window.startScanner(); }, 300);
+        }
+    });
 }
+window.startScanner = startScanner;
 window.stopScannerCamera = stopScannerCamera;
 </script>
 {% endblock %}

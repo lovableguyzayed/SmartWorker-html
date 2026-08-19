@@ -7,9 +7,10 @@ import random
 import calendar as _cal
 from datetime import datetime, date, timedelta
 from functools import wraps
-from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g, get_flashed_messages
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g, get_flashed_messages, has_app_context
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload, joinedload
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage, ImageOps as PILImageOps
 from app import app, db, csrf
@@ -404,7 +405,34 @@ def calculate_leave_balance(worker, period_start, period_end):
         'balance_after': round(balance_after, 2),
     }
 
+def prefetch_period_transactions(worker_ids, period_start, period_end):
+    """Load one period's transactions for a whole roster in a single query.
+
+    Payroll asks for these worker by worker; priming this cache first lets
+    get_period_transactions answer from memory instead of re-querying.
+    """
+    if not has_app_context():
+        return
+    cache = getattr(g, '_txn_period_cache', None)
+    if cache is None:
+        cache = g._txn_period_cache = {}
+    bucket = {wid: [] for wid in worker_ids}
+    if worker_ids:
+        for txn in WorkerTransaction.query.filter(
+            WorkerTransaction.worker_id.in_(worker_ids),
+            WorkerTransaction.status == 'active',
+            WorkerTransaction.date >= period_start,
+            WorkerTransaction.date <= period_end,
+        ).order_by(WorkerTransaction.date).all():
+            bucket[txn.worker_id].append(txn)
+    cache[(period_start, period_end)] = bucket
+
+
 def get_period_transactions(worker, period_start, period_end):
+    if has_app_context():
+        bucket = getattr(g, '_txn_period_cache', {}).get((period_start, period_end))
+        if bucket is not None and worker.id in bucket:
+            return bucket[worker.id]
     return WorkerTransaction.query.filter(
         WorkerTransaction.worker_id == worker.id,
         WorkerTransaction.status == 'active',
@@ -510,6 +538,28 @@ def inject_globals():
         if current_user.is_admin:
             unread = Notification.query.filter_by(is_read=False).count()
     return dict(company=company, unread_notifications=unread)
+
+def roster_query(status='active'):
+    """Workers with their assignments (and each assignment's site/project/task)
+    already loaded.
+
+    Every roster screen walks `worker.assignments` and then reads
+    `assignment.site` / `.project` / `.task`, so a plain query costs four extra
+    round-trips per worker. Loading them up front turns that into four queries
+    for the whole page.
+    """
+    return (
+        Worker.query.filter_by(status=status)
+        .options(
+            selectinload(Worker.assignments).options(
+                joinedload(ProjectAssignment.site),
+                joinedload(ProjectAssignment.project),
+                joinedload(ProjectAssignment.task),
+            )
+        )
+        .order_by(Worker.full_name)
+    )
+
 
 def assignment_active_on(assignment, on_date):
     if assignment.start_date and assignment.start_date > on_date:
@@ -1134,6 +1184,25 @@ def calculate_attendance_summary(attendance_records):
     )
     return summary
 
+def _attendance_closures_in_period(period_start, period_end):
+    """Closure days that still allow attendance, cached per request.
+
+    Payroll asks for this once per worker with the same month boundaries every
+    time, so the cache turns a per-worker query into a single one.
+    """
+    cache = getattr(g, '_closure_period_cache', None)
+    if cache is None:
+        cache = g._closure_period_cache = {}
+    key = (period_start, period_end)
+    if key not in cache:
+        cache[key] = ClosureDay.query.filter(
+            ClosureDay.date >= period_start,
+            ClosureDay.date <= period_end,
+            ClosureDay.allow_attendance == True,
+        ).all()
+    return cache[key]
+
+
 def calculate_pay_summary(worker, attendance_records, period_start=None, period_end=None):
     # Derive the payroll month when the caller doesn't pass it explicitly.
     if period_start is None or period_end is None:
@@ -1273,11 +1342,7 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
     closure_extra_pay = 0.0
     closure_day_breakdown = []  # [{'date': date, 'reason': str, 'amount': float}]
     if getattr(worker, 'closure_extra_pay_enabled', False) and attendance_records:
-        closure_records_list = ClosureDay.query.filter(
-            ClosureDay.date >= period_start,
-            ClosureDay.date <= period_end,
-            ClosureDay.allow_attendance == True,
-        ).all()
+        closure_records_list = _attendance_closures_in_period(period_start, period_end)
         closure_day_info = {
             c.date: c.reason for c in closure_records_list
             if closure_applies_to_worker(c, worker)
@@ -1722,8 +1787,20 @@ def attendance():
     search = (request.args.get('search') or '').strip().lower()
 
     # Get all workers and their attendance for the selected date
-    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    workers = roster_query().all()
     closures_today = ClosureDay.query.filter_by(date=selected_date).all()
+
+    # One query for the whole day's records instead of one per worker.
+    records_today = {}
+    if workers:
+        records_today = {
+            r.worker_id: r
+            for r in AttendanceRecord.query.filter(
+                AttendanceRecord.date == selected_date,
+                AttendanceRecord.worker_id.in_([w.id for w in workers]),
+            ).all()
+        }
+
     attendance_data = []
 
     for worker in workers:
@@ -1740,10 +1817,7 @@ def attendance():
         if search and search not in worker.full_name.lower() and search not in worker.worker_id.lower():
             continue
 
-        attendance = AttendanceRecord.query.filter_by(
-            worker_id=worker.id,
-            date=selected_date
-        ).first()
+        attendance = records_today.get(worker.id)
 
         if marker_filter and (not attendance or attendance.marked_by != marker_filter):
             continue
@@ -2338,10 +2412,32 @@ def mark_attendance():
     return redirect(redirect_target)
 
 def _build_payroll_rows(month, year):
-    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    workers = roster_query().all()
     _, days_in_month = _cal.monthrange(year, month)
     start_date = date(year, month, 1)
     end_date = date(year, month, days_in_month)
+
+    # The month's attendance and any saved payroll rows, fetched once for the
+    # whole roster instead of twice per worker.
+    worker_ids = [w.id for w in workers]
+    records_by_worker = {w.id: [] for w in workers}
+    saved_by_worker = {}
+    if worker_ids:
+        for record in AttendanceRecord.query.filter(
+            AttendanceRecord.worker_id.in_(worker_ids),
+            AttendanceRecord.date >= start_date,
+            AttendanceRecord.date <= end_date,
+        ).order_by(AttendanceRecord.date).all():
+            records_by_worker[record.worker_id].append(record)
+        saved_by_worker = {
+            p.worker_id: p
+            for p in PayrollRecord.query.filter(
+                PayrollRecord.worker_id.in_(worker_ids),
+                PayrollRecord.month == month,
+                PayrollRecord.year == year,
+            ).all()
+        }
+        prefetch_period_transactions(worker_ids, start_date, end_date)
 
     rows = []
     total_gross = 0.0
@@ -2351,11 +2447,7 @@ def _build_payroll_rows(month, year):
     pending_count = 0
 
     for worker in workers:
-        records = AttendanceRecord.query.filter(
-            AttendanceRecord.worker_id == worker.id,
-            AttendanceRecord.date >= start_date,
-            AttendanceRecord.date <= end_date,
-        ).all()
+        records = records_by_worker.get(worker.id, [])
 
         att_summary = calculate_attendance_summary(records)
         pay_summary = calculate_pay_summary(worker, records, start_date, end_date)
@@ -2367,9 +2459,7 @@ def _build_payroll_rows(month, year):
         deductions = round(pay_summary['deductions'] + pay_summary['transaction_deductions'], 2)
         net_pay = pay_summary['estimated_pay']
 
-        existing_record = PayrollRecord.query.filter_by(
-            worker_id=worker.id, month=month, year=year
-        ).first()
+        existing_record = saved_by_worker.get(worker.id)
 
         if existing_record:
             record_status = existing_record.status
@@ -3309,7 +3399,7 @@ def assignments():
     search = (request.args.get('search') or '').strip().lower()
     show = request.args.get('show', 'all')  # all | assigned | unassigned
 
-    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    workers = roster_query().all()
     rows = []
     for worker in workers:
         assignment = worker.current_assignment
@@ -3576,7 +3666,7 @@ def _visible_active_workers(on_date):
       * a worker hired after the date was not employed then, so they are
         excluded entirely rather than counted as absent
     """
-    workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
+    workers = roster_query().all()
     return [
         w for w in workers
         if worker_visible_to_user(w, current_user, on_date=on_date)
@@ -3586,10 +3676,22 @@ def _visible_active_workers(on_date):
 
 def _attendance_rows(on_date):
     """Roster state for in-place updates after a bulk action."""
+    workers = _visible_active_workers(on_date)
+    records = {}
+    if workers:
+        records = {
+            r.worker_id: r
+            for r in AttendanceRecord.query.filter(
+                AttendanceRecord.date == on_date,
+                AttendanceRecord.worker_id.in_([w.id for w in workers]),
+            ).all()
+        }
+    closures = ClosureDay.query.filter_by(date=on_date).all()
+
     rows = []
-    for worker in _visible_active_workers(on_date):
-        record = AttendanceRecord.query.filter_by(worker_id=worker.id, date=on_date).first()
-        closure = closure_for_worker_on_date(worker, on_date)
+    for worker in workers:
+        record = records.get(worker.id)
+        closure = closure_for_worker_on_date(worker, on_date, closures)
         rows.append({
             'id': worker.id,
             'status': record.status if record else None,

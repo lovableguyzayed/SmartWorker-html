@@ -22,9 +22,11 @@
             <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Settings">
                 <i class="fa-solid fa-gear text-lg"></i>
             </a>
-            <a href="{{ url_for('export_data') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Export Data">
+            <button type="button" data-export-url="{{ url_for('export_data') }}"
+                    data-export-name="smartworker_data.csv"
+                    class="icon-btn bg-white/10 backdrop-blur-sm" title="Export Data">
                 <i class="fa-solid fa-download text-lg"></i>
-            </a>
+            </button>
             {% endif %}
         </div>
     </div>
@@ -342,7 +344,11 @@ function hidePasswordModal() {
 }
 
 function exportData() {
-    window.location.href = '{{ url_for("export_data") }}';
+    // window.location to a CSV attachment silently does nothing in the
+    // Android WebView; go through the shared saver instead.
+    SmartWorkerSave.url('{{ url_for("export_data") }}', 'smartworker_data.csv')
+        .then(SmartWorkerSave.toast)
+        .catch(SmartWorkerSave.fail);
 }
 
 function confirmLogout() {

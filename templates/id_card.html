@@ -324,12 +324,16 @@ function cardExportFailed(err) {
 
 function downloadPNG() {
     captureCard().then(function (canvas) {
-        var link = document.createElement('a');
-        link.download = CARD_FILE + '.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        cardBusy(false);
-        hideDownloadModal();
+        canvas.toBlob(function (blob) {
+            cardBusy(false);
+            hideDownloadModal();
+            if (!blob) { cardExportFailed(new Error('toBlob returned null')); return; }
+            // A link download is inert in the Android WebView; route it
+            // through the saver so the PNG actually lands on the device.
+            SmartWorkerSave.blob(blob, CARD_FILE + '.png', 'image/png')
+                .then(SmartWorkerSave.toast)
+                .catch(SmartWorkerSave.fail);
+        }, 'image/png');
     }).catch(cardExportFailed);
 }
 
@@ -365,9 +369,11 @@ function downloadPDF() {
         var y = (297 - imgHeight) / 2;   // centre vertically too
 
         pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
-        pdf.save(CARD_FILE + '.pdf');
         cardBusy(false);
         hideDownloadModal();
+        SmartWorkerSave.blob(pdf.output('blob'), CARD_FILE + '.pdf', 'application/pdf')
+            .then(SmartWorkerSave.toast)
+            .catch(SmartWorkerSave.fail);
     }).catch(cardExportFailed);
 }
 

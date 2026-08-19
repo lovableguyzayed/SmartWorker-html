@@ -674,7 +674,13 @@ function downloadPDF() {
                 });
 
                 restore();
-                pdf.save('{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf');
+                // pdf.save() ends in an <a download>, which the Android
+                // WebView ignores — the file never reached the device. Hand
+                // the blob to the shared saver instead.
+                var pdfName = '{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf';
+                SmartWorkerSave.blob(pdf.output('blob'), pdfName, 'application/pdf')
+                    .then(SmartWorkerSave.toast)
+                    .catch(SmartWorkerSave.fail);
             });
         })
         .catch(function (err) {

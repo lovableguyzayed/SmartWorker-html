@@ -274,6 +274,9 @@
     {# Delegated from document, so it keeps working after every SPA swap and
        needs no per-screen initialisation. #}
     <script src="{{ url_for('static', filename='js/multiselect.js') }}"></script>
+    {# Android's WebView has no download manager; this routes every export
+       through the Cordova file plugins when running inside the APK. #}
+    <script src="{{ url_for('static', filename='js/filesave.js') }}"></script>
     
     <!-- Page-specific JavaScript -->
     {% block scripts %}{% endblock %}
@@ -308,7 +311,11 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                    .then(function(reg) { console.log('SW registered, scope:', reg.scope); })
+                    .then(function(reg) {
+                        // Some WebViews resolve register() with undefined even
+                        // though the worker installed; don't treat that as an error.
+                        console.log('SW registered, scope:', reg && reg.scope);
+                    })
                     .catch(function(err) { console.log('SW error:', err); });
             });
         }

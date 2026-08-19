@@ -10,8 +10,11 @@ from sqlalchemy import inspect, text
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging. DEBUG floods Render's (limited) log retention and risks
+# writing request data into logs, so it is opt-in via FLASK_DEBUG rather than
+# the default it used to be.
+_debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+logging.basicConfig(level=logging.DEBUG if _debug else logging.INFO)
 
 class Base(DeclarativeBase):
     pass
@@ -30,6 +33,31 @@ if not _secret:
 app.secret_key = _secret
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# Session cookie hardening. Secure is on only when the app is actually served
+# over TLS, so local http development keeps working; Render terminates TLS and
+# ProxyFix above makes request.is_secure reflect that.
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=not _debug and os.environ.get('RENDER') is not None,
+)
+
+
+@app.after_request
+def _security_headers(response):
+    """Baseline headers. The app had none of these."""
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Referrer-Policy', 'same-origin')
+    return response
+
+
+@app.route('/healthz')
+def healthz():
+    """Cheap liveness probe for Render — no DB work, no redirect, so a slow
+    query can never make the platform think the service is down."""
+    return {'status': 'ok'}, 200
 
 # configure the database
 _db_url = os.environ.get("DATABASE_URL", "sqlite:///smartworker.db")

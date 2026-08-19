@@ -85,6 +85,12 @@
          requires the app to hold the runtime permission. -->
     <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
 
+    <!-- Android WebView has no download manager and ignores <a download>,
+         so every export (PDF, PNG, CSV) is written with the file plugin and
+         handed to a viewer. Without these the export buttons do nothing. -->
+    <plugin name="cordova-plugin-file" spec="^8.0.0" />
+    <plugin name="cordova-plugin-file-opener2" spec="^4.0.0" />
+
     <!-- Restrict network access to only the backend API domain for security.
          Update the origin below to match your deployed server URL. -->
     <access origin="https://smartworker.onrender.com" />
