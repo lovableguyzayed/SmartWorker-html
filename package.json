@@ -11,7 +11,6 @@
     ],
     "plugins": {
       "cordova-plugin-network-information": {},
-      "cordova-plugin-splashscreen": {},
       "cordova-plugin-statusbar": {},
       "cordova-plugin-android-permissions": {},
       "cordova-plugin-file": {},
