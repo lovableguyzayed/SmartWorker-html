@@ -46,11 +46,11 @@
     font-size: 1rem; color: #111827; text-transform: uppercase;
 }
 .ep-quick input::placeholder { color: #9ca3af; text-transform: none; }
-.ep-quick input:focus { outline: 2px solid #0a84ff; outline-offset: -1px; }
+.ep-quick input:focus { outline: 2px solid #007BFF; outline-offset: -1px; }
 .ep-quick button {
     min-height: 3rem; padding: 0 1.5rem;
     border: 0; border-radius: 0.8rem;
-    background: #0a7cff; color: #fff;
+    background: #007BFF; color: #fff;
     font-size: 1rem; font-weight: 700;
 }
 .ep-quick button:disabled { opacity: 0.5; }
@@ -71,7 +71,7 @@
     border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
 }
 .ep-stat b { display: block; font-size: 1rem; font-variant-numeric: tabular-nums; color: #111827; }
-.ep-stat span { font-size: 0.62rem; color: #9ca3af; }
+.ep-stat span { font-size: 0.7rem; color: #9ca3af; }
 
 /* Roster ---------------------------------------------------------------- */
 .ep-row {
@@ -89,10 +89,10 @@
 .ep-extra { font-size: 0.72rem; color: #b0b6c0; line-height: 1.4; }
 .ep-chip {
     display: inline-flex; align-items: center; gap: 0.2rem;
-    font-size: 0.65rem; font-weight: 600; padding: 0.1rem 0.45rem;
+    font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.45rem;
     border-radius: 999px; margin-top: 0.25rem;
 }
-.ep-adjust { font-size: 0.72rem; font-weight: 600; color: #0a7cff; margin-top: 0.2rem; display: inline-block; }
+.ep-adjust { font-size: 0.72rem; font-weight: 600; color: #007BFF; margin-top: 0.2rem; display: inline-block; }
 
 .ep-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
 .ep-pill {
@@ -130,7 +130,7 @@
 .dv-date { font-size: 1.05rem; font-weight: 700; color: #111827; line-height: 1.25; }
 .dv-weekday { font-size: 0.8rem; color: #9ca3af; }
 .dv-chip {
-    font-size: 0.62rem; font-weight: 700; padding: 0.2rem 0.5rem;
+    font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem;
     border-radius: 999px; white-space: nowrap;
 }
 .dv-banner {
@@ -147,10 +147,10 @@
     border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
 }
 .dv-count b { display: block; font-size: 0.95rem; font-variant-numeric: tabular-nums; color: #111827; }
-.dv-count span { font-size: 0.56rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.03em; }
+.dv-count span { font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.03em; }
 
 .dv-section-label {
-    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
     color: #9ca3af; margin: 1rem 0 0.5rem;
 }
 .dv-row { padding: 0.7rem 0; border-bottom: 1px solid #f1f3f5; }
@@ -220,7 +220,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('dashboard') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -229,11 +229,11 @@
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <a href="{{ url_for('scan') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="QR Scanner">
+            <a href="{{ url_for('scan') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="QR Scanner">
                 <i class="fa-solid fa-qrcode text-lg"></i>
             </a>
             {% if current_user.is_admin %}
-            <a href="{{ url_for('closures') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('closures') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-calendar-times text-lg"></i>
             </a>
             {% endif %}
@@ -754,7 +754,7 @@ function dvRender(day) {
         h += '<div class="dv-banner ' + (c.allow_attendance ? 'dv-banner-warn' : 'dv-banner-block') + '">' +
              '<b>Closure — ' + dvEsc(c.reason) + '</b> (' + dvEsc(c.type) + ', ' + dvEsc(c.scope) + '). ' +
              (c.allow_attendance ? 'Attendance is still allowed.' : 'Attendance is locked for this date.') +
-             (DV_IS_ADMIN ? ' <button type="button" class="dv-adjust" style="color:#0a7cff;font-weight:600" onclick="dvRemoveClosure(' + c.id + ')">Remove</button>' : '') +
+             (DV_IS_ADMIN ? ' <button type="button" class="dv-adjust" style="color:#007BFF;font-weight:600" onclick="dvRemoveClosure(' + c.id + ')">Remove</button>' : '') +
              '</div>';
     });
     if (!editable && day.reason === 'future') {

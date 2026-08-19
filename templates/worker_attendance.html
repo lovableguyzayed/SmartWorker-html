@@ -11,7 +11,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -20,7 +20,7 @@
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <button onclick="showStatsModal()" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <button onclick="showStatsModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-chart-bar text-lg"></i>
             </button>
         </div>

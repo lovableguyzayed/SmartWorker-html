@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('workers') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('workers') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -14,7 +14,7 @@
                 <div class="text-sm opacity-90">Assign &amp; transfer workers to sites, projects, tasks</div>
             </div>
         </div>
-        <a href="{{ url_for('settings') }}" class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center" title="Manage sites & projects">
+        <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Manage sites & projects">
             <i class="fa-solid fa-gear text-lg"></i>
         </a>
     </div>
@@ -43,7 +43,7 @@
         <div class="grid grid-cols-3 gap-2">
             {% for value, label in [('all', 'All'), ('assigned', 'Assigned'), ('unassigned', 'Unassigned')] %}
             <button type="submit" name="show" value="{{ value }}"
-                    class="py-2 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/80 border border-white/30' }}">
+                    class="py-3 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/80 border border-white/30' }}">
                 {{ label }}
             </button>
             {% endfor %}
@@ -67,7 +67,7 @@
     {% for row in rows %}
     {% set worker = row.worker %}
     {% set assignment = row.assignment %}
-    <section class="bg-white rounded-2xl shadow border border-gray-100 p-4">
+    <section class="bg-white rounded-3xl shadow border border-gray-100 p-4">
         <div class="flex items-center space-x-3">
             <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
                 {% if worker.profile_image %}
@@ -92,7 +92,7 @@
             </div>
             <div class="flex flex-col gap-1.5 shrink-0">
                 <button onclick='openAssignModal({{ worker.id }}, {{ worker.full_name|tojson }}, {{ (assignment.site_id if assignment else 0) or 0 }}, {{ (assignment.project_id if assignment else 0) or 0 }}, {{ (assignment.task_id if assignment else 0) or 0 }})'
-                        class="px-3 py-2 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
+                        class="px-3 py-3 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
                     <i class="fa-solid fa-{{ 'shuffle' if assignment else 'plus' }} mr-1"></i>{{ 'Transfer' if assignment else 'Assign' }}
                 </button>
                 {% if assignment %}

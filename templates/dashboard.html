@@ -22,14 +22,14 @@
     border-bottom: 1px solid #f3f4f6;
 }
 .att-h {
-    font-size: 0.58rem;
+    font-size: 0.7rem;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: #9ca3af;
 }
 .att-name { font-size: 0.8rem; font-weight: 500; color: #1f2937; line-height: 1.25; }
-.att-id   { font-size: 0.6rem; color: #9ca3af; line-height: 1.2; }
+.att-id   { font-size: 0.7rem; color: #9ca3af; line-height: 1.2; }
 .att-avatar {
     width: 2rem; height: 2rem; border-radius: 9999px;
     object-fit: cover; object-position: center;
@@ -44,11 +44,11 @@
     font-size: 0.72rem; font-weight: 600;
     font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-.att-ampm { font-size: 0.55rem; font-weight: 400; color: #9ca3af; margin-left: 1px; }
+.att-ampm { font-size: 0.7rem; font-weight: 400; color: #9ca3af; margin-left: 1px; }
 .att-empty { font-size: 0.72rem; color: #d1d5db; }
 .att-live {
     display: inline-flex; align-items: center; gap: 0.25rem;
-    font-size: 0.6rem; font-weight: 500; color: #3b82f6; white-space: nowrap;
+    font-size: 0.7rem; font-weight: 500; color: #3b82f6; white-space: nowrap;
 }
 .att-live-dot {
     width: 0.3rem; height: 0.3rem; border-radius: 9999px; background: #3b82f6;
@@ -58,7 +58,7 @@
 @media (prefers-reduced-motion: reduce) { .att-live-dot { animation: none; } }
 .att-status {
     display: flex; align-items: center; justify-content: flex-end; gap: 0.25rem;
-    font-size: 0.64rem; font-weight: 500; white-space: nowrap;
+    font-size: 0.7rem; font-weight: 500; white-space: nowrap;
 }
 .att-dot { width: 0.4rem; height: 0.4rem; border-radius: 9999px; flex-shrink: 0; }
 </style>
@@ -76,7 +76,7 @@
         </div>
         <div class="flex items-center space-x-3">
             {% if current_user.is_admin %}
-            <a href="{{ url_for('notifications') }}" class="relative w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <a href="{{ url_for('notifications') }}" class="relative icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-bell text-lg"></i>
                 {% if unread_notifications %}
                 <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[0.6rem] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
@@ -84,7 +84,7 @@
             </a>
             {% endif %}
             <!-- Profile picture beside the bell — real avatar or default icon -->
-            <a href="{{ url_for('profile') }}" class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center border border-white/25 bg-white/10 backdrop-blur-sm shrink-0" title="Profile">
+            <a href="{{ url_for('profile') }}" class="icon-btn overflow-hidden border border-white/25 bg-white/10 backdrop-blur-sm" title="Profile">
                 {% if current_user.profile_image %}
                 <img src="{{ current_user.profile_image }}" alt="{{ current_user.full_name }}" class="w-full h-full object-cover">
                 {% else %}
