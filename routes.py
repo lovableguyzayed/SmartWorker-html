@@ -343,6 +343,109 @@ def _months_in_range(start_date, end_date):
         return 0
     return (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
 
+def _leave_adjustment_window(period_end):
+    """Adjustments that count towards a period ending on period_end.
+
+    A NULL effective_date means "applies from creation", so those rows are
+    bounded by created_at instead — otherwise an adjustment entered later
+    leaks backwards into an already-closed payroll month.
+    """
+    period_end_ts = datetime.combine(period_end, datetime.max.time())
+    return db.or_(
+        db.and_(
+            LeaveAdjustment.effective_date == None,
+            LeaveAdjustment.created_at <= period_end_ts,
+        ),
+        LeaveAdjustment.effective_date <= period_end,
+    )
+
+
+def prefetch_leave_ledgers(worker_ids, period_start, period_end):
+    """Three grouped queries for the whole roster instead of three per worker.
+
+    calculate_leave_balance reads this cache when it is primed and falls back
+    to its own per-worker queries when it is not, so the numbers are produced
+    by the same expressions either way.
+    """
+    if not has_app_context():
+        return
+    cache = getattr(g, '_leave_ledger_cache', None)
+    if cache is None:
+        cache = g._leave_ledger_cache = {}
+
+    ledgers = {wid: {'manual_adjustment': 0.0, 'used_before': 0, 'used_this_month': 0}
+               for wid in worker_ids}
+    if worker_ids:
+        rows = db.session.query(
+            LeaveAdjustment.worker_id,
+            func.coalesce(func.sum(LeaveAdjustment.days), 0.0),
+        ).filter(
+            LeaveAdjustment.worker_id.in_(worker_ids),
+            _leave_adjustment_window(period_end),
+        ).group_by(LeaveAdjustment.worker_id).all()
+        for worker_id, total in rows:
+            ledgers[worker_id]['manual_adjustment'] = float(total or 0.0)
+
+        leave_counts = db.session.query(
+            AttendanceRecord.worker_id,
+            func.count(AttendanceRecord.id),
+        ).filter(
+            AttendanceRecord.worker_id.in_(worker_ids),
+            AttendanceRecord.status == 'leave',
+            AttendanceRecord.date < period_start,
+        ).group_by(AttendanceRecord.worker_id).all()
+        for worker_id, count in leave_counts:
+            ledgers[worker_id]['used_before'] = int(count)
+
+        month_counts = db.session.query(
+            AttendanceRecord.worker_id,
+            func.count(AttendanceRecord.id),
+        ).filter(
+            AttendanceRecord.worker_id.in_(worker_ids),
+            AttendanceRecord.status == 'leave',
+            AttendanceRecord.date >= period_start,
+            AttendanceRecord.date <= period_end,
+        ).group_by(AttendanceRecord.worker_id).all()
+        for worker_id, count in month_counts:
+            ledgers[worker_id]['used_this_month'] = int(count)
+
+    cache[(period_start, period_end)] = ledgers
+
+
+def _leave_ledger_for(worker_id, period_start, period_end):
+    """One worker's leave counters, from the prefetch cache when it holds them."""
+    if has_app_context():
+        cached = getattr(g, '_leave_ledger_cache', {}).get((period_start, period_end))
+        if cached is not None and worker_id in cached:
+            return cached[worker_id]
+
+    manual_adjustment = db.session.query(
+        func.coalesce(func.sum(LeaveAdjustment.days), 0.0)
+    ).filter(
+        LeaveAdjustment.worker_id == worker_id,
+        _leave_adjustment_window(period_end),
+    ).scalar() or 0.0
+
+    used_before = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker_id,
+        AttendanceRecord.status == 'leave',
+        AttendanceRecord.date < period_start,
+    ).count()
+
+    used_this_month = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker_id,
+        AttendanceRecord.status == 'leave',
+        AttendanceRecord.date >= period_start,
+        AttendanceRecord.date <= period_end,
+    ).count()
+
+    return {
+        'manual_adjustment': float(manual_adjustment),
+        'used_before': used_before,
+        'used_this_month': used_this_month,
+    }
+
+
 def calculate_leave_balance(worker, period_start, period_end):
     """Full leave ledger from the joining date through the given payroll month.
 
@@ -358,34 +461,10 @@ def calculate_leave_balance(worker, period_start, period_end):
     accrued_before = months_before * quota
     accrued_total = months_total * quota
 
-    # NULL effective_date means "applies from creation", so bound those rows by
-    # created_at too — otherwise a later adjustment leaks into past payroll months.
-    period_end_ts = datetime.combine(period_end, datetime.max.time())
-    manual_adjustment = db.session.query(
-        func.coalesce(func.sum(LeaveAdjustment.days), 0.0)
-    ).filter(
-        LeaveAdjustment.worker_id == worker.id,
-        db.or_(
-            db.and_(
-                LeaveAdjustment.effective_date == None,
-                LeaveAdjustment.created_at <= period_end_ts,
-            ),
-            LeaveAdjustment.effective_date <= period_end,
-        )
-    ).scalar() or 0.0
-
-    used_before = AttendanceRecord.query.filter(
-        AttendanceRecord.worker_id == worker.id,
-        AttendanceRecord.status == 'leave',
-        AttendanceRecord.date < period_start,
-    ).count()
-
-    used_this_month = AttendanceRecord.query.filter(
-        AttendanceRecord.worker_id == worker.id,
-        AttendanceRecord.status == 'leave',
-        AttendanceRecord.date >= period_start,
-        AttendanceRecord.date <= period_end,
-    ).count()
+    ledger = _leave_ledger_for(worker.id, period_start, period_end)
+    manual_adjustment = ledger['manual_adjustment']
+    used_before = ledger['used_before']
+    used_this_month = ledger['used_this_month']
 
     balance_before = accrued_before + manual_adjustment - used_before
     available_this_month = max(balance_before, 0) + quota
@@ -2438,6 +2517,7 @@ def _build_payroll_rows(month, year):
             ).all()
         }
         prefetch_period_transactions(worker_ids, start_date, end_date)
+        prefetch_leave_ledgers(worker_ids, start_date, end_date)
 
     rows = []
     total_gross = 0.0
