@@ -1187,8 +1187,30 @@ def worker_profile(worker_id):
     sites = Site.query.filter_by(status='active').order_by(Site.name).all()
     tasks = WorkTask.query.filter(WorkTask.status != 'archived').order_by(WorkTask.name).all()
 
+    # Salary policy pane: only meaningful for a fixed monthly salary, and the
+    # screen needs to say whether this worker departs from the company rule.
+    salary_override = SalaryPolicy.query.filter_by(worker_id=worker.id).first()
+    effective_policy = resolve_salary_policy(worker)
+    salary_preview = None
+    if worker.pay_type == 'monthly':
+        _today = today_ist()
+        _ps = date(_today.year, _today.month, 1)
+        _pe = date(_today.year, _today.month,
+                   _cal.monthrange(_today.year, _today.month)[1])
+        _recs = AttendanceRecord.query.filter(
+            AttendanceRecord.worker_id == worker.id,
+            AttendanceRecord.date >= _ps, AttendanceRecord.date <= _pe).all()
+        _bal = calculate_leave_balance(worker, _ps, _pe)
+        salary_preview = salary.compute(worker, effective_policy, _recs, _ps, _pe,
+                                        carried_leave_balance=_bal['balance_before'])
+
     return render_template('worker_profile.html',
                          worker=worker,
+                         salary_override=salary_override,
+                         effective_policy=effective_policy,
+                         effective_policy_rows=salary.describe(effective_policy),
+                         salary_preview=salary_preview,
+                         salary_labels=salary.LABELS,
                          recent_attendance=recent_attendance,
                          month_attendance=month_attendance,
                          leave_balance=leave_balance,
@@ -2796,6 +2818,8 @@ def payroll_slip(worker_id):
         calendar_data=calendar_data,
         att_summary=att_summary,
         pay_summary=pay_summary,
+        salary_basis_label=salary.LABELS['salary_basis'].get(
+            (pay_summary.get('salary_breakdown') or {}).get('salary_basis', 'fixed'), 'Fixed days'),
         payroll_record=payroll_record,
         timedelta=timedelta,
         date=ISTDate,
@@ -2948,6 +2972,16 @@ def settings():
     tasks = WorkTask.query.order_by(WorkTask.status, WorkTask.name).all()
     departments = Department.query.order_by(Department.status, Department.name).all()
     attendance_users = User.query.filter_by(role='attendance', account_id=current_user.account_id).order_by(User.full_name).all()
+
+    # Company-wide salary policy, plus the workers who depart from it, so the
+    # settings screen can say how many people a change will actually affect.
+    policy_row = SalaryPolicy.query.filter_by(worker_id=None).first()
+    salary_policy = salary.normalise_policy(policy_row)
+    overridden = SalaryPolicy.query.filter(SalaryPolicy.worker_id.isnot(None)).count()
+    monthly_worker_count = Worker.query.filter_by(pay_type='monthly', status='active').count()
+    policy_audit = (SalaryPolicyAudit.query
+                    .order_by(SalaryPolicyAudit.created_at.desc()).limit(12).all())
+
     return render_template('settings.html',
                            company=company,
                            sites=sites,
@@ -2955,6 +2989,12 @@ def settings():
                            tasks=tasks,
                            departments=departments,
                            attendance_users=attendance_users,
+                           salary_policy=salary_policy,
+                           salary_policy_saved=policy_row is not None,
+                           salary_overrides=overridden,
+                           monthly_worker_count=monthly_worker_count,
+                           salary_labels=salary.LABELS,
+                           policy_audit=policy_audit,
                            date=ISTDate)
 
 @app.route('/settings/company', methods=['POST'])
@@ -4390,3 +4430,136 @@ def worker_report(worker_id):
                            month_names=MONTH_NAMES,
                            today=today,
                            date=ISTDate)
+
+
+# ============================================================
+# Salary calculation policy
+# ============================================================
+
+def _salary_policy_from_form(form, prefix=''):
+    """Read a policy out of posted form fields.
+
+    Returns a plain dict; validation and clamping happen once in
+    salary.normalise_policy rather than being repeated here.
+    """
+    def field(name, default=None):
+        return form.get(prefix + name, default)
+
+    raw = {
+        'salary_basis': field('salary_basis'),
+        'basis_days': field('basis_days'),
+        'rounding': field('rounding'),
+        'joining_mode': field('joining_mode'),
+        'paid_leave_enabled': field('paid_leave_enabled') == 'on',
+        'monthly_leave_allowance': field('monthly_leave_allowance'),
+        'leave_carry_forward': field('leave_carry_forward') == 'on',
+        'absence_deduction_enabled': field('absence_deduction_enabled') == 'on',
+        'calculation_method': field('calculation_method'),
+    }
+    rate = (field('deduction_rate') or '').strip()
+    # Blank means "derive it from the salary"; the engine reads None that way.
+    raw['deduction_rate'] = rate if rate else None
+    return salary.normalise_policy(raw)
+
+
+def _save_salary_policy(worker_id, new_policy, actor_id):
+    """Write a policy row and record what changed.
+
+    worker_id None is the company-wide default. The audit rows are what make
+    a later question like "who turned absence deduction on in March"
+    answerable.
+    """
+    row = SalaryPolicy.query.filter_by(worker_id=worker_id).first()
+    before = salary.normalise_policy(row) if row else salary.normalise_policy(None)
+
+    if not row:
+        row = SalaryPolicy(worker_id=worker_id)
+        db.session.add(row)
+
+    for field_name in salary.POLICY_FIELDS:
+        setattr(row, field_name, new_policy[field_name])
+    row.updated_by = actor_id
+
+    for field_name, old, new in salary.policy_differences(before, new_policy):
+        db.session.add(SalaryPolicyAudit(
+            worker_id=worker_id, field=field_name,
+            old_value=str(old)[:60], new_value=str(new)[:60],
+            changed_by=actor_id,
+        ))
+    return row
+
+
+@app.route('/settings/salary-policy', methods=['POST'])
+@admin_required
+def settings_salary_policy():
+    """Company-wide salary calculation policy."""
+    policy = _salary_policy_from_form(request.form)
+    _save_salary_policy(None, policy, current_user.id)
+    db.session.commit()
+    flash('Salary calculation policy saved. Payroll already marked paid is not affected.',
+          'success')
+    return redirect(url_for('settings') + '#section-salary')
+
+
+@app.route('/worker/<int:worker_id>/salary-policy', methods=['POST'])
+@admin_required
+def worker_salary_policy(worker_id):
+    """Per-worker override, or clearing it to fall back to the company rule."""
+    worker = tenant_get_or_404(Worker, worker_id)
+
+    if request.form.get('clear_override') == '1':
+        row = SalaryPolicy.query.filter_by(worker_id=worker.id).first()
+        if row:
+            db.session.add(SalaryPolicyAudit(
+                worker_id=worker.id, field='override',
+                old_value='set', new_value='cleared', changed_by=current_user.id))
+            db.session.delete(row)
+            db.session.commit()
+        flash(f'{worker.full_name} now follows the company salary policy.', 'success')
+        return redirect(url_for('worker_profile', worker_id=worker.id))
+
+    policy = _salary_policy_from_form(request.form)
+    _save_salary_policy(worker.id, policy, current_user.id)
+    db.session.commit()
+    flash(f'Salary policy saved for {worker.full_name}.', 'success')
+    return redirect(url_for('worker_profile', worker_id=worker.id))
+
+
+@app.route('/api/salary-preview/<int:worker_id>')
+@admin_required
+def api_salary_preview(worker_id):
+    """What this worker would be paid under a policy, before anything is saved.
+
+    Takes the policy from the query string so the settings screen can show the
+    effect of a change the employer has not committed yet.
+    """
+    worker = tenant_get_or_404(Worker, worker_id)
+    today = today_ist()
+    try:
+        month = max(1, min(12, int(request.args.get('month', today.month))))
+        year = max(2020, min(2099, int(request.args.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+
+    start = date(year, month, 1)
+    end = date(year, month, _cal.monthrange(year, month)[1])
+
+    if request.args.get('salary_basis'):
+        policy = _salary_policy_from_form(request.args)
+    else:
+        policy = resolve_salary_policy(worker)
+
+    records = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker.id,
+        AttendanceRecord.date >= start,
+        AttendanceRecord.date <= end,
+    ).all()
+    balance = calculate_leave_balance(worker, start, end)
+    breakdown = salary.compute(worker, policy, records, start, end,
+                               carried_leave_balance=balance['balance_before'])
+
+    breakdown['worker_name'] = worker.full_name
+    breakdown['worker_code'] = worker.worker_id
+    breakdown['join_date'] = worker.join_date.isoformat() if worker.join_date else None
+    breakdown['period'] = f'{MONTH_NAMES[month - 1]} {year}'
+    return jsonify(breakdown)

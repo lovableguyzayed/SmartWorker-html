@@ -164,6 +164,130 @@
         {% endif %}
     </section>
 
+
+    {% if salary_preview %}
+    <!-- ══════════ Salary calculation (monthly-salary workers) ══════════ -->
+    <section class="px-4 mb-5">
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <div class="flex items-start justify-between mb-1">
+                <h3 class="text-lg font-semibold text-gray-800">Salary Calculation</h3>
+                <span class="text-xs px-2 py-1 rounded-lg {{ 'bg-amber-50 text-amber-700' if salary_override else 'bg-gray-100 text-gray-500' }}">
+                    {{ 'Own policy' if salary_override else 'Company policy' }}
+                </span>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">{{ salary_preview.period if salary_preview.period else 'This month' }} — preview, nothing is saved until payroll is generated.</p>
+
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div class="bg-gray-50 rounded-2xl p-3">
+                    <div class="text-xs text-gray-500">Daily salary</div>
+                    <div class="text-lg font-bold text-gray-800">₹{{ '%.2f'|format(salary_preview.daily_rate) }}</div>
+                    <div class="text-xs text-gray-400">exact ₹{{ '%.2f'|format(salary_preview.daily_rate_exact) }} · {{ salary_preview.basis_days }}-day basis</div>
+                </div>
+                <div class="bg-gray-50 rounded-2xl p-3">
+                    <div class="text-xs text-gray-500">Eligible days</div>
+                    <div class="text-lg font-bold text-gray-800">{{ salary_preview.eligible_days }}</div>
+                    <div class="text-xs text-gray-400">of {{ salary_preview.total_calendar_days }} calendar days</div>
+                </div>
+                <div class="bg-red-50 rounded-2xl p-3">
+                    <div class="text-xs text-red-500">Deduction</div>
+                    <div class="text-lg font-bold text-red-600">₹{{ '%.2f'|format(salary_preview.deduction_amount) }}</div>
+                    <div class="text-xs text-red-400">{{ salary_preview.deduction_days }} day(s)</div>
+                </div>
+                <div class="bg-green-50 rounded-2xl p-3">
+                    <div class="text-xs text-green-600">Net payable</div>
+                    <div class="text-lg font-bold text-green-700">₹{{ '%.2f'|format(salary_preview.net_payable) }}</div>
+                    <div class="text-xs text-green-500">gross ₹{{ '%.2f'|format(salary_preview.gross_eligible_salary) }}</div>
+                </div>
+            </div>
+
+            <details class="mb-3">
+                <summary class="text-sm font-medium text-accent cursor-pointer">How this was calculated</summary>
+                <ul class="mt-2 space-y-1">
+                    {% for line in salary_preview.explanation %}
+                    <li class="text-xs text-gray-600 leading-relaxed">• {{ line }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+
+            <details class="mb-3">
+                <summary class="text-sm font-medium text-accent cursor-pointer">Policy in force</summary>
+                <div class="mt-2 space-y-1">
+                    {% for label, value in effective_policy_rows %}
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-500">{{ label }}</span>
+                        <span class="text-gray-800 font-medium">{{ value }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </details>
+
+            <details>
+                <summary class="text-sm font-medium text-accent cursor-pointer">Override for this worker</summary>
+                <form method="POST" action="{{ url_for('worker_salary_policy', worker_id=worker.id) }}" class="mt-3 space-y-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <p class="text-xs text-gray-500">Departs from the company policy for {{ worker.full_name }} only.</p>
+
+                    <select name="salary_basis" class="w-full p-3 border border-lightGray rounded-xl">
+                        <option value="fixed" {{ 'selected' if effective_policy.salary_basis == 'fixed' }}>Fixed number of days</option>
+                        <option value="calendar" {{ 'selected' if effective_policy.salary_basis == 'calendar' }}>Actual calendar days</option>
+                    </select>
+                    <input type="number" name="basis_days" min="1" max="31" value="{{ effective_policy.basis_days }}"
+                           class="w-full p-3 border border-lightGray rounded-xl" placeholder="Fixed days">
+
+                    <select name="rounding" class="w-full p-3 border border-lightGray rounded-xl">
+                        {% for key, label in salary_labels.rounding.items() %}
+                        <option value="{{ key }}" {{ 'selected' if effective_policy.rounding == key }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="joining_mode" class="w-full p-3 border border-lightGray rounded-xl">
+                        {% for key, label in salary_labels.joining_mode.items() %}
+                        <option value="{{ key }}" {{ 'selected' if effective_policy.joining_mode == key }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="calculation_method" class="w-full p-3 border border-lightGray rounded-xl">
+                        {% for key, label in salary_labels.calculation_method.items() %}
+                        <option value="{{ key }}" {{ 'selected' if effective_policy.calculation_method == key }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label class="flex items-center justify-between text-sm text-gray-700">
+                        <span>Paid monthly leave</span>
+                        <input type="checkbox" name="paid_leave_enabled" {{ 'checked' if effective_policy.paid_leave_enabled }}>
+                    </label>
+                    <input type="number" name="monthly_leave_allowance" min="0" step="0.5"
+                           value="{{ effective_policy.monthly_leave_allowance }}"
+                           class="w-full p-3 border border-lightGray rounded-xl" placeholder="Leave days per month">
+                    <label class="flex items-center justify-between text-sm text-gray-700">
+                        <span>Carry unused leave forward</span>
+                        <input type="checkbox" name="leave_carry_forward" {{ 'checked' if effective_policy.leave_carry_forward }}>
+                    </label>
+                    <label class="flex items-center justify-between text-sm text-gray-700">
+                        <span>Deduct for unpaid absences</span>
+                        <input type="checkbox" name="absence_deduction_enabled" {{ 'checked' if effective_policy.absence_deduction_enabled }}>
+                    </label>
+                    <input type="number" name="deduction_rate" min="0" step="0.01"
+                           value="{{ effective_policy.deduction_rate if effective_policy.deduction_rate is not none else '' }}"
+                           class="w-full p-3 border border-lightGray rounded-xl"
+                           placeholder="Deduction per day (blank = daily salary)">
+
+                    <button type="submit" class="w-full bg-accent text-white py-3 rounded-2xl font-semibold">Save override</button>
+                </form>
+                {% if salary_override %}
+                <form method="POST" action="{{ url_for('worker_salary_policy', worker_id=worker.id) }}" class="mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="clear_override" value="1">
+                    <button type="submit" class="w-full border border-gray-200 text-gray-600 py-3 rounded-2xl font-medium">
+                        Remove override and follow company policy
+                    </button>
+                </form>
+                {% endif %}
+            </details>
+        </div>
+    </section>
+    {% endif %}
+
     {% if leave_balance %}
     <!-- Leave Balance (accumulates from joining date) -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">

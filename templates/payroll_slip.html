@@ -414,6 +414,52 @@
                 </div>
                 {% endif %}
 
+                {# Detailed salary calculation. Only for a fixed monthly salary:
+                   daily/hourly/project workers have no derived daily rate and no
+                   joining-date proration, so the block would be empty noise. #}
+                {% set sb = pay_summary.salary_breakdown %}
+                {% if sb %}
+                <div class="mt-3 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden" data-pdf-block>
+                    <div class="px-3 py-2 bg-slate-100 border-b border-slate-200">
+                        <span class="text-xs font-semibold text-slate-700 uppercase tracking-wider">Salary Calculation</span>
+                    </div>
+                    <div class="divide-y divide-slate-100">
+                        {% macro srow(label, value, strong=False) -%}
+                        <div class="flex items-center justify-between px-3 py-1.5">
+                            <span class="text-xs text-slate-500">{{ label }}</span>
+                            <span class="text-xs {{ 'font-bold text-slate-900' if strong else 'font-medium text-slate-700' }} amount">{{ value }}</span>
+                        </div>
+                        {%- endmacro %}
+
+                        {{ srow('Employee', worker.full_name) }}
+                        {{ srow('Employee ID', worker.worker_id) }}
+                        {{ srow('Joining date', worker.join_date.strftime('%d %b %Y') if worker.join_date else '—') }}
+                        {{ srow('Monthly fixed salary', '₹%.2f'|format(sb.monthly_salary)) }}
+                        {{ srow('Calculation basis', (salary_basis_label ~ ' (' ~ sb.basis_days ~ ' days)')) }}
+                        {{ srow('Daily salary (exact)', '₹%.4f'|format(sb.daily_rate_exact)) }}
+                        {{ srow('Daily salary (rounded)', '₹%.2f'|format(sb.daily_rate), True) }}
+                        {{ srow('Total calendar days', sb.total_calendar_days) }}
+                        {{ srow('Eligible salary days', sb.eligible_days) }}
+                        {{ srow('Present days', sb.present_days + sb.late_days) }}
+                        {{ srow('Absent days', sb.absent_days) }}
+                        {{ srow('Paid leave allowance', '%g'|format(sb.leave_allowance)) }}
+                        {{ srow('Paid leave used', '%g'|format(sb.paid_leave_used)) }}
+                        {{ srow('Unpaid leave', '%g'|format(sb.unpaid_leave_days)) }}
+                        {{ srow('Total deduction days', '%g'|format(sb.deduction_days)) }}
+                        {{ srow('Deduction rate', '₹%.2f / day'|format(sb.deduction_rate)) }}
+                        {{ srow('Total salary deduction', '− ₹%.2f'|format(sb.deduction_amount)) }}
+                        {{ srow('Gross eligible salary', '₹%.2f'|format(sb.gross_eligible_salary)) }}
+                        {{ srow('Final net payable salary', '₹%.2f'|format(sb.net_payable), True) }}
+                    </div>
+                    <div class="px-3 py-2 bg-white border-t border-slate-100">
+                        <div class="text-xs font-semibold text-slate-600 mb-1">How this was calculated</div>
+                        {% for line in sb.explanation %}
+                        <div class="text-xs text-slate-500 leading-relaxed">• {{ line }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Net Payable box -->
                 <div class="mt-3 bg-gradient-to-r from-primary to-accent rounded-2xl p-4 text-white flex items-center justify-between" data-pdf-block>
                     <div>

@@ -27,7 +27,22 @@ with app.test_request_context('/'):
     workers = m.Worker.query.filter_by(pay_type='monthly').all()
     print('monthly workers: %d' % len(workers))
 
-    for year, mon in MONTHS:
+    # The guarantee under test is "before an employer configures anything,
+    # pay is unchanged", so the test has to create that state rather than
+    # assume it. Any saved policy is lifted out and put back afterwards —
+    # without this the test fails as soon as somebody uses the feature.
+    from app import db as _db
+    saved = m.SalaryPolicy.query.all()
+    stashed = [{c.name: getattr(r, c.name) for c in m.SalaryPolicy.__table__.columns}
+               for r in saved]
+    if stashed:
+        print('(temporarily lifting %d saved policy row(s))' % len(stashed))
+        for r in saved:
+            _db.session.delete(r)
+        _db.session.commit()
+
+    try:
+      for year, mon in MONTHS:
         last = _cal.monthrange(year, mon)[1]
         s, e = date(year, mon, 1), date(year, mon, last)
         for w in workers:
@@ -61,6 +76,16 @@ with app.test_request_context('/'):
                 # is the intended new behaviour.
                 intended.append((year, mon, w.full_name, old_base, new_base,
                                  w.join_date))
+    finally:
+        # Always put the employer's configuration back, including when a
+        # check fails or the run is interrupted. A test must never be the
+        # reason a live salary policy disappears.
+        if stashed:
+            for row in stashed:
+                row.pop('id', None)
+                _db.session.add(m.SalaryPolicy(**row))
+            _db.session.commit()
+            print('(restored %d policy row(s))' % len(stashed))
 
 print('\n%-4s %-32s %-22s %s' % ('', 'worker', 'base (old -> new)', 'deduction (old -> new)'))
 for y, mo, name, ob, nb, od, nd in mismatches:
