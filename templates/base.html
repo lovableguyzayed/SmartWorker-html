@@ -207,7 +207,7 @@
        dropping the nav there left the app feeling like it kept losing its
        navigation. Only full-screen flows that must not be interrupted
        (login, register, the splash) stay out. #}
-    {% set main_screens = ['dashboard', 'workers', 'attendance', 'assignments', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip', 'transactions', 'settings', 'scan', 'notifications', 'add_worker', 'worker_profile', 'edit_worker', 'worker_attendance', 'worker_report', 'id_card'] %}
+    {% set main_screens = ['dashboard', 'workers', 'attendance', 'assignments', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip', 'payroll_preview', 'transactions', 'settings', 'scan', 'notifications', 'add_worker', 'worker_profile', 'edit_worker', 'worker_attendance', 'worker_report', 'id_card'] %}
     <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens %}has-bottom-nav{% endif %}">
         {% block content %}{% endblock %}
     </div>
@@ -223,7 +223,7 @@
            Workers tab lit rather than leaving nothing highlighted. #}
         {% set workers_active = request.endpoint in ['workers', 'add_worker', 'worker_profile', 'edit_worker', 'worker_report', 'id_card'] %}
         {% set attendance_active = request.endpoint in ['attendance', 'worker_attendance', 'closures'] %}
-        {% set transactions_active = request.endpoint in ['transactions', 'payroll', 'payroll_slip'] %}
+        {% set transactions_active = request.endpoint in ['transactions', 'payroll', 'payroll_slip', 'payroll_preview'] %}
         {% set scan_active = request.endpoint == 'scan' %}
         {% set profile_active = request.endpoint in ['profile', 'settings'] %}
         <!-- Bottom Navigation (main screens only) — permanently fixed, never scrolls -->

@@ -4563,3 +4563,73 @@ def api_salary_preview(worker_id):
     breakdown['join_date'] = worker.join_date.isoformat() if worker.join_date else None
     breakdown['period'] = f'{MONTH_NAMES[month - 1]} {year}'
     return jsonify(breakdown)
+
+
+@app.route('/payroll/preview')
+@admin_required
+def payroll_preview():
+    """What generating payroll would produce, before it is generated.
+
+    Payroll could previously only be inspected by running it. This computes
+    the same rows and sets each against whatever is already saved, so an
+    employer can see what a policy change does to every worker — and which
+    rows a generate would leave alone because they are already paid — before
+    committing to it.
+    """
+    today = today_ist()
+    try:
+        month = max(1, min(12, int(request.args.get('month', today.month))))
+        year = max(2020, min(2099, int(request.args.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+
+    rows, totals, _ = _build_payroll_rows(month, year)
+    saved = {
+        p.worker_id: p
+        for p in PayrollRecord.query.filter_by(month=month, year=year).all()
+    }
+
+    preview = []
+    changed = 0
+    frozen = 0
+    for row in rows:
+        worker = row['worker']
+        record = saved.get(worker.id)
+
+        if record and record.status == 'paid':
+            # Already settled: a generate skips it, so there is nothing to
+            # compare — show it as locked.
+            state, delta = 'frozen', 0.0
+            frozen += 1
+        elif record:
+            delta = round(row['net_pay'] - float(record.net_pay or 0), 2)
+            state = 'changed' if abs(delta) > 0.009 else 'same'
+            if state == 'changed':
+                changed += 1
+        else:
+            state, delta = 'new', row['net_pay']
+
+        preview.append({
+            'worker': worker,
+            'state': state,
+            'delta': delta,
+            'saved_net': float(record.net_pay) if record else None,
+            'net_pay': row['net_pay'],
+            'gross_pay': row['gross_pay'],
+            'deductions': row['deductions'],
+            'breakdown': row['pay_summary'].get('salary_breakdown'),
+            'policy_rows': (salary.describe(row['pay_summary']['salary_breakdown']['policy'])
+                            if row['pay_summary'].get('salary_breakdown') else None),
+        })
+
+    return render_template(
+        'payroll_preview.html',
+        preview=preview,
+        totals=totals,
+        month=month,
+        year=year,
+        month_name=MONTH_NAMES[month - 1],
+        changed_count=changed,
+        frozen_count=frozen,
+        new_count=sum(1 for p in preview if p['state'] == 'new'),
+    )

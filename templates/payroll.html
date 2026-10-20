@@ -64,9 +64,14 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div>
             <h3 class="text-base font-semibold text-gray-800">Generate / Refresh Payroll</h3>
-            <p class="text-sm text-gray-500 mt-1">Saves the latest calculation for every active worker this month.</p>
+            <p class="text-sm text-gray-500 mt-1">Saves the latest calculation for every active worker this month. Months already marked Paid are left untouched.</p>
         </div>
-        <form method="POST" action="{{ url_for('payroll_save') }}" class="mt-4">
+        <a href="{{ url_for('payroll_preview', month=month, year=year) }}"
+           class="mt-4 w-full flex items-center justify-center p-3 border-2 border-accent text-accent rounded-2xl font-medium">
+            <i class="fa-solid fa-magnifying-glass-dollar mr-2"></i>
+            Preview before generating
+        </a>
+        <form method="POST" action="{{ url_for('payroll_save') }}" class="mt-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="month" value="{{ month }}">
             <input type="hidden" name="year" value="{{ year }}">

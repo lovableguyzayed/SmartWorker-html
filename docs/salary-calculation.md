@@ -117,6 +117,28 @@ For a worker employed the whole month the same policy gives
 
 ---
 
+## Previewing before you commit
+
+`/payroll/preview?month=&year=` shows what generating payroll would produce,
+without producing it. Each worker is set against whatever is already saved:
+
+| State | Meaning |
+|---|---|
+| **New** | No saved record for this month yet. |
+| **Changed** | The figure would move. Shows `saved -> new` and the difference. |
+| **No change** | Recalculating would produce the same amount. |
+| **Locked** | Already marked Paid. A generate skips it entirely. |
+
+Each row carries the derived daily rate, eligible days, deducted days and the
+sentences explaining the figure, so the effect of a policy change can be read
+worker by worker before anything is written. The Generate button on this
+screen posts to the same endpoint as the one on the payroll screen.
+
+`/api/salary-preview/<worker_id>` does the same for a single worker and takes
+a policy in the query string, so an unsaved policy can be judged too.
+
+---
+
 ## What is frozen, and what is not
 
 A payroll month marked **Paid** is history:
