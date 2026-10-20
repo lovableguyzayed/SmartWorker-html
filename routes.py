@@ -2078,9 +2078,15 @@ def delete_closure(closure_id):
 def worker_attendance(worker_id):
     worker = tenant_get_or_404(Worker, worker_id)
     
-    # Get month and year from query params
-    month = int(request.args.get('month', today_ist().month))
-    year = int(request.args.get('year', today_ist().year))
+    # Month and year from the query string. Clamped the same way every other
+    # month view clamps them: ?month=0&year=0 used to reach date(0, 0, 1) and
+    # take the screen down with a 500, and ?month=abc crashed in int().
+    today = today_ist()
+    try:
+        month = max(1, min(12, int(request.args.get('month', today.month))))
+        year = max(2020, min(2099, int(request.args.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
     
     # Get attendance records for the month
     start_date = date(year, month, 1)
