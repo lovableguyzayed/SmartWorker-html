@@ -1,6 +1,7 @@
 import os
 import secrets
 import string
+import hashlib
 import logging
 from flask import Flask
 from flask_compress import Compress
@@ -33,6 +34,54 @@ if not _secret:
 app.secret_key = _secret
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+
+# ------------------------------------------------------------------
+# Cache-busted static URLs.
+#
+# The service worker serves /static/ cache-first. Because every asset
+# URL was a fixed path, a phone that installed the app in July kept
+# serving July's custom.css for months: the calendar's grid rules were
+# added in August and simply never reached the device, so the month grid
+# rendered as a single column of plain <div>s. Stamping each URL with a
+# hash of the file's contents means a changed file is a changed URL, so
+# cache-first can only ever return the matching version.
+# ------------------------------------------------------------------
+_static_versions = {}
+
+
+def _static_version(filename):
+    """Short content hash for a file under static/, computed once per process.
+
+    Hashing the bytes rather than the mtime means a redeploy that does not
+    change a file keeps its URL, so phones re-download only what actually
+    changed. Each file is read at most once per worker process.
+    """
+    if filename in _static_versions:
+        return _static_versions[filename]
+    version = None
+    try:
+        path = os.path.join(app.static_folder, filename)
+        digest = hashlib.sha1()
+        with open(path, 'rb') as handle:
+            for chunk in iter(lambda: handle.read(65536), b''):
+                digest.update(chunk)
+        version = digest.hexdigest()[:10]
+    except OSError:
+        # A missing file is the caller's problem, not this helper's — fall
+        # through with no version rather than breaking the page.
+        version = None
+    _static_versions[filename] = version
+    return version
+
+
+@app.url_defaults
+def _stamp_static_url(endpoint, values):
+    if endpoint != 'static' or 'filename' not in values or 'v' in values:
+        return
+    version = _static_version(values['filename'])
+    if version:
+        values['v'] = version
 
 # Session cookie hardening. Secure is on only when the app is actually served
 # over TLS, so local http development keeps working; Render terminates TLS and
