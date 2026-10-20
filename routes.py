@@ -3,6 +3,7 @@ import qrcode
 import io
 import base64
 import csv
+import json
 import random
 import calendar as _cal
 from datetime import datetime, date, timedelta
@@ -18,10 +19,12 @@ from timeutil import IST, now_ist, today_ist, ISTDate
 import storage
 import supabase_auth
 import tenancy
+import salary
 from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
     WorkerModification, LeaveAdjustment, WorkerTransaction, Notification,
+    SalaryPolicy, SalaryPolicyAudit,
     TRANSACTION_EARNING_TYPES, TRANSACTION_DEDUCTION_TYPES,
 )
 
@@ -1282,6 +1285,37 @@ def _attendance_closures_in_period(period_start, period_end):
     return cache[key]
 
 
+def resolve_salary_policy(worker):
+    """The salary policy in force for one worker, cached per request.
+
+    Company default plus any per-worker override. Payroll asks for this once
+    per worker, and the company row is the same for all of them, so both
+    lookups are cached for the life of the request.
+    """
+    if not has_app_context():
+        return salary.normalise_policy(None)
+
+    cache = getattr(g, '_salary_policy_cache', None)
+    if cache is None:
+        cache = g._salary_policy_cache = {}
+
+    if 'company' not in cache:
+        cache['company'] = SalaryPolicy.query.filter_by(worker_id=None).first()
+    key = ('worker', worker.id)
+    if key not in cache:
+        cache[key] = SalaryPolicy.query.filter_by(worker_id=worker.id).first()
+
+    company = cache['company']
+    if company is None:
+        # No company policy configured yet: start from what this worker's own
+        # record already says, so switching the feature on does not re-rate
+        # anybody. Once an employer saves a company policy, that wins.
+        base = salary.seed_from_worker(worker)
+    else:
+        base = company
+    return salary.resolve_policy(worker, base, cache[key])
+
+
 def calculate_pay_summary(worker, attendance_records, period_start=None, period_end=None):
     # Derive the payroll month when the caller doesn't pass it explicitly.
     if period_start is None or period_end is None:
@@ -1373,23 +1407,24 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
     if worker.pay_type == 'monthly' and worker.leave_policy_enabled:
         leave_balance = calculate_leave_balance(worker, period_start, period_end)
 
+    salary_breakdown = None
     if worker.pay_type == 'monthly':
-        base_pay = float(worker.monthly_salary or 0)
-        if worker.leave_policy_enabled and worker.leave_deduction_per_day is not None:
-            # Extra leaves first consume the balance accumulated since joining;
-            # salary is only deducted once quota + accumulated balance run out.
-            extra_leave_days = leave_balance['chargeable_days'] if leave_balance else max(
-                0, leave_days - int(worker.allowed_leaves_per_month or 0)
-            )
-            leave_deductions = extra_leave_days * float(worker.leave_deduction_per_day or 0)
-            if leave_balance and leave_balance['balance_before'] > 0 and leave_days > (worker.allowed_leaves_per_month or 0):
-                policy_notes.append(
-                    f"Accumulated leave balance ({leave_balance['balance_before']:g} day(s)) "
-                    'adjusted before salary deduction.'
-                )
-            policy_notes.append('Monthly salary applies leave deduction after quota and accumulated balance.')
-        else:
-            policy_notes.append('Monthly salary with leave policy disabled.')
+        # The configurable engine in salary.py owns this calculation now. It
+        # derives a daily rate from the salary, honours the joining date, and
+        # applies the employer's own absence and paid-leave rules. With the
+        # default policy (absence deduction off) it pays the full monthly
+        # salary, which is what this branch did before, so no existing
+        # worker's pay changes until an employer turns a rule on.
+        policy = resolve_salary_policy(worker)
+        carried = leave_balance['balance_before'] if leave_balance else 0.0
+        salary_breakdown = salary.compute(
+            worker, policy, attendance_records, period_start, period_end,
+            carried_leave_balance=carried)
+
+        base_pay = salary_breakdown['gross_eligible_salary']
+        leave_deductions = salary_breakdown['deduction_amount']
+        extra_leave_days = salary_breakdown['deduction_days']
+        policy_notes.extend(salary_breakdown['explanation'])
     elif worker.pay_type == 'hourly':
         base_pay = (worked_minutes / 60.0) * float(worker.hourly_rate or 0)
         policy_notes.append('Hourly wage is based on check-in/check-out duration.')
@@ -1510,6 +1545,7 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         'transaction_deductions': round(transaction_deductions, 2),
         'transactions': period_transactions,
         'leave_balance': leave_balance,
+        'salary_breakdown': salary_breakdown,
         'deductions': round(deductions, 2),
         'estimated_pay': round(estimated_pay, 2),
         'paid_days': paid_days,
@@ -2554,6 +2590,21 @@ def _build_payroll_rows(month, year):
             record_status = 'unsaved'
             record_id = None
 
+        # A finalised month shows what was actually paid, not what today's
+        # rules would produce. Without this, changing a salary policy
+        # rewrote the figures on months that had already been settled.
+        frozen = record_status == 'paid' and existing_record is not None
+        if frozen:
+            gross_pay = float(existing_record.gross_pay or 0)
+            deductions = float(existing_record.deductions or 0)
+            net_pay = float(existing_record.net_pay or 0)
+            if existing_record.breakdown_json:
+                try:
+                    pay_summary = dict(pay_summary)
+                    pay_summary['salary_breakdown'] = json.loads(existing_record.breakdown_json)
+                except (TypeError, ValueError):
+                    pass
+
         total_gross += gross_pay
         total_deductions += deductions
         total_net += net_pay
@@ -2564,6 +2615,7 @@ def _build_payroll_rows(month, year):
 
         rows.append({
             'worker': worker,
+            'frozen': frozen,
             'att_summary': att_summary,
             'pay_summary': pay_summary,
             'gross_pay': gross_pay,
@@ -2627,6 +2679,7 @@ def payroll_save():
 
     rows, _, _ = _build_payroll_rows(month, year)
     saved = 0
+    frozen = 0
 
     for row in rows:
         worker = row['worker']
@@ -2637,6 +2690,13 @@ def payroll_save():
             worker_id=worker.id, month=month, year=year
         ).first()
 
+        # A month that has been paid is history. It used to be recalculated
+        # and overwritten on every save, so editing a salary rule silently
+        # restated what someone had already been paid. Leave it alone.
+        if existing and existing.status == 'paid':
+            frozen += 1
+            continue
+
         fields = dict(
             total_days=att['total_marked_days'],
             present_days=pay['paid_days'],
@@ -2646,11 +2706,17 @@ def payroll_save():
             net_pay=row['net_pay'],
         )
 
+        # Freeze how the figure was reached alongside the figure itself, so a
+        # payslip reprinted next year shows the rules that were in force then.
+        breakdown = pay.get('salary_breakdown')
+        if breakdown:
+            fields['breakdown_json'] = json.dumps(breakdown, default=str)
+            fields['policy_json'] = json.dumps(breakdown['policy'], default=str)
+
         if existing:
             for k, v in fields.items():
                 setattr(existing, k, v)
-            if existing.status != 'paid':
-                existing.status = 'pending'
+            existing.status = 'pending'
         else:
             record = PayrollRecord(
                 worker_id=worker.id,
@@ -2664,10 +2730,10 @@ def payroll_save():
         saved += 1
 
     db.session.commit()
-    flash(
-        f'Payroll generated for {saved} worker(s) — {MONTH_NAMES[month - 1]} {year}.',
-        'success',
-    )
+    message = f'Payroll generated for {saved} worker(s) — {MONTH_NAMES[month - 1]} {year}.'
+    if frozen:
+        message += (f' {frozen} already-paid record(s) were left untouched.')
+    flash(message, 'success')
     return redirect(url_for('payroll', month=month, year=year))
 
 
@@ -2676,6 +2742,9 @@ def payroll_save():
 def payroll_toggle_paid(record_id):
     record = tenant_get_or_404(PayrollRecord, record_id)
     record.status = 'pending' if record.status == 'paid' else 'paid'
+    # Stamp the moment it became history. Re-opening a record clears the stamp
+    # so the next save is free to recalculate it.
+    record.finalized_at = now_ist() if record.status == 'paid' else None
     db.session.commit()
     label = 'Paid' if record.status == 'paid' else 'Pending'
     flash(

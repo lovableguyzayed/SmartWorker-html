@@ -180,6 +180,14 @@ SCHEMA_PATCHES = {
     'leave_adjustments': [
         ('effective_date', "DATE"),
     ],
+    # Finalised payroll keeps a frozen copy of how it was calculated, so a
+    # later change to salary policy cannot rewrite a month that was already
+    # paid. Added after release, hence the patch rather than a fresh table.
+    'payroll_records': [
+        ('breakdown_json', "TEXT"),
+        ('policy_json', "TEXT"),
+        ('finalized_at', "DATETIME"),
+    ],
 }
 
 # Multi-tenant migration: every business table gains an account_id, and the
@@ -190,7 +198,7 @@ _TENANT_TABLES = [
     'company_settings', 'sites', 'departments', 'projects', 'work_tasks',
     'project_assignments', 'worker_modifications', 'leave_adjustments',
     'worker_transactions', 'notifications', 'workers', 'attendance_records',
-    'closure_days', 'payroll_records',
+    'closure_days', 'payroll_records', 'salary_policies', 'salary_policy_audits',
 ]
 for _t in _TENANT_TABLES:
     SCHEMA_PATCHES.setdefault(_t, []).append(('account_id', "INTEGER"))

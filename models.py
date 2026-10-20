@@ -413,4 +413,70 @@ class PayrollRecord(db.Model):
     status = db.Column(db.String(20), default='pending')  # pending, paid
     created_at = db.Column(db.DateTime, default=now_ist)
 
+    #: Frozen copy of the salary breakdown and the policy that produced it,
+    #: written when the row is finalised. Payroll used to be recomputed live
+    #: from current settings every time it was displayed, so changing a rule
+    #: silently rewrote months that had already been paid. Once this is set,
+    #: the stored figures are shown instead of recalculating.
+    breakdown_json = db.Column(db.Text, nullable=True)
+    policy_json = db.Column(db.Text, nullable=True)
+    finalized_at = db.Column(db.DateTime, nullable=True)
+
     worker = db.relationship('Worker', backref='payroll_records')
+
+
+class SalaryPolicy(db.Model):
+    """How a fixed monthly salary turns into a payable amount.
+
+    One row per account is the company-wide default (worker_id NULL); a row
+    with a worker_id overrides it for that worker only. Resolution is
+    worker row -> company row -> salary.DEFAULT_POLICY, so an employer can
+    set a house rule once and depart from it for individuals.
+
+    The columns mirror salary.POLICY_FIELDS exactly; the engine reads this
+    object through salary.normalise_policy, so an unexpected value degrades
+    to the default rather than failing a pay run.
+    """
+    __tablename__ = 'salary_policies'
+    __table_args__ = (
+        db.UniqueConstraint('account_id', 'worker_id', name='uq_salary_policy_scope'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
+    #: NULL = the company-wide default for this account
+    worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=True, index=True)
+
+    salary_basis = db.Column(db.String(12), default='fixed')        # fixed | calendar
+    basis_days = db.Column(db.Integer, default=30)
+    rounding = db.Column(db.String(10), default='nearest')          # none|nearest|up|down
+    joining_mode = db.Column(db.String(12), default='calendar')     # calendar | attendance
+    paid_leave_enabled = db.Column(db.Boolean, default=True)
+    monthly_leave_allowance = db.Column(db.Float, default=0.0)
+    leave_carry_forward = db.Column(db.Boolean, default=False)
+    absence_deduction_enabled = db.Column(db.Boolean, default=False)
+    calculation_method = db.Column(db.String(28), default='salary_minus_deductions')
+
+    created_at = db.Column(db.DateTime, default=now_ist)
+    updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
+    updated_by = db.Column(db.Integer, nullable=True)
+
+    worker = db.relationship('Worker', backref='salary_policy_rows')
+
+
+class SalaryPolicyAudit(db.Model):
+    """Who changed which salary rule, when, and what it was before.
+
+    Salary policy decides what people are paid, so a change to it needs the
+    same traceability as a change to a worker's rate.
+    """
+    __tablename__ = 'salary_policy_audits'
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
+    worker_id = db.Column(db.Integer, nullable=True)   # NULL = company-wide policy
+    field = db.Column(db.String(40), nullable=False)
+    old_value = db.Column(db.String(60), nullable=True)
+    new_value = db.Column(db.String(60), nullable=True)
+    changed_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=now_ist)
