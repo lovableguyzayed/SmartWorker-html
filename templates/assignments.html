@@ -10,8 +10,8 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Assignments</div>
-                <div class="text-sm opacity-90">Assign &amp; transfer workers to sites, projects, tasks</div>
+                <div class="text-xl font-semibold">{{ _('Assignments') }}</div>
+                <div class="text-sm opacity-90">{{ _('Assign & transfer workers to sites, projects, tasks') }}</div>
             </div>
         </div>
         <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Manage sites & projects">
@@ -28,20 +28,20 @@
         </div>
         <div class="grid grid-cols-2 gap-2">
             <select name="site" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                <option value="0" class="text-gray-800">All sites</option>
+                <option value="0" class="text-gray-800">{{ _('All sites') }}</option>
                 {% for site in sites %}
                 <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
                 {% endfor %}
             </select>
             <select name="project" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                <option value="0" class="text-gray-800">All projects</option>
+                <option value="0" class="text-gray-800">{{ _('All projects') }}</option>
                 {% for project in projects %}
                 <option value="{{ project.id }}" {{ 'selected' if project.id == project_filter }} class="text-gray-800">{{ project.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="grid grid-cols-3 gap-2">
-            {% for value, label in [('all', 'All'), ('assigned', 'Assigned'), ('unassigned', 'Unassigned')] %}
+            {% for value, label in [('all', _('All')), ('assigned', _('Assigned')), ('unassigned', _('Unassigned'))] %}
             <button type="submit" name="show" value="{{ value }}"
                     class="py-3 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/80 border border-white/30' }}">
                 {{ label }}
@@ -56,11 +56,11 @@
     <section class="grid grid-cols-2 gap-3">
         <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-3 rounded-2xl text-center">
             <div class="text-xl font-bold">{{ assigned_count }}</div>
-            <div class="text-xs opacity-90">Assigned</div>
+            <div class="text-xs opacity-90">{{ _('Assigned') }}</div>
         </div>
         <div class="bg-gradient-to-br from-amber-500 to-orange-500 text-white p-3 rounded-2xl text-center">
             <div class="text-xl font-bold">{{ rows|length - assigned_count }}</div>
-            <div class="text-xs opacity-90">Unassigned</div>
+            <div class="text-xs opacity-90">{{ _('Unassigned') }}</div>
         </div>
     </section>
 
@@ -87,15 +87,15 @@
                     {% if assignment.project %} • <i class="fa-solid fa-diagram-project text-accent mr-1"></i>{{ assignment.project.name }}{% endif %}
                     {% if assignment.task %} • {{ assignment.task.name }}{% endif %}
                 </div>
-                <div class="text-[11px] text-gray-400">Since {{ assignment.start_date.strftime('%d %b %Y') }}</div>
+                <div class="text-[11px] text-gray-400">Since {{ assignment.start_date|ldate('%d %b %Y') }}</div>
                 {% else %}
-                <div class="text-xs text-amber-600 font-medium mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>Not assigned</div>
+                <div class="text-xs text-amber-600 font-medium mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ _('Not assigned') }}</div>
                 {% endif %}
             </div>
             <div class="flex flex-col gap-1.5 shrink-0">
                 <button onclick='openAssignModal({{ worker.id }}, {{ worker.full_name|tojson }}, {{ (assignment.site_id if assignment else 0) or 0 }}, {{ (assignment.project_id if assignment else 0) or 0 }}, {{ (assignment.task_id if assignment else 0) or 0 }})'
                         class="px-3 py-3 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
-                    <i class="fa-solid fa-{{ 'shuffle' if assignment else 'plus' }} mr-1"></i>{{ 'Transfer' if assignment else 'Assign' }}
+                    <i class="fa-solid fa-{{ 'shuffle' if assignment else 'plus' }} mr-1"></i>{{ _('Transfer') if assignment else _('Assign') }}
                 </button>
                 {% if assignment %}
                 <form method="POST" action="{{ url_for('worker_assignment_end', worker_id=worker.id, assignment_id=assignment.id) }}"
@@ -103,7 +103,7 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
                     <button class="w-full px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors">
-                        <i class="fa-solid fa-flag-checkered mr-1"></i>End
+                        <i class="fa-solid fa-flag-checkered mr-1"></i>{{ _('End') }}
                     </button>
                 </form>
                 {% endif %}
@@ -119,7 +119,7 @@
     </div>
 
     {% if rows %}
-    <p class="ms-hint">Press and hold a worker to assign or end several at once.</p>
+    <p class="ms-hint">{{ _('Press and hold a worker to assign or end several at once.') }}</p>
     {% with sel_scope = 'assignments',
             sel_endpoint = url_for('bulk_action', scope='assignments'),
             sel_actions = [
@@ -136,7 +136,7 @@
     <div id="bulk-assign-picker" hidden
          class="ms-prompt hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center">
         <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm">
-            <h3 class="text-lg font-semibold text-gray-800 mb-1">Assign selected workers</h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Assign selected workers') }}</h3>
             <p class="text-xs text-gray-500 mb-4">Any active assignment they already have is closed and replaced.</p>
             <label class="block text-sm font-medium text-gray-700 mb-1">Site</label>
             <select data-ms-field="site_id" class="w-full mb-3 px-3 border border-gray-200 rounded-xl">
@@ -155,7 +155,7 @@
             </select>
             <div class="grid grid-cols-2 gap-3">
                 <button type="button" data-ms-prompt-cancel class="btn-secondary py-3 rounded-xl font-medium">Cancel</button>
-                <button type="button" data-ms-prompt-ok class="btn-primary py-3 rounded-xl font-medium">Assign</button>
+                <button type="button" data-ms-prompt-ok class="btn-primary py-3 rounded-xl font-medium">{{ _('Assign') }}</button>
             </div>
         </div>
     </div>
@@ -166,7 +166,7 @@
 <div id="assign-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-end justify-center">
     <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">Assign <span id="assign-worker-name" class="text-accent"></span></h3>
+            <h3 class="text-lg font-semibold text-gray-800">{{ _('Assign') }} <span id="assign-worker-name" class="text-accent"></span></h3>
             <button onclick="closeAssignModal()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
                 <i class="fa-solid fa-times"></i>
             </button>
@@ -193,7 +193,7 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Task <span class="text-gray-400">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Task <span class="text-gray-400">{{ _('(optional)') }}</span></label>
                 <select name="task_id" id="assign-task" class="w-full p-3 border border-lightGray rounded-xl">
                     <option value="">— No task —</option>
                     {% for task in tasks %}
@@ -206,7 +206,7 @@
                 <input type="date" name="start_date" value="{{ today.isoformat() }}" class="w-full p-3 border border-lightGray rounded-xl">
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Notes <span class="text-gray-400">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Notes') }} <span class="text-gray-400">{{ _('(optional)') }}</span></label>
                 <input type="text" name="notes" placeholder="e.g. Transferred for finishing work"
                        class="w-full p-3 border border-lightGray rounded-xl">
             </div>

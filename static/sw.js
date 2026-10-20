@@ -1,7 +1,7 @@
 // Bump this whenever the caching rules change. Bumping it also wipes every
 // older cache on activate, which is how a device holding stale assets from a
 // previous version gets cleaned out.
-const CACHE_NAME = 'smartworker-v16';
+const CACHE_NAME = 'smartworker-v17';
 
 // Only the app shell is pre-cached. Every /static/ URL now carries a ?v=
 // content stamp (see _stamp_static_url in app.py), so the bare paths that used
@@ -34,6 +34,32 @@ self.addEventListener('activate', (event) => {
     )
   );
   self.clients.claim();
+});
+
+// The cache key for a page is its URL, but the language comes from the
+// session, so after a language switch every cached page is in the old
+// language. They would each be served stale once before the background
+// revalidate landed. app.js tells us the moment it sees the language change;
+// dropping the page entries costs one network load per screen and nothing else
+// (static assets and photos are keyed by content and stay).
+async function purgeCachedPages() {
+  const cache = await caches.open(CACHE_NAME);
+  const keys = await cache.keys();
+  await Promise.all(keys.map(async (request) => {
+    const url = new URL(request.url);
+    if (url.origin !== self.location.origin) return;
+    if (url.pathname.startsWith('/static/')) return;
+    await cache.delete(request);
+  }));
+  // /login is the offline fallback every miss falls back to, so put the shell
+  // back rather than leaving the app with nothing to show while offline.
+  await cache.addAll(STATIC_ASSETS).catch(() => {});
+}
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'purge-pages') {
+    event.waitUntil(purgeCachedPages());
+  }
 });
 
 function cachePage(request, response) {

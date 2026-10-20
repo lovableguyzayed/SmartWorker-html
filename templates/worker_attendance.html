@@ -55,7 +55,7 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-800">
-                {{ start_date.strftime('%B %Y') }}
+                {{ start_date|ldate('%B %Y') }}
             </h3>
             <div class="flex items-center space-x-2">
                 <a href="{{ url_for('worker_attendance', worker_id=worker.id, month=start_date.month-1 if start_date.month > 1 else 12, year=start_date.year if start_date.month > 1 else start_date.year-1) }}" 
@@ -163,7 +163,7 @@
                             {% endif %}
                         </div>
                         <div>
-                            <div class="font-medium text-gray-800">{{ record.date.strftime('%d %B %Y') }}</div>
+                            <div class="font-medium text-gray-800">{{ record.date|ldate('%d %B %Y') }}</div>
                             {% if rec_closure %}
                                 <div class="text-xs text-orange-600 font-medium">
                                     <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ rec_closure.reason }} ({{ rec_closure.type.title() }})
@@ -214,7 +214,7 @@
                         <span class="text-sm font-bold text-orange-700">{{ entry.date.strftime('%d') }}</span>
                     </div>
                     <div>
-                        <div class="font-medium text-gray-800">{{ entry.date.strftime('%d %B %Y') }}</div>
+                        <div class="font-medium text-gray-800">{{ entry.date|ldate('%d %B %Y') }}</div>
                         <div class="text-sm text-orange-700">{{ entry.reason }}</div>
                     </div>
                 </div>
@@ -240,7 +240,7 @@
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-2">Detailed Statistics</h3>
-                <p class="text-gray-600">{{ start_date.strftime('%B %Y') }}</p>
+                <p class="text-gray-600">{{ start_date|ldate('%B %Y') }}</p>
             </div>
             
             <div class="space-y-4 mb-6">
@@ -363,7 +363,7 @@
                     <span class="text-gray-600">Estimated Net Pay</span>
                     <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.estimated_pay) }}</span>
                 </div>
-                <div class="text-xs text-gray-500">{{ pay_summary.policy_note }}</div>
+                <div class="text-xs text-gray-500">{{ pay_summary.policy_note|lnotes }}</div>
             </div>
             
             <button onclick="hideStatsModal()" 

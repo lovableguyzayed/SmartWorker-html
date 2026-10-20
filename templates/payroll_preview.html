@@ -10,7 +10,7 @@
         </a>
         <div class="min-w-0">
             <h1 class="text-xl font-bold leading-tight">Payroll Preview</h1>
-            <p class="text-sm text-white/70">{{ month_name }} {{ year }} — nothing is saved yet</p>
+            <p class="text-sm text-white/70">{{ _(month_name) }} {{ year }} — nothing is saved yet</p>
         </div>
     </div>
 
@@ -56,7 +56,7 @@
             <button type="submit"
                     class="w-full flex items-center justify-center p-3 bg-accent text-white rounded-2xl font-medium">
                 <i class="fa-solid fa-check mr-2"></i>
-                Generate payroll for {{ month_name }}
+                Generate payroll for {{ _(month_name) }}
             </button>
         </form>
     </section>
@@ -111,10 +111,10 @@
         </div>
 
         <details class="mt-2">
-            <summary class="text-xs font-medium text-accent cursor-pointer">How this was calculated</summary>
+            <summary class="text-xs font-medium text-accent cursor-pointer">{{ _('How this was calculated') }}</summary>
             <ul class="mt-2 space-y-1">
                 {% for line in b.explanation %}
-                <li class="text-xs text-gray-500 leading-relaxed">• {{ line }}</li>
+                <li class="text-xs text-gray-500 leading-relaxed">• {{ line|lnote }}</li>
                 {% endfor %}
             </ul>
             {% if p.policy_rows %}
@@ -139,7 +139,7 @@
     {% if not preview %}
     <section class="bg-white rounded-3xl shadow border border-gray-100 p-8 text-center">
         <i class="fa-solid fa-users text-3xl text-gray-200 mb-3"></i>
-        <p class="text-sm text-gray-500">No active workers to calculate for {{ month_name }} {{ year }}.</p>
+        <p class="text-sm text-gray-500">No active workers to calculate for {{ _(month_name) }} {{ year }}.</p>
     </section>
     {% endif %}
 </main>

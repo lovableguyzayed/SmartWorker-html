@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -37,7 +37,11 @@
     
     <style>
         body {
-            font-family: 'Inter', sans-serif !important;
+            /* Inter has no Devanagari, so Hindi text falls through to the next
+               family. Naming the Android/desktop Devanagari fonts explicitly
+               keeps that fallback a proper UI face instead of whatever the
+               generic sans-serif happens to be; no webfont is downloaded. */
+            font-family: 'Inter', 'Noto Sans Devanagari', 'Nirmala UI', sans-serif !important;
         }
 
         .app-bottom-nav {
@@ -232,13 +236,13 @@
                 <div class="app-nav-row">
                     <a href="{{ url_for('dashboard') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if home_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-home text-xl"></i></span>
-                        <span class="app-nav-label">Home</span>
+                        <span class="app-nav-label">{{ _('Home') }}</span>
                     </a>
 
                     {% if current_user.is_admin %}
                     <a href="{{ url_for('workers') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if workers_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-users text-xl"></i></span>
-                        <span class="app-nav-label">Workers</span>
+                        <span class="app-nav-label">{{ _('Workers') }}</span>
                     </a>
                     {% endif %}
 
@@ -247,30 +251,30 @@
                        computed and then never used anywhere. #}
                     <a href="{{ url_for('attendance') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if attendance_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
-                        <span class="app-nav-label">Attendance</span>
+                        <span class="app-nav-label">{{ _('Attendance') }}</span>
                     </a>
 
                     <!-- Center button: QR Scanner (scan-to-attend is the primary action) -->
                     <a href="{{ url_for('scan') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if scan_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-2xl"></i></span>
-                        <span class="app-nav-label">Scan QR</span>
+                        <span class="app-nav-label">{{ _('Scan QR') }}</span>
                     </a>
 
                     {% if current_user.is_admin %}
                     <a href="{{ url_for('transactions') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-transfer text-xl"></i></span>
-                        <span class="app-nav-label">Transactions</span>
+                        <span class="app-nav-label">{{ _('Transactions') }}</span>
                     </a>
                     {% else %}
                     <a href="{{ url_for('scan') }}?manual=1" class="app-nav-item transition-colors">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-keyboard text-xl"></i></span>
-                        <span class="app-nav-label">ID Entry</span>
+                        <span class="app-nav-label">{{ _('ID Entry') }}</span>
                     </a>
                     {% endif %}
 
                     <a href="{{ url_for('profile') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if profile_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-user text-xl"></i></span>
-                        <span class="app-nav-label">Profile</span>
+                        <span class="app-nav-label">{{ _('Profile') }}</span>
                     </a>
                 </div>
             </div>

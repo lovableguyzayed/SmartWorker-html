@@ -20,6 +20,7 @@ import storage
 import supabase_auth
 import tenancy
 import salary
+import i18n
 from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
@@ -1116,7 +1117,8 @@ def dashboard():
                          present_today=present_today,
                          attendance_percentage=round((present_today/total_workers*100) if total_workers > 0 else 0, 1),
                          recent_attendance=recent_attendance,
-                         upcoming_closures=upcoming_closures)
+                         upcoming_closures=upcoming_closures,
+                         today=today)
 
 @app.route('/workers')
 @login_required
@@ -4120,8 +4122,10 @@ def _day_payload(on_date):
 
     return {
         'date': on_date.isoformat(),
-        'date_label': on_date.strftime('%d %B %Y'),
-        'weekday': on_date.strftime('%A'),
+        # The day view builds its own markup in JS, so these two land on the
+        # screen verbatim — they have to come back in the interface language.
+        'date_label': _ldate(on_date, '%d %B %Y'),
+        'weekday': _ldate(on_date, '%A'),
         'is_today': on_date == today_ist(),
         'editable': editable,
         'reason': reason,
@@ -4815,3 +4819,70 @@ class CalendarDay:
 
     def __init__(self, status):
         self.status = status
+
+
+# ============================================================
+# Interface language
+# ============================================================
+
+def _current_lang():
+    """The chosen language, or English if nothing valid is in the session."""
+    lang = session.get('lang', i18n.DEFAULT_LANGUAGE)
+    return lang if lang in i18n.LANGUAGES else i18n.DEFAULT_LANGUAGE
+
+
+@app.context_processor
+def _inject_language():
+    """Make _() and the language list available to every template.
+
+    Beware: `{% set _ = list.append(x) %}` in a template shadows _() with
+    None for the rest of that block. tests/test_i18n.py fails if any template
+    does it — use a differently named throwaway.
+    """
+    lang = _current_lang()
+    return {
+        '_': lambda text: i18n.translate(text, lang),
+        'current_lang': lang,
+        'languages': i18n.LANGUAGES,
+        'weekdays_short': i18n.weekday_names(lang, short=True),
+    }
+
+
+@app.template_filter('ldate')
+def _ldate(value, fmt='%d %b %Y'):
+    """strftime with the day and month names in the interface language."""
+    return i18n.format_date(value, fmt, _current_lang())
+
+
+@app.template_filter('lnote')
+def _lnote(value):
+    """One salary note, translated on its way to the screen.
+
+    The English prose stays in the payroll snapshot as the audit record; only
+    the displayed copy is translated, so a payslip saved months ago reads in
+    whichever language the person viewing it chose.
+    """
+    return i18n.translate_note(value, _current_lang())
+
+
+@app.template_filter('lnotes')
+def _lnotes(value):
+    """A run of salary notes joined into one paragraph, translated."""
+    return i18n.translate_notes(value, _current_lang())
+
+
+@app.route('/language/<lang>', methods=['POST'])
+def set_language(lang):
+    """Switch the interface language and come back where we were.
+
+    Stored in the session rather than on the user, so a shared site phone
+    can be set to Hindi without changing it for the office. Deliberately not
+    login-required: someone who only reads Hindi has to be able to switch
+    before they can read the login screen. It writes one whitelisted value
+    into the session and reads nothing, so there is nothing here to protect.
+    """
+    if lang in i18n.LANGUAGES:
+        session['lang'] = lang
+        session.permanent = True
+    return redirect(safe_redirect_target(request.form.get('redirect_to'),
+                                         url_for('profile')))

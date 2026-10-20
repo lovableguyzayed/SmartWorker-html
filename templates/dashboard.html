@@ -79,7 +79,7 @@
             <img loading="lazy" decoding="async" src="{{ url_for('static', filename='images/logo.png') }}" alt="SmartWorker" class="w-10 h-10 rounded-lg object-contain">
             <div>
                 <div class="text-xl font-semibold">SmartWorker</div>
-                <div class="text-sm opacity-90">Dashboard Overview</div>
+                <div class="text-sm opacity-90">{{ _('Dashboard Overview') }}</div>
             </div>
         </div>
         <div class="flex items-center space-x-3">
@@ -92,7 +92,7 @@
             </a>
             {% endif %}
             <!-- Profile picture beside the bell — real avatar or default icon -->
-            <a href="{{ url_for('profile') }}" class="icon-btn overflow-hidden border border-white/25 bg-white/10 backdrop-blur-sm" title="Profile">
+            <a href="{{ url_for('profile') }}" class="icon-btn overflow-hidden border border-white/25 bg-white/10 backdrop-blur-sm" title="{{ _('Profile') }}">
                 {% if current_user.profile_image %}
                 <img src="{{ current_user.profile_image }}" alt="{{ current_user.full_name }}" class="w-full h-full object-cover">
                 {% else %}
@@ -104,8 +104,8 @@
     
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <div class="text-center">
-            <div class="text-2xl font-bold mb-1">Welcome back{% if current_user.is_authenticated %}, {{ current_user.full_name.split()[0] }}{% endif %}!</div>
-            <div class="text-sm opacity-90" id="current-date"></div>
+            <div class="text-2xl font-bold mb-1">{{ _('Welcome back') }}{% if current_user.is_authenticated %}, {{ current_user.full_name.split()[0] }}{% endif %}!</div>
+            <div class="text-sm opacity-90" id="current-date">{{ today|ldate('%A, %B %d, %Y') }}</div>
         </div>
     </div>
 </header>
@@ -117,7 +117,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ total_workers }}</div>
-                    <div class="text-sm opacity-90">Total Workers</div>
+                    <div class="text-sm opacity-90">{{ _('Total Workers') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-users text-xl"></i>
@@ -129,7 +129,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ present_today }}</div>
-                    <div class="text-sm opacity-90">Present Today</div>
+                    <div class="text-sm opacity-90">{{ _('Present Today') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-check-circle text-xl"></i>
@@ -141,7 +141,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ attendance_percentage }}%</div>
-                    <div class="text-sm opacity-90">Attendance Rate</div>
+                    <div class="text-sm opacity-90">{{ _('Attendance Rate') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-chart-pie text-xl"></i>
@@ -153,7 +153,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ (total_workers - present_today) }}</div>
-                    <div class="text-sm opacity-90">Absent Today</div>
+                    <div class="text-sm opacity-90">{{ _('Absent Today') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-user-slash text-xl"></i>
@@ -171,8 +171,8 @@
                     <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
                 </div>
                 <div>
-                    <div class="text-lg font-semibold">Payroll</div>
-                    <div class="text-sm opacity-90">Calculate &amp; track monthly wages</div>
+                    <div class="text-lg font-semibold">{{ _('Payroll') }}</div>
+                    <div class="text-sm opacity-90">{{ _('Calculate & track monthly wages') }}</div>
                 </div>
             </div>
             <i class="fa-solid fa-chevron-right opacity-80"></i>
@@ -182,41 +182,41 @@
 
     <!-- Quick Actions -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h3>
         <div class="grid grid-cols-2 gap-3">
             {% if current_user.is_admin %}
             <a href="{{ url_for('add_worker') }}" class="flex items-center justify-center p-4 bg-accent text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-user-plus mr-2"></i>
-                Add Worker
+                {{ _('Add Worker') }}
             </a>
             <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-calendar-check mr-2"></i>
-                Mark Attendance
+                {{ _('Mark Attendance') }}
             </a>
             <a href="{{ url_for('scan') }}" class="flex items-center justify-center p-4 bg-indigo-500 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-qrcode mr-2"></i>
-                QR Scanner
+                {{ _('QR Scanner') }}
             </a>
             <a href="{{ url_for('transactions') }}" class="flex items-center justify-center p-4 bg-teal-500 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-money-bill-transfer mr-2"></i>
-                Transactions
+                {{ _('Transactions') }}
             </a>
             <a href="{{ url_for('assignments') }}" class="flex items-center justify-center p-4 bg-purple-500 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-diagram-project mr-2"></i>
-                Assignments
+                {{ _('Assignments') }}
             </a>
             <a href="{{ url_for('closures') }}" class="flex items-center justify-center p-4 bg-orange-500 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-calendar-xmark mr-2"></i>
-                Closures
+                {{ _('Closures') }}
             </a>
             {% else %}
             <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-calendar-check mr-2"></i>
-                Mark Attendance
+                {{ _('Mark Attendance') }}
             </a>
             <a href="{{ url_for('scan') }}" class="flex items-center justify-center p-4 bg-indigo-500 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-qrcode mr-2"></i>
-                QR Scanner
+                {{ _('QR Scanner') }}
             </a>
             {% endif %}
         </div>
@@ -227,16 +227,16 @@
     {% if recent_attendance %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
-            <h3 class="text-base font-semibold text-gray-800">Today's Attendance</h3>
-            <a href="{{ url_for('attendance') }}" class="text-accent hover:text-primary text-xs font-semibold uppercase tracking-wide">View All</a>
+            <h3 class="text-base font-semibold text-gray-800">{{ _('Today\'s Attendance') }}</h3>
+            <a href="{{ url_for('attendance') }}" class="text-accent hover:text-primary text-xs font-semibold uppercase tracking-wide">{{ _('View All') }}</a>
         </div>
 
         <!-- Column headers -->
         <div class="att-row att-headrow">
-            <span class="att-h">Worker</span>
-            <span class="att-h" style="text-align:center">In</span>
-            <span class="att-h" style="text-align:center">Out</span>
-            <span class="att-h" style="text-align:right">Status</span>
+            <span class="att-h">{{ _('Worker') }}</span>
+            <span class="att-h" style="text-align:center">{{ _('In') }}</span>
+            <span class="att-h" style="text-align:center">{{ _('Out') }}</span>
+            <span class="att-h" style="text-align:right">{{ _('Status') }}</span>
         </div>
 
         <div class="divide-y divide-gray-100">
@@ -281,12 +281,12 @@
 
                 <!-- Status: colored dot + label, quieter than a pill, always aligned -->
                 {% set status_style = {
-                    'present': ('#22c55e', '#15803d', 'Present'),
-                    'absent':  ('#ef4444', '#dc2626', 'Absent'),
-                    'late':    ('#f59e0b', '#d97706', 'Late'),
-                    'leave':   ('#3b82f6', '#2563eb', 'Leave'),
+                    'present': ('#22c55e', '#15803d', _('Present')),
+                    'absent':  ('#ef4444', '#dc2626', _('Absent')),
+                    'late':    ('#f59e0b', '#d97706', _('Late')),
+                    'leave':   ('#3b82f6', '#2563eb', _('Leave')),
                 } %}
-                {% set dot, color, label = status_style.get(attendance.status, ('#9ca3af', '#6b7280', attendance.status|title)) %}
+                {% set dot, color, label = status_style.get(attendance.status, ('#9ca3af', '#6b7280', _(attendance.status|capitalize))) %}
                 <span class="att-status" style="color: {{ color }}">
                     <span class="att-dot" style="background: {{ dot }}"></span>{{ label }}
                 </span>
@@ -299,7 +299,7 @@
     <!-- Upcoming Closures -->
     {% if upcoming_closures %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Upcoming Closures</h3>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Upcoming Closures') }}</h3>
         <div class="space-y-3">
             {% for closure in upcoming_closures %}
             <div class="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-200">
@@ -309,7 +309,7 @@
                     </div>
                     <div>
                         <div class="font-medium text-gray-800">{{ closure.reason }}</div>
-                        <div class="text-sm text-gray-600">{{ closure.date.strftime('%B %d, %Y') }}</div>
+                        <div class="text-sm text-gray-600">{{ closure.date|ldate('%B %d, %Y') }}</div>
                         <div class="text-xs {{ 'text-green-600' if closure.allow_attendance else 'text-red-600' }}">
                             {{ 'Attendance allowed if present' if closure.allow_attendance else 'Attendance locked for this date' }}
                         </div>
@@ -323,15 +323,4 @@
     {% endif %}
 </main>
 
-<script>
-// Set current date
-document.addEventListener('DOMContentLoaded', function() {
-    const dateElement = document.getElementById('current-date');
-    if (dateElement) {
-        const today = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateElement.textContent = today.toLocaleDateString('en-US', options);
-    }
-});
-</script>
 {% endblock %}

@@ -10,18 +10,18 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Workers</div>
-                <div class="text-sm opacity-90">Manage Employee Records</div>
+                <div class="text-xl font-semibold">{{ _('Workers') }}</div>
+                <div class="text-sm opacity-90">{{ _('Manage Employee Records') }}</div>
             </div>
         </div>
         <div class="flex items-center space-x-2">
             {% if current_user.is_admin %}
-            <a href="{{ url_for('assignments') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Assignments">
+            <a href="{{ url_for('assignments') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Assignments') }}">
                 <i class="fa-solid fa-diagram-project text-lg"></i>
             </a>
             {% endif %}
             <a href="{{ url_for('add_worker') }}" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/30">
-                <i class="fa-solid fa-plus mr-2"></i>Add Worker
+                <i class="fa-solid fa-plus mr-2"></i>{{ _('Add Worker') }}
             </a>
         </div>
     </div>
@@ -32,12 +32,12 @@
             <div class="relative">
                 <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70"></i>
                 <input type="text" name="search" value="{{ search }}" 
-                       placeholder="Search by name, ID, or phone..."
+                       placeholder="{{ _('Search by name, ID, or phone...') }}"
                        class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/70 focus:ring-2 focus:ring-white/50">
             </div>
             <div class="flex space-x-2">
                 <select name="department" class="flex-1 p-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50">
-                    <option value="">All Departments</option>
+                    <option value="">{{ _('All Departments') }}</option>
                     {% for dept in departments %}
                     <option value="{{ dept }}" {{ 'selected' if dept == selected_department }} style="color: black;">{{ dept }}</option>
                     {% endfor %}
@@ -101,7 +101,7 @@
                         <i class="fa-solid fa-phone mr-1"></i>{{ worker.phone }}
                     </div>
                     <div class="text-sm text-gray-600">
-                        <i class="fa-solid fa-calendar mr-1"></i>{{ worker.join_date.strftime('%d %b %Y') }}
+                        <i class="fa-solid fa-calendar mr-1"></i>{{ worker.join_date|ldate('%d %b %Y') }}
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
@@ -122,16 +122,16 @@
         </div>
         {% endfor %}
     </div>
-    <p class="ms-hint">Press and hold a worker to select several at once.</p>
+    <p class="ms-hint">{{ _('Press and hold a worker to select several at once.') }}</p>
 
     {# Pager. Hidden entirely when everything fits on one page, so a small
        employer with fifteen workers never sees it. #}
     {% if has_prev or has_next %}
-    <nav class="flex items-center justify-between gap-3 mt-4" aria-label="Worker list pages">
+    <nav class="flex items-center justify-between gap-3 mt-4" aria-label="{{ _('Worker list pages') }}">
         {% if has_prev %}
         <a href="{{ url_for('workers', page=page-1, search=search, department=selected_department) }}"
            class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
-            <i class="fa-solid fa-chevron-left mr-2"></i>Previous
+            <i class="fa-solid fa-chevron-left mr-2"></i>{{ _('Previous') }}
         </a>
         {% else %}
         <span class="flex-1"></span>
@@ -142,7 +142,7 @@
         {% if has_next %}
         <a href="{{ url_for('workers', page=page+1, search=search, department=selected_department) }}"
            class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
-            Next<i class="fa-solid fa-chevron-right ml-2"></i>
+            {{ _('Next') }}<i class="fa-solid fa-chevron-right ml-2"></i>
         </a>
         {% else %}
         <span class="flex-1"></span>
@@ -168,7 +168,7 @@
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fa-solid fa-users text-3xl text-gray-400"></i>
         </div>
-        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Workers Found</h3>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Workers Found') }}</h3>
         <p class="text-gray-600 mb-6">
             {% if search or selected_department %}
                 No workers match your search criteria. Try adjusting your filters.
@@ -178,7 +178,7 @@
         </p>
         <a href="{{ url_for('add_worker') }}" 
            class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
-            <i class="fa-solid fa-plus mr-2"></i>Add First Worker
+            <i class="fa-solid fa-plus mr-2"></i>{{ _('Add First Worker') }}
         </a>
     </div>
     {% endif %}

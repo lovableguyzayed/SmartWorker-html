@@ -159,25 +159,25 @@
 {% block content %}
 <header class="scan-header bg-gradient-to-br from-primary via-blue-900 to-accent text-white rounded-b-3xl shadow-xl">
     <div class="scan-title">SmartWorker</div>
-    <div class="scan-sub">Scan a worker's ID card to mark attendance</div>
+    <div class="scan-sub">{{ _('Scan a worker\'s ID card to mark attendance') }}</div>
 
     <!-- Live counts for today, refreshed in place after every mark -->
     <div class="scan-stats">
         <div class="scan-stat">
             <div class="scan-stat-num" id="stat-present">{{ stats.present }}</div>
-            <div class="scan-stat-label">Present</div>
+            <div class="scan-stat-label">{{ _('Present') }}</div>
         </div>
         <div class="scan-stat">
             <div class="scan-stat-num" id="stat-late">{{ stats.late }}</div>
-            <div class="scan-stat-label">Late</div>
+            <div class="scan-stat-label">{{ _('Late') }}</div>
         </div>
         <div class="scan-stat">
             <div class="scan-stat-num" id="stat-absent">{{ stats.absent }}</div>
-            <div class="scan-stat-label">Absent</div>
+            <div class="scan-stat-label">{{ _('Absent') }}</div>
         </div>
         <div class="scan-stat">
             <div class="scan-stat-num" id="stat-open">{{ stats.open }}</div>
-            <div class="scan-stat-label">Open</div>
+            <div class="scan-stat-label">{{ _('Open') }}</div>
         </div>
     </div>
 </header>
@@ -190,22 +190,22 @@
             <div class="cam-overlay" id="cam-overlay">
                 <div class="cam-frame"><div class="cam-line"></div></div>
             </div>
-            <div class="cam-idle" id="cam-idle">Starting camera…</div>
+            <div class="cam-idle" id="cam-idle">{{ _('Starting camera…') }}</div>
         </div>
-        <div class="scan-help" id="scanner-status">Point the camera at the QR code on the ID card.</div>
+        <div class="scan-help" id="scanner-status">{{ _('Point the camera at the QR code on the ID card.') }}</div>
         <div class="cam-controls">
             <button type="button" class="cam-btn" id="cam-flip" onclick="flipCamera()">
-                <i class="fa-solid fa-camera-rotate"></i>Flip camera
+                <i class="fa-solid fa-camera-rotate"></i>{{ _('Flip camera') }}
             </button>
             <button type="button" class="cam-btn" id="cam-pause" onclick="togglePause()">
-                <i class="fa-solid fa-pause"></i><span id="cam-pause-label">Pause</span>
+                <i class="fa-solid fa-pause"></i><span id="cam-pause-label">{{ _('Pause') }}</span>
             </button>
         </div>
     </section>
 
     <!-- Manual entry fallback (kept: the only way in when a camera is blocked) -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-sm font-semibold text-gray-800 mb-3"><i class="fa-solid fa-keyboard mr-2 text-accent"></i>Enter Employee ID</h3>
+        <h3 class="text-sm font-semibold text-gray-800 mb-3"><i class="fa-solid fa-keyboard mr-2 text-accent"></i>{{ _('Enter Employee ID') }}</h3>
         <form onsubmit="return lookupManual(event)" class="flex gap-2">
             <input type="text" id="manual-id" placeholder="e.g. CO001" autocomplete="off" autocapitalize="characters"
                    class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent uppercase">
@@ -231,17 +231,17 @@
 
         <div class="res-actions">
             <button type="button" class="res-btn res-btn-green" id="btn-primary" onclick="markPrimary()">
-                <span id="btn-primary-label">Check in</span>
+                <span id="btn-primary-label">{{ _('Check in') }}</span>
             </button>
-            <button type="button" class="res-btn res-btn-amber" id="btn-late" onclick="markAttendance('late')">Late</button>
+            <button type="button" class="res-btn res-btn-amber" id="btn-late" onclick="markAttendance('late')">{{ _('Late') }}</button>
             {% if current_user.is_admin %}
-            <button type="button" class="res-btn res-btn-red" id="btn-absent" onclick="markAttendance('absent')">Absent</button>
-            <button type="button" class="res-btn res-btn-blue" id="btn-leave" onclick="markAttendance('leave')">Leave</button>
+            <button type="button" class="res-btn res-btn-red" id="btn-absent" onclick="markAttendance('absent')">{{ _('Absent') }}</button>
+            <button type="button" class="res-btn res-btn-blue" id="btn-leave" onclick="markAttendance('leave')">{{ _('Leave') }}</button>
             {% endif %}
         </div>
 
         <a href="#" id="result-profile-link" class="res-profile">
-            <i class="fa-solid fa-user"></i>Open full profile
+            <i class="fa-solid fa-user"></i>{{ _('Open full profile') }}
         </a>
     </section>
 </main>
@@ -350,8 +350,8 @@ async function startScanner() {
         setPauseLabel();
     } catch (err) {
         scannerRunning = false;
-        setIdle('Camera unavailable');
-        setStatus('Camera unavailable (' + escapeHtml(err && err.message ? err.message : err) +
+        setIdle({{ _('Camera unavailable')|tojson }});
+        setStatus({{ _('Camera unavailable')|tojson }} + ' (' + escapeHtml(err && err.message ? err.message : err) +
                   '). Allow camera access in Settings, or enter the Employee ID below.');
     }
 }

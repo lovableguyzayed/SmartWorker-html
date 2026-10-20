@@ -442,6 +442,19 @@ const SmartWorker = {
     }
 };
 
+// ── Interface language ───────────────────────────────────────
+// The language lives in the server session, so the only thing the client has
+// to do is keep <html lang> honest and throw away pages the service worker
+// cached in the previous language.
+function applyLanguage(lang) {
+    const root = document.documentElement;
+    if (root.getAttribute('lang') === lang) return;
+    root.setAttribute('lang', lang);
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'purge-pages' });
+    }
+}
+
 // ── NativeShell: SPA navigation engine ───────────────────────
 // The WebView loads the document exactly once. Every link tap and form
 // submit afterwards is fetched over XHR and the new screen is swapped into
@@ -597,6 +610,14 @@ const NativeShell = {
         });
 
         document.title = doc.title;
+
+        // Only the body is swapped, so <html lang> would keep whatever the
+        // first full load set. Carry it over: a language switch is an ordinary
+        // POST + redirect through here, and screen readers and the font
+        // fallback both pick Devanagari off this attribute.
+        const incomingLang = doc.documentElement.getAttribute('lang');
+        if (incomingLang) applyLanguage(incomingLang);
+
         document.body.innerHTML = doc.body.innerHTML;
 
         // innerHTML never executes scripts — replace each with a live clone

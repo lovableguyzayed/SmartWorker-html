@@ -46,21 +46,38 @@
                 </div>
             </div>
             <h1 class="text-3xl font-bold mb-2 tracking-wide">SmartWorker</h1>
-            <p class="text-base opacity-90 font-medium">Professional Attendance Management</p>
+            <p class="text-base opacity-90 font-medium">{{ _('Professional Attendance Management') }}</p>
+
+            {# The language chooser has to be reachable before login, or a
+               supervisor who only reads Hindi cannot read the screen that
+               would let them change it. #}
+            <div class="flex items-center justify-center gap-2 mt-4">
+                {% for code, label in languages.items() %}
+                <form method="POST" action="{{ url_for('set_language', lang=code) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="redirect_to" value="{{ url_for('login') }}">
+                    <button type="submit" class="tap-target px-4 py-2 rounded-xl text-sm font-semibold border
+                           {{ 'bg-white/25 border-white/60 text-white' if current_lang == code
+                              else 'bg-white/10 border-white/25 text-white/80' }}">
+                        {{ label }}
+                    </button>
+                </form>
+                {% endfor %}
+            </div>
         </div>
     </section>
 
     <main id="signin-content" class="p-6 -mt-16 relative z-10">
         <div id="signin-card" class="bg-white rounded-3xl shadow-2xl p-8 mb-6 border border-gray-100">
             <div class="text-center mb-8">
-                <h2 class="text-2xl font-bold text-primary mb-2">Welcome Back</h2>
-                <p class="text-gray-600">Access your attendance dashboard</p>
+                <h2 class="text-2xl font-bold text-primary mb-2">{{ _('Welcome Back') }}</h2>
+                <p class="text-gray-600">{{ _('Access your attendance dashboard') }}</p>
             </div>
 
             <form id="signin-form" method="POST" class="space-y-6">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div id="username-input" class="space-y-2">
-                    <label for="username" class="text-sm font-semibold text-gray-700 block">Username or Email</label>
+                    <label for="username" class="text-sm font-semibold text-gray-700 block">{{ _('Username or Email') }}</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fa-solid fa-user text-gray-400"></i>
@@ -70,14 +87,14 @@
                             name="username"
                             type="text"
                             required
-                            placeholder="Enter username or email"
+                            placeholder="{{ _('Enter username or email') }}"
                             class="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
                         >
                     </div>
                 </div>
 
                 <div id="password-input" class="space-y-2">
-                    <label for="password" class="text-sm font-semibold text-gray-700 block">Password</label>
+                    <label for="password" class="text-sm font-semibold text-gray-700 block">{{ _('Password') }}</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fa-solid fa-lock text-gray-400"></i>
@@ -87,7 +104,7 @@
                             name="password"
                             type="password"
                             required
-                            placeholder="Enter your password"
+                            placeholder="{{ _('Enter your password') }}"
                             class="w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
                         >
                         <button id="password-toggle" type="button" class="absolute inset-y-0 right-0 pr-4 flex items-center">
@@ -99,25 +116,25 @@
                 <div id="options-row" class="flex items-center justify-between">
                     <label class="flex items-center space-x-2">
                         <input type="checkbox" class="w-4 h-4 text-accent border border-gray-300 rounded focus:ring-2 focus:ring-accent">
-                        <span class="text-gray-600 text-sm">Remember me</span>
+                        <span class="text-gray-600 text-sm">{{ _('Remember me') }}</span>
                     </label>
-                    <a href="{{ url_for('forgot_password') }}" class="text-accent text-sm font-semibold hover:text-primary transition-colors">Forgot Password?</a>
+                    <a href="{{ url_for('forgot_password') }}" class="text-accent text-sm font-semibold hover:text-primary transition-colors">{{ _('Forgot Password?') }}</a>
                 </div>
 
                 <button id="signin-btn" type="submit" class="w-full bg-gradient-to-r from-primary to-accent text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
-                    Sign In to Dashboard
+                    {{ _('Sign In to Dashboard') }}
                 </button>
             </form>
 
             <div id="divider" class="flex items-center my-6">
                 <div class="flex-1 border-t-2 border-gray-200"></div>
-                <span class="px-4 text-sm text-gray-500 font-medium">OR</span>
+                <span class="px-4 text-sm text-gray-500 font-medium">{{ _('OR') }}</span>
                 <div class="flex-1 border-t-2 border-gray-200"></div>
             </div>
 
             <div id="otp-login-section" class="space-y-3">
                 <div class="space-y-2">
-                    <label for="login_mobile" class="text-sm font-semibold text-gray-700 block">Mobile Number for OTP Login</label>
+                    <label for="login_mobile" class="text-sm font-semibold text-gray-700 block">{{ _('Mobile Number for OTP Login') }}</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fa-solid fa-mobile-alt text-gray-400"></i>
@@ -125,7 +142,7 @@
                         <input
                             id="login_mobile"
                             type="tel"
-                            placeholder="Enter registered mobile number"
+                            placeholder="{{ _('Enter registered mobile number') }}"
                             class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
                         >
                     </div>
@@ -133,10 +150,10 @@
 
                 <div class="grid grid-cols-2 gap-2">
                     <button id="login-send-otp-btn" type="button" class="bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition-all border border-gray-200">
-                        Send OTP
+                        {{ _('Send OTP') }}
                     </button>
                     <button id="login-verify-otp-btn" type="button" class="bg-accent text-white py-2.5 rounded-xl font-semibold hover:bg-primary transition-all">
-                        Verify & Login
+                        {{ _('Verify & Login') }}
                     </button>
                 </div>
 
@@ -148,21 +165,21 @@
                         id="login_otp"
                         type="text"
                         maxlength="6"
-                        placeholder="Enter 6-digit OTP"
+                        placeholder="{{ _('Enter 6-digit OTP') }}"
                         class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
                     >
                 </div>
 
                 <div id="login-otp-status" class="text-xs font-medium text-gray-500">
-                    Enter mobile number and use OTP to login.
+                    {{ _('Enter mobile number and use OTP to login.') }}
                 </div>
             </div>
         </div>
 
         <div id="signup-link" class="text-center mb-8">
             <p class="text-gray-600 text-sm">
-                Don't have an account?
-                <a href="{{ url_for('register') }}" class="text-accent font-bold hover:text-blue-700 transition-colors">Create Account</a>
+                {{ _('Don\'t have an account?') }}
+                <a href="{{ url_for('register') }}" class="text-accent font-bold hover:text-blue-700 transition-colors">{{ _('Create Account') }}</a>
             </p>
         </div>
 

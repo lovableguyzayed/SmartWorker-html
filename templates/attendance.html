@@ -229,8 +229,8 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Attendance</div>
-                <div class="text-sm opacity-90">Daily Attendance Management</div>
+                <div class="text-xl font-semibold">{{ _('Attendance') }}</div>
+                <div class="text-sm opacity-90">{{ _('Daily Attendance Management') }}</div>
             </div>
         </div>
         <div class="flex items-center space-x-3">
@@ -250,7 +250,7 @@
         <form method="GET" id="attendance-filter-form">
         <div class="flex items-center space-x-3">
             <div class="flex-1">
-                <label class="block text-xs text-white/70 mb-1">Select Date</label>
+                <label class="block text-xs text-white/70 mb-1">{{ _('Select Date') }}</label>
                 <div class="relative">
                     <i class="fa-solid fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70"></i>
                     <input type="date" name="date" value="{{ selected_date }}"
@@ -299,7 +299,7 @@
         </form>
         
         <div class="mt-3 text-center">
-            <div class="text-sm text-white/90">{{ selected_date.strftime('%A, %B %d, %Y') }}</div>
+            <div class="text-sm text-white/90">{{ selected_date|ldate('%A, %B %d, %Y') }}</div>
             {% if closure %}
                 {% if closure.allow_attendance %}
                     <div class="bg-orange-500/20 border border-orange-400/30 rounded-lg px-3 py-2 mt-2">
@@ -330,7 +330,7 @@
         <div class="flex items-center justify-between mb-2 px-1">
             <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
                class="dv-navbtn" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></a>
-            <div class="text-sm font-semibold text-gray-800">{{ selected_date.strftime('%B %Y') }}</div>
+            <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
             <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
                class="dv-navbtn" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></a>
         </div>
@@ -350,37 +350,37 @@
     </section>
 
     <div class="ep-tabs">
-        <span class="ep-tab ep-tab-active">Attendance</span>
-        <a href="{{ url_for('transactions') }}" class="ep-tab">Transaction</a>
-        <a href="{{ url_for('add_worker') }}" class="ep-tab">Worker</a>
+        <span class="ep-tab ep-tab-active">{{ _('Attendance') }}</span>
+        <a href="{{ url_for('transactions') }}" class="ep-tab">{{ _('Transaction') }}</a>
+        <a href="{{ url_for('add_worker') }}" class="ep-tab">{{ _('Worker') }}</a>
     </div>
 
     {% if not closure or closure.allow_attendance %}
     <section class="mb-5">
-        <div class="ep-section-label" id="ep-date-label">Mark {{ 'today' if selected_date == today else selected_date.strftime('%d %b') }}</div>
-        <div class="ep-field-label">Scan or type employee ID</div>
+        <div class="ep-section-label" id="ep-date-label">{{ _('Mark') }} {{ _('today') if selected_date == today else selected_date|ldate('%d %b') }}</div>
+        <div class="ep-field-label">{{ _('Scan or type employee ID') }}</div>
         <form class="ep-quick" onsubmit="return quickMark(event)">
             <input type="text" id="ep-quick-id" placeholder="CO001" autocomplete="off"
                    autocapitalize="characters" inputmode="text" aria-label="Employee ID">
-            <button type="submit" id="ep-quick-btn">Mark</button>
+            <button type="submit" id="ep-quick-btn">{{ _('Mark') }}</button>
         </form>
 
         <div class="ep-bulk">
             {% if current_user.is_admin %}
-            <button type="button" onclick="bulkAction('present', this)">All present</button>
-            <button type="button" onclick="bulkAction('absent', this)">All absent</button>
+            <button type="button" onclick="bulkAction('present', this)">{{ _('All present') }}</button>
+            <button type="button" onclick="bulkAction('absent', this)">{{ _('All absent') }}</button>
             {% endif %}
             <button type="button" onclick="bulkAction('close', this)"
-                    {% if not current_user.is_admin %}style="grid-column: span 3"{% endif %}>Close shifts</button>
+                    {% if not current_user.is_admin %}style="grid-column: span 3"{% endif %}>{{ _('Close shifts') }}</button>
         </div>
 
-        <div class="ep-hint">Tap the same status twice to check out and bank overtime.</div>
+        <div class="ep-hint">{{ _('Tap the same status twice to check out and bank overtime.') }}</div>
 
         <div class="ep-stats">
-            <div class="ep-stat"><b id="ep-stat-present">{{ stats.present }}</b><span>Present</span></div>
-            <div class="ep-stat"><b id="ep-stat-late">{{ stats.late }}</b><span>Late</span></div>
-            <div class="ep-stat"><b id="ep-stat-absent">{{ stats.absent }}</b><span>Absent</span></div>
-            <div class="ep-stat"><b id="ep-stat-open">{{ stats.open }}</b><span>Open</span></div>
+            <div class="ep-stat"><b id="ep-stat-present">{{ stats.present }}</b><span>{{ _('Present') }}</span></div>
+            <div class="ep-stat"><b id="ep-stat-late">{{ stats.late }}</b><span>{{ _('Late') }}</span></div>
+            <div class="ep-stat"><b id="ep-stat-absent">{{ stats.absent }}</b><span>{{ _('Absent') }}</span></div>
+            <div class="ep-stat"><b id="ep-stat-open">{{ stats.open }}</b><span>{{ _('Shift open') }}</span></div>
         </div>
     </section>
     {% endif %}
@@ -401,10 +401,10 @@
                 <div class="ep-meta" data-role="meta">{{ data.meta }}</div>
 
                 {% set extra = [] %}
-                {% if data.assignment and data.assignment.site %}{% set _ = extra.append(data.assignment.site.name ~ (' • ' ~ data.assignment.project.name if data.assignment.project else '')) %}{% endif %}
-                {% if data.attendance and data.attendance.status == 'leave' and data.attendance.leave_type %}{% set _ = extra.append(data.attendance.leave_type|capitalize ~ ' leave') %}{% endif %}
-                {% if current_user.is_admin and data.wage is not none and data.wage > 0 %}{% set _ = extra.append('₹' ~ '%.2f'|format(data.wage)) %}{% endif %}
-                {% if current_user.is_admin and data.overtime_pay and data.overtime_pay > 0 %}{% set _ = extra.append('OT ₹' ~ '%.2f'|format(data.overtime_pay)) %}{% endif %}
+                {% if data.assignment and data.assignment.site %}{% set _discard = extra.append(data.assignment.site.name ~ (' • ' ~ data.assignment.project.name if data.assignment.project else '')) %}{% endif %}
+                {% if data.attendance and data.attendance.status == 'leave' and data.attendance.leave_type %}{% set _discard = extra.append(_(data.attendance.leave_type|capitalize) ~ ' ' ~ _('Leave')) %}{% endif %}
+                {% if current_user.is_admin and data.wage is not none and data.wage > 0 %}{% set _discard = extra.append('₹' ~ '%.2f'|format(data.wage)) %}{% endif %}
+                {% if current_user.is_admin and data.overtime_pay and data.overtime_pay > 0 %}{% set _discard = extra.append('OT ₹' ~ '%.2f'|format(data.overtime_pay)) %}{% endif %}
                 {% if extra %}<div class="ep-extra">{{ extra|join(' · ') }}</div>{% endif %}
 
                 {% if data.closure %}
@@ -419,7 +419,7 @@
 
                 {% if current_user.is_admin and data.attendance %}
                 <button type="button" class="ep-adjust"
-                        onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }})'>Adjust times</button>
+                        onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }})'>{{ _('Adjust times') }}</button>
                 {% endif %}
             </div>
 
@@ -434,7 +434,7 @@
                     ('leave',   'leave',   'fa-house')] %}
                 <button type="button" data-status="{{ value }}"
                         class="ep-pill ep-pill-{{ cls }}{{ ' ep-pill-on' if current_status == value else '' }}"
-                        aria-label="Mark {{ value }}"
+                        aria-label="{{ _('Mark') }} {{ value }}"
                         onclick="markWorker({{ data.worker.id }}, '{{ value }}', this)">
                     <i class="fa-solid {{ icon }}"></i>
                 </button>
@@ -446,7 +446,7 @@
         </div>
         {% endfor %}
     </div>
-    <p class="ms-hint">Press and hold a worker to mark several at once.</p>
+    <p class="ms-hint">{{ _('Press and hold a worker to mark several at once.') }}</p>
 
     {# Pager. The counters above and the bulk buttons both cover every worker
        on this date, not just the ones on this page. #}
@@ -477,15 +477,15 @@
             sel_endpoint = url_for('bulk_action', scope='attendance'),
             sel_params = {'date': selected_date.isoformat()},
             sel_actions = (
-                [{'id': 'present', 'label': 'Present', 'icon': 'fa-check', 'style': 'good'},
-                 {'id': 'late',    'label': 'Late',    'icon': 'fa-clock', 'style': 'warn'}]
-                + ([{'id': 'absent',   'label': 'Absent',   'icon': 'fa-xmark', 'style': 'danger',
-                     'confirm': 'Mark %n %s absent for this date?'},
-                    {'id': 'half_day', 'label': 'Half Day', 'icon': 'fa-adjust'},
-                    {'id': 'leave',    'label': 'Leave',    'icon': 'fa-house',
-                     'confirm': 'Mark %n %s on leave for this date?'}]
+                [{'id': 'present', 'label': _('Present'), 'icon': 'fa-check', 'style': 'good'},
+                 {'id': 'late',    'label': _('Late'),    'icon': 'fa-clock', 'style': 'warn'}]
+                + ([{'id': 'absent',   'label': _('Absent'),   'icon': 'fa-xmark', 'style': 'danger',
+                     'confirm': _('Mark %n %s absent for this date?')},
+                    {'id': 'half_day', 'label': _('Half Day'), 'icon': 'fa-adjust'},
+                    {'id': 'leave',    'label': _('Leave'),    'icon': 'fa-house',
+                     'confirm': _('Mark %n %s on leave for this date?')}]
                    if current_user.is_admin else [])
-                + [{'id': 'close', 'label': 'Check Out', 'icon': 'fa-right-from-bracket',
+                + [{'id': 'close', 'label': _('Check Out'), 'icon': 'fa-right-from-bracket',
                     'style': 'primary'}]
             ) %}
         {% include '_selection_bar.html' %}
@@ -520,10 +520,10 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select name="status" id="adjust-status" class="w-full p-3 border border-lightGray rounded-xl" onchange="toggleAdjustFields()">
-                        <option value="present">Present</option>
-                        <option value="late">Late</option>
-                        <option value="absent">Absent</option>
-                        <option value="leave">Leave</option>
+                        <option value="present">{{ _('Present') }}</option>
+                        <option value="late">{{ _('Late') }}</option>
+                        <option value="absent">{{ _('Absent') }}</option>
+                        <option value="leave">{{ _('Leave') }}</option>
                     </select>
                 </div>
                 <div id="adjust-time-fields" class="grid grid-cols-2 gap-3">
@@ -707,7 +707,7 @@ async function markWorkerById(workerId, status) {
 // All present / All absent / Close shifts — one tap, no modal.
 async function bulkAction(action, btn) {
     if (action !== 'close' &&
-        !confirm('Mark every listed worker ' + action + ' for this date?')) return;
+        !confirm({{ _('Mark every listed worker as this status for this date?')|tojson }})) return;
     epSetBusy(btn, true);
     try {
         var body = new FormData();
@@ -743,6 +743,15 @@ async function bulkAction(action, btn) {
 // can never disagree.
 var DV_SELECTED = "{{ selected_date }}";
 var DV_IS_ADMIN = {{ 'true' if current_user.is_admin else 'false' }};
+// Status comes back from the API as the stored English value; the day view
+// builds its rows in JS, so it needs the labels handed to it.
+var DV_STATUS_LABEL = {
+    present: {{ _('Present')|tojson }},
+    absent:  {{ _('Absent')|tojson }},
+    late:    {{ _('Late')|tojson }},
+    leave:   {{ _('Leave')|tojson }},
+    half_day: {{ _('Half Day')|tojson }}
+};
 var dvDay = null;
 
 function dvEsc(s) {
@@ -783,7 +792,8 @@ function dvSyncEntryPanel(data) {
     if (data.rows) epApplyRows(data.rows);
     var label = document.getElementById('ep-date-label');
     if (label) {
-        label.textContent = 'Mark ' + (data.day.is_today ? 'today' : data.day.date_label);
+        label.textContent = {{ _('Mark')|tojson }} + ' ' +
+            (data.day.is_today ? {{ _('today')|tojson }} : data.day.date_label);
     }
 }
 
@@ -808,7 +818,7 @@ function dvRender(day) {
     var h = '';
 
     h += '<div class="dv-head"><div><div class="dv-date">' + dvEsc(day.date_label) + '</div>' +
-         '<div class="dv-weekday">' + dvEsc(day.weekday) + (day.is_today ? ' · today' : '') + '</div></div>';
+         '<div class="dv-weekday">' + dvEsc(day.weekday) + (day.is_today ? ' · {{ _('today') }}' : '') + '</div></div>';
     h += '<button type="button" class="dv-navbtn" aria-label="Close day detail" onclick="dvClose()">' +
          '<i class="fa-solid fa-xmark"></i></button></div>';
 
@@ -828,28 +838,28 @@ function dvRender(day) {
 
     var c = day.counts;
     h += '<div class="dv-counts">' +
-         '<div class="dv-count"><b>' + c.present + '</b><span>Present</span></div>' +
-         '<div class="dv-count"><b>' + c.late + '</b><span>Late</span></div>' +
-         '<div class="dv-count"><b>' + c.absent + '</b><span>Absent</span></div>' +
-         '<div class="dv-count"><b>' + c.leave + '</b><span>Leave</span></div>' +
-         '<div class="dv-count"><b>' + c.not_marked + '</b><span>Unmarked</span></div></div>';
+         '<div class="dv-count"><b>' + c.present + '</b><span>{{ _('Present') }}</span></div>' +
+         '<div class="dv-count"><b>' + c.late + '</b><span>{{ _('Late') }}</span></div>' +
+         '<div class="dv-count"><b>' + c.absent + '</b><span>{{ _('Absent') }}</span></div>' +
+         '<div class="dv-count"><b>' + c.leave + '</b><span>{{ _('Leave') }}</span></div>' +
+         '<div class="dv-count"><b>' + c.not_marked + '</b><span>{{ _('Unmarked') }}</span></div></div>';
 
     // Bulk actions always name the date they apply to.
     if (editable) {
         h += '<div class="dv-actions">';
         if (DV_IS_ADMIN) {
-            h += '<button type="button" onclick="dvBulk(\'present\', this)">All present</button>' +
-                 '<button type="button" onclick="dvBulk(\'absent\', this)">All absent</button>';
+            h += '<button type="button" onclick="dvBulk(\'present\', this)">{{ _('All present') }}</button>' +
+                 '<button type="button" onclick="dvBulk(\'absent\', this)">{{ _('All absent') }}</button>';
         }
         h += '<button type="button" onclick="dvBulk(\'close\', this)"' +
-             (DV_IS_ADMIN ? '' : ' style="grid-column: span 3"') + '>Close shifts</button></div>';
-        h += '<div class="dv-muted" style="margin-top:0.45rem">These apply to <b>' +
+             (DV_IS_ADMIN ? '' : ' style="grid-column: span 3"') + '>{{ _('Close shifts') }}</button></div>';
+        h += '<div class="dv-muted" style="margin-top:0.45rem">{{ _('These apply to') }} <b>' +
              dvEsc(day.date_label) + '</b>.</div>';
     }
 
-    h += '<div class="dv-section-label">Workers</div>';
+    h += '<div class="dv-section-label">{{ _('Workers on this date') }}</div>';
     if (!day.rows.length) {
-        h += '<div class="dv-empty">No workers were on the roll on this date.</div>';
+        h += '<div class="dv-empty">{{ _('No workers were on the roll on this date.') }}</div>';
     }
     day.rows.forEach(function (r) {
         var rowLocked = !editable || r.locked;
@@ -862,12 +872,12 @@ function dvRender(day) {
         // string, so nothing is reported twice.
         var bits = [];
         if (!r.status) {
-            bits.push('not marked');
+            bits.push({{ _('Not marked')|tojson }});
         } else if (r.check_in) {
             bits.push(r.check_in + (r.check_out ? ' → ' + r.check_out : '') );
-            if (!r.check_out) bits.push('shift open');
+            if (!r.check_out) bits.push({{ _('shift open')|tojson }});
         } else {
-            bits.push(r.status);
+            bits.push(DV_STATUS_LABEL[r.status] || r.status);
         }
         if (r.worked_minutes) bits.push(r.worked_minutes + 'm worked');
         if (r.overtime_minutes) bits.push('+' + r.overtime_minutes + 'm OT');
@@ -877,27 +887,27 @@ function dvRender(day) {
         [['present','fa-check'],['absent','fa-xmark'],['late','fa-clock'],['leave','fa-house']].forEach(function (p) {
             h += '<button type="button" class="dv-pill dv-pill-' + p[0] + (r.status === p[0] ? ' dv-pill-on' : '') + '"' +
                  (rowLocked ? ' disabled' : '') +
-                 ' aria-label="Mark ' + dvEsc(r.name) + ' ' + p[0] + '"' +
+                 ' aria-label="{{ _('Mark') }} ' + dvEsc(r.name) + ' ' + (DV_STATUS_LABEL[p[0]] || p[0]) + '"' +
                  ' onclick="dvMark(' + r.id + ',\'' + p[0] + '\', this)">' +
                  '<i class="fa-solid ' + p[1] + '"></i></button>';
         });
         h += '</div></div>';
         if (!rowLocked) {
             h += '<div class="dv-times">' +
-                 '<input type="time" value="' + dvEsc(r.check_in_value) + '" aria-label="Check in for ' + dvEsc(r.name) + '" id="dv-in-' + r.id + '">' +
-                 '<input type="time" value="' + dvEsc(r.check_out_value) + '" aria-label="Check out for ' + dvEsc(r.name) + '" id="dv-out-' + r.id + '">' +
-                 '<button type="button" onclick="dvSaveTimes(' + r.id + ', this)">Save</button></div>';
+                 '<input type="time" value="' + dvEsc(r.check_in_value) + '" aria-label="{{ _('Check In') }} — ' + dvEsc(r.name) + '" id="dv-in-' + r.id + '">' +
+                 '<input type="time" value="' + dvEsc(r.check_out_value) + '" aria-label="{{ _('Check Out') }} — ' + dvEsc(r.name) + '" id="dv-out-' + r.id + '">' +
+                 '<button type="button" onclick="dvSaveTimes(' + r.id + ', this)">{{ _('Save') }}</button></div>';
         }
         h += '</div>';
     });
 
-    h += '<div class="dv-section-label">Transactions on this date</div>';
+    h += '<div class="dv-section-label">{{ _('Transactions on this date') }}</div>';
     if (!day.transactions.length) {
-        h += '<div class="dv-empty">Nothing recorded for this date.</div>';
+        h += '<div class="dv-empty">{{ _('Nothing recorded for this date.') }}</div>';
     } else {
         day.transactions.forEach(function (t) {
             h += '<div class="dv-txn"><span>' + dvEsc(t.worker) + ' · ' + dvEsc(t.type) +
-                 (t.status === 'cancelled' ? ' (cancelled)' : '') + '</span>' +
+                 (t.status === 'cancelled' ? ' ({{ _('cancelled') }})' : '') + '</span>' +
                  '<b style="color:' + (t.is_earning ? '#16a34a' : '#dc2626') + '">' +
                  (t.is_earning ? '+' : '−') + '₹' + t.amount.toFixed(2) + '</b></div>';
         });
@@ -905,8 +915,8 @@ function dvRender(day) {
 
     if (DV_IS_ADMIN && editable) {
         h += '<div class="dv-actions" style="grid-template-columns:1fr 1fr">' +
-             '<button type="button" onclick="dvAddTxn()">Add transaction</button>' +
-             '<button type="button" onclick="dvAddClosure()">Add closure</button></div>';
+             '<button type="button" onclick="dvAddTxn()">{{ _('Add transaction') }}</button>' +
+             '<button type="button" onclick="dvAddClosure()">{{ _('Add closure') }}</button></div>';
     }
 
     document.getElementById('day-panel-body').innerHTML = h;
@@ -958,8 +968,8 @@ function dvSaveTimes(workerId, btn) {
 
 function dvBulk(action, btn) {
     var label = dvDay ? dvDay.date_label : DV_SELECTED;
-    var verb = action === 'close' ? 'Close every open shift on'
-                                  : 'Mark every listed worker ' + action + ' on';
+    var verb = action === 'close' ? {{ _('Close every open shift on')|tojson }}
+                                  : {{ _('Mark every listed worker as this status on')|tojson }};
     // Bulk overwrites existing records — always confirm, naming the date.
     if (!confirm(verb + ' ' + label + '?')) return;
     var fields = { action: action };

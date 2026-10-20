@@ -10,8 +10,8 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Payroll</div>
-                <div class="text-sm opacity-90">{{ month_name }} {{ year }}</div>
+                <div class="text-xl font-semibold">{{ _('Payroll') }}</div>
+                <div class="text-sm opacity-90">{{ _(month_name) }} {{ year }}</div>
             </div>
         </div>
         <div class="icon-btn bg-white/10 backdrop-blur-sm">
@@ -42,34 +42,34 @@
     <section class="grid grid-cols-2 gap-4">
         <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
             <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_gross) }}</div>
-            <div class="text-sm opacity-90">Gross Payroll</div>
+            <div class="text-sm opacity-90">{{ _('Gross Payroll') }}</div>
         </div>
         <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
             <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_net) }}</div>
-            <div class="text-sm opacity-90">Net Payable</div>
+            <div class="text-sm opacity-90">{{ _('Net Payable') }}</div>
         </div>
         <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl shadow-lg">
             <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_deductions) }}</div>
-            <div class="text-sm opacity-90">Total Deductions</div>
+            <div class="text-sm opacity-90">{{ _('Total Deductions') }}</div>
         </div>
         <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-2xl shadow-lg">
             <div class="text-2xl font-bold">
-                {{ totals.paid_count }}<span class="text-base font-medium opacity-80"> paid</span>
+                {{ totals.paid_count }}<span class="text-base font-medium opacity-80"> {{ _('paid') }}</span>
             </div>
-            <div class="text-sm opacity-90">{{ totals.pending_count }} pending</div>
+            <div class="text-sm opacity-90">{{ totals.pending_count }} {{ _('pending') }}</div>
         </div>
     </section>
 
     <!-- Generate / Refresh -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div>
-            <h3 class="text-base font-semibold text-gray-800">Generate / Refresh Payroll</h3>
-            <p class="text-sm text-gray-500 mt-1">Saves the latest calculation for every active worker this month. Months already marked Paid are left untouched.</p>
+            <h3 class="text-base font-semibold text-gray-800">{{ _('Generate / Refresh Payroll') }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ _('Saves the latest calculation for every active worker this month. Months already marked Paid are left untouched.') }}</p>
         </div>
         <a href="{{ url_for('payroll_preview', month=month, year=year) }}"
            class="mt-4 w-full flex items-center justify-center p-3 border-2 border-accent text-accent rounded-2xl font-medium">
             <i class="fa-solid fa-magnifying-glass-dollar mr-2"></i>
-            Preview before generating
+            {{ _('Preview before generating') }}
         </a>
         <form method="POST" action="{{ url_for('payroll_save') }}" class="mt-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -78,7 +78,7 @@
             <button type="submit"
                     class="w-full flex items-center justify-center p-3 bg-accent text-white rounded-2xl font-medium hover:bg-primary transition-colors">
                 <i class="fa-solid fa-rotate mr-2"></i>
-                Generate Payroll
+                {{ _('Generate Payroll') }}
             </button>
         </form>
         {# Fetched and saved via SmartWorkerSave rather than linked: a plain
@@ -89,20 +89,20 @@
                 data-export-name="payroll_{{ month_name }}_{{ year }}.csv"
                 class="w-full mt-3 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium hover:border-accent hover:text-accent transition-colors">
             <i class="fa-solid fa-file-csv mr-2"></i>
-            Export CSV — {{ month_name }} {{ year }}
+            {{ _('Export CSV') }} — {{ _(month_name) }} {{ year }}
         </button>
     </section>
 
     <!-- Worker List -->
     <section class="space-y-3" data-ms-scope="payroll" data-ms-noun="worker" data-ms-plural="workers">
         <h3 class="text-lg font-semibold text-gray-800 px-1">
-            Workers ({{ totals.worker_count }})
+            {{ _('Workers') }} ({{ totals.worker_count }})
         </h3>
 
         {% if not rows %}
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 text-center">
             <i class="fa-solid fa-users text-4xl text-gray-300 mb-4"></i>
-            <p class="text-gray-500">No active workers found.</p>
+            <p class="text-gray-500">{{ _('No active workers found.') }}</p>
         </div>
         {% endif %}
 
@@ -130,26 +130,26 @@
                 </a>
 
                 {% if row.status == 'paid' %}
-                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Paid</span>
+                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">{{ _('Paid') }}</span>
                 {% elif row.status == 'unsaved' %}
-                <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Not Saved</span>
+                <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">{{ _('Not Saved') }}</span>
                 {% else %}
-                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">Pending</span>
+                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">{{ _('Pending') }}</span>
                 {% endif %}
             </div>
 
             <!-- Mini stats -->
             <div class="grid grid-cols-3 gap-2 mt-4 text-center">
                 <div class="bg-gray-50 rounded-xl py-2">
-                    <div class="text-xs text-gray-500">Paid Days</div>
+                    <div class="text-xs text-gray-500">{{ _('Paid Days') }}</div>
                     <div class="font-semibold text-gray-800">{{ pay.paid_days }}</div>
                 </div>
                 <div class="bg-gray-50 rounded-xl py-2">
-                    <div class="text-xs text-gray-500">Gross</div>
+                    <div class="text-xs text-gray-500">{{ _('Gross') }}</div>
                     <div class="font-semibold text-gray-800">₹{{ "%.0f"|format(row.gross_pay) }}</div>
                 </div>
                 <div class="bg-gray-50 rounded-xl py-2">
-                    <div class="text-xs text-gray-500">Deduct.</div>
+                    <div class="text-xs text-gray-500">{{ _('Deduct.') }}</div>
                     <div class="font-semibold text-red-600">₹{{ "%.0f"|format(row.deductions) }}</div>
                 </div>
             </div>
@@ -157,7 +157,7 @@
             <!-- Net payable + action -->
             <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                 <div>
-                    <div class="text-xs text-gray-500">Net Payable</div>
+                    <div class="text-xs text-gray-500">{{ _('Net Payable') }}</div>
                     <div class="text-lg font-bold text-accent">₹{{ "%.2f"|format(row.net_pay) }}</div>
                 </div>
 
@@ -167,29 +167,29 @@
                     {% if row.status == 'paid' %}
                     <button type="submit"
                             class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-300 transition-colors">
-                        <i class="fa-solid fa-rotate-left mr-1"></i>Mark Pending
+                        <i class="fa-solid fa-rotate-left mr-1"></i>{{ _('Mark Pending') }}
                     </button>
                     {% else %}
                     <button type="submit"
                             class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
-                        <i class="fa-solid fa-check mr-1"></i>Mark Paid
+                        <i class="fa-solid fa-check mr-1"></i>{{ _('Mark Paid') }}
                     </button>
                     {% endif %}
                 </form>
                 {% else %}
-                <span class="text-xs text-gray-400 italic">Generate to enable</span>
+                <span class="text-xs text-gray-400 italic">{{ _('Generate to enable') }}</span>
                 {% endif %}
             </div>
 
             {% if pay.policy_note %}
-            <p class="text-xs text-gray-400 mt-3 leading-relaxed">{{ pay.policy_note }}</p>
+            <p class="text-xs text-gray-400 mt-3 leading-relaxed">{{ pay.policy_note|lnotes }}</p>
             {% endif %}
         </div>
         {% endfor %}
     </section>
 
     {% if rows %}
-    <p class="ms-hint">Press and hold a worker to run payroll for several at once.</p>
+    <p class="ms-hint">{{ _('Press and hold a worker to run payroll for several at once.') }}</p>
     {% with sel_scope = 'payroll',
             sel_endpoint = url_for('bulk_action', scope='payroll'),
             sel_params = {'month': month, 'year': year},
