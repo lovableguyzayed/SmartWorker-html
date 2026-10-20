@@ -124,6 +124,32 @@
     </div>
     <p class="ms-hint">Press and hold a worker to select several at once.</p>
 
+    {# Pager. Hidden entirely when everything fits on one page, so a small
+       employer with fifteen workers never sees it. #}
+    {% if has_prev or has_next %}
+    <nav class="flex items-center justify-between gap-3 mt-4" aria-label="Worker list pages">
+        {% if has_prev %}
+        <a href="{{ url_for('workers', page=page-1, search=search, department=selected_department) }}"
+           class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
+            <i class="fa-solid fa-chevron-left mr-2"></i>Previous
+        </a>
+        {% else %}
+        <span class="flex-1"></span>
+        {% endif %}
+
+        <span class="text-xs text-gray-500 shrink-0">{{ shown_from }}&ndash;{{ shown_to }}</span>
+
+        {% if has_next %}
+        <a href="{{ url_for('workers', page=page+1, search=search, department=selected_department) }}"
+           class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
+            Next<i class="fa-solid fa-chevron-right ml-2"></i>
+        </a>
+        {% else %}
+        <span class="flex-1"></span>
+        {% endif %}
+    </nav>
+    {% endif %}
+
     {% if current_user.is_admin %}
     {% with sel_scope = 'workers',
             sel_endpoint = url_for('bulk_action', scope='workers'),

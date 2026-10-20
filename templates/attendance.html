@@ -448,6 +448,28 @@
     </div>
     <p class="ms-hint">Press and hold a worker to mark several at once.</p>
 
+    {# Pager. The counters above and the bulk buttons both cover every worker
+       on this date, not just the ones on this page. #}
+    {% if has_prev or has_next %}
+    <nav class="flex items-center justify-between gap-3 mt-3" aria-label="Attendance list pages">
+        {% if has_prev %}
+        <a href="{{ url_for('attendance', page=page-1, date=selected_date.isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
+           class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
+            <i class="fa-solid fa-chevron-left mr-2"></i>Previous
+        </a>
+        {% else %}<span class="flex-1"></span>{% endif %}
+
+        <span class="text-xs text-gray-500 shrink-0">{{ shown_from }}&ndash;{{ shown_to }} of {{ total_rows }}</span>
+
+        {% if has_next %}
+        <a href="{{ url_for('attendance', page=page+1, date=selected_date.isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
+           class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
+            Next<i class="fa-solid fa-chevron-right ml-2"></i>
+        </a>
+        {% else %}<span class="flex-1"></span>{% endif %}
+    </nav>
+    {% endif %}
+
     {# Attendance users may record attendance and close shifts; reclassifying
        someone as absent or on leave is an administrative decision, so those
        actions are admin-only here and re-checked in bulk.py. #}
@@ -617,8 +639,14 @@ async function markWorker(workerId, status, btn) {
         var res = await fetch('/api/mark_attendance', {
             method: 'POST', body: body, credentials: 'same-origin'
         });
-        if (!res.ok) { epToast('Could not save (' + res.status + ').', 'error'); return; }
         var data = await res.json();
+        if (data.queued) {
+            // No signal: offline-sync.js has stored it and will upload it.
+            // Say so rather than showing a tick the server never agreed to.
+            epToast(data.message || 'Saved on this phone. Will upload when internet returns.', 'warning');
+            return;
+        }
+        if (!res.ok) { epToast('Could not save (' + res.status + ').', 'error'); return; }
         epApplyStats(data.stats);
         epApplyRow(data.row);
         epShowMessages(data, data.success ? 'Attendance updated.' : 'Could not update attendance.');
@@ -693,8 +721,12 @@ async function bulkAction(action, btn) {
         var res = await fetch('/api/attendance/bulk', {
             method: 'POST', body: body, credentials: 'same-origin'
         });
-        if (!res.ok) { epToast('Could not apply (' + res.status + ').', 'error'); return; }
         var data = await res.json();
+        if (data.queued) {
+            epToast(data.message || 'Saved on this phone. Will upload when internet returns.', 'warning');
+            return;
+        }
+        if (!res.ok) { epToast('Could not apply (' + res.status + ').', 'error'); return; }
         epApplyStats(data.stats);
         epApplyRows(data.rows);
         epShowMessages(data, 'Done.');

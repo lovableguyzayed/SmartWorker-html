@@ -75,6 +75,14 @@ async function updateOfflineUI() {
   }
 }
 
+function withCurrentCsrf(body) {
+  const meta = document.querySelector('meta[name=csrf-token]');
+  if (!meta) return body;
+  const params = new URLSearchParams(body || '');
+  params.set('csrf_token', meta.getAttribute('content'));
+  return params.toString();
+}
+
 async function syncPendingItems() {
   if (!navigator.onLine) return;
   const items = await getQueuedItems();
@@ -82,10 +90,13 @@ async function syncPendingItems() {
 
   for (const item of items) {
     try {
+      // The token captured when the request was queued may be hours old by
+      // the time the signal returns; swap in the one this page holds.
+      const body = withCurrentCsrf(item.body);
       const res = await fetch(item.url, {
         method: item.method,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: item.body,
+        body: body,
         credentials: 'same-origin'
       });
       if (res.ok || res.redirected || res.status === 302) {
@@ -111,6 +122,80 @@ function showSyncToast(message, type = 'info') {
   toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
   document.body.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 4000);
+}
+
+/* ---------------------------------------------------------------------
+ * Queue attendance writes made with fetch().
+ *
+ * The form interception below only ever saw <form> submits, but the
+ * attendance screen posts through fetch() — so on a site with no signal the
+ * request simply threw, nothing was stored, and the worker was never marked.
+ * Tested offline in a browser: the fetch threw TypeError, the queue was
+ * empty, and nothing reached the server when the signal came back.
+ *
+ * Only attendance writes are queued. Replaying a payroll run or a delete
+ * after the fact would be dangerous, and those are not what a supervisor
+ * does standing in a field.
+ * ------------------------------------------------------------------- */
+const OFFLINE_QUEUEABLE = [
+  '/api/mark_attendance',
+  '/mark_attendance',
+  '/api/attendance/bulk',
+  '/api/attendance/times',
+];
+
+function isQueueable(url, method) {
+  if ((method || 'GET').toUpperCase() !== 'POST') return false;
+  let path;
+  try {
+    path = new URL(url, window.location.origin);
+    if (path.origin !== window.location.origin) return false;
+    path = path.pathname;
+  } catch (_) {
+    return false;
+  }
+  return OFFLINE_QUEUEABLE.indexOf(path) !== -1;
+}
+
+/* A queued write has not happened yet, so the caller is told so plainly
+ * rather than being handed a fake success. The attendance screen reads
+ * `success`, and `queued` lets it say "saved on this phone" instead of
+ * "marked present". */
+function queuedResponse(description) {
+  return new Response(
+    JSON.stringify({ success: false, queued: true, offline: true,
+                     message: description }),
+    { status: 202, headers: { 'Content-Type': 'application/json' } });
+}
+
+async function bodyToString(body) {
+  if (!body) return '';
+  if (typeof body === 'string') return body;
+  if (body instanceof URLSearchParams) return body.toString();
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
+    return new URLSearchParams(body).toString();
+  }
+  return String(body);
+}
+
+function interceptOfflineFetch() {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async function (input, init) {
+    const url = (typeof input === 'string') ? input : (input && input.url);
+    const method = (init && init.method) || (input && input.method) || 'GET';
+
+    if (navigator.onLine || !isQueueable(url, method)) {
+      return nativeFetch(input, init);
+    }
+
+    const body = await bodyToString(init && init.body);
+    await queueRequest(new URL(url, window.location.origin).pathname,
+                       'POST', body, 'Attendance saved on this phone');
+    await updateOfflineUI();
+    showSyncToast('No internet. Attendance saved on this phone and will upload automatically.',
+                  'warning');
+    return queuedResponse('Attendance saved on this phone');
+  };
 }
 
 function interceptOfflineForms() {
@@ -148,6 +233,7 @@ window.addEventListener('offline', async () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  interceptOfflineFetch();
   interceptOfflineForms();
   await updateOfflineUI();
 
