@@ -2842,12 +2842,22 @@ def payroll_export():
     output = io.StringIO()
     writer = csv.writer(output)
 
+    # The salary columns are blank for daily, hourly and project workers:
+    # they have no derived daily rate, no basis and no joining-date
+    # proration, so a figure there would be meaningless rather than zero.
     writer.writerow([
         'Worker ID', 'Full Name', 'Department', 'Position',
         'Pay Type', 'Month', 'Year',
         'Total Marked Days', 'Paid Days',
         'Gross Pay (INR)', 'Deductions (INR)', 'Net Payable (INR)',
         'Overtime Minutes', 'Closure Bonus (INR)', 'Status',
+        'Joining Date', 'Monthly Salary (INR)', 'Salary Basis', 'Basis Days',
+        'Daily Salary Exact (INR)', 'Daily Salary Rounded (INR)',
+        'Total Calendar Days', 'Eligible Days',
+        'Present Days', 'Absent Days',
+        'Paid Leave Allowance', 'Paid Leave Used', 'Unpaid Leave',
+        'Deduction Days', 'Deduction Rate (INR)', 'Salary Deduction (INR)',
+        'Gross Eligible Salary (INR)', 'Net Payable Salary (INR)',
     ])
 
     total_closure_bonus = 0.0
@@ -2873,6 +2883,7 @@ def payroll_export():
             pay['overtime_minutes'],
             f"{closure_bonus:.2f}" if closure_bonus else '',
             row['status'],
+            *_salary_csv_columns(w, pay.get('salary_breakdown')),
         ])
 
     writer.writerow([])
@@ -2885,6 +2896,7 @@ def payroll_export():
         '',
         f"{total_closure_bonus:.2f}" if total_closure_bonus else '',
         f"{totals['paid_count']} paid / {totals['pending_count']} pending",
+        *[''] * 18,
     ])
 
     filename = f"payroll_{month_name.lower()}_{year}.csv"
@@ -2909,12 +2921,20 @@ def export_data():
         'Overtime Enabled', 'Overtime Rate', 'Overtime Type',
         'Late Policy Enabled', 'Late Deduction Rate', 'Late Deduction Type',
         'Leave Policy Enabled', 'Allowed Leaves/Month', 'Leave Deduction/Day',
+        # The salary policy actually in force for this worker — company
+        # default with any per-worker override already applied, so the export
+        # says what the worker is paid by rather than what was configured
+        # where.
+        'Salary Basis', 'Basis Days', 'Daily Rate Rounding', 'Mid-Month Joining',
+        'Paid Leave Enabled', 'Leave Allowance/Month', 'Leave Carry Forward',
+        'Absence Deduction Enabled', 'Deduction Rate/Day', 'Calculation Method',
         'Status', 'Date', 'Attendance Status', 'Check In', 'Check Out'
     ])
     
     # Write worker and attendance data
     workers = Worker.query.all()
     for worker in workers:
+        pol = resolve_salary_policy(worker) if worker.pay_type == 'monthly' else None
         for attendance in worker.attendance_records:
             writer.writerow([
                 worker.worker_id,
@@ -2942,6 +2962,7 @@ def export_data():
                 worker.leave_policy_enabled,
                 worker.allowed_leaves_per_month or '',
                 worker.leave_deduction_per_day or '',
+                *_salary_policy_csv_columns(pol),
                 worker.status,
                 attendance.date.strftime('%Y-%m-%d'),
                 attendance.status,
@@ -4420,9 +4441,30 @@ def worker_report(worker_id):
         worker_id=worker.id
     ).order_by(PayrollRecord.year.desc(), PayrollRecord.month.desc()).limit(12).all()
 
+    # Salary policy and this month's derived figures. Only meaningful for a
+    # fixed monthly salary — a daily or hourly worker has no derived daily
+    # rate, no basis and no joining-date proration to report.
+    salary_breakdown = None
+    salary_policy_rows = None
+    if worker.pay_type == 'monthly':
+        _ps = today.replace(day=1)
+        _pe = today.replace(day=month_days)
+        _recs = AttendanceRecord.query.filter(
+            AttendanceRecord.worker_id == worker.id,
+            AttendanceRecord.date >= _ps, AttendanceRecord.date <= _pe).all()
+        _bal = calculate_leave_balance(worker, _ps, _pe)
+        salary_breakdown = salary.compute(
+            worker, resolve_salary_policy(worker), _recs, _ps, _pe,
+            carried_leave_balance=_bal['balance_before'])
+        salary_policy_rows = salary.describe(salary_breakdown['policy'])
+
     return render_template('worker_report.html',
                            worker=worker,
                            monthly_history=monthly_history,
+                           salary_breakdown=salary_breakdown,
+                           salary_policy_rows=salary_policy_rows,
+                           salary_basis_label=salary.LABELS['salary_basis'].get(
+                               (salary_breakdown or {}).get('salary_basis', 'fixed'), 'Fixed days'),
                            leave_balance=leave_balance,
                            all_transactions=all_transactions,
                            payroll_history=payroll_history,
@@ -4633,3 +4675,59 @@ def payroll_preview():
         frozen_count=frozen,
         new_count=sum(1 for p in preview if p['state'] == 'new'),
     )
+
+
+def _salary_csv_columns(worker, breakdown):
+    """The salary-calculation columns for one CSV row.
+
+    Returns blanks rather than zeros when the worker is not on a fixed
+    monthly salary: a zero daily rate reads as a real figure, a blank cell
+    reads as "does not apply".
+    """
+    if not breakdown:
+        return [''] * 18
+    b = breakdown
+    return [
+        worker.join_date.isoformat() if worker.join_date else '',
+        f"{b['monthly_salary']:.2f}",
+        salary.LABELS['salary_basis'].get(b['salary_basis'], b['salary_basis']),
+        b['basis_days'],
+        f"{b['daily_rate_exact']:.4f}",
+        f"{b['daily_rate']:.2f}",
+        b['total_calendar_days'],
+        b['eligible_days'],
+        b['present_days'] + b['late_days'],
+        b['absent_days'],
+        f"{b['leave_allowance']:g}",
+        f"{b['paid_leave_used']:g}",
+        f"{b['unpaid_leave_days']:g}",
+        f"{b['deduction_days']:g}",
+        f"{b['deduction_rate']:.2f}",
+        f"{b['deduction_amount']:.2f}",
+        f"{b['gross_eligible_salary']:.2f}",
+        f"{b['net_payable']:.2f}",
+    ]
+
+
+def _salary_policy_csv_columns(policy):
+    """The salary-policy columns for one export row.
+
+    Blank for anyone not on a fixed monthly salary — the rules below simply
+    do not apply to a daily or hourly worker.
+    """
+    if not policy:
+        return [''] * 10
+    return [
+        salary.LABELS['salary_basis'].get(policy['salary_basis'], policy['salary_basis']),
+        policy['basis_days'],
+        salary.LABELS['rounding'].get(policy['rounding'], policy['rounding']),
+        salary.LABELS['joining_mode'].get(policy['joining_mode'], policy['joining_mode']),
+        'Yes' if policy['paid_leave_enabled'] else 'No',
+        f"{policy['monthly_leave_allowance']:g}",
+        'Yes' if policy['leave_carry_forward'] else 'No',
+        'Yes' if policy['absence_deduction_enabled'] else 'No',
+        ('' if policy['deduction_rate'] is None
+         else f"{policy['deduction_rate']:.2f}"),
+        salary.LABELS['calculation_method'].get(policy['calculation_method'],
+                                                policy['calculation_method']),
+    ]

@@ -36,6 +36,13 @@
     color: #007BFF; font-weight: 700; border-bottom: 2px solid #007BFF;
     padding-bottom: 4px; margin-bottom: 10px;
 }
+/* A heading inside a section — quieter than the section rule above, and it
+   must not be split from the lines it introduces. */
+.report-subtitle {
+    font-size: 0.65rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: #64748b; font-weight: 700; margin-bottom: 4px;
+    break-after: avoid; page-break-after: avoid;
+}
 /* Fixed layout + wrapping so long names/notes/addresses never spill past
    the page edge — they wrap inside their column instead. */
 .report-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; table-layout: fixed; }
@@ -256,6 +263,50 @@
         <div class="text-xs text-gray-400">No attendance history yet.</div>
         {% endif %}
     </div>
+
+    <!-- Salary calculation (fixed monthly salary only) -->
+    {% if salary_breakdown %}
+    {% set sb = salary_breakdown %}
+    <div class="mb-6">
+        <div class="report-section-title">Salary Calculation &mdash; {{ month_names[today.month - 1] }} {{ today.year }}</div>
+        <table class="report-table">
+            <tbody>
+                <tr><td>Monthly fixed salary</td><td class="num font-semibold">₹{{ "%.2f"|format(sb.monthly_salary) }}</td></tr>
+                <tr><td>Calculation basis</td><td class="num">{{ salary_basis_label }} ({{ sb.basis_days }} days)</td></tr>
+                <tr><td>Daily salary (exact)</td><td class="num">₹{{ "%.4f"|format(sb.daily_rate_exact) }}</td></tr>
+                <tr><td>Daily salary (rounded)</td><td class="num font-semibold">₹{{ "%.2f"|format(sb.daily_rate) }}</td></tr>
+                <tr><td>Total calendar days</td><td class="num">{{ sb.total_calendar_days }}</td></tr>
+                <tr><td>Eligible salary days</td><td class="num">{{ sb.eligible_days }}</td></tr>
+                <tr><td>Present days</td><td class="num">{{ sb.present_days + sb.late_days }}</td></tr>
+                <tr><td>Absent days</td><td class="num">{{ sb.absent_days }}</td></tr>
+                <tr><td>Paid leave allowance</td><td class="num">{{ "%g"|format(sb.leave_allowance) }}</td></tr>
+                <tr><td>Paid leave used</td><td class="num">{{ "%g"|format(sb.paid_leave_used) }}</td></tr>
+                <tr><td>Unpaid leave</td><td class="num">{{ "%g"|format(sb.unpaid_leave_days) }}</td></tr>
+                <tr><td>Total deduction days</td><td class="num">{{ "%g"|format(sb.deduction_days) }}</td></tr>
+                <tr><td>Deduction rate</td><td class="num">₹{{ "%.2f"|format(sb.deduction_rate) }} / day</td></tr>
+                <tr><td>Total salary deduction</td><td class="num">&minus; ₹{{ "%.2f"|format(sb.deduction_amount) }}</td></tr>
+                <tr><td>Gross eligible salary</td><td class="num">₹{{ "%.2f"|format(sb.gross_eligible_salary) }}</td></tr>
+                <tr><td class="font-semibold">Final net payable salary</td><td class="num font-semibold">₹{{ "%.2f"|format(sb.net_payable) }}</td></tr>
+            </tbody>
+        </table>
+
+        <div class="report-subtitle mt-3">How this was calculated</div>
+        {% for line in sb.explanation %}
+        <div class="text-[0.62rem] text-gray-500 leading-relaxed">&bull; {{ line }}</div>
+        {% endfor %}
+
+        {% if salary_policy_rows %}
+        <div class="report-subtitle mt-3">Policy in force</div>
+        <table class="report-table">
+            <tbody>
+                {% for label, value in salary_policy_rows %}
+                <tr><td>{{ label }}</td><td class="num">{{ value }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <!-- Saved payroll history -->
     {% if payroll_history %}

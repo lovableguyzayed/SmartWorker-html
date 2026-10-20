@@ -139,6 +139,27 @@ a policy in the query string, so an unsaved policy can be judged too.
 
 ---
 
+## Where the salary figures appear
+
+| Place | What it carries |
+|---|---|
+| Worker profile | Daily rate, eligible days, deduction, net payable for this month, plus the explanation and the policy in force. |
+| Payroll preview | Every worker's rate, eligible days and deducted days, against what is already saved. |
+| Payslip (screen and PDF) | The full eighteen-field report and the explanation. |
+| Worker report (screen and print/PDF) | The same table, for the current month, with the policy listed beneath it. |
+| Payroll CSV export | Eighteen extra columns, from joining date through to net payable salary. |
+| Full data export CSV | The ten policy columns actually in force for each worker. |
+
+Both exports leave these columns **blank** for daily, hourly and project
+workers rather than writing zeros: there is no derived daily rate for them,
+and a zero would read as a real figure.
+
+The payslip PDF is produced by rasterising the page, so its salary block is
+part of the image rather than selectable text. The worker report is a print
+document, so its PDF carries real text.
+
+---
+
 ## What is frozen, and what is not
 
 A payroll month marked **Paid** is history:
