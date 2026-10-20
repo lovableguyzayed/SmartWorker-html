@@ -457,6 +457,39 @@ input:checked + .toggle-slider:before {
    must hold across every screen is therefore defined here.
    ============================================================ */
 
+/* Worker names.
+   Every list screen used `truncate`, which caps a name at one line. Real
+   names here run far past the space a phone column can spare — measured on
+   a 390px screen the dashboard ledger gave a name 89px while
+   "Lakshmi Narayanan Subramanian" needs 204px, so two thirds of it was
+   simply gone and two workers sharing a first name were indistinguishable.
+   Wrapping to a second line costs one row of height and shows the whole
+   name in every case in the data; anything longer still ellipses rather
+   than pushing the layout around.
+   Use this in place of `truncate` on a worker name. */
+.name-wrap {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    /* a long unbroken token (an id, an email) breaks rather than widening
+       the column and pushing the row off-screen */
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+/* Minimum tap target, on touch screens only so a mouse keeps the compact
+   icon buttons the design intends. 44px is what both Apple's and Google's
+   guidelines ask for; the transactions row put 28px edit, cancel and delete
+   buttons side by side, which is one mis-tap away from removing the wrong
+   payment. */
+@media (pointer: coarse) {
+    .tap-target {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
 /* Form controls: one height (48px), one radius, one border.
    Previously the same control rendered at 34/40/42/50/52px depending
    on the screen. Checkboxes and radios keep their intrinsic size. */

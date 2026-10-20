@@ -9,10 +9,14 @@
    everything layout- and size-critical for this section is defined here. */
 .att-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 3.3rem 3.3rem 3.7rem;
-    column-gap: 0.5rem;
+    /* The time columns were 3.3rem but the times themselves render at 43px,
+       so the slack went to waste while the name column had 89px for names
+       that need over 200px. Tightened the times and the side padding and
+       gave every spare pixel to the name. */
+    grid-template-columns: minmax(0, 1fr) 2.95rem 2.95rem 3.7rem;
+    column-gap: 0.4rem;
     align-items: center;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.75rem;
 }
 .att-headrow {
     padding-top: 0.35rem;
@@ -28,7 +32,11 @@
     text-transform: uppercase;
     color: #9ca3af;
 }
-.att-name { font-size: 0.8rem; font-weight: 500; color: #1f2937; line-height: 1.25; }
+/* 0.75rem rather than 0.8rem: at 0.8rem "Lakshmi Narayanan" did not fit the
+   113px name column on one line, so every long name spilled to a third line
+   and got clipped. The drop is small enough to stay comfortably readable and
+   large enough that the longest names in the data now fit two lines. */
+.att-name { font-size: 0.75rem; font-weight: 500; color: #1f2937; line-height: 1.3; }
 .att-id   { font-size: 0.7rem; color: #9ca3af; line-height: 1.2; }
 .att-avatar {
     width: 2rem; height: 2rem; border-radius: 9999px;
@@ -246,7 +254,7 @@
                     </span>
                     {% endif %}
                     <span class="min-w-0">
-                        <span class="att-name block truncate">{{ worker.full_name }}</span>
+                        <span class="att-name block name-wrap">{{ worker.full_name }}</span>
                         <span class="att-id block truncate">{{ worker.worker_id }}</span>
                     </span>
                 </a>

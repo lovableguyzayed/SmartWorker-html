@@ -69,7 +69,7 @@
                         <i class="fa-solid {{ 'fa-arrow-down' if txn.is_earning else 'fa-arrow-up' }}"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="font-semibold text-gray-800 truncate">{{ txn.worker.full_name }}</div>
+                        <div class="font-semibold text-gray-800 name-wrap">{{ txn.worker.full_name }}</div>
                         <div class="text-xs text-gray-500">
                             {{ type_labels.get(txn.txn_type, txn.txn_type) }} • {{ txn.date.strftime('%d %b %Y') }}
                             {% if txn.status == 'cancelled' %} • <span class="text-red-500 font-medium">Cancelled</span>{% endif %}
@@ -77,25 +77,31 @@
                         {% if txn.description %}<div class="text-xs text-gray-400 truncate">{{ txn.description }}</div>{% endif %}
                     </div>
                 </div>
-                <div class="text-right ml-2">
+                <div class="text-right ml-2 shrink-0">
                     <div class="font-bold {{ 'text-green-600' if txn.is_earning else 'text-red-600' }}">
                         {{ '+' if txn.is_earning else '−' }}₹{{ "%.2f"|format(txn.amount) }}
                     </div>
-                    <div class="flex items-center justify-end space-x-1 mt-1.5">
+                </div>
+            </div>
+
+            {# Actions sit on their own row. Stacked under the amount they made
+               the right-hand column as wide as three 44px buttons, which left
+               the worker's name about 110px — the names here run past 260px.
+               On their own row the name gets the card's full width back and
+               the buttons keep a proper touch target. #}
+            <div class="flex items-center justify-end gap-3 mt-2 pt-2 border-t border-gray-100">
                         <button onclick='editTxn({{ txn.id }}, {{ txn.worker_id }}, "{{ txn.txn_type }}", {{ txn.amount }}, "{{ txn.date.isoformat() }}", {{ (txn.description or "")|tojson }})'
-                                class="w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                                class="tap-target w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('transactions_cancel', txn_id=txn.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                            <button class="w-7 h-7 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center" title="Cancel / Restore"><i class="fa-solid fa-ban text-xs"></i></button>
+                            <button class="tap-target w-7 h-7 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center" title="Cancel / Restore"><i class="fa-solid fa-ban text-xs"></i></button>
                         </form>
                         <form method="POST" action="{{ url_for('transactions_delete', txn_id=txn.id) }}" onsubmit="return confirm('Delete this transaction permanently?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                            <button class="w-7 h-7 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button class="tap-target w-7 h-7 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                         </form>
-                    </div>
-                </div>
             </div>
         </div>
         {% endfor %}

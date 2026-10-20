@@ -82,8 +82,11 @@
 .ep-row:last-child { border-bottom: 0; }
 .ep-row-main { flex: 1; min-width: 0; }
 .ep-name {
-    display: block; font-size: 0.98rem; font-weight: 700; color: #111827; line-height: 1.3;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; font-size: 0.98rem; font-weight: 700; color: #111827;
+    line-height: 1.3;
+    /* two lines rather than one ellipsed line — see .name-wrap in custom.css */
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; overflow-wrap: anywhere;
 }
 .ep-meta { font-size: 0.8rem; color: #9ca3af; line-height: 1.4; margin-top: 0.1rem; }
 .ep-extra { font-size: 0.72rem; color: #b0b6c0; line-height: 1.4; }
@@ -157,7 +160,9 @@
 .dv-row:last-child { border-bottom: 0; }
 .dv-row-top { display: flex; align-items: flex-start; gap: 0.6rem; }
 .dv-name { font-size: 0.92rem; font-weight: 700; color: #111827; line-height: 1.3;
-           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+           /* two lines rather than one ellipsed line — see .name-wrap */
+           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+           overflow: hidden; overflow-wrap: anywhere; }
 .dv-sub { font-size: 0.74rem; color: #9ca3af; line-height: 1.4; }
 .dv-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
 .dv-pill {

@@ -20,13 +20,17 @@
     </div>
 
     <!-- Section Tabs -->
-    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-2 border border-white/20 flex gap-1 overflow-x-auto">
-        <button onclick="showSection('company')" data-tab="company" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold bg-white text-primary">Company</button>
-        <button onclick="showSection('sites')" data-tab="sites" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Sites</button>
-        <button onclick="showSection('projects')" data-tab="projects" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Projects</button>
-        <button onclick="showSection('tasks')" data-tab="tasks" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Tasks</button>
-        <button onclick="showSection('departments')" data-tab="departments" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Depts</button>
-        <button onclick="showSection('users')" data-tab="users" class="settings-tab flex-1 whitespace-nowrap px-3 py-3 rounded-xl text-xs font-semibold text-white/80">Users</button>
+    {# Two rows of three rather than one scrolling row. Six tabs never fitted
+       the 384px app column: the strip scrolled, but a phone shows no
+       scrollbar, so "Users" sat entirely off-screen and user management was
+       unreachable unless you happened to swipe the tabs. #}
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-2 border border-white/20 grid grid-cols-3 gap-1">
+        <button onclick="showSection('company')" data-tab="company" class="settings-tab whitespace-nowrap px-2 py-3 rounded-xl text-xs font-semibold bg-white text-primary">Company</button>
+        <button onclick="showSection('sites')" data-tab="sites" class="settings-tab whitespace-nowrap px-2 py-3 rounded-xl text-xs font-semibold text-white/80">Sites</button>
+        <button onclick="showSection('projects')" data-tab="projects" class="settings-tab whitespace-nowrap px-2 py-3 rounded-xl text-xs font-semibold text-white/80">Projects</button>
+        <button onclick="showSection('tasks')" data-tab="tasks" class="settings-tab whitespace-nowrap px-2 py-3 rounded-xl text-xs font-semibold text-white/80">Tasks</button>
+        <button onclick="showSection('departments')" data-tab="departments" class="settings-tab whitespace-nowrap px-2 py-3 rounded-xl text-xs font-semibold text-white/80">Depts</button>
+        <button onclick="showSection('users')" data-tab="users" class="settings-tab whitespace-nowrap px-2 py-3 rounded-xl text-xs font-semibold text-white/80">Users</button>
     </div>
 </header>
 

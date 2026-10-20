@@ -79,7 +79,7 @@
                 {% endif %}
             </div>
             <div class="flex-1 min-w-0">
-                <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="font-semibold text-gray-800 truncate block">{{ worker.full_name }}</a>
+                <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="font-semibold text-gray-800 name-wrap block">{{ worker.full_name }}</a>
                 <div class="text-xs text-gray-500">{{ worker.worker_id }} • {{ worker.position }}</div>
                 {% if assignment %}
                 <div class="text-xs text-gray-600 mt-0.5">
