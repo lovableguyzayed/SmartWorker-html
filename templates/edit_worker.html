@@ -11,8 +11,13 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <h1 class="text-xl font-semibold">{% if worker %}Edit Worker{% else %}Add Worker{% endif %}</h1>
-                <div class="text-sm opacity-90">Update Profile Information</div>
+                <h1 class="text-xl font-semibold">{% if worker %}{{ _('Edit Worker') }}{% else %}{{ _('Add Worker') }}{% endif %}</h1>
+                {# The title switched between add and edit; the line under it
+                   did not, so the Add screen said "Update Profile
+                   Information" about a worker who did not exist yet. Both
+                   strings also go through _() now — they were two of the
+                   few left in English on a Hindi screen. #}
+                <div class="text-sm opacity-90">{% if worker %}{{ _('Update Profile Information') }}{% else %}{{ _('Enter the new worker’s details') }}{% endif %}</div>
             </div>
         </div>
         <button type="submit" form="worker-form" class="tap-target bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/30">

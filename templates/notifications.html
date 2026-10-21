@@ -37,7 +37,13 @@
                 <div class="flex-1 min-w-0">
                     <div class="font-semibold text-gray-800 text-sm">{{ item.title }}</div>
                     {% if item.body %}<div class="text-xs text-gray-600 mt-0.5">{{ item.body }}</div>{% endif %}
-                    <div class="text-xs text-gray-500 mt-1">{{ item.created_at.strftime('%d %b %Y, %H:%M') }} UTC</div>
+                    {# Stored timestamps are naive IST — see timeutil.py — so
+                       this line labelled them with the wrong zone. A foreman
+                       reading "09:35 UTC" adds five and a half hours and
+                       believes it happened at 15:05. The date goes through
+                       ldate like every other date in the app, so the month
+                       reads in Hindi too. #}
+                    <div class="text-xs text-gray-500 mt-1">{{ item.created_at|ldate('%d %b %Y') }}, {{ item.created_at.strftime('%H:%M') }} IST</div>
                 </div>
                 {% if not item.is_read %}<span class="w-2.5 h-2.5 bg-accent rounded-full shrink-0 mt-1"></span>{% endif %}
             </div>

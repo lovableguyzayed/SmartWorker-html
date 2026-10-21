@@ -14,6 +14,8 @@ not start a server of their own:
     python3 tools/ux/legibility.py
     python3 tools/ux/wordless.py
     python3 tools/ux/controls.py && python3 tools/ux/links.py
+    python3 tools/ux/documents.py
+    python3 tools/ux/hindi_gaps.py
 
 Two environment variables, both optional:
 
@@ -31,8 +33,10 @@ not tracked.
 | `wordless.py` | which controls show no word, and whether they at least carry a name |
 | `controls.py` | every control, and what it is attached to — link, submit, handler, listener, or nothing |
 | `links.py` | whether every link answers and every form action resolves (reads `controls.py`'s output) |
+| `documents.py` | generates all eight printable documents and reads every page for blank sheets, cut lines and stranded headings |
+| `hindi_gaps.py` | what is still English when the interface is set to Hindi, screen by screen |
 
-## Three things that will bite you
+## Four things that will bite you
 
 **Do not take a full-page screenshot to measure against.** Chromium stretches
 the viewport to capture one and the page reflows, so coordinates read at
@@ -47,6 +51,12 @@ called five controls dead that were all bound with `addEventListener` — the
 password eye, the photo button, both OTP buttons. It now wraps
 `addEventListener` before any page script runs and marks the elements it is
 called on.
+
+**Do not judge a printed page from a thumbnail.** A 58dpi render of a
+payslip made the calendar legend look sliced in half across a page break.
+It was not: asking the paginator for its cut points showed every one
+falling exactly on a block edge. `documents.py` reads the page at 110dpi
+and reports where the ink actually is.
 
 **Do not take the background from the stylesheet.** The navy header is a
 gradient, which paints no `background-color`, so walking up the ancestors for
