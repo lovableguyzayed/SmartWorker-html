@@ -32,7 +32,7 @@ not tracked.
 | `controls.py` | every control, and what it is attached to — link, submit, handler, listener, or nothing |
 | `links.py` | whether every link answers and every form action resolves (reads `controls.py`'s output) |
 
-## Two things that will bite you
+## Three things that will bite you
 
 **Do not take a full-page screenshot to measure against.** Chromium stretches
 the viewport to capture one and the page reflows, so coordinates read at
