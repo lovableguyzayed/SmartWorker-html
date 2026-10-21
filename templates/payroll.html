@@ -191,6 +191,32 @@
 
     {% if rows %}
     <p class="ms-hint">{{ _('Press and hold a worker to run payroll for several at once.') }}</p>
+
+    {# Pager. The totals above are for the whole month, not this page — a
+       per-page subtotal would be a different and far less useful figure. #}
+    {% if has_prev or has_next %}
+    <nav class="flex items-center justify-between gap-3 mt-4" aria-label="{{ _('Worker list pages') }}">
+        {% if has_prev %}
+        <a href="{{ url_for('payroll', page=page-1, month=month, year=year) }}"
+           class="tap-target flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
+            <i class="fa-solid fa-chevron-left mr-2"></i>{{ _('Previous') }}
+        </a>
+        {% else %}
+        <span class="flex-1"></span>
+        {% endif %}
+
+        <span class="text-xs text-gray-500 shrink-0">{{ shown_from }}&ndash;{{ shown_to }} / {{ total_rows }}</span>
+
+        {% if has_next %}
+        <a href="{{ url_for('payroll', page=page+1, month=month, year=year) }}"
+           class="tap-target flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
+            {{ _('Next') }}<i class="fa-solid fa-chevron-right ml-2"></i>
+        </a>
+        {% else %}
+        <span class="flex-1"></span>
+        {% endif %}
+    </nav>
+    {% endif %}
     {% with sel_scope = 'payroll',
             sel_endpoint = url_for('bulk_action', scope='payroll'),
             sel_params = {'month': month, 'year': year},
