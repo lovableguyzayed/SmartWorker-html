@@ -825,3 +825,39 @@ body.ms-active nav.app-bottom-nav { display: none; }
    ended at the old #007bff. */
 .from-accent { --tw-gradient-from: #0062cc var(--tw-gradient-from-position); --tw-gradient-to: rgba(0,98,204, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
 .to-accent { --tw-gradient-to: #0062cc var(--tw-gradient-to-position); }
+
+/* ---------------------------------------------------------------------
+   The three actions on a worker card
+   ---------------------------------------------------------------------
+   They were circles holding a calendar, an ID card and an eye, with no word
+   on any of them, repeated down the roster — unknowable until you pressed
+   one. Written out here rather than as Tailwind utilities because the build
+   is purged and these need to hold.                                      */
+
+.worker-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.worker-action {
+    flex-direction: column;
+    gap: 0.2rem;
+    min-height: 2.75rem;
+    padding: 0.45rem 0.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: center;
+    overflow-wrap: anywhere;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.worker-action i { font-size: 0.95rem; }
+
+/* gray-100 behind gray-700 reads 8.9:1; the accent carries white at 5.8:1. */
+.worker-action-quiet   { background: #f3f4f6; color: #374151; }
+.worker-action-quiet:hover  { background: #e5e7eb; }
+.worker-action-primary { background: #0062cc; color: #fff; }
+.worker-action-primary:hover { background: #001f3f; }

@@ -96,8 +96,8 @@
                 </div>
             </div>
             
-            <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                <div class="flex items-center space-x-4">
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <div class="flex items-center space-x-4 mb-3">
                     <div class="text-sm text-gray-600">
                         <i class="fa-solid fa-phone mr-1"></i>{{ worker.phone }}
                     </div>
@@ -105,18 +105,25 @@
                         <i class="fa-solid fa-calendar mr-1"></i>{{ worker.join_date|ldate('%d %b %Y') }}
                     </div>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <a aria-label="{{ _('Attendance') }}" href="{{ url_for('worker_attendance', worker_id=worker.id) }}" 
-                       class="tap-target w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-accent hover:text-white transition-colors">
+                {# Three glyphs with no word on them was a quiz: a calendar, an
+                   ID card and an eye, repeated down the roster, and the only
+                   way to learn which was which was to press one. They say
+                   what they do now. #}
+                <div class="worker-actions">
+                    <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}"
+                       class="tap-target worker-action worker-action-quiet">
                         <i class="fa-solid fa-calendar-check"></i>
+                        <span>{{ _('Attendance') }}</span>
                     </a>
-                    <a aria-label="{{ _('ID card') }}" href="{{ url_for('id_card', worker_id=worker.id) }}" 
-                       class="tap-target w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-purple-700 hover:text-white transition-colors">
+                    <a href="{{ url_for('id_card', worker_id=worker.id) }}"
+                       class="tap-target worker-action worker-action-quiet">
                         <i class="fa-solid fa-id-card"></i>
+                        <span>{{ _('ID card') }}</span>
                     </a>
-                    <a aria-label="{{ _('Open this worker') }}" href="{{ url_for('worker_profile', worker_id=worker.id) }}" 
-                       class="tap-target w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white hover:bg-primary transition-colors">
+                    <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
+                       class="tap-target worker-action worker-action-primary">
                         <i class="fa-solid fa-eye"></i>
+                        <span>{{ _('Open') }}</span>
                     </a>
                 </div>
             </div>
