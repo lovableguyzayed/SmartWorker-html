@@ -301,6 +301,25 @@ TRANSLATIONS = {
         'Reset Password': 'पासवर्ड बदलें',
         'Remove Login': 'लॉगिन हटाएँ',
         'Remove this login?': 'यह लॉगिन हटाना है?',
+        'My Team': 'मेरी टोली',
+        'No workers have been assigned to you yet. Ask the Administrator.':
+            'अभी आपको कोई मज़दूर नहीं सौंपा गया है। एडमिन से कहें।',
+        "You can mark present and late. Absences, leave and any correction are the Administrator's to make.":
+            'आप हाज़िर और देर से लगा सकते हैं। ग़ैरहाज़िरी, छुट्टी और कोई भी सुधार एडमिन का काम है।',
+        'Team': 'टोली',
+        'Assign Workers': 'मज़दूर सौंपें',
+        'Can mark attendance': 'हाज़िरी लगा सकता है',
+        'Can record transactions': 'लेन-देन दर्ज कर सकता है',
+        'A supervisor can never mark their own attendance.':
+            'मुकादम अपनी ख़ुद की हाज़िरी कभी नहीं लगा सकता।',
+        'Present and late only, for the workers chosen below.':
+            'सिर्फ़ हाज़िर और देर से, और सिर्फ़ नीचे चुने गए मज़दूरों के लिए।',
+        'Can add an advance or payment, but never cancel or change one.':
+            'पेशगी या भुगतान जोड़ सकता है, पर रद्द या बदल नहीं सकता।',
+        'Only these workers appear on their list.':
+            'उसकी सूची में सिर्फ़ यही मज़दूर दिखेंगे।',
+        'Powers and team': 'अधिकार और टोली',
+        'Read-only': 'सिर्फ़ देखने के लिए',
         'Policy in force': 'लागू नियम',
         # salary.describe() labels and its plain values
         'Salary basis': 'तनख़्वाह का आधार',
@@ -887,6 +906,10 @@ FLASH_MESSAGES = {
         'This worker had no login.': 'इस मज़दूर का कोई लॉगिन नहीं था।',
         'This login is not linked to a worker record. Please contact the Administrator.':
             'यह लॉगिन किसी मज़दूर से जुड़ा नहीं है। एडमिन से कहें।',
+        'That worker is not on your list.': 'यह मज़दूर आपकी सूची में नहीं है।',
+        'Powers saved.': 'अधिकार सेव हो गए।',
+        'Create a login for this worker first.':
+            'पहले इस मज़दूर का लॉगिन बनाएँ।',
         'Access Restricted': 'अनुमति नहीं है',
     },
 }

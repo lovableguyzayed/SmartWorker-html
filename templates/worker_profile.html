@@ -375,6 +375,17 @@
                 </button>
             </form>
         </div>
+        <a href="{{ url_for('worker_login_powers', worker_id=worker.id) }}"
+           class="tap-target w-full flex items-center justify-between mt-2 p-3 rounded-xl border-2 border-gray-200 text-sm">
+            <span class="text-gray-700 font-medium">{{ _('Powers and team') }}</span>
+            <span class="text-xs text-gray-500">
+                {% if worker_login.can_mark_attendance %}
+                    {{ worker_login.supervisor_team_ids|length }} {{ _('Workers') }}
+                {% else %}
+                    {{ _('Read-only') }}
+                {% endif %}
+            </span>
+        </a>
         {% else %}
         <form method="POST" action="{{ url_for('worker_create_login', worker_id=worker.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

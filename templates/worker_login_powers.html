@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Worker Login') }} — {{ worker.full_name }}{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary to-accent text-white p-4 pt-6 rounded-b-3xl">
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
+           class="tap-target w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="min-w-0">
+            <div class="text-xl font-semibold name-wrap">{{ worker.full_name }}</div>
+            <div class="text-sm opacity-90">{{ _('Worker Login') }}</div>
+        </div>
+    </div>
+</header>
+
+<form method="POST" class="p-4 space-y-5">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4 space-y-4">
+        <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" name="can_mark_attendance" value="1" class="mt-1 w-5 h-5"
+                   {{ 'checked' if login.can_mark_attendance }}>
+            <span>
+                <span class="font-medium text-gray-800">{{ _('Can mark attendance') }}</span>
+                <span class="block text-xs text-gray-500 mt-0.5">
+                    {{ _('Present and late only, for the workers chosen below.') }}
+                </span>
+            </span>
+        </label>
+
+        <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" name="can_record_transactions" value="1" class="mt-1 w-5 h-5"
+                   {{ 'checked' if login.can_record_transactions }}>
+            <span>
+                <span class="font-medium text-gray-800">{{ _('Can record transactions') }}</span>
+                <span class="block text-xs text-gray-500 mt-0.5">
+                    {{ _('Can add an advance or payment, but never cancel or change one.') }}
+                </span>
+            </span>
+        </label>
+
+        <p class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3 leading-relaxed">
+            {{ _('A supervisor can never mark their own attendance.') }}
+        </p>
+    </section>
+
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-base font-semibold text-gray-800 mb-1">{{ _('Assign Workers') }}</h3>
+        <p class="text-xs text-gray-500 mb-3">
+            {{ _('Only these workers appear on their list.') }}
+        </p>
+        <div class="space-y-1 max-h-96 overflow-y-auto">
+            {% for w in team %}
+            <label class="tap-target flex items-center gap-3 p-2 rounded-xl cursor-pointer hover:bg-gray-50">
+                <input type="checkbox" name="team" value="{{ w.id }}" class="w-5 h-5 shrink-0"
+                       {{ 'checked' if w.id in chosen }}>
+                <span class="min-w-0">
+                    <span class="block text-sm font-medium text-gray-800 name-wrap">{{ w.full_name }}</span>
+                    <span class="block text-xs text-gray-500">{{ w.worker_id }}</span>
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+    </section>
+
+    <button type="submit"
+            class="tap-target w-full p-4 bg-accent text-white rounded-2xl font-semibold">
+        {{ _('Save') }}
+    </button>
+</form>
+{% endblock %}

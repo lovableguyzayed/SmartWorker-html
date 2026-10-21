@@ -149,6 +149,10 @@ SCHEMA_PATCHES = {
         ('profile_image', "TEXT"),
         # A worker's own login points at the Worker record it may see.
         ('worker_id', "INTEGER"),
+        # Supervisor powers, granted one at a time and off by default.
+        ('assigned_worker_ids', "TEXT"),
+        ('can_mark_attendance', "BOOLEAN NOT NULL DEFAULT 0"),
+        ('can_record_transactions', "BOOLEAN NOT NULL DEFAULT 0"),
     ],
     'closure_days': [
         ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),

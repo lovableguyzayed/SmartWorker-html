@@ -666,6 +666,15 @@ WORKER_ENDPOINTS = frozenset({
     'static',
 })
 
+# Opened only for a worker an administrator has made a supervisor. Kept
+# separate from the set above so the plain worker login stays read-only by
+# construction rather than by remembering to check a flag in each view.
+SUPERVISOR_ENDPOINTS = frozenset({
+    'supervisor_team',
+    'supervisor_mark',
+    'supervisor_transaction',
+})
+
 
 @app.before_request
 def _confine_worker_logins():
@@ -680,6 +689,8 @@ def _confine_worker_logins():
         return None
     endpoint = request.endpoint
     if endpoint is None or endpoint in WORKER_ENDPOINTS:
+        return None
+    if endpoint in SUPERVISOR_ENDPOINTS and current_user.can_mark_attendance:
         return None
     return redirect(url_for('worker_home'))
 
@@ -3172,6 +3183,205 @@ def worker_revoke_login(worker_id):
     flash('Login removed.' if removed else 'This worker had no login.',
           'success' if removed else 'info')
     return redirect(url_for('worker_profile', worker_id=worker_id))
+
+
+@app.route('/worker/<int:worker_id>/login/powers', methods=['GET', 'POST'])
+@admin_required
+def worker_login_powers(worker_id):
+    """Grant a worker's login the powers of a mukadam, and allot them a roll.
+
+    Both powers are off until an administrator turns them on, so creating a
+    login never quietly hands anyone authority over other people's wages.
+    """
+    worker = tenant_get_or_404(Worker, worker_id)
+    login = User.query.filter_by(worker_id=worker.id, role='worker').first()
+    if not login:
+        flash('Create a login for this worker first.', 'error')
+        return redirect(url_for('worker_profile', worker_id=worker_id))
+
+    if request.method == 'POST':
+        login.can_mark_attendance = 'can_mark_attendance' in request.form
+        login.can_record_transactions = 'can_record_transactions' in request.form
+        chosen = {parse_int(v, 0) for v in request.form.getlist('team')}
+        # Self-marking is the fraud this design exists to prevent, so the
+        # supervisor is dropped here as well as in supervisor_team_ids —
+        # the stored list should not even contain them.
+        chosen.discard(worker.id)
+        valid = {w.id for w in roster_query().all()}
+        login.assigned_worker_ids = ','.join(
+            str(i) for i in sorted(chosen & valid)) or None
+        db.session.commit()
+        flash('Powers saved.', 'success')
+        return redirect(url_for('worker_profile', worker_id=worker_id))
+
+    team = [w for w in roster_query().all() if w.id != worker.id]
+    return render_template('worker_login_powers.html',
+                           worker=worker, login=login, team=team,
+                           chosen=set(login.worker_id_list))
+
+
+def supervisor_required(view):
+    """A view only a worker who has been made a supervisor may open."""
+    @wraps(view)
+    @login_required
+    def wrapped(*args, **kwargs):
+        if not (current_user.is_worker and current_user.can_mark_attendance
+                and current_user.worker_id):
+            return redirect(url_for('worker_home'))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def _supervisor_team(user):
+    """The workers this supervisor may touch, as Worker rows.
+
+    Goes through supervisor_team_ids, which drops the supervisor's own id.
+    Every read and every write comes through here, so there is one place
+    that decides who is in scope and it already excludes self-marking.
+    """
+    ids = user.supervisor_team_ids
+    if not ids:
+        return []
+    return (Worker.query.filter(Worker.id.in_(ids), Worker.status == 'active')
+            .order_by(Worker.full_name).all())
+
+
+def _supervisor_may_touch(user, worker_id):
+    return worker_id in set(user.supervisor_team_ids)
+
+
+@app.route('/me/team')
+@supervisor_required
+def supervisor_team():
+    """The roll a mukadam marks."""
+    today = today_ist()
+    try:
+        on_date = parse_date_or(request.args.get('date')) or today
+    except (TypeError, ValueError):
+        on_date = today
+    if on_date > today:
+        on_date = today
+
+    team = _supervisor_team(current_user)
+    existing = {}
+    if team:
+        existing = {
+            r.worker_id: r
+            for r in AttendanceRecord.query.filter(
+                AttendanceRecord.worker_id.in_([w.id for w in team]),
+                AttendanceRecord.date == on_date).all()
+        }
+    return render_template(
+        'supervisor_team.html',
+        team=team, on_date=on_date, today=today, existing=existing,
+        can_record_transactions=current_user.can_record_transactions,
+        txn_types=TRANSACTION_TYPE_LABELS,
+    )
+
+
+@app.route('/me/team/mark', methods=['POST'])
+@supervisor_required
+def supervisor_mark():
+    """Mark one worker present or late.
+
+    Absent and leave are deliberately not here: both cut wages, and that is
+    an administrator's decision, not a mukadam's. Nor can an existing
+    status be changed — a correction goes to the administrator. The one
+    thing a second tap may do is close an open shift, which is not a
+    correction but the other half of the same day's work.
+    """
+    worker_id = parse_int(request.form.get('worker_id'), 0)
+    status = request.form.get('status', '')
+    on_date = parse_date_or(request.form.get('date')) or today_ist()
+    back = url_for('supervisor_team', date=on_date.isoformat())
+
+    if not _supervisor_may_touch(current_user, worker_id):
+        flash('That worker is not on your list.', 'error')
+        return redirect(back)
+    if status not in ('present', 'late'):
+        flash('Please contact the Administrator to mark absences or leaves.',
+              'restricted')
+        return redirect(back)
+    if on_date > today_ist():
+        flash('That date is in the future — attendance cannot be marked yet.',
+              'error')
+        return redirect(back)
+
+    worker = tenant_get_or_404(Worker, worker_id)
+    closure = next((c for c in ClosureDay.query.filter_by(date=on_date).all()
+                    if c.scope in (None, '', 'company') and not c.allow_attendance), None)
+    if closure:
+        flash(f'Attendance is locked on this closure day ({closure.reason}).', 'error')
+        return redirect(back)
+
+    record = AttendanceRecord.query.filter_by(
+        worker_id=worker.id, date=on_date).first()
+    stamp = _attendance_timestamp(on_date)
+
+    if record:
+        closing = (record.status in ('present', 'late')
+                   and record.check_in_time is not None
+                   and record.check_out_time is None)
+        if not closing:
+            flash('Please contact the Administrator to make changes.', 'restricted')
+            return redirect(back)
+        record.check_out_time = stamp
+        record.marked_by = current_user.id
+    else:
+        assignment = next((a for a in worker.assignments
+                           if assignment_active_on(a, on_date)), None)
+        record = AttendanceRecord(
+            worker_id=worker.id, date=on_date, status=status,
+            check_in_time=stamp, marked_by=current_user.id,
+            marked_via='supervisor', account_id=worker.account_id,
+            site_id=assignment.site_id if assignment else None,
+        )
+        db.session.add(record)
+    db.session.commit()
+    flash(f'Attendance adjusted for {worker.full_name}.', 'success')
+    return redirect(back)
+
+
+@app.route('/me/team/transaction', methods=['POST'])
+@supervisor_required
+def supervisor_transaction():
+    """Record an advance or a payment for someone on the roll.
+
+    Recording only. Cancelling or editing one is an administrator's job,
+    because a transaction a mukadam can both create and erase is a way to
+    take wages off someone quietly. The worker sees it on their own screen
+    either way, which is the real check.
+    """
+    if not current_user.can_record_transactions:
+        flash('Please contact the Administrator to make changes.', 'restricted')
+        return redirect(url_for('supervisor_team'))
+
+    worker_id = parse_int(request.form.get('worker_id'), 0)
+    txn_type = request.form.get('txn_type', '')
+    amount = parse_float(request.form.get('amount'), 0.0)
+    on_date = parse_date_or(request.form.get('date')) or today_ist()
+    back = url_for('supervisor_team', date=on_date.isoformat())
+
+    if not _supervisor_may_touch(current_user, worker_id):
+        flash('That worker is not on your list.', 'error')
+        return redirect(back)
+    if txn_type not in TRANSACTION_TYPE_LABELS:
+        flash('Please choose a valid transaction type.', 'error')
+        return redirect(back)
+    if amount <= 0:
+        flash('Transaction amount must be greater than zero.', 'error')
+        return redirect(back)
+
+    worker = tenant_get_or_404(Worker, worker_id)
+    label = TRANSACTION_TYPE_LABELS[txn_type]
+    db.session.add(WorkerTransaction(
+        worker_id=worker.id, txn_type=txn_type, amount=amount, date=on_date,
+        description=(request.form.get('description') or '').strip() or label,
+        created_by=current_user.id, account_id=worker.account_id,
+    ))
+    db.session.commit()
+    flash(f'{label} of ₹{amount:,.2f} added for {worker.full_name}.', 'success')
+    return redirect(back)
 
 
 @app.route('/me')

@@ -60,6 +60,41 @@ class User(UserMixin, db.Model):
     def is_admin(self):
         return self.role in ('admin', 'manager')
 
+    #: Workers this login may mark attendance for. Comma-separated ids, the
+    #: same shape as assigned_site_ids. Granted by an administrator one
+    #: person at a time; empty means nobody.
+    assigned_worker_ids = db.Column(db.Text, nullable=True)
+    #: Powers a worker's login can be given. Both default off: a login that
+    #: can only look at its own pay is safe to hand out widely, and that is
+    #: the whole point of it.
+    can_mark_attendance = db.Column(db.Boolean, nullable=False, default=False)
+    can_record_transactions = db.Column(db.Boolean, nullable=False, default=False)
+
+    @property
+    def worker_id_list(self):
+        raw = (self.assigned_worker_ids or '').strip()
+        return [int(t) for t in raw.split(',') if t.strip().isdigit()] if raw else []
+
+    @property
+    def is_supervisor(self):
+        """A worker who also marks the roll for others — a mukadam.
+
+        Not a separate role: the same person, with powers an administrator
+        granted. Their own attendance is never theirs to mark; see
+        supervisor_team_ids.
+        """
+        return self.is_worker and self.can_mark_attendance
+
+    @property
+    def supervisor_team_ids(self):
+        """Who this supervisor may mark — never themselves.
+
+        A mukadam marking his own attendance is the fraud this whole design
+        exists to prevent, so the exclusion lives here, at the one place
+        every caller has to come through, rather than in each view.
+        """
+        return [wid for wid in self.worker_id_list if wid != self.worker_id]
+
     @property
     def is_worker(self):
         """A labourer looking at their own attendance and pay.
