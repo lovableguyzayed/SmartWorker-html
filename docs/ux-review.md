@@ -282,8 +282,13 @@ moved on screen. `tests/test_control_names.py` drives the real pages rather
 than reading the templates, because a label can be lost to a branch only one
 role ever sees; pulling a single label out makes it fail.
 
-**Still open:** visible labels under the three workers-list glyphs. That is
-a design change and has not been made.
+**The visible half is done too.** The three glyphs on a worker card say
+Attendance, ID card and Open; the one that opens the worker keeps the filled
+accent so it still reads as the main action. The words cost height — a card
+goes from about 235px to 269px, three to a screen instead of three and a
+half — and on a list a foreman reads every day that is worth paying. All 36
+targets measure 46 × 101px, nothing overflows, and in Hindi हाज़िरी,
+पहचान पत्र and खोलें each still sit on one line with the matras whole.
 
 One snag worth keeping: a link whose `href` holds a Jinja expression with a
 bare `>` in it (`start_date.month > 1`) ends the attribute as far as any
@@ -308,7 +313,7 @@ the cost of guessing wrong is a day's wage on the wrong date.
 The AM/PM time fields beside it are **not** a defect — a 12-hour clock is
 ordinary in India and needs no change.
 
-### 6. The navigation does not match the product — NEEDS REVIEW
+### 6. The navigation does not match the product — FIXED
 
 - **Payroll has no tab of its own and lights "Transactions"** instead. It is
   the money screen, reachable only through a banner on the dashboard, and
@@ -329,6 +334,30 @@ button the same active treatment as the other tabs so only one thing reads as
 current. Then let Quick Actions carry only what the bar cannot reach — Add
 Worker, Assignments, Closures — and drop the three duplicates, which buys
 back most of a screen on the dashboard.
+
+**Done.** The bar is Home · Workers · Attendance · [Scan] · Payroll ·
+Profile. Six tabs cannot hold a dozen screens, so every screen lights the
+section it belongs to — transactions under Payroll, assignments under
+Workers, notifications under Profile, the way closures already sat under
+Attendance — and no screen leaves the bar blank.
+
+The scanner is grey until you are on it. Not tinted: the active tab's chip
+is a blue tint, so a tinted scanner would be the same signal again in a
+different size. Grey keeps it prominent by shape and leaves blue meaning one
+thing.
+
+Quick Actions keeps Add Worker, Transactions, Assignments and Closures, and
+drops Mark Attendance and QR Scanner. An attendance-role user has no screens
+outside the bar at all, so the section is no longer rendered for them rather
+than filled with two duplicates.
+
+`tests/test_navigation.py` checks that every screen lights exactly one tab
+and that it is the right one.
+
+**One trade remains, honestly:** on Transactions the bar says Payroll. Six
+slots for a dozen screens means something shares, and payroll is opened far
+more often than transactions, so the label is right far more often than it
+was before — but it is not right every time.
 
 ### 7. The page title is not a heading on any screen — FIXED
 
@@ -456,24 +485,25 @@ Grouped so they can be approved separately. Nothing here has been started.
 | D | Titles become `<h1>`/`<h2>` | no | 1 hour | **DONE** |
 | E | Attendance: day view becomes a report, times collapse | yes, large | 1–2 days | **DONE** |
 | E2 | The month calendar behind a toggle | yes | 2 hours | **DONE** |
-| F | Labels under the workers-list icons | yes | 2 hours | waiting |
-| G | Navigation: payroll tab, FAB state, Quick Actions | yes | half a day | waiting |
+| F | Labels under the workers-list icons | yes | 2 hours | **DONE** |
+| G | Navigation: payroll tab, FAB state, Quick Actions | yes | half a day | **DONE** |
 | H | Type and spacing scale, one button system | yes, everywhere | 2–3 days | waiting |
 | I | Colour given meaning; calendar legend | yes | 1 day | waiting |
 | J | Hindi names for sites and projects | yes, Hindi only | 1 day + data entry | waiting |
 | K | The frosted `bg-white/20` header pills, 2.56:1 | slight | 2 hours | new, waiting |
 
-A, B, C, D, E and E2 are done. C and D changed nothing a person can see; A and B
+A, B, C, D, E, E2, F and G are done. C and D changed nothing a person can see; A and B
 were corrections rather than redesigns; E and E2 took the attendance screen
-from 5,818px to 4,259px without removing a single capability. **F through K
-have not been started.**
+from 5,818px to 4,259px without removing a single capability. **H, I, J and
+K have not been started.**
 
-Of what is left, F — words under the three workers-list glyphs — is the
-cheapest thing that would help a mukadam, and G would stop the bar claiming
-he is on Transactions while he is looking at Payroll. H is the largest and
-the least urgent: the type and button system is untidy but it is not
-stopping anyone, and it is worth doing after a week on a real site rather
-than before.
+Of what is left, H is the largest and the least urgent: the type and button
+system is untidy, but it is not stopping anyone, and three days spent on it
+now would be three days spent before anyone has watched a mukadam use this
+on a real phone. I — giving colour a meaning and the calendar a legend —
+is the one most likely to be worth doing next. J is mostly data entry for
+the company rather than code. K is two hours whenever the frosted header
+pills are looked at again.
 
 ---
 
