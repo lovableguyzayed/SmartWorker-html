@@ -52,9 +52,23 @@ class User(UserMixin, db.Model):
             return False
         return check_password_hash(self.password_hash, password)
 
+    #: A worker's own login. Links a User to the Worker record it may see;
+    #: nothing else in the app is reachable from that role.
+    worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=True)
+
     @property
     def is_admin(self):
         return self.role in ('admin', 'manager')
+
+    @property
+    def is_worker(self):
+        """A labourer looking at their own attendance and pay.
+
+        Deliberately not folded into is_admin's negation: an attendance user
+        is also 'not admin' but may see the whole roster for their site,
+        whereas a worker may see exactly one record — their own.
+        """
+        return self.role == 'worker'
 
     @property
     def site_id_list(self):

@@ -346,6 +346,47 @@
         </div>
     </section>
 
+    {# A worker's own login. Admin only — this is where it is handed out. #}
+    {% if current_user.is_admin %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Worker Login') }}</h3>
+        <p class="text-xs text-gray-500 mb-3">
+            {{ _('Lets this worker see their own attendance and payslip, and nothing else.') }}
+        </p>
+        {% if worker_login %}
+        <div class="flex items-center justify-between gap-3 mb-3 text-sm">
+            <span class="text-gray-500">{{ _('Username') }}</span>
+            <span class="font-medium text-gray-800">{{ worker_login.username }}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <form method="POST" action="{{ url_for('worker_create_login', worker_id=worker.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit"
+                        class="tap-target w-full p-3 rounded-xl border-2 border-gray-200 text-gray-600 font-medium text-sm">
+                    {{ _('Reset Password') }}
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('worker_revoke_login', worker_id=worker.id) }}"
+                  onsubmit="return confirm({{ _('Remove this login?')|tojson }})">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit"
+                        class="tap-target w-full p-3 rounded-xl border-2 border-red-200 text-red-600 font-medium text-sm">
+                    {{ _('Remove Login') }}
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <form method="POST" action="{{ url_for('worker_create_login', worker_id=worker.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit"
+                    class="tap-target w-full p-3 bg-accent text-white rounded-xl font-medium text-sm">
+                {{ _('Create Login') }}
+            </button>
+        </form>
+        {% endif %}
+    </section>
+    {% endif %}
+
     {# Payment details. Admin only: this is where someone's bank account and
        identity numbers live, and an attendance user has no business here. #}
     {% if current_user.is_admin %}

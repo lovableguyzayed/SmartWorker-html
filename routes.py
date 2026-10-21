@@ -11,7 +11,7 @@ from datetime import datetime, date, timedelta
 from functools import wraps
 from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g, get_flashed_messages, has_app_context
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload, joinedload
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage, ImageOps as PILImageOps
@@ -653,6 +653,62 @@ def generate_unique_username(full_name, email):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# Everything a worker's own login may reach. Deny-by-default on purpose:
+# the alternative is auditing every one of the app's routes and hoping none
+# is missed now or later, and the cost of a miss here is one labourer seeing
+# the whole company's wages.
+WORKER_ENDPOINTS = frozenset({
+    'worker_home',          # their own attendance and pay
+    'worker_payslip',       # their own payslip
+    'worker_logout_note',   # the "what can I do here" page
+    'logout',
+    'set_language',
+    'static',
+})
+
+
+@app.before_request
+def _confine_worker_logins():
+    """Hold a worker login inside its own screens.
+
+    A worker is not a cut-down admin: there is exactly one record they may
+    see. Anything outside the allowlist goes back to their own page rather
+    than 403ing, because a worker who taps a stale bookmark has not done
+    anything wrong.
+    """
+    if not current_user.is_authenticated or not getattr(current_user, 'is_worker', False):
+        return None
+    endpoint = request.endpoint
+    if endpoint is None or endpoint in WORKER_ENDPOINTS:
+        return None
+    return redirect(url_for('worker_home'))
+
+
+def worker_login_required(view):
+    """A view only a worker's own login may open."""
+    @wraps(view)
+    @login_required
+    def wrapped(*args, **kwargs):
+        if not current_user.is_worker or not current_user.worker_id:
+            return redirect(url_for('dashboard'))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def home_for(user):
+    """Where this login belongs after signing in.
+
+    One rule in one place: there are three ways into the app (password, OTP
+    and registration) and a worker must not land on the company dashboard
+    from any of them. The before_request guard would bounce them anyway, but
+    a redirect that lands correctly first time is not the same as one that
+    corrects itself.
+    """
+    if getattr(user, 'is_worker', False):
+        return url_for('worker_home')
+    return url_for('dashboard')
+
+
 def admin_required(view):
     """Restrict a view to admin/manager accounts. Authorized attendance users
     are bounced back with the standard contact-administrator popup."""
@@ -836,7 +892,7 @@ def login():
             return render_template('login.html')
         login_user(user, remember=True)
         clear_login_otp_session()
-        next_page = safe_redirect_target(request.args.get('next'), url_for('dashboard'))
+        next_page = safe_redirect_target(request.args.get('next'), home_for(user))
         return redirect(next_page, code=303)
     else:
         clear_login_otp_session()
@@ -931,7 +987,7 @@ def login_verify_otp():
     return jsonify({
         'success': True,
         'message': 'OTP verified. Login successful.',
-        'redirect_url': url_for('dashboard'),
+        'redirect_url': home_for(user),
     })
 
 @app.route('/register/send-otp', methods=['POST'])
@@ -1069,7 +1125,7 @@ def register():
                 return redirect(url_for('login'))
             # Confirmation disabled → Supabase returned a session; log in now.
             login_user(user, remember=True)
-            return redirect(url_for('dashboard'), code=303)
+            return redirect(home_for(user), code=303)
 
         # ---- Legacy local fallback (Supabase Auth not configured) ----
         if User.query.filter_by(email=email).first():
@@ -1289,6 +1345,8 @@ def worker_profile(worker_id):
 
     return render_template('worker_profile.html',
                          worker=worker,
+                         worker_login=User.query.filter_by(
+                             worker_id=worker.id, role='worker').first(),
                          salary_override=salary_override,
                          effective_policy=effective_policy,
                          effective_policy_rows=salary.describe(effective_policy),
@@ -3005,6 +3063,154 @@ def payroll_slip(worker_id):
         timedelta=timedelta,
         date=ISTDate,
     )
+
+
+# ============================================================
+# A worker's own login
+# ============================================================
+
+def _worker_slip_context(worker, month, year):
+    """Everything payroll_slip.html needs, for one worker and month."""
+    _, days_in_month = _cal.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, days_in_month)
+    records = AttendanceRecord.query.filter(
+        AttendanceRecord.worker_id == worker.id,
+        AttendanceRecord.date >= start_date,
+        AttendanceRecord.date <= end_date,
+    ).order_by(AttendanceRecord.date).all()
+    pay_summary = calculate_pay_summary(worker, records, start_date, end_date)
+    return dict(
+        worker=worker, month=month, year=year,
+        month_name=MONTH_NAMES[month - 1],
+        start_date=start_date, end_date=end_date, days_in_month=days_in_month,
+        calendar_data={r.date.day: r for r in records},
+        att_summary=calculate_attendance_summary(records),
+        pay_summary=pay_summary,
+        salary_basis_label=salary.LABELS['salary_basis'].get(
+            (pay_summary.get('salary_breakdown') or {}).get('salary_basis', 'fixed'),
+            'Fixed days'),
+        payroll_record=PayrollRecord.query.filter_by(
+            worker_id=worker.id, month=month, year=year).first(),
+        timedelta=timedelta, date=ISTDate,
+    )
+
+
+def _requested_month(default_date):
+    try:
+        month = max(1, min(12, int(request.args.get('month', default_date.month))))
+        year = max(2020, min(2099, int(request.args.get('year', default_date.year))))
+    except (TypeError, ValueError):
+        month, year = default_date.month, default_date.year
+    return month, year
+
+
+@app.route('/worker/<int:worker_id>/login', methods=['POST'])
+@admin_required
+def worker_create_login(worker_id):
+    """Give a worker a login of their own, or reset its password.
+
+    The username is their phone number, because that is the one thing a
+    labourer reliably knows and can be told over the phone. The password is
+    generated and shown once — there is no email to send it to, and storing
+    a readable copy to show again later would be worse than reissuing it.
+    """
+    worker = tenant_get_or_404(Worker, worker_id)
+    if not worker.phone:
+        flash('Add a mobile number for this worker before creating a login.', 'error')
+        return redirect(url_for('worker_profile', worker_id=worker_id))
+
+    clash = User.query.filter(
+        User.username == worker.phone,
+        or_(User.worker_id.is_(None), User.worker_id != worker.id),
+    ).first()
+    if clash:
+        flash('That mobile number is already used by another login.', 'error')
+        return redirect(url_for('worker_profile', worker_id=worker_id))
+
+    password = '%06d' % random.randint(100000, 999999)
+    login = User.query.filter_by(worker_id=worker.id, role='worker').first()
+    if not login:
+        login = User(
+            username=worker.phone,
+            # users.email is NOT NULL and a labourer has no email address.
+            # .invalid is reserved by RFC 2606 for exactly this, so the
+            # placeholder can never collide with or be mistaken for a real
+            # address, and nothing is ever sent to it.
+            email='%s@worker.invalid' % worker.phone,
+            full_name=worker.full_name,
+            phone=worker.phone,
+            role='worker',
+            worker_id=worker.id,
+            account_id=worker.account_id,
+            status='active',
+        )
+        db.session.add(login)
+    else:
+        # Keep the login pointed at the worker's current number.
+        login.username = worker.phone
+        login.email = '%s@worker.invalid' % worker.phone
+        login.phone = worker.phone
+        login.full_name = worker.full_name
+    login.set_password(password)
+    db.session.commit()
+
+    # Shown once, in a flash, and never stored in readable form.
+    flash(f'Login ready for {worker.full_name}. '
+          f'Username {worker.phone}, password {password}. '
+          f'Write it down — it cannot be shown again.', 'success')
+    return redirect(url_for('worker_profile', worker_id=worker_id))
+
+
+@app.route('/worker/<int:worker_id>/login/revoke', methods=['POST'])
+@admin_required
+def worker_revoke_login(worker_id):
+    """Take a worker's login away."""
+    worker = tenant_get_or_404(Worker, worker_id)
+    removed = User.query.filter_by(worker_id=worker.id, role='worker').delete()
+    db.session.commit()
+    flash('Login removed.' if removed else 'This worker had no login.',
+          'success' if removed else 'info')
+    return redirect(url_for('worker_profile', worker_id=worker_id))
+
+
+@app.route('/me')
+@worker_login_required
+def worker_home():
+    """A worker's own attendance and pay for a month.
+
+    Reads from current_user.worker_id and never from the URL: a worker has
+    one record to look at, so there is nothing for a tampered id to select.
+    """
+    worker = Worker.query.filter_by(id=current_user.worker_id).first()
+    if not worker:
+        logout_user()
+        flash('This login is not linked to a worker record. '
+              'Please contact the Administrator.', 'error')
+        return redirect(url_for('login'))
+
+    today = today_ist()
+    month, year = _requested_month(today)
+    context = _worker_slip_context(worker, month, year)
+    months = [(i, MONTH_NAMES[i - 1]) for i in range(1, 13)]
+    return render_template(
+        'worker_home.html',
+        years=list(range(max(2024, (worker.join_date or today).year), today.year + 1)),
+        months=months,
+        today=today,
+        **context,
+    )
+
+
+@app.route('/me/payslip')
+@worker_login_required
+def worker_payslip():
+    """The same payslip an administrator sees, for this worker only."""
+    worker = Worker.query.filter_by(id=current_user.worker_id).first()
+    if not worker:
+        return redirect(url_for('worker_home'))
+    month, year = _requested_month(today_ist())
+    return render_template('payroll_slip.html', **_worker_slip_context(worker, month, year))
 
 
 @app.route('/payroll/export.csv')

@@ -147,6 +147,8 @@ SCHEMA_PATCHES = {
         ('created_by', "INTEGER"),
         ('status', "VARCHAR(20) DEFAULT 'active'"),
         ('profile_image', "TEXT"),
+        # A worker's own login points at the Worker record it may see.
+        ('worker_id', "INTEGER"),
     ],
     'closure_days': [
         ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),

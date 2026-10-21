@@ -60,37 +60,57 @@ check('no flash key appears twice',
       sorted({k for k in joined if joined.count(k) > 1}), [])
 
 # --- every message routes.py can raise ------------------------------------
+# Parsed with ast rather than a regex. A regex over the source kept finding
+# its own artefacts and reporting them as missing translations: a message
+# built from two adjacent literals arrived glued, and
+# flash('a' if x else 'b') arrived as one string containing both.
+import ast  # noqa: E402
+
 routes_src = open(os.path.join(ROOT, 'routes.py'), encoding='utf-8').read()
-raised = re.findall(r"flash\(\s*(f?)(['\"])(.*?)\2\s*,", routes_src, re.S)
+tree = ast.parse(routes_src)
 
 plain, shaped = set(), set()
-for is_f, _q, text in raised:
-    text = ' '.join(text.split())
-    if not text or '+' in text[-2:]:
+
+
+def literals(node):
+    """Every message one flash() argument can produce, as (text, has_value)."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return [(node.value, False)]
+    if isinstance(node, ast.JoinedStr):
+        out, interpolated = [], False
+        for part in node.values:
+            if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                out.append(part.value)
+            else:
+                out.append('X')
+                interpolated = True
+        return [(''.join(out), interpolated)]
+    if isinstance(node, ast.IfExp):
+        return literals(node.body) + literals(node.orelse)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = literals(node.left), literals(node.right)
+        if left and right:
+            return [(left[0][0] + right[0][0], left[0][1] or right[0][1])]
+    return []
+
+
+for node in ast.walk(tree):
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id == 'flash' and node.args):
         continue
-    (shaped if is_f else plain).add(text)
+    for text, interpolated in literals(node.args[0]):
+        text = ' '.join(text.split())
+        if not text:
+            continue
+        (shaped if interpolated else plain).add(text)
 
 missing_plain = sorted(t for t in plain if t not in table)
 check('every plain message routes.py raises has a translation',
       missing_plain, [])
 
-# For the interpolated ones, substitute a placeholder for each {expr} and
-# check some pattern claims the result.
-def rendered(template):
-    # A message split across lines arrives as "...end of part one ' f'start
-    # of part two"; that glue is an artefact of reading the source, not part
-    # of what the user sees.
-    joined = re.sub(r"'\s*f'", '', template)
-    return re.sub(r'\{[^{}]*\}', 'X', joined).strip()
-
-
-uncovered = []
-for text in shaped:
-    sample = rendered(text)
-    if i18n.translate_flash(sample, 'hi') == sample:
-        uncovered.append(text[:62])
-check('every message carrying a value has a matching shape',
-      sorted(uncovered), [])
+uncovered = sorted(t for t in shaped
+                   if i18n.translate_flash(t, 'hi') == t)
+check('every message carrying a value has a matching shape', uncovered, [])
 
 print('\n%d plain messages, %d shapes, %d failed'
       % (len(table), len(i18n._FLASH_PATTERNS['hi']), len(failures)))

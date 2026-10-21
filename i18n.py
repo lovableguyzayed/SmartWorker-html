@@ -289,6 +289,18 @@ TRANSLATIONS = {
             'ढकी हुई दिखती है, और तनख़्वाह पर्ची पर कभी नहीं छपती।',
         'No way to pay this worker is recorded yet.':
             'इस मज़दूर को पैसा भेजने का कोई ज़रिया अभी दर्ज नहीं है।',
+        'My Attendance & Pay': 'मेरी हाज़िरी और मज़दूरी',
+        'Something wrong with your attendance or pay? Speak to your supervisor — this screen is read-only.':
+            'हाज़िरी या मज़दूरी में कुछ ग़लत लगे तो अपने सुपरवाइज़र से कहें — यह स्क्रीन सिर्फ़ दिखाने के लिए है।',
+        'This login is not linked to a worker record. Please contact the Administrator.':
+            'यह लॉगिन किसी मज़दूर से जुड़ा नहीं है। एडमिन से कहें।',
+        'Worker Login': 'मज़दूर का लॉगिन',
+        'Lets this worker see their own attendance and payslip, and nothing else.':
+            'इससे यह मज़दूर सिर्फ़ अपनी हाज़िरी और पर्ची देख सकेगा, और कुछ नहीं।',
+        'Create Login': 'लॉगिन बनाएँ',
+        'Reset Password': 'पासवर्ड बदलें',
+        'Remove Login': 'लॉगिन हटाएँ',
+        'Remove this login?': 'यह लॉगिन हटाना है?',
         'Policy in force': 'लागू नियम',
         # salary.describe() labels and its plain values
         'Salary basis': 'तनख़्वाह का आधार',
@@ -867,6 +879,14 @@ FLASH_MESSAGES = {
         'A closure needs a reason.': 'छुट्टी की वजह लिखना ज़रूरी है।',
         'No open shifts to close.': 'बंद करने के लिए कोई खुली शिफ़्ट नहीं है।',
         'Unknown action.': 'यह काम पहचाना नहीं गया।',
+        'Add a mobile number for this worker before creating a login.':
+            'लॉगिन बनाने से पहले इस मज़दूर का मोबाइल नंबर डालें।',
+        'That mobile number is already used by another login.':
+            'यह मोबाइल नंबर किसी और लॉगिन पर पहले से है।',
+        'Login removed.': 'लॉगिन हटा दिया गया।',
+        'This worker had no login.': 'इस मज़दूर का कोई लॉगिन नहीं था।',
+        'This login is not linked to a worker record. Please contact the Administrator.':
+            'यह लॉगिन किसी मज़दूर से जुड़ा नहीं है। एडमिन से कहें।',
         'Access Restricted': 'अनुमति नहीं है',
     },
 }
@@ -886,6 +906,10 @@ _FLASH_PATTERNS_SOURCE = {
          r'इस छुट्टी के दिन \1 की हाज़िरी बंद है।'),
         (r'^Times updated for (.+?)\.$', r'\1 का समय बदल दिया गया।'),
         (r'^Closure added for (.+?)\.$', r'\1 के लिए छुट्टी जोड़ी गई।'),
+        (r'^Login ready for (.+?)\. Username (\S+), password (\S+)\. '
+         r'Write it down — it cannot be shown again\.$',
+         r'\1 का लॉगिन तैयार। यूज़रनेम \2, पासवर्ड \3। '
+         r'लिख लें — यह दोबारा नहीं दिखाया जाएगा।'),
         (r'^Attendance adjusted for (.+?)\.$', r'\1 की हाज़िरी बदल दी गई।'),
         (r'^Attendance is locked for (.+?) on this closure day \((.+?)\)\.$',
          r'इस छुट्टी के दिन (\2) \1 की हाज़िरी बंद है।'),
