@@ -166,29 +166,26 @@
            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
            overflow: hidden; overflow-wrap: anywhere; }
 .dv-sub { font-size: 0.74rem; color: #6b7280; line-height: 1.4; }
-.dv-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
-.dv-pill {
-    position: relative; width: 2.25rem; height: 2.25rem;
-    border: 0; border-radius: 0.65rem;
-    display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
+/* The day view reports; it does not mark. Where four status buttons used to
+   sit on every row there is now one badge saying what happened, and the ink
+   on each is dark enough to read in sun. */
+.dv-state {
+    flex-shrink: 0; align-self: flex-start;
+    padding: 0.25rem 0.55rem; border-radius: 0.6rem;
+    font-size: 0.72rem; font-weight: 700; white-space: nowrap;
 }
-.dv-pill::after { content: ''; position: absolute; inset: -0.25rem; }  /* 44px hit area */
-.dv-pill:disabled { opacity: 0.4; }
-.dv-pill-present { background: #dcfce7; color: #16a34a; }
-.dv-pill-absent  { background: #fee2e2; color: #dc2626; }
-.dv-pill-late    { background: #fef3c7; color: #b45309; }
-.dv-pill-leave   { background: #dbeafe; color: #2563eb; }
-.dv-pill-on.dv-pill-present { background: #22c55e; color: #fff; }
-.dv-pill-on.dv-pill-absent  { background: #ef4444; color: #fff; }
-.dv-pill-on.dv-pill-late    { background: #eab308; color: #fff; }
-.dv-pill-on.dv-pill-leave   { background: #3b82f6; color: #fff; }
+.dv-state-present { background: #dcfce7; color: #15803d; }
+.dv-state-absent  { background: #fee2e2; color: #b91c1c; }
+.dv-state-late    { background: #fef3c7; color: #b45309; }
+.dv-state-leave   { background: #dbeafe; color: #1d4ed8; }
+.dv-state-none    { background: #f3f4f6; color: #4b5563; }
 
 /* Real 44px targets on touch screens. The roster row still fits: four pills
    at 44px plus the 0.3rem gaps come to 190px of a 390px screen, and the
    worker name beside them already wraps to two lines. */
 @media (pointer: coarse) {
-    .ep-pill, .dv-pill { width: 2.75rem; height: 2.75rem; }
-    .ep-pill::after, .dv-pill::after { inset: 0; }
+    .ep-pill { width: 2.75rem; height: 2.75rem; }
+    .ep-pill::after { inset: 0; }
     /* Padding, not line-height: a name that wraps to two lines would get
        44px between the lines and fall apart. */
     .ep-name, .dv-name { display: inline-block; min-height: 2.75rem; padding-block: 0.4rem; }
@@ -197,17 +194,10 @@
 }
 
 
-.dv-times { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
-.dv-times input[type="time"] {
-    flex: 1; min-width: 0; min-height: 2.75rem; padding: 0 0.5rem;
-    border: 1px solid #e5e7eb; border-radius: 0.65rem; font-size: 0.8rem; color: #111827;
-}
-.dv-times button {
-    min-height: 2.75rem; padding: 0 0.8rem; border: 0; border-radius: 0.65rem;
-    background: #001F3F; color: #fff; font-size: 0.76rem; font-weight: 700;
-}
-.dv-times button:disabled { opacity: 0.45; }
-
+/* .dv-times is gone with the inline check-in boxes. Times are adjusted from
+   the marking panel's "Adjust times", which was always the other way to do
+   it. .dv-actions stays: it still carries Add transaction and Add closure,
+   which are not attendance marking. */
 .dv-actions { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 0.5rem; margin-top: 0.6rem; }
 .dv-actions button {
     min-height: 2.75rem; padding: 0 0.3rem; border: 1px solid #e5e7eb;
@@ -635,6 +625,15 @@ function epApplyRows(rows) {
     (rows || []).forEach(epApplyRow);
 }
 
+// The day view above is a report now, not a second editor, so it has to
+// follow what the panel just did. Each of these responses already carries
+// the whole day — the server has always sent it — and only the date the
+// panel is writing to is refreshed, so selecting a past day in the calendar
+// and marking today cannot repaint the wrong one.
+function dvFollow(data) {
+    if (data && data.day && data.day.date === DV_SELECTED) dvRender(data.day);
+}
+
 function epSetBusy(el, busy) {
     if (el) el.disabled = busy;
 }
@@ -665,6 +664,7 @@ async function markWorker(workerId, status, btn) {
         if (!res.ok) { epToast('Could not save (' + res.status + ').', 'error'); return; }
         epApplyStats(data.stats);
         epApplyRow(data.row);
+        dvFollow(data);
         epShowMessages(data, data.success ? 'Attendance updated.' : 'Could not update attendance.');
     } catch (err) {
         epToast('No connection — attendance was not saved.', 'error');
@@ -717,6 +717,7 @@ async function markWorkerById(workerId, status) {
     var data = await res.json();
     epApplyStats(data.stats);
     epApplyRow(data.row);
+    dvFollow(data);
     epShowMessages(data, data.success ? 'Attendance updated.' : 'Could not update attendance.');
 }
 
@@ -745,6 +746,7 @@ async function bulkAction(action, btn) {
         if (!res.ok) { epToast('Could not apply (' + res.status + ').', 'error'); return; }
         epApplyStats(data.stats);
         epApplyRows(data.rows);
+        dvFollow(data);
         epShowMessages(data, 'Done.');
     } catch (err) {
         epToast('No connection — nothing was changed.', 'error');
@@ -872,61 +874,45 @@ function dvRender(day) {
          '<div class="dv-count"><b>' + c.leave + '</b><span>{{ _('Leave') }}</span></div>' +
          '<div class="dv-count"><b>' + c.not_marked + '</b><span>{{ _('Unmarked') }}</span></div></div>';
 
-    // Bulk actions always name the date they apply to.
-    if (editable) {
-        h += '<div class="dv-actions">';
-        if (DV_IS_ADMIN) {
-            h += '<button type="button" onclick="dvBulk(\'present\', this)">{{ _('All present') }}</button>' +
-                 '<button type="button" onclick="dvBulk(\'absent\', this)">{{ _('All absent') }}</button>';
-        }
-        h += '<button type="button" onclick="dvBulk(\'close\', this)"' +
-             (DV_IS_ADMIN ? '' : ' style="grid-column: span 3"') + '>{{ _('Close shifts') }}</button></div>';
-        h += '<div class="dv-muted" style="margin-top:0.45rem">{{ _('These apply to') }} <b>' +
-             dvEsc(day.date_label) + '</b>.</div>';
-    }
+    // No bulk buttons here any more. "All present", "All absent" and "Close
+    // shifts" are on the marking panel below, which is where marking happens
+    // now — see the note on dvRender.
 
     h += '<div class="dv-section-label">{{ _('Workers on this date') }}</div>';
     if (!day.rows.length) {
         h += '<div class="dv-empty">{{ _('No workers were on the roll on this date.') }}</div>';
     }
     day.rows.forEach(function (r) {
-        var rowLocked = !editable || r.locked;
         h += '<div class="dv-row"><div class="dv-row-top"><div style="flex:1;min-width:0">' +
-             '<div class="dv-name">' + dvEsc(r.name) + '</div>' +
+             '<a class="dv-name" href="/worker/' + encodeURIComponent(r.id) + '">' +
+             dvEsc(r.name) + '</a>' +
              '<div class="dv-sub">' + dvEsc(r.worker_id) + ' · ' + dvEsc(r.department) +
-             (r.where ? ' · ' + dvEsc(r.where) : '') + '</div>' +
-             '<div class="dv-sub">';
+             (r.where ? ' · ' + dvEsc(r.where) : '') + '</div>';
         // Built from explicit fields rather than re-slicing the roster meta
-        // string, so nothing is reported twice.
+        // string, so nothing is reported twice. The status itself is not in
+        // here any more — the badge on the right carries it, and printing
+        // "Not marked" in both places said the same thing twice on every row.
         var bits = [];
-        if (!r.status) {
-            bits.push({{ _('Not marked')|tojson }});
-        } else if (r.check_in) {
+        if (r.status && r.check_in) {
             bits.push(r.check_in + (r.check_out ? ' → ' + r.check_out : '') );
             if (!r.check_out) bits.push({{ _('shift open')|tojson }});
-        } else {
-            bits.push(DV_STATUS_LABEL[r.status] || r.status);
         }
         if (r.worked_minutes) bits.push(r.worked_minutes + 'm worked');
         if (r.overtime_minutes) bits.push('+' + r.overtime_minutes + 'm OT');
         if (r.late_minutes) bits.push(r.late_minutes + 'm late');
-        h += dvEsc(bits.join(' · '));
-        h += '</div></div><div class="dv-pills">';
-        [['present','fa-check'],['absent','fa-xmark'],['late','fa-clock'],['leave','fa-house']].forEach(function (p) {
-            h += '<button type="button" class="dv-pill dv-pill-' + p[0] + (r.status === p[0] ? ' dv-pill-on' : '') + '"' +
-                 (rowLocked ? ' disabled' : '') +
-                 ' aria-label="{{ _('Mark') }} ' + dvEsc(r.name) + ' ' + (DV_STATUS_LABEL[p[0]] || p[0]) + '"' +
-                 ' onclick="dvMark(' + r.id + ',\'' + p[0] + '\', this)">' +
-                 '<i class="fa-solid ' + p[1] + '"></i></button>';
-        });
-        h += '</div></div>';
-        if (!rowLocked) {
-            h += '<div class="dv-times">' +
-                 '<input type="time" value="' + dvEsc(r.check_in_value) + '" aria-label="{{ _('Check In') }} — ' + dvEsc(r.name) + '" id="dv-in-' + r.id + '">' +
-                 '<input type="time" value="' + dvEsc(r.check_out_value) + '" aria-label="{{ _('Check Out') }} — ' + dvEsc(r.name) + '" id="dv-out-' + r.id + '">' +
-                 '<button type="button" onclick="dvSaveTimes(' + r.id + ', this)">{{ _('Save') }}</button></div>';
+        if (bits.length) h += '<div class="dv-sub">' + dvEsc(bits.join(' · ')) + '</div>';
+        h += '</div>';                       // the name-and-meta column
+        // A badge instead of four buttons: this says what happened, it does
+        // not offer to change it.
+        if (r.status) {
+            h += '<span class="dv-state dv-state-' + r.status + '">' +
+                 dvEsc(DV_STATUS_LABEL[r.status] || r.status) + '</span>';
+        } else {
+            h += '<span class="dv-state dv-state-none">' +
+                 {{ _('Not marked')|tojson }} + '</span>';
         }
-        h += '</div>';
+        h += '</div>';                       // .dv-row-top
+        h += '</div>';                       // .dv-row
     });
 
     h += '<div class="dv-section-label">{{ _('Transactions on this date') }}</div>';
@@ -981,29 +967,11 @@ async function dvPost(url, fields, btn) {
     }
 }
 
-function dvMark(workerId, status, btn) {
-    dvPost('/api/mark_attendance',
-           { worker_id: workerId, status: status, marked_via: 'manual' }, btn);
-}
-
-function dvSaveTimes(workerId, btn) {
-    dvPost('/api/attendance/times', {
-        worker_id: workerId,
-        check_in: (document.getElementById('dv-in-' + workerId) || {}).value || '',
-        check_out: (document.getElementById('dv-out-' + workerId) || {}).value || ''
-    }, btn);
-}
-
-function dvBulk(action, btn) {
-    var label = dvDay ? dvDay.date_label : DV_SELECTED;
-    var verb = action === 'close' ? {{ _('Close every open shift on')|tojson }}
-                                  : {{ _('Mark every listed worker as this status on')|tojson }};
-    // Bulk overwrites existing records — always confirm, naming the date.
-    if (!confirm(verb + ' ' + label + '?')) return;
-    var fields = { action: action };
-    if (action !== 'close') { fields.bulk_action = 'true'; fields.status = action; }
-    dvPost('/api/attendance/bulk', fields, btn);
-}
+/* dvMark, dvSaveTimes and dvBulk were here. They marked attendance from the
+   day view, which also marked it from the panel below — the same twelve
+   workers, twice on one page, three thousand pixels apart. Marking now
+   happens in one place. The endpoints they called are untouched and still
+   serve the panel; only this second way in is gone. */
 
 function dvAddTxn() {
     if (!dvDay || !dvDay.rows.length) { epToast('No workers available on this date.', 'error'); return; }
