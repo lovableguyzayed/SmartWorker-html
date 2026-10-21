@@ -9,7 +9,7 @@
 <header class="bg-gradient-to-br from-primary to-accent text-white p-4 pt-6 rounded-b-3xl">
     <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
-            <div class="text-xl font-semibold">{{ _('My Team') }}</div>
+            <h1 class="text-xl font-semibold">{{ _('My Team') }}</h1>
             <div class="text-sm opacity-90">{{ on_date|ldate('%A, %B %d, %Y') }}</div>
         </div>
         <a href="{{ url_for('worker_home') }}"

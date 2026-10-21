@@ -245,7 +245,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">{{ _('Attendance') }}</div>
+                <h1 class="text-xl font-semibold">{{ _('Attendance') }}</h1>
                 <div class="text-sm opacity-90">{{ _('Daily Attendance Management') }}</div>
             </div>
         </div>
@@ -511,7 +511,7 @@
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fa-solid fa-calendar-check text-3xl text-gray-500"></i>
         </div>
-        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Workers Found</h3>
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">No Workers Found</h2>
         <p class="text-gray-600 mb-6">Add workers to start marking attendance.</p>
         <a href="{{ url_for('add_worker') }}" 
            class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
@@ -527,7 +527,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800">Adjust Attendance</h3>
+                <h2 class="text-xl font-semibold text-gray-800">Adjust Attendance</h2>
                 <p class="text-gray-600 text-sm" id="adjust-worker-name"></p>
             </div>
             <form method="POST" id="adjust-form" class="space-y-3">

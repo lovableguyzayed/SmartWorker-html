@@ -10,7 +10,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">{{ _('Settings') }}</div>
+                <h1 class="text-xl font-semibold">{{ _('Settings') }}</h1>
                 <div class="text-sm opacity-90">{{ _('Company, Sites, Projects & Users') }}</div>
             </div>
         </div>
@@ -39,7 +39,7 @@
     <!-- ══════════ Company Section ══════════ -->
     <section id="section-company" class="settings-section space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Company Details') }}</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Company Details') }}</h2>
             <p class="text-xs text-gray-500 mb-4">{{ _('Shown automatically on worker PDFs, payroll slips, salary reports and attendance reports.') }}</p>
             <form method="POST" action="{{ url_for('settings_company') }}" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -104,7 +104,7 @@
     <!-- ══════════ Sites Section ══════════ -->
     <section id="section-sites" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Site</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Site</h2>
             <form method="POST" action="{{ url_for('settings_site_save') }}" class="space-y-3" id="site-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" id="site-id" value="">
@@ -156,7 +156,7 @@
     <!-- ══════════ Projects Section ══════════ -->
     <section id="section-projects" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Project</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Project</h2>
             <form method="POST" action="{{ url_for('settings_project_save') }}" class="space-y-3" id="project-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" id="project-id" value="">
@@ -254,7 +254,7 @@
     <!-- ══════════ Tasks Section ══════════ -->
     <section id="section-tasks" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Task</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Task</h2>
             <form method="POST" action="{{ url_for('settings_task_save') }}" class="space-y-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" id="task-id" value="">
@@ -306,7 +306,7 @@
     <!-- ══════════ Departments Section ══════════ -->
     <section id="section-departments" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Department</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Add Department</h2>
             <form method="POST" action="{{ url_for('settings_department_save') }}" class="flex gap-2">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="text" name="name" placeholder="Department name" required
@@ -342,7 +342,7 @@
     <!-- ══════════ Salary Calculation Policy ══════════ -->
     <section id="section-salary" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-1">Salary Calculation Policy</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">Salary Calculation Policy</h2>
             <p class="text-xs text-gray-500 mb-1">
                 How a fixed monthly salary becomes a payable amount. Applies to the
                 {{ monthly_worker_count }} worker(s) on a monthly salary.
@@ -445,7 +445,7 @@
 
         {% if policy_audit %}
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-1">Recent policy changes</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">Recent policy changes</h2>
             <p class="text-xs text-gray-500 mb-3">Salary rules decide what people are paid, so every change is recorded.</p>
             <div class="space-y-2">
                 {% for a in policy_audit %}
@@ -466,7 +466,7 @@
     <!-- ══════════ Attendance Users Section ══════════ -->
     <section id="section-users" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-1">Authorized Attendance Users</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">Authorized Attendance Users</h2>
             <p class="text-xs text-gray-500 mb-4">These users log in with their mobile number. They can only mark attendance, scan QR codes and view workers on their assigned sites — nothing else.</p>
             <form method="POST" action="{{ url_for('settings_attendance_user_save') }}" class="space-y-3" id="att-user-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

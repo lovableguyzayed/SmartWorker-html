@@ -10,7 +10,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">{{ _('Transactions') }}</div>
+                <h1 class="text-xl font-semibold">{{ _('Transactions') }}</h1>
                 <div class="text-sm opacity-90">{{ _('Advances, Loans, Bonuses & Deductions') }}</div>
             </div>
         </div>
@@ -124,7 +124,7 @@
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fa-solid fa-money-bill-transfer text-3xl text-gray-500"></i>
         </div>
-        <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Transactions') }}</h3>
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Transactions') }}</h2>
         <p class="text-gray-600 mb-6">Record advances, loans, bonuses and deductions for {{ month_name }} {{ year }}.</p>
         <button onclick="openTxnModal()" class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
             <i class="fa-solid fa-plus mr-2"></i>{{ _('Add Transaction') }}
@@ -138,7 +138,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
             <div class="text-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800" id="txn-modal-title">{{ _('Add Transaction') }}</h3>
+                <h2 class="text-xl font-semibold text-gray-800" id="txn-modal-title">{{ _('Add Transaction') }}</h2>
                 <p class="text-gray-600 text-sm">{{ _('Payroll updates automatically') }}</p>
             </div>
             <form method="POST" action="{{ url_for('transactions_save') }}" class="space-y-3">

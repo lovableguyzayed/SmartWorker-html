@@ -10,7 +10,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">{{ _('Closure Days') }}</div>
+                <h1 class="text-xl font-semibold">{{ _('Closure Days') }}</h1>
                 <div class="text-sm opacity-90">{{ _('Holidays & Scheduled Closures') }}</div>
             </div>
         </div>
@@ -19,7 +19,7 @@
 
 <main class="p-4 pb-8 space-y-6">
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
-        <h3 class="text-lg font-semibold text-primary mb-4">{{ _('Add Closure Date') }}</h3>
+        <h2 class="text-lg font-semibold text-primary mb-4">{{ _('Add Closure Date') }}</h2>
 
         <form method="POST" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -102,7 +102,7 @@
 
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-primary">{{ _('Scheduled Closures') }}</h3>
+            <h2 class="text-lg font-semibold text-primary">{{ _('Scheduled Closures') }}</h2>
             <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{{ closures|length }} {{ _('upcoming') }}</span>
         </div>
 

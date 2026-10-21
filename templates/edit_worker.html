@@ -11,7 +11,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">{% if worker %}Edit Worker{% else %}Add Worker{% endif %}</div>
+                <h1 class="text-xl font-semibold">{% if worker %}Edit Worker{% else %}Add Worker{% endif %}</h1>
                 <div class="text-sm opacity-90">Update Profile Information</div>
             </div>
         </div>
@@ -72,7 +72,7 @@
         <input id="worker-photo-input" type="file" name="profile_image" accept=".jpg,.jpeg,.png,.gif,.webp,image/*" class="hidden">
         <!-- Basic Details -->
         <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Details</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Basic Details</h2>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
@@ -102,7 +102,7 @@
 
         <!-- How this worker gets paid -->
         <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Payment Details') }}</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Payment Details') }}</h2>
             <p class="text-xs text-gray-500 mb-4">{{ _('Where the money goes. Every field is optional — fill in what you have.') }}</p>
             <div class="space-y-4">
                 <div>
@@ -153,7 +153,7 @@
 
         <!-- Work Details -->
         <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Work Details</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Work Details</h2>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Position/Role</label>
@@ -196,7 +196,7 @@
 
         <!-- Payment Settings -->
         <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Settings</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Payment Settings</h2>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Pay Type</label>
@@ -252,7 +252,7 @@
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center space-x-2">
                                     <i class="fa-solid fa-calendar-xmark text-orange-700"></i>
-                                    <h4 class="text-md font-semibold text-gray-800">Closure Day Payment</h4>
+                                    <h3 class="text-md font-semibold text-gray-800">Closure Day Payment</h3>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="closure_extra_pay_enabled" id="closure-extra-pay-toggle"
@@ -338,10 +338,10 @@
                 <!-- Leave Settings (for salaried employees) -->
                 <div id="leave-settings" class="hidden">
                     <div class="bg-green-50 rounded-2xl p-4 border border-green-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
                             <i class="fa-solid fa-calendar-days text-green-700 mr-2"></i>
                             Leave Policy
-                        </h4>
+                        </h3>
                         
                         <div class="space-y-4">
                             <div>
@@ -380,10 +380,10 @@
                 <div id="daily-policy-settings" class="space-y-4 hidden">
                     <!-- Working Hours -->
                     <div class="bg-blue-50 rounded-2xl p-4 border border-blue-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
                             <i class="fa-solid fa-clock text-blue-600 mr-2"></i>
                             Working Hours
-                        </h4>
+                        </h3>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
@@ -400,10 +400,10 @@
 
                     <!-- Absence Policy -->
                     <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
                             <i class="fa-solid fa-user-slash text-red-700 mr-2"></i>
                             Absence Policy
-                        </h4>
+                        </h3>
                         <div class="space-y-3">
                             <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-red-200">
                                 <span class="text-sm font-medium text-gray-700">No Work, No Pay</span>
@@ -492,10 +492,10 @@
                 <div id="monthly-policy-settings" class="space-y-4 hidden">
                     <!-- Working Hours -->
                     <div class="bg-blue-50 rounded-2xl p-4 border border-blue-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
                             <i class="fa-solid fa-clock text-blue-600 mr-2"></i>
                             Working Hours
-                        </h4>
+                        </h3>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
@@ -512,10 +512,10 @@
 
                     <!-- Absence Policy (Monthly) -->
                     <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
                             <i class="fa-solid fa-user-slash text-red-700 mr-2"></i>
                             Absence Policy
-                        </h4>
+                        </h3>
                         <div class="space-y-3">
                             <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-red-200">
                                 <span class="text-sm font-medium text-gray-700">No Work, No Pay</span>

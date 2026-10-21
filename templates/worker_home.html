@@ -17,7 +17,7 @@
         </div>
         {% endif %}
         <div class="min-w-0">
-            <div class="text-xl font-semibold name-wrap">{{ worker.full_name }}</div>
+            <h1 class="text-xl font-semibold name-wrap">{{ worker.full_name }}</h1>
             <div class="text-sm opacity-90">{{ _('Worker ID') }} {{ worker.worker_id }}</div>
         </div>
     </div>
@@ -74,7 +74,7 @@
     </section>
 
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-sm font-semibold text-gray-800 mb-3">{{ _('Attendance Calendar') }} — {{ _(month_name) }} {{ year }}</h3>
+        <h2 class="text-sm font-semibold text-gray-800 mb-3">{{ _('Attendance Calendar') }} — {{ _(month_name) }} {{ year }}</h2>
         {% with cal_month_start = start_date, cal_month = month, cal_year = year,
                 cal_data = calendar_data, cal_closures = none,
                 cal_interactive = false, cal_today = today %}
@@ -84,7 +84,7 @@
 
     {% if pay_summary.policy_note %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-sm font-semibold text-gray-800 mb-2">{{ _('How this was calculated') }}</h3>
+        <h2 class="text-sm font-semibold text-gray-800 mb-2">{{ _('How this was calculated') }}</h2>
         <p class="text-xs text-gray-500 leading-relaxed">{{ pay_summary.policy_note|lnotes }}</p>
     </section>
     {% endif %}

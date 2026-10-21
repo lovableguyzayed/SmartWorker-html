@@ -10,7 +10,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">{{ _('Profile') }}</div>
+                <h1 class="text-xl font-semibold">{{ _('Profile') }}</h1>
                 <div class="text-sm opacity-90">{{ _('Account Settings') }}</div>
             </div>
         </div>
@@ -113,7 +113,7 @@
 
     <!-- Account Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Account Information') }}</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Account Information') }}</h2>
         <div class="space-y-3">
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Full Name') }}</span>
@@ -146,7 +146,7 @@
 
     <!-- Permissions -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Permissions') }}</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Permissions') }}</h2>
         <div class="space-y-2">
             {% if current_user.is_admin %}
                 {% for perm in [_('Manage workers & payroll'), _('Mark and edit attendance'), _('Company settings & closures'), _('Transactions & reports'), _('Manage attendance users')] %}
@@ -171,7 +171,7 @@
 
     <!-- Quick Actions -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h2>
         <div class="grid grid-cols-2 gap-3">
             <button onclick="showEditModal()" class="flex items-center justify-center p-4 bg-accent/10 text-accent rounded-2xl hover:bg-accent/20 transition-colors">
                 <i class="fa-solid fa-user-edit mr-2"></i>
@@ -216,7 +216,7 @@
 
     <!-- System Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('System Information') }}</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('System Information') }}</h2>
         <div class="space-y-3">
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Application') }}</span>
@@ -237,7 +237,7 @@
 
     <!-- Interface language -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-base font-semibold text-gray-800 mb-1">{{ _('Language') }}</h3>
+        <h2 class="text-base font-semibold text-gray-800 mb-1">{{ _('Language') }}</h2>
         <p class="text-xs text-gray-500 mb-3">
             {{ _('Saved for this phone only, so a site phone can be in Hindi while the office stays in English.') }}
         </p>
@@ -271,7 +271,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ _('Edit Profile') }}</h3>
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('Edit Profile') }}</h2>
                 <p class="text-gray-600">{{ _('Update your account information') }}</p>
             </div>
             
@@ -309,7 +309,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ _('Change Password') }}</h3>
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('Change Password') }}</h2>
                 <p class="text-gray-600">{{ _('Update your account password') }}</p>
             </div>
             

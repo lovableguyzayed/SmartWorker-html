@@ -78,7 +78,7 @@
         <div class="flex items-center space-x-4">
             <img loading="lazy" decoding="async" src="{{ url_for('static', filename='images/logo.png') }}" alt="SmartWorker" class="w-10 h-10 rounded-lg object-contain">
             <div>
-                <div class="text-xl font-semibold">SmartWorker</div>
+                <h1 class="text-xl font-semibold">SmartWorker</h1>
                 <div class="text-sm opacity-90">{{ _('Dashboard Overview') }}</div>
             </div>
         </div>
@@ -182,7 +182,7 @@
 
     <!-- Quick Actions -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h2>
         <div class="grid grid-cols-2 gap-3">
             {% if current_user.is_admin %}
             <a href="{{ url_for('add_worker') }}" class="flex items-center justify-center p-4 bg-accent text-white rounded-2xl hover:shadow-lg transition-all">
@@ -227,7 +227,7 @@
     {% if recent_attendance %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
-            <h3 class="text-base font-semibold text-gray-800">{{ _('Today\'s Attendance') }}</h3>
+            <h2 class="text-base font-semibold text-gray-800">{{ _('Today\'s Attendance') }}</h2>
             <a href="{{ url_for('attendance') }}" class="tap-target inline-flex items-center text-accent hover:text-primary text-xs font-semibold uppercase tracking-wide">{{ _('View All') }}</a>
         </div>
 
@@ -299,7 +299,7 @@
     <!-- Upcoming Closures -->
     {% if upcoming_closures %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Upcoming Closures') }}</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Upcoming Closures') }}</h2>
         <div class="space-y-3">
             {% for closure in upcoming_closures %}
             <div class="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-200">

@@ -10,7 +10,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">{{ _('Payroll') }}</div>
+                <h1 class="text-xl font-semibold">{{ _('Payroll') }}</h1>
                 <div class="text-sm opacity-90">{{ _(month_name) }} {{ year }}</div>
             </div>
         </div>
@@ -63,7 +63,7 @@
     <!-- Generate / Refresh -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div>
-            <h3 class="text-base font-semibold text-gray-800">{{ _('Generate / Refresh Payroll') }}</h3>
+            <h2 class="text-base font-semibold text-gray-800">{{ _('Generate / Refresh Payroll') }}</h2>
             <p class="text-sm text-gray-500 mt-1">{{ _('Saves the latest calculation for every active worker this month. Months already marked Paid are left untouched.') }}</p>
         </div>
         <a href="{{ url_for('payroll_preview', month=month, year=year) }}"
@@ -95,9 +95,9 @@
 
     <!-- Worker List -->
     <section class="space-y-3" data-ms-scope="payroll" data-ms-noun="worker" data-ms-plural="workers">
-        <h3 class="text-lg font-semibold text-gray-800 px-1">
+        <h2 class="text-lg font-semibold text-gray-800 px-1">
             {{ _('Workers') }} ({{ totals.worker_count }})
-        </h3>
+        </h2>
 
         {% if not rows %}
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 text-center">

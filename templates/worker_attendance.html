@@ -15,7 +15,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Attendance Calendar</div>
+                <h1 class="text-xl font-semibold">Attendance Calendar</h1>
                 <div class="text-sm opacity-90">{{ worker.full_name }}</div>
             </div>
         </div>
@@ -54,9 +54,9 @@
     <!-- Month Navigation -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">
+            <h2 class="text-lg font-semibold text-gray-800">
                 {{ start_date|ldate('%B %Y') }}
-            </h3>
+            </h2>
             <div class="flex items-center space-x-2">
                 <a aria-label="{{ _('Previous month') }}" href="{{ url_for('worker_attendance', worker_id=worker.id, month=start_date.month-1 if start_date.month > 1 else 12, year=start_date.year if start_date.month > 1 else start_date.year-1) }}"
                    class="tap-target w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
@@ -104,7 +104,7 @@
 
     <!-- Monthly Summary -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Monthly Summary</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Monthly Summary</h2>
         
         {% set present_days = attendance_summary.present_days %}
         {% set absent_days = attendance_summary.absent_days %}
@@ -144,7 +144,7 @@
     <!-- Recent Records -->
     {% if calendar_data %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Records</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Records</h2>
         <div class="space-y-3">
             {% for day, record in calendar_data.items() %}
                 {% if loop.index <= 10 %}
@@ -201,7 +201,7 @@
                 <i class="fa-solid fa-calendar-xmark text-orange-700"></i>
             </div>
             <div>
-                <h3 class="text-lg font-semibold text-gray-800">Closure Days Attended</h3>
+                <h2 class="text-lg font-semibold text-gray-800">Closure Days Attended</h2>
                 <p class="text-sm text-gray-500">Days worked during closure — bonus earned</p>
             </div>
         </div>
@@ -239,7 +239,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">Detailed Statistics</h3>
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">Detailed Statistics</h2>
                 <p class="text-gray-600">{{ start_date|ldate('%B %Y') }}</p>
             </div>
             

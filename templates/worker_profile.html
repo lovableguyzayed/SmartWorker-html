@@ -10,7 +10,7 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Worker Profile</div>
+                <h1 class="text-xl font-semibold">Worker Profile</h1>
                 <div class="text-sm opacity-90">Employee Information</div>
             </div>
         </div>
@@ -110,7 +110,7 @@
     {% set assignment = worker.current_assignment %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-3">
-            <h3 class="text-lg font-semibold text-gray-800">Current Assignment</h3>
+            <h2 class="text-lg font-semibold text-gray-800">Current Assignment</h2>
             {% if current_user.is_admin %}
             <button onclick="showAssignModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>Assign</button>
             {% endif %}
@@ -170,7 +170,7 @@
     <section class="px-4 mb-5">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
             <div class="flex items-start justify-between mb-1">
-                <h3 class="text-lg font-semibold text-gray-800">Salary Calculation</h3>
+                <h2 class="text-lg font-semibold text-gray-800">Salary Calculation</h2>
                 <span class="text-xs px-2 py-1 rounded-lg {{ 'bg-amber-50 text-amber-700' if salary_override else 'bg-gray-100 text-gray-500' }}">
                     {{ 'Own policy' if salary_override else 'Company policy' }}
                 </span>
@@ -292,7 +292,7 @@
     <!-- Leave Balance (accumulates from joining date) -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-3">
-            <h3 class="text-lg font-semibold text-gray-800">Leave Balance</h3>
+            <h2 class="text-lg font-semibold text-gray-800">Leave Balance</h2>
             {% if current_user.is_admin %}
             <button onclick="showLeaveModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-pen mr-1"></i>Adjust</button>
             {% endif %}
@@ -321,7 +321,7 @@
 
     <!-- Personal Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Personal Information</h2>
         <div class="space-y-3">
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Full Name</span>
@@ -349,7 +349,7 @@
     {# A worker's own login. Admin only — this is where it is handed out. #}
     {% if current_user.is_admin %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Worker Login') }}</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Worker Login') }}</h2>
         <p class="text-xs text-gray-500 mb-3">
             {{ _('Lets this worker see their own attendance and payslip, and nothing else.') }}
         </p>
@@ -402,7 +402,7 @@
        identity numbers live, and an attendance user has no business here. #}
     {% if current_user.is_admin %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Payment Details') }}</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Payment Details') }}</h2>
         {% if worker.has_payment_details or worker.aadhaar_number or worker.pan_number %}
         <div class="space-y-3 text-sm">
             {% if worker.bank_account_number %}
@@ -450,7 +450,7 @@
 
     <!-- Work Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Work Information</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Work Information</h2>
         <div class="space-y-3">
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Position</span>
@@ -477,7 +477,7 @@
 
     <!-- Payment Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Information</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Payment Information</h2>
         <div class="space-y-3">
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Pay Type</span>
@@ -555,7 +555,7 @@
     <!-- Attendance Summary -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">This Month's Summary</h3>
+            <h2 class="text-lg font-semibold text-gray-800">This Month's Summary</h2>
             <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" class="tap-target inline-flex items-center text-accent text-sm font-medium">View Details</a>
         </div>
         <div class="grid grid-cols-2 gap-4">
@@ -573,7 +573,7 @@
     <!-- Recent Attendance -->
     {% if recent_attendance %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Attendance</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Attendance</h2>
         <div class="space-y-3">
             {% for record in recent_attendance[:5] %}
             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
@@ -607,7 +607,7 @@
     <!-- Recent Transactions -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">Transactions</h3>
+            <h2 class="text-lg font-semibold text-gray-800">Transactions</h2>
             <a href="{{ url_for('transactions', worker=worker.id) }}" class="tap-target inline-flex items-center text-accent text-sm font-medium">Manage</a>
         </div>
         {% if recent_transactions %}
@@ -632,7 +632,7 @@
     <!-- Modification & Promotion History -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">Modification History</h3>
+            <h2 class="text-lg font-semibold text-gray-800">Modification History</h2>
             <button onclick="showModifyModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>New</button>
         </div>
         {% if worker.modifications %}
@@ -665,7 +665,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
             <div class="text-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800">Modify Worker</h3>
+                <h2 class="text-xl font-semibold text-gray-800">Modify Worker</h2>
                 <p class="text-gray-600 text-sm">All changes are recorded permanently</p>
             </div>
             <form method="POST" action="{{ url_for('worker_modify', worker_id=worker.id) }}" class="space-y-3">
@@ -722,7 +722,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
             <div class="text-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800">Assign Worker</h3>
+                <h2 class="text-xl font-semibold text-gray-800">Assign Worker</h2>
                 <p class="text-gray-600 text-sm">Current assignment will be closed as a transfer</p>
             </div>
             <form method="POST" action="{{ url_for('worker_assign', worker_id=worker.id) }}" class="space-y-3">
@@ -776,7 +776,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800">Adjust Leave Balance</h3>
+                <h2 class="text-xl font-semibold text-gray-800">Adjust Leave Balance</h2>
                 <p class="text-gray-600 text-sm">Credit or debit accumulated leave days</p>
             </div>
             <form method="POST" action="{{ url_for('worker_modify', worker_id=worker.id) }}" class="space-y-3">
@@ -808,7 +808,7 @@
                 <div class="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
                     <i class="fa-solid fa-user text-gray-600 text-xl"></i>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-800">{{ worker.full_name }}</h3>
+                <h2 class="text-lg font-semibold text-gray-800">{{ worker.full_name }}</h2>
                 <p class="text-sm text-gray-500">{{ worker.worker_id }}</p>
             </div>
 
