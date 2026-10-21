@@ -47,26 +47,38 @@
                     <i class="fa-solid fa-camera text-xs text-white"></i>
                 </button>
             </div>
+            {# On Edit this card shows a real worker and earns its space. On
+               Add it used to show "New Worker", "Position • Department",
+               "ID: Auto-Generated" and a QR square for a worker who does
+               not exist — placeholders styled exactly like data, with
+               "Auto-Generated" said twice, in 210px of screen. The Add
+               screen now carries the photo button and one line saying what
+               happens on save. #}
+            {% if worker %}
             <div class="flex-1">
-                <div class="text-xl font-bold mb-1">{{ worker.full_name if worker else 'New Worker' }}</div>
-                <div class="text-sm opacity-90 mb-2">{{ worker.position if worker else 'Position' }} • {{ worker.department if worker else 'Department' }}</div>
+                <div class="text-xl font-bold mb-1">{{ worker.full_name }}</div>
+                <div class="text-sm opacity-90 mb-2">{{ worker.position }} • {{ worker.department }}</div>
                 <div class="flex items-center justify-between">
-                    <div class="text-sm opacity-90">ID: {{ worker.worker_id if worker else 'Auto-Generated' }}</div>
+                    <div class="text-sm opacity-90">{{ _('Employee ID') }}: {{ worker.worker_id }}</div>
                     <div class="flex flex-col items-center">
                         <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30 mb-1">
                             <i class="fa-solid fa-qrcode text-white text-2xl"></i>
                         </div>
-                        <div class="text-xs opacity-90 text-center">{{ _('Auto-Generated') }}</div>
+                        <div class="text-xs opacity-90 text-center">{{ _('QR Code') }}</div>
                     </div>
                 </div>
                 <div id="worker-photo-hint" class="text-xs opacity-90 mt-2">
-                    {% if worker and worker.profile_image %}
-                        Tap camera to replace profile photo
-                    {% else %}
-                        Tap camera to add profile photo
-                    {% endif %}
+                    {{ _('Tap the camera to replace the photo') }}
                 </div>
             </div>
+            {% else %}
+            <div class="flex-1">
+                <div class="text-base font-semibold mb-1">{{ _('Worker Photo') }}</div>
+                <div id="worker-photo-hint" class="text-xs opacity-90 leading-snug">
+                    {{ _('Tap the camera to add one. The employee ID and QR code are made when you save.') }}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </header>
@@ -730,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
             photoPreview.classList.remove('hidden');
             photoFallback.classList.add('hidden');
             if (photoHint) {
-                photoHint.textContent = 'Selected: ' + file.name;
+                photoHint.textContent = {{ _('Selected')|tojson }} + ': ' + file.name;
             }
         });
     }

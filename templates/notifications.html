@@ -25,28 +25,52 @@
 
 <main class="p-4 pb-8">
     {% if notifications %}
-    <div class="space-y-3" data-ms-scope="notifications" data-ms-noun="notification" data-ms-plural="notifications">
-        {% for item in notifications %}
-        <div class="bg-white rounded-2xl shadow border p-4 {{ 'border-accent/40' if not item.is_read else 'border-gray-100 opacity-70' }}"
-             data-ms-item="{{ item.id }}" data-ms-label="{{ item.title }}">
-            <div class="flex items-start space-x-3">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
-                    {{ 'bg-blue-100 text-blue-600' if item.category == 'attendance' else 'bg-gray-100 text-gray-500' }}">
-                    <i class="fa-solid {{ 'fa-calendar-check' if item.category == 'attendance' else 'fa-circle-info' }}"></i>
+    {# A hundred rows carrying the same sentence with a different name in it
+       was the whole screen. They are grouped by day now, and a run written by
+       one action folds into one line that still carries every id behind it —
+       see group_notifications() in routes.py. #}
+    <div data-ms-scope="notifications" data-ms-noun="notification" data-ms-plural="notifications">
+        {% for group in groups %}
+        <h2 class="notif-day">
+            {% if group.label %}{{ _(group.label) }}{% else %}{{ group.date|ldate('%d %b %Y') }}{% endif %}
+        </h2>
+        <div class="space-y-3 mb-5">
+            {% for row in group.rows %}
+            <div class="bg-white rounded-2xl shadow border p-4 {{ 'border-accent/40' if row.unread else 'border-gray-100 opacity-70' }}"
+                 data-ms-item="{{ row.ids|join(',') }}" data-ms-label="{{ row.title }}">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                        {{ 'bg-blue-100 text-blue-600' if row.category == 'attendance' else 'bg-gray-100 text-gray-500' }}">
+                        <i class="fa-solid {{ 'fa-calendar-check' if row.category == 'attendance' else 'fa-circle-info' }}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-gray-800 text-sm">
+                            {%- if row.count > 1 -%}
+                                {{ row.count }} {{ _('workers') }}{{ ' — ' }}{{ _(row.outcome) }}
+                            {%- elif row.names -%}
+                                {{ row.names[0] }}{{ ' — ' }}{{ _(row.outcome) }}
+                            {%- else -%}
+                                {{ row.title }}
+                            {%- endif -%}
+                        </div>
+                        {% if row.shown %}
+                        <div class="text-xs text-gray-700 mt-0.5">
+                            {{- row.shown|join(', ') -}}
+                            {%- if row.more %}, {{ _('and %n more')|replace('%n', row.more) }}{% endif -%}
+                        </div>
+                        {% endif %}
+                        {% if row.body %}<div class="text-xs text-gray-600 mt-0.5">{{ row.body }}</div>{% endif %}
+                        {# Stored timestamps are naive IST — see timeutil.py — so
+                           this line labelled them with the wrong zone. A foreman
+                           reading "09:35 UTC" adds five and a half hours and
+                           believes it happened at 15:05. The day is already on
+                           the separator above, so only the clock is repeated. #}
+                        <div class="text-xs text-gray-500 mt-1">{{ row.created_at.strftime('%H:%M') }} IST</div>
+                    </div>
+                    {% if row.unread %}<span class="w-2.5 h-2.5 bg-accent rounded-full shrink-0 mt-1"></span>{% endif %}
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-gray-800 text-sm">{{ item.title }}</div>
-                    {% if item.body %}<div class="text-xs text-gray-600 mt-0.5">{{ item.body }}</div>{% endif %}
-                    {# Stored timestamps are naive IST — see timeutil.py — so
-                       this line labelled them with the wrong zone. A foreman
-                       reading "09:35 UTC" adds five and a half hours and
-                       believes it happened at 15:05. The date goes through
-                       ldate like every other date in the app, so the month
-                       reads in Hindi too. #}
-                    <div class="text-xs text-gray-500 mt-1">{{ item.created_at|ldate('%d %b %Y') }}, {{ item.created_at.strftime('%H:%M') }} IST</div>
-                </div>
-                {% if not item.is_read %}<span class="w-2.5 h-2.5 bg-accent rounded-full shrink-0 mt-1"></span>{% endif %}
             </div>
+            {% endfor %}
         </div>
         {% endfor %}
     </div>

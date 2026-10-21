@@ -34,15 +34,22 @@ import routes as R
 # --------------------------------------------------------------------------
 
 def _ids():
-    """Selected ids as ints, de-duplicated, order-insensitive."""
+    """Selected ids as ints, de-duplicated, order-insensitive.
+
+    One posted value may carry several comma-separated ids. The notifications
+    screen collapses a run of rows written by one action into a single line,
+    and that line stands for all of them — selecting it has to select every
+    id behind it, or "Delete" would leave the rest of the run behind.
+    """
     out = []
     for raw in request.form.getlist('ids'):
-        try:
-            value = int(raw)
-        except (TypeError, ValueError):
-            continue
-        if value not in out:
-            out.append(value)
+        for part in str(raw or '').split(','):
+            try:
+                value = int(part)
+            except (TypeError, ValueError):
+                continue
+            if value not in out:
+                out.append(value)
     return out
 
 
@@ -93,6 +100,7 @@ def _bulk_attendance(action):
     changed = 0
     skipped_locked = 0
     overtime_total = 0
+    marked = []          # the workers actually written to, for the admin notice
 
     for worker in targets:
         closure = R.closure_for_worker_on_date(worker, on_date, closures_today)
@@ -114,6 +122,7 @@ def _bulk_attendance(action):
             record.marked_via = 'bulk'
             overtime_total += record.overtime_minutes or 0
             changed += 1
+            marked.append(worker)
             continue
 
         previous = record.status if record else None
@@ -159,11 +168,36 @@ def _bulk_attendance(action):
         if previous != record.status:
             R._log_attendance_edit(worker, on_date, 'status', previous, record.status)
         changed += 1
-
-    db.session.commit()
+        marked.append(worker)
 
     labels = {'present': 'present', 'absent': 'absent', 'late': 'late',
               'leave': 'on leave', 'half_day': 'half day', 'close': 'checked out'}
+
+    # A site user marking one worker by hand notified the admins; the same
+    # user marking forty through the selection bar notified nobody, so a whole
+    # day's attendance could be entered without a trace on a screen that
+    # calls itself "Attendance activity from all sites". One line per bulk
+    # action — not forty, which is what forty single marks would have cost.
+    if changed and not current_user.is_admin:
+        sites = []
+        for worker in marked:
+            site = worker.current_site
+            if site and site.name not in sites:
+                sites.append(site.name)
+        where = [current_user.full_name]
+        if len(sites) == 1:
+            where.append(sites[0])
+        elif len(sites) > 1:
+            where.append(f'{len(sites)} sites')
+        where.append('bulk')
+        R.notify_admin(
+            f'{changed} {_plural(changed, "worker")}'
+            f'{R.NOTE_DASH}{labels.get(action, action)}',
+            ' · '.join(where),
+        )
+
+    db.session.commit()
+
     messages = []
     if changed:
         if action == 'close':

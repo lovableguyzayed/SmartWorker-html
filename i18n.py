@@ -362,6 +362,12 @@ TRANSLATIONS = {
         'Disabled': 'बंद',
         'Ongoing': 'जारी',
         'Today': 'आज',
+        # Day separators in the notifications feed, and the noun the folded
+        # line counts ("3 workers — present").
+        'Yesterday': 'कल',
+        'workers': 'मज़दूर',
+        'and %n more': 'और %n',
+        'Checked Out': 'छुट्टी दर्ज',
         'Saved Payroll Records': 'सेव किए गए वेतन रिकॉर्ड',
         'Period': 'अवधि',
         'Net': 'देने योग्य',
@@ -679,6 +685,12 @@ TRANSLATIONS = {
         'Attendance activity from all sites': 'सभी साइटों की हाज़िरी गतिविधि',
         'Attendance allowed if present': 'आने पर हाज़िरी लग सकती है',
         'Attendance list pages': 'हाज़िरी सूची के पन्ने',
+        'Selected':
+            'चुना गया',
+        'Tap the camera to add one. The employee ID and QR code are made when you save.':
+            'जोड़ने के लिए कैमरा दबाएँ। मज़दूर आईडी और QR कोड सेव करने पर बनते हैं।',
+        'Tap the camera to replace the photo':
+            'फ़ोटो बदलने के लिए कैमरा दबाएँ',
         'Custom Closure Days': 'बंदी के दिन',
         'Login': 'लॉगिन',
         'Register': 'खाता बनाएँ',

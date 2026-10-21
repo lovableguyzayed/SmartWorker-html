@@ -2,8 +2,15 @@
 
 A designer's read of the interface after the first round of fixes, plus a
 page-by-page check of every document the application produces. Small
-corrections of copy and of one wrong timestamp are made here; everything
-that changes a layout is written down and left alone.
+corrections of copy and of one wrong timestamp were made as the review
+went; everything that changed a layout was written down first and done
+afterwards, in the order agreed.
+
+**Where it stands: 11 of 13 findings fixed.** The two left open are #5, the
+near-empty last page of the printed payslip and report, and #12, the
+frosted header pills below the contrast floor. Both are deliberate design
+choices — a signature strip kept whole, and a look — so changing either is
+a decision to take, not a defect to fix.
 
 What was measured is in `tools/ux/`: `documents.py` generates all eight
 documents and reads every page, `hindi_gaps.py` renders each screen in
@@ -113,7 +120,7 @@ documents.
 
 ## The interface
 
-### 6. A Hindi screen is still substantially English — OPEN, and the worst of it
+### 6. A Hindi screen is still substantially English — FIXED as far as a lookup table can
 
 **576 runs of English text across 19 screens** when the language is set to
 Hindi. Half-translated reads as unfinished, and it is the first thing
@@ -138,10 +145,21 @@ and the deep administrative screens — settings, the worker forms, the
 modals — are not. That is the right order to have done it in, and it is
 also why this looks worse than it is.
 
-It is roughly a day's work and needs somebody who writes Hindi to check the
-wording, not just a lookup table. `tools/ux/hindi_gaps.py` lists exactly
-which strings, screen by screen, and skips worker and site names so the
-list is only real gaps.
+**Done.** The table grew from ~507 strings to 830+, and the sweep now
+reports **159 runs across 17 screens**, down from 576 across 19.
+
+What is left is not a lookup-table problem and will not be fixed by adding
+rows to one:
+
+- sentences built around a number the engine composes at runtime
+  (*"exact ₹1,461.54 · 26-day basis"*),
+- notification and audit text stored in the database in English, which is
+  the audit record and is deliberately not rewritten,
+- data — worker names, site names, department names — which `hindi_gaps.py`
+  already skips where it can recognise them.
+
+A fluent reader should still check the wording; a lookup table cannot tell
+you that a correct translation reads stiffly.
 
 ### 7. Notification times were labelled UTC — FIXED
 
@@ -158,7 +176,7 @@ The title switched between Add and Edit; the line under it did not, so the
 Add screen described updating a worker who did not exist yet. Both strings
 were also raw English on a Hindi screen. Fixed and translated.
 
-### 9. Notifications repeat themselves and carry no shape — OPEN
+### 9. Notifications repeat themselves and carry no shape — FIXED
 
 Title: *"Attendance: Gurpreet Singh Bhatia — present"*. Body: *"Site
 Supervisor marked Gurpreet Singh Bhatia (CI005) as present on 20 Oct 2026
@@ -167,41 +185,76 @@ cards in a column, identical icon, identical blue dot, roughly 140px each,
 no grouping by day and no collapsing — twelve workers marked in one go
 produce twelve near-identical cards.
 
-**Proposal.** Group by day with "Today" and "Yesterday" separators; collapse
-a run from the same action into one line — *"Site Supervisor marked 3
-workers present at Dwarka Expressway Package 3"*; let the body carry only
-what the title does not.
+**Done.** The body now carries only what the title does not — who marked
+it, where, and how — and the date comes off the row entirely, because the
+day separator above it already says so. The feed is grouped by day with
+**Today** / **Yesterday** separators, and an unbroken run sharing a
+category, a body and an outcome folds into one line: *"6 workers —
+Present"* with the names underneath, four of them and then *"and 2 more"*.
 
-### 10. Assignments shows the same information three ways — OPEN
+Folding loses nothing. The folded line carries every id behind it, so
+selecting it selects all six, and the selection bar counts records rather
+than rows — a fold of six reads "6 notifications selected", not "1".
+
+Two things turned up while doing it:
+
+- **A site user's bulk marking notified nobody.** Marking one worker by
+  hand wrote a notification; marking forty through the selection bar wrote
+  none, so a whole day's attendance could be entered without a trace on a
+  screen titled "Attendance activity from all sites". It now writes one
+  line per bulk action — not forty.
+- Rows stored before this change keep their old shape, which still reads
+  repetitively. They are audit records and are not rewritten, the same
+  decision taken over the doubled rupee sign. New rows read correctly.
+
+18 seeded notifications render as 13 rows. Checked in `tests/test_notifications.py`.
+
+### 10. Assignments shows the same information three ways — FIXED
 
 The filter chips say All · Assigned · Unassigned. Under them, two tiles
 repeat **6 Assigned** and **6 Unassigned** — in green and rust, as though
 unassigned were an error rather than a state. The tiles look pressable and
 are not.
 
-**Proposal.** Put the counts on the chips — *All (12) · Assigned (6) ·
-Unassigned (6)* — and delete the tiles. That removes a row and a false
-affordance in one move.
+**Done.** The counts are on the chips — *All (12) · Assigned (6) ·
+Unassigned (6)* — and the two tiles are gone. The counts are computed
+before the assigned/unassigned filter runs, so every chip states the whole
+roster rather than whatever is currently showing.
 
 Also on that screen: the site and project line wraps mid-phrase
 (*"Manesar Industrial / Corridor • Storm Water / Drainage"*), and the right
 column holds two buttons on one row and one on the next, so card heights
 and button widths change down the list.
 
-### 11. The Add screen previews data that does not exist yet — OPEN
+### 11. The Add screen previews data that does not exist yet — FIXED
 
 A hero card shows a large **N** avatar, *"Position • Department"*, *"ID:
 Auto-Generated"* and a QR placeholder — about 210px of a screen given to
 placeholders styled like real values, with "Auto-Generated" said twice.
 
-**Proposal.** Show the card once there is a name to put in it; until then,
-the form alone.
+**Done.** The hero card is split: Edit keeps it in full, Add shows only the
+photo button and one line of explanation. The phantom **N** avatar, the
+*"Position • Department"* placeholder, the second *"Auto-Generated"* and
+the QR placeholder are gone from the Add screen.
 
 ### 12. The frosted header pills remain below the contrast floor — OPEN
 
 Carried over from the first review: the avatar initial and the "permanent"
 badge sit on `bg-white/20` over the blue header at **2.56–2.87:1**. They
 are a deliberate look, so changing them is a design decision.
+
+### 13. The selection hint was under the floor — FIXED
+
+`.ms-hint` — *"Press and hold a worker to select several at once."* — ran
+`gray-500` on the page's off-white at **4.43:1**. It is the one line that
+tells a first-time user the whole multi-selection feature exists, on eleven
+screens. Darkened to the grey the navigation already uses.
+
+The contrast sweep now reports **24 runs under the floor out of 1,026**
+(2.3%, from 27). Every one of them is measured on a gradient, where the
+tool takes the worst point under the text rather than where the glyphs
+actually sit — they are findings #12 and the card-label greys, not solid
+fills. Nothing on a solid fill fails.
 
 ### What the interface gets right
 

@@ -2757,12 +2757,18 @@ def mark_attendance():
         # Notify admins when a site attendance user records attendance
         if not current_user.is_admin:
             site = worker.current_site
+            # The title said the worker and the status; the body then said
+            # the worker and the status again, with the date that the
+            # timestamp underneath already carries. The body now holds only
+            # what the title does not: who marked it, where, and how.
+            where = [current_user.full_name]
+            if site:
+                where.append(site.name)
+            if marked_via != 'manual':
+                where.append(marked_via.replace('_', ' '))
             notify_admin(
-                f'Attendance: {worker.full_name} — {status}',
-                f'{current_user.full_name} marked {worker.full_name} ({worker.worker_id}) as {status} '
-                f'on {attendance_date.strftime("%d %b %Y")}'
-                + (f' at {site.name}' if site else '')
-                + (f' via {marked_via.replace("_", " ")}' if marked_via != 'manual' else ''),
+                f'{worker.full_name} ({worker.worker_id}){NOTE_DASH}{status}',
+                ' · '.join(where),
             )
 
         db.session.commit()
@@ -4224,29 +4230,36 @@ def assignments():
 
     workers = roster_query().all()
     rows = []
+    # Counted over everything the site, project and search filters allow, and
+    # before the assigned/unassigned filter — these numbers sit on the chips
+    # that apply that filter, so counting after it made each chip report the
+    # answer you would get by pressing the other one. Filtering to Assigned
+    # showed "Unassigned 0".
+    counts = {'all': 0, 'assigned': 0, 'unassigned': 0}
     for worker in workers:
         assignment = worker.current_assignment
         if site_filter and (not assignment or assignment.site_id != site_filter):
             continue
         if project_filter and (not assignment or assignment.project_id != project_filter):
             continue
+        if search and search not in worker.full_name.lower() and search not in worker.worker_id.lower():
+            continue
+        counts['all'] += 1
+        counts['assigned' if assignment else 'unassigned'] += 1
         if show == 'assigned' and not assignment:
             continue
         if show == 'unassigned' and assignment:
-            continue
-        if search and search not in worker.full_name.lower() and search not in worker.worker_id.lower():
             continue
         rows.append({'worker': worker, 'assignment': assignment})
 
     sites = Site.query.order_by(Site.name).all()
     projects = Project.query.order_by(Project.name).all()
     tasks = WorkTask.query.order_by(WorkTask.name).all()
-    assigned_count = sum(1 for r in rows if r['assignment'])
     return render_template('assignments.html', rows=rows, sites=sites,
                            projects=projects, tasks=tasks,
                            site_filter=site_filter, project_filter=project_filter,
                            search=request.args.get('search', ''), show=show,
-                           assigned_count=assigned_count, today=today_ist())
+                           counts=counts, today=today_ist())
 
 @app.route('/worker/<int:worker_id>/assignment/<int:assignment_id>/end', methods=['POST'])
 @admin_required
@@ -4994,11 +5007,120 @@ def api_mark_attendance():
 # Notifications (Admin)
 # ============================================================
 
+# The dash that separates the subject of a notification from its outcome —
+# "Ravi Kumar (W-014) — present". Folding a run depends on being able to tell
+# the two apart, so the writer and the reader share one constant.
+NOTE_DASH = ' — '
+
+# Stored outcomes are the raw attendance statuses. These are the display keys
+# that the Hindi table knows; anything not listed is shown as stored.
+NOTE_OUTCOMES = {
+    'present': 'Present',
+    'absent': 'Absent',
+    'late': 'Late',
+    'leave': 'Leave',
+    'on leave': 'Leave',
+    'half_day': 'Half Day',
+    'half day': 'Half Day',
+    'checked out': 'Checked Out',
+}
+
+# How many names a folded line spells out before it starts counting.
+NOTE_NAMES_SHOWN = 4
+
+# bulk.py writes one notification for a whole bulk action, so its subject is
+# already a count rather than a name: "6 workers — present". Recognising that
+# lets the reader rebuild the sentence in the interface language instead of
+# printing the stored English noun — the count is the same shape as a folded
+# run, so it takes the same branch.
+NOTE_COUNT_SUBJECT = re.compile(r'^(\d+)\s+workers?$', re.I)
+
+
+def notification_day_label(day, today):
+    """"Today", "Yesterday", or the date itself."""
+    delta = (today - day).days
+    if delta == 0:
+        return 'Today'
+    if delta == 1:
+        return 'Yesterday'
+    return None          # the template formats the date through ldate
+
+
+def group_notifications(items, today):
+    """Group the feed by day and fold a run from one action into one line.
+
+    Rows arrive newest first. A site user marking six workers one after
+    another writes six rows that differ only in the name, and reading them
+    meant reading the same sentence six times. A folded line is still every
+    one of those rows: it carries all their ids, so selecting it selects the
+    whole run, and it names the workers underneath rather than hiding them.
+
+    Only an unbroken run of rows sharing the same category, the same body and
+    the same outcome folds. Anything the writer did not shape that way — an
+    older row, a row from somewhere else in the app — has no outcome to match
+    on and stays a line of its own.
+    """
+    groups = []
+    for item in items:
+        day = item.created_at.date()
+        if not groups or groups[-1]['date'] != day:
+            groups.append({
+                'date': day,
+                'label': notification_day_label(day, today),
+                'rows': [],
+            })
+        rows = groups[-1]['rows']
+
+        subject, dash, outcome = (item.title or '').partition(NOTE_DASH)
+        outcome = outcome.strip()
+        key = (item.category, item.body or '', outcome) if dash and outcome else None
+
+        previous = rows[-1] if rows else None
+        if key and previous and previous['key'] == key:
+            previous['ids'].append(item.id)
+            previous['names'].append(subject.strip())
+            previous['unread'] = previous['unread'] or not item.is_read
+            continue
+
+
+        subject = subject.strip()
+        already_counted = NOTE_COUNT_SUBJECT.match(subject) if key else None
+        rows.append({
+            'key': None if already_counted else key,   # never fold a count
+            'ids': [item.id],
+            'names': [] if (already_counted or not key) else [subject],
+            'stated': int(already_counted.group(1)) if already_counted else 0,
+            'title': item.title,
+            'outcome': NOTE_OUTCOMES.get(outcome.lower(), outcome),
+            'body': item.body or '',
+            'category': item.category,
+            'created_at': item.created_at,
+            'unread': not item.is_read,
+        })
+
+    for group in groups:
+        for row in group['rows']:
+            # What the line stands for: the records folded into it, or the
+            # number a bulk notification already states.
+            row['count'] = row['stated'] or len(row['ids'])
+            # The names line says who is behind a folded line. An unfolded
+            # row already has its name in the title, so listing it underneath
+            # would print the same name twice. Forty names is the wall the
+            # folding was meant to remove, so name enough to recognise the
+            # run and count the rest.
+            names = row['names'] if len(row['ids']) > 1 else []
+            row['shown'] = names[:NOTE_NAMES_SHOWN]
+            row['more'] = max(0, len(names) - NOTE_NAMES_SHOWN)
+    return groups
+
+
 @app.route('/notifications')
 @admin_required
 def notifications():
     items = Notification.query.order_by(Notification.created_at.desc()).limit(100).all()
-    return render_template('notifications.html', notifications=items)
+    return render_template('notifications.html',
+                           notifications=items,
+                           groups=group_notifications(items, today_ist()))
 
 @app.route('/notifications/mark_read', methods=['POST'])
 @admin_required

@@ -717,13 +717,30 @@ body.ms-active nav.app-bottom-nav { display: none; }
    build and silently does nothing. */
 .ms-prompt { z-index: 70; }
 
-/* Selection-mode hint shown once per screen, above the bar. */
+/* Selection-mode hint shown once per screen, above the bar.
+   gray-500 on the page's off-white measured 4.43:1 — under the 4.5 floor on
+   the one line that tells a first-time user the feature exists at all. The
+   darker grey is the same one the navigation uses. */
 .ms-hint {
     font-size: 0.7rem;
-    color: #6b7280;
+    color: #4b5563;
     text-align: center;
     margin-top: 0.5rem;
 }
+
+/* Day separator in the notifications feed. Tailwind's preflight strips
+   heading sizes and weights, so an h2 needs them stated back. Small, upper
+   case and grey: a label for the run below it, not a title competing with
+   the rows. */
+.notif-day {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #4b5563;
+    margin: 0 0 0.5rem 0.25rem;
+}
+.notif-day:not(:first-child) { margin-top: 0.25rem; }
 
 /* ── Toasts for bulk results ────────────────────────────────────── */
 #ms-toasts {
