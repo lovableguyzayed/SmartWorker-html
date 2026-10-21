@@ -247,9 +247,16 @@ only when the day on screen is the day being written to.
 `tests/test_attendance_dayview.py` holds both halves, and breaking the
 refresh makes it fail.
 
-**Still open from this finding:** the month calendar still sits above the
-roster, so the first worker is a screen down. Putting it behind a toggle was
-part of the proposal and has not been done.
+**The calendar is folded too.** It cost about 370px above the roster and
+marking today never needs it, so it is behind a fold that names the month, and
+the choice of open or shut is remembered — the month arrows are ordinary
+links, so a calendar that shut itself on every month change would be worse
+than one that never folded. Browser storage throws outright in a private
+window or with site data blocked, so the page works without it, and the test
+denies storage and loads the screen again to prove it.
+
+**The screen, end to end: 5,818px → 4,259px, and the first worker from
+1,139px down to 747px.**
 
 ### 4. Seventy-five controls carry no word and no name — FIXED
 
@@ -448,7 +455,7 @@ Grouped so they can be approved separately. Nothing here has been started.
 | C | `aria-label` on 75 unnamed controls | no | 2 hours | **DONE** |
 | D | Titles become `<h1>`/`<h2>` | no | 1 hour | **DONE** |
 | E | Attendance: day view becomes a report, times collapse | yes, large | 1–2 days | **DONE** |
-| E2 | The month calendar behind a toggle | yes | 2 hours | waiting |
+| E2 | The month calendar behind a toggle | yes | 2 hours | **DONE** |
 | F | Labels under the workers-list icons | yes | 2 hours | waiting |
 | G | Navigation: payroll tab, FAB state, Quick Actions | yes | half a day | waiting |
 | H | Type and spacing scale, one button system | yes, everywhere | 2–3 days | waiting |
@@ -456,10 +463,10 @@ Grouped so they can be approved separately. Nothing here has been started.
 | J | Hindi names for sites and projects | yes, Hindi only | 1 day + data entry | waiting |
 | K | The frosted `bg-white/20` header pills, 2.56:1 | slight | 2 hours | new, waiting |
 
-A, B, C, D and E are done. C and D changed nothing a person can see; A and B
-were corrections rather than redesigns; E removed a whole duplicated roster
-without removing a single capability. **E2 and F through K have not been
-started.**
+A, B, C, D, E and E2 are done. C and D changed nothing a person can see; A and B
+were corrections rather than redesigns; E and E2 took the attendance screen
+from 5,818px to 4,259px without removing a single capability. **F through K
+have not been started.**
 
 Of what is left, F — words under the three workers-list glyphs — is the
 cheapest thing that would help a mukadam, and G would stop the bar claiming
