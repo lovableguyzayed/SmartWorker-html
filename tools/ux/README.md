@@ -13,6 +13,7 @@ not start a server of their own:
     python3 tools/ux/contrast.py
     python3 tools/ux/legibility.py
     python3 tools/ux/wordless.py
+    python3 tools/ux/controls.py && python3 tools/ux/links.py
 
 Two environment variables, both optional:
 
@@ -28,6 +29,8 @@ not tracked.
 | `contrast.py` | what each run of text really sits on, and its WCAG ratio |
 | `legibility.py` | how small the text gets, in both languages |
 | `wordless.py` | which controls show no word, and whether they at least carry a name |
+| `controls.py` | every control, and what it is attached to — link, submit, handler, listener, or nothing |
+| `links.py` | whether every link answers and every form action resolves (reads `controls.py`'s output) |
 
 ## Two things that will bite you
 
@@ -37,6 +40,13 @@ phone height stop matching the pixels — sticky headers and anything sized in
 viewport units move, and a handful of rows come back scored against the wrong
 background. `contrast.py` scrolls a screen at a time and photographs each
 screen instead.
+
+**Do not decide a control is dead from the markup.** There is no DOM API
+that lists an element's listeners, and the first version of `controls.py`
+called five controls dead that were all bound with `addEventListener` — the
+password eye, the photo button, both OTP buttons. It now wraps
+`addEventListener` before any page script runs and marks the elements it is
+called on.
 
 **Do not take the background from the stylesheet.** The navy header is a
 gradient, which paints no `background-color`, so walking up the ancestors for
