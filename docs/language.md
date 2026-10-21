@@ -97,17 +97,53 @@ that has no Hindi pattern.
 | Worker names, IDs, departments, positions, site and project names | Employer-entered data. Someone who typed "Munsi" expects to read "Munsi". |
 | Stored dropdown values (`employee_type`, e.g. `permanent`) | Stored as the English string on the record; translating the display without a value-mapping layer would make the list and the filter disagree. |
 | `am` / `pm`, `₹` amounts, `GST No.`, `Reg. No.` | Read the same way in both languages in India. |
-| **Payslip and worker-report PDFs** | Still English. They go to banks and contractors, and Hindi rendering through html2canvas could not be verified here — see below. |
+| **The worker-report PDF and the ID card** | Still English. The payslip was done first because it is what the worker is handed; these use the same mechanism and can follow. |
 | The brand name "SmartWorker" | A name. |
+
+## The payslip PDF
+
+The payslip is translated in both of its output paths, and the generated
+files were opened and read back rather than assumed:
+
+**Print Slip** uses the browser's own renderer, so Hindi there is ordinary
+text — 2104 characters extract cleanly out of the printed file.
+
+**Save PDF** is the awkward one. The slip body is rasterised by html2canvas,
+which handles Devanagari fine, but each page's running header and footer were
+drawn with `pdf.text()` in jsPDF's built-in helvetica — a Latin-1 font that
+cannot encode Devanagari at all. Embedding a Devanagari TTF would have added
+roughly 300KB to a bundle that gets downloaded over 2G at a construction
+site, so for a non-Latin language the chrome is rasterised from hidden DOM
+instead (`pdfPrepareChrome`). English keeps the native-text path, which stays
+sharper and smaller, and its output is byte-for-byte the same shape as before.
+
+Two things that bit, both now covered by `tests/test_payslip_pdf.py`:
+
+- A **transparent PNG** for that chrome made jsPDF store a raw bitmap plus a
+  soft mask. The header strip alone went from 10KB to 451KB and the Hindi
+  payslip to 2735KB against English's 550KB. White background and JPEG
+  instead: 536KB, slightly *smaller* than the English file.
+- **html2canvas crops to the element box**, and Devanagari matras sit outside
+  a tight one, so the header came out with its glyphs sliced flat along the
+  bottom. The chrome elements carry deliberate `line-height` and `padding`
+  for that reason — it looks like loose styling and is not.
+
+The page footer is one pattern (`Page %n of %t`) rather than four pieces,
+so Hindi can read `पृष्ठ 1 / 2` instead of a word-for-word `पृष्ठ 1 में से 2`.
+
+That test starts its own server on its own port on purpose. Flask caches
+compiled templates, so borrowing a dev server that was started before an edit
+makes the test pass against the very bug it exists to catch — which is
+exactly what happened the first time it was run against a deliberately
+reintroduced fault.
 
 ## Not verified
 
-- **Devanagari rendering on a real Android device.** This container has no
-  Devanagari font installed, so a screenshot taken here shows tofu boxes
-  whatever the markup says. The font stack is
+- **Devanagari on a real Android device.** `fonts-noto-core` was installed in
+  the build container so the PDFs above could actually be read; a real phone
+  is still a different renderer. The font stack is
   `'Inter', 'Noto Sans Devanagari', 'Nirmala UI', sans-serif` — Inter has no
-  Devanagari, so Hindi falls through to the next family, and Android ships
-  Noto Sans Devanagari. Checked in the browser: the nav labels do not clip at
-  390px width.
-- **Hindi in the generated PDFs**, for the same reason, which is why the
-  payslip and worker report were left in English rather than changed blind.
+  Devanagari, so Hindi falls through, and Android ships Noto Sans Devanagari.
+  Naming it explicitly matters: on a bare container `fc-match sans-serif:lang=hi`
+  answers FreeSans, which has no Devanagari at all.
+- **A real printer.** The print path was checked by printing to PDF.
