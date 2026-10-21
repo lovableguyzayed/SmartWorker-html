@@ -186,7 +186,7 @@ card's drop shadow at the edge of a text box, and **14 are the frosted
 "permanent" badge, at 2.56:1 to 2.87:1. Those are a deliberate look rather
 than an oversight, so they are left for a decision rather than changed.
 
-### 3. The attendance screen lists the same twelve workers twice — NEEDS REVIEW
+### 3. The attendance screen lists the same twelve workers twice — FIXED
 
 The screen the whole application exists for is **5,818px tall — nearly seven
 phone screens — for twelve workers**, and the reason is that it contains two
@@ -225,9 +225,31 @@ behind a toggle; the date picker above it already does that job. Expected:
 roughly four workers per screen instead of one and a half, on a page about a
 third of its current length, without removing a single capability.
 
-This one needs a decision rather than a preference: the two rosters exist for
-different reasons and somebody who knows how the screen is used in the field
-should say which one goes.
+**Done — the day view is the report, the panel is the editor.** Each day-view
+row carries one badge saying what happened instead of four buttons offering
+to change it; the inline check-in boxes are gone, since times are adjusted
+from the panel's "Adjust times", which was always the other way to do it; and
+the bulk buttons go too, because All present, All absent and Close shifts are
+already on the panel, word for word. Nothing can be done from the screen that
+could not be done before. The name is now a link to the worker, so the report
+still leads somewhere.
+
+**5,818px → 4,571px, and 26 inline time inputs → 2** (the pair in the
+Adjust-times dialog).
+
+The part that needed care is that a report has to be true. While both halves
+were editors each repainted itself and staleness never showed; now a man
+marked in the panel must stop saying "Not marked" eight inches higher up, or
+the screen invites marking him twice. Every one of those endpoints already
+returned the whole day — the panel simply was not reading it — so the report
+repaints from the response already on the wire, with no extra round trip, and
+only when the day on screen is the day being written to.
+`tests/test_attendance_dayview.py` holds both halves, and breaking the
+refresh makes it fail.
+
+**Still open from this finding:** the month calendar still sits above the
+roster, so the first worker is a screen down. Putting it behind a toggle was
+part of the proposal and has not been done.
 
 ### 4. Seventy-five controls carry no word and no name — FIXED
 
@@ -425,7 +447,8 @@ Grouped so they can be approved separately. Nothing here has been started.
 | B | Contrast: colour substitutions | slight | half a day | **DONE** |
 | C | `aria-label` on 75 unnamed controls | no | 2 hours | **DONE** |
 | D | Titles become `<h1>`/`<h2>` | no | 1 hour | **DONE** |
-| E | Attendance: drop one of the two rosters, collapse times, trim meta | yes, large | 1–2 days | waiting |
+| E | Attendance: day view becomes a report, times collapse | yes, large | 1–2 days | **DONE** |
+| E2 | The month calendar behind a toggle | yes | 2 hours | waiting |
 | F | Labels under the workers-list icons | yes | 2 hours | waiting |
 | G | Navigation: payroll tab, FAB state, Quick Actions | yes | half a day | waiting |
 | H | Type and spacing scale, one button system | yes, everywhere | 2–3 days | waiting |
@@ -433,16 +456,17 @@ Grouped so they can be approved separately. Nothing here has been started.
 | J | Hindi names for sites and projects | yes, Hindi only | 1 day + data entry | waiting |
 | K | The frosted `bg-white/20` header pills, 2.56:1 | slight | 2 hours | new, waiting |
 
-A, B, C and D are done. C and D changed nothing a person can see; A and B
-were corrections rather than redesigns. **E through K are design changes and
-have not been started.**
+A, B, C, D and E are done. C and D changed nothing a person can see; A and B
+were corrections rather than redesigns; E removed a whole duplicated roster
+without removing a single capability. **E2 and F through K have not been
+started.**
 
-E needs a decision rather than a preference, and it is the one worth making
-first: the two attendance rosters exist for different reasons, and somebody
-who has watched the screen used on a site should say which one goes. The
-recommendation here is to keep the compact entry-panel row for marking and
-turn the day view read-only, since its own heading — "Workers on this
-date" — says that is what it was for.
+Of what is left, F — words under the three workers-list glyphs — is the
+cheapest thing that would help a mukadam, and G would stop the bar claiming
+he is on Transactions while he is looking at Payroll. H is the largest and
+the least urgent: the type and button system is untidy but it is not
+stopping anyone, and it is worth doing after a week on a real site rather
+than before.
 
 ---
 
