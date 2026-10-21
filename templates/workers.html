@@ -81,14 +81,14 @@
                         <div class="flex items-center space-x-2">
                             {% if not worker.has_pay_rate %}<span class="inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold whitespace-nowrap">{{ _('No pay rate') }}</span>{% endif %}
                             {% if worker.pay_type == 'daily' %}
-                                <span class="text-sm font-medium text-green-600">₹{{ worker.daily_rate }}/day</span>
+                                <span class="text-sm font-medium text-green-600">{{ worker.daily_rate|money }}/day</span>
                             {% elif worker.pay_type == 'monthly' %}
-                                <span class="text-sm font-medium text-green-600">₹{{ worker.monthly_salary }}/month</span>
+                                <span class="text-sm font-medium text-green-600">{{ worker.monthly_salary|money }}/month</span>
                             {% elif worker.pay_type == 'hourly' %}
-                                <span class="text-sm font-medium text-green-600">₹{{ worker.hourly_rate }}/hour</span>
+                                <span class="text-sm font-medium text-green-600">{{ worker.hourly_rate|money }}/hour</span>
                             {% elif worker.pay_type == 'project' %}
                                 <span class="text-sm font-medium text-green-600">
-                                    {{ ('₹' ~ worker.project_rate ~ '/project') if worker.project_rate else 'Project Based' }}
+                                    {{ (worker.project_rate|money ~ '/project') if worker.project_rate else 'Project Based' }}
                                 </span>
                             {% endif %}
                         </div>

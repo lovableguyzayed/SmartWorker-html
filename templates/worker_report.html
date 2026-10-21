@@ -146,13 +146,13 @@
             <div class="flex justify-between"><span class="text-gray-500">{{ _('Joined') }}</span><span class="font-medium">{{ worker.join_date|ldate('%d %b %Y') }}</span></div>
             <div class="flex justify-between"><span class="text-gray-500">{{ _('Pay Type') }}</span><span class="font-medium capitalize">{{ _(worker.pay_type|capitalize) }}</span></div>
             {% if worker.pay_type == 'daily' %}
-            <div class="flex justify-between"><span class="text-gray-500">{{ _('Daily Rate') }}</span><span class="font-medium">₹{{ "%.2f"|format(worker.daily_rate or 0) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Daily Rate') }}</span><span class="font-medium">{{ (worker.daily_rate or 0)|money2 }}</span></div>
             {% elif worker.pay_type == 'monthly' %}
-            <div class="flex justify-between"><span class="text-gray-500">{{ _('Monthly Salary') }}</span><span class="font-medium">₹{{ "%.2f"|format(worker.monthly_salary or 0) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Monthly Salary') }}</span><span class="font-medium">{{ (worker.monthly_salary or 0)|money2 }}</span></div>
             {% elif worker.pay_type == 'hourly' %}
-            <div class="flex justify-between"><span class="text-gray-500">{{ _('Hourly Rate') }}</span><span class="font-medium">₹{{ "%.2f"|format(worker.hourly_rate or 0) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Hourly Rate') }}</span><span class="font-medium">{{ (worker.hourly_rate or 0)|money2 }}</span></div>
             {% else %}
-            <div class="flex justify-between"><span class="text-gray-500">{{ _('Project Rate') }}</span><span class="font-medium">₹{{ "%.2f"|format(worker.project_rate or 0) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Project Rate') }}</span><span class="font-medium">{{ (worker.project_rate or 0)|money2 }}</span></div>
             {% endif %}
             {% if worker.address %}
             <div class="col-span-2 flex justify-between"><span class="text-gray-500">{{ _('Address') }}</span><span class="font-medium text-right">{{ worker.address }}</span></div>
@@ -253,7 +253,7 @@
                     <td class="num">{{ row.att.absent_days }}</td>
                     <td class="num">{{ row.att.leave_days }}</td>
                     <td class="num">{{ row.pay.overtime_minutes }}</td>
-                    <td class="num font-semibold">₹{{ "%.2f"|format(row.pay.estimated_pay) }}</td>
+                    <td class="num font-semibold">{{ row.pay.estimated_pay|money2 }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -271,10 +271,10 @@
         <div class="report-section-title">{{ _('Salary Calculation') }} &mdash; {{ _(month_names[today.month - 1]) }} {{ today.year }}</div>
         <table class="report-table">
             <tbody>
-                <tr><td>{{ _('Monthly fixed salary') }}</td><td class="num font-semibold">₹{{ "%.2f"|format(sb.monthly_salary) }}</td></tr>
+                <tr><td>{{ _('Monthly fixed salary') }}</td><td class="num font-semibold">{{ sb.monthly_salary|money2 }}</td></tr>
                 <tr><td>{{ _('Calculation basis') }}</td><td class="num">{{ _(salary_basis_label) }} ({{ sb.basis_days }} {{ _('days') }})</td></tr>
                 <tr><td>{{ _('Daily salary (exact)') }}</td><td class="num">₹{{ "%.4f"|format(sb.daily_rate_exact) }}</td></tr>
-                <tr><td>{{ _('Daily salary (rounded)') }}</td><td class="num font-semibold">₹{{ "%.2f"|format(sb.daily_rate) }}</td></tr>
+                <tr><td>{{ _('Daily salary (rounded)') }}</td><td class="num font-semibold">{{ sb.daily_rate|money2 }}</td></tr>
                 <tr><td>{{ _('Total calendar days') }}</td><td class="num">{{ sb.total_calendar_days }}</td></tr>
                 <tr><td>{{ _('Eligible salary days') }}</td><td class="num">{{ sb.eligible_days }}</td></tr>
                 <tr><td>{{ _('Present days') }}</td><td class="num">{{ sb.present_days + sb.late_days }}</td></tr>
@@ -283,10 +283,10 @@
                 <tr><td>{{ _('Paid leave used') }}</td><td class="num">{{ "%g"|format(sb.paid_leave_used) }}</td></tr>
                 <tr><td>{{ _('Unpaid leave') }}</td><td class="num">{{ "%g"|format(sb.unpaid_leave_days) }}</td></tr>
                 <tr><td>{{ _('Total deduction days') }}</td><td class="num">{{ "%g"|format(sb.deduction_days) }}</td></tr>
-                <tr><td>{{ _('Deduction rate') }}</td><td class="num">₹{{ "%.2f"|format(sb.deduction_rate) }} {{ _('/ day') }}</td></tr>
-                <tr><td>{{ _('Total salary deduction') }}</td><td class="num">&minus; ₹{{ "%.2f"|format(sb.deduction_amount) }}</td></tr>
-                <tr><td>{{ _('Gross eligible salary') }}</td><td class="num">₹{{ "%.2f"|format(sb.gross_eligible_salary) }}</td></tr>
-                <tr><td class="font-semibold">{{ _('Final net payable salary') }}</td><td class="num font-semibold">₹{{ "%.2f"|format(sb.net_payable) }}</td></tr>
+                <tr><td>{{ _('Deduction rate') }}</td><td class="num">{{ sb.deduction_rate|money2 }} {{ _('/ day') }}</td></tr>
+                <tr><td>{{ _('Total salary deduction') }}</td><td class="num">&minus; {{ sb.deduction_amount|money2 }}</td></tr>
+                <tr><td>{{ _('Gross eligible salary') }}</td><td class="num">{{ sb.gross_eligible_salary|money2 }}</td></tr>
+                <tr><td class="font-semibold">{{ _('Final net payable salary') }}</td><td class="num font-semibold">{{ sb.net_payable|money2 }}</td></tr>
             </tbody>
         </table>
 
@@ -319,9 +319,9 @@
                 <tr>
                     <td>{{ _(month_names[p.month - 1])[:4] }} {{ p.year }}</td>
                     <td class="num">{{ p.present_days }}/{{ p.total_days }}</td>
-                    <td class="num">₹{{ "%.2f"|format(p.gross_pay) }}</td>
-                    <td class="num">₹{{ "%.2f"|format(p.deductions) }}</td>
-                    <td class="num font-semibold">₹{{ "%.2f"|format(p.net_pay) }}</td>
+                    <td class="num">{{ p.gross_pay|money2 }}</td>
+                    <td class="num">{{ p.deductions|money2 }}</td>
+                    <td class="num font-semibold">{{ p.net_pay|money2 }}</td>
                     <td class="capitalize">{{ p.status }}</td>
                 </tr>
                 {% endfor %}
@@ -343,7 +343,7 @@
                     <td>{{ _(type_labels.get(t.txn_type, t.txn_type)) }}</td>
                     <td>{{ t.description or '—' }}</td>
                     <td class="num font-semibold {{ 'text-green-600' if t.is_earning else 'text-red-600' }}">
-                        {{ '+' if t.is_earning else '−' }}₹{{ "%.2f"|format(t.amount) }}
+                        {{ '+' if t.is_earning else '−' }}{{ t.amount|money2 }}
                     </td>
                 </tr>
                 {% endfor %}

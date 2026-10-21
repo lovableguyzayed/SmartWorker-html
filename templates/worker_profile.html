@@ -180,8 +180,8 @@
             <div class="grid grid-cols-2 gap-2 mb-3">
                 <div class="bg-gray-50 rounded-2xl p-3">
                     <div class="text-xs text-gray-500">Daily salary</div>
-                    <div class="text-lg font-bold text-gray-800">₹{{ '%.2f'|format(salary_preview.daily_rate) }}</div>
-                    <div class="text-xs text-gray-400">exact ₹{{ '%.2f'|format(salary_preview.daily_rate_exact) }} · {{ salary_preview.basis_days }}-day basis</div>
+                    <div class="text-lg font-bold text-gray-800">{{ salary_preview.daily_rate|money }}</div>
+                    <div class="text-xs text-gray-400">exact {{ salary_preview.daily_rate_exact|money2 }} · {{ salary_preview.basis_days }}-day basis</div>
                 </div>
                 <div class="bg-gray-50 rounded-2xl p-3">
                     <div class="text-xs text-gray-500">Eligible days</div>
@@ -190,13 +190,13 @@
                 </div>
                 <div class="bg-red-50 rounded-2xl p-3">
                     <div class="text-xs text-red-500">Deduction</div>
-                    <div class="text-lg font-bold text-red-600">₹{{ '%.2f'|format(salary_preview.deduction_amount) }}</div>
+                    <div class="text-lg font-bold text-red-600">{{ salary_preview.deduction_amount|money }}</div>
                     <div class="text-xs text-red-400">{{ salary_preview.deduction_days }} day(s)</div>
                 </div>
                 <div class="bg-green-50 rounded-2xl p-3">
                     <div class="text-xs text-green-600">Net payable</div>
-                    <div class="text-lg font-bold text-green-700">₹{{ '%.2f'|format(salary_preview.net_payable) }}</div>
-                    <div class="text-xs text-green-500">gross ₹{{ '%.2f'|format(salary_preview.gross_eligible_salary) }}</div>
+                    <div class="text-lg font-bold text-green-700">{{ salary_preview.net_payable|money }}</div>
+                    <div class="text-xs text-green-500">gross {{ salary_preview.gross_eligible_salary|money }}</div>
                 </div>
             </div>
 
@@ -486,7 +486,7 @@
             {% if worker.pay_type == 'daily' and worker.daily_rate %}
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Daily Rate</span>
-                <span class="font-medium text-green-600">₹{{ worker.daily_rate }}</span>
+                <span class="font-medium text-green-600">{{ worker.daily_rate|money }}</span>
             </div>
             {% if worker.start_time and worker.end_time %}
             <div class="flex justify-between items-center">
@@ -497,17 +497,17 @@
             {% elif worker.pay_type == 'monthly' and worker.monthly_salary %}
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Monthly Salary</span>
-                <span class="font-medium text-green-600">₹{{ worker.monthly_salary }}</span>
+                <span class="font-medium text-green-600">{{ worker.monthly_salary|money }}</span>
             </div>
             {% elif worker.pay_type == 'hourly' and worker.hourly_rate %}
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Hourly Rate</span>
-                <span class="font-medium text-green-600">₹{{ worker.hourly_rate }}</span>
+                <span class="font-medium text-green-600">{{ worker.hourly_rate|money }}</span>
             </div>
             {% elif worker.pay_type == 'project' and worker.project_rate %}
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Project Amount</span>
-                <span class="font-medium text-green-600">₹{{ worker.project_rate }}</span>
+                <span class="font-medium text-green-600">{{ worker.project_rate|money }}</span>
             </div>
             {% endif %}
 
@@ -525,7 +525,7 @@
             {% if worker.leave_policy_enabled and worker.leave_deduction_per_day %}
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Leave Deduction/Day</span>
-                <span class="font-medium text-red-600">₹{{ worker.leave_deduction_per_day }}</span>
+                <span class="font-medium text-red-600">{{ worker.leave_deduction_per_day|money }}</span>
             </div>
             {% endif %}
             {% endif %}
@@ -533,7 +533,7 @@
             {% if worker.overtime_enabled and worker.overtime_rate %}
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Overtime Rate</span>
-                <span class="font-medium text-gray-800">₹{{ worker.overtime_rate }}/{{ worker.overtime_type }}</span>
+                <span class="font-medium text-gray-800">{{ worker.overtime_rate|money }}/{{ worker.overtime_type }}</span>
             </div>
             {% endif %}
 
@@ -546,7 +546,7 @@
             {% if worker.late_policy_enabled and worker.late_deduction_per_day %}
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Late Deduction/Day</span>
-                <span class="font-medium text-red-600">₹{{ worker.late_deduction_per_day }}</span>
+                <span class="font-medium text-red-600">{{ worker.late_deduction_per_day|money }}</span>
             </div>
             {% endif %}
         </div>
@@ -619,7 +619,7 @@
                     <div class="text-xs text-gray-500">{{ txn.date|ldate('%d %b %Y') }}{% if txn.description %} • {{ txn.description }}{% endif %}</div>
                 </div>
                 <div class="font-semibold {{ 'text-green-600' if txn.is_earning else 'text-red-600' }}">
-                    {{ '+' if txn.is_earning else '−' }}₹{{ "%.2f"|format(txn.amount) }}
+                    {{ '+' if txn.is_earning else '−' }}{{ txn.amount|money }}
                 </div>
             </div>
             {% endfor %}

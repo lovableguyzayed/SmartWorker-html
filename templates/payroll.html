@@ -41,15 +41,15 @@
     <!-- Summary Tiles -->
     <section class="grid grid-cols-2 gap-4">
         <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
-            <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_gross) }}</div>
+            <div class="text-2xl font-bold">{{ totals.total_gross|money0 }}</div>
             <div class="text-sm opacity-90">{{ _('Gross Payroll') }}</div>
         </div>
         <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
-            <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_net) }}</div>
+            <div class="text-2xl font-bold">{{ totals.total_net|money0 }}</div>
             <div class="text-sm opacity-90">{{ _('Net Payable') }}</div>
         </div>
         <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl shadow-lg">
-            <div class="text-2xl font-bold">₹{{ "%.0f"|format(totals.total_deductions) }}</div>
+            <div class="text-2xl font-bold">{{ totals.total_deductions|money0 }}</div>
             <div class="text-sm opacity-90">{{ _('Total Deductions') }}</div>
         </div>
         <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-2xl shadow-lg">
@@ -147,11 +147,11 @@
                 </div>
                 <div class="bg-gray-50 rounded-xl py-2">
                     <div class="text-xs text-gray-500">{{ _('Gross') }}</div>
-                    <div class="font-semibold text-gray-800">₹{{ "%.0f"|format(row.gross_pay) }}</div>
+                    <div class="font-semibold text-gray-800">{{ row.gross_pay|money0 }}</div>
                 </div>
                 <div class="bg-gray-50 rounded-xl py-2">
                     <div class="text-xs text-gray-500">{{ _('Deduct.') }}</div>
-                    <div class="font-semibold text-red-600">₹{{ "%.0f"|format(row.deductions) }}</div>
+                    <div class="font-semibold text-red-600">{{ row.deductions|money0 }}</div>
                 </div>
             </div>
 
@@ -159,7 +159,7 @@
             <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                 <div>
                     <div class="text-xs text-gray-500">{{ _('Net Payable') }}</div>
-                    <div class="text-lg font-bold text-accent">₹{{ "%.2f"|format(row.net_pay) }}</div>
+                    <div class="text-lg font-bold text-accent">{{ row.net_pay|money }}</div>
                 </div>
 
                 {% if row.record_id %}

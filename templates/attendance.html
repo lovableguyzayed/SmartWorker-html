@@ -419,8 +419,8 @@
                 {% set extra = [] %}
                 {% if data.assignment and data.assignment.site %}{% set _discard = extra.append(data.assignment.site.name ~ (' • ' ~ data.assignment.project.name if data.assignment.project else '')) %}{% endif %}
                 {% if data.attendance and data.attendance.status == 'leave' and data.attendance.leave_type %}{% set _discard = extra.append(_(data.attendance.leave_type|capitalize) ~ ' ' ~ _('Leave')) %}{% endif %}
-                {% if current_user.is_admin and data.wage is not none and data.wage > 0 %}{% set _discard = extra.append('₹' ~ '%.2f'|format(data.wage)) %}{% endif %}
-                {% if current_user.is_admin and data.overtime_pay and data.overtime_pay > 0 %}{% set _discard = extra.append('OT ₹' ~ '%.2f'|format(data.overtime_pay)) %}{% endif %}
+                {% if current_user.is_admin and data.wage is not none and data.wage > 0 %}{% set _discard = extra.append(data.wage|money) %}{% endif %}
+                {% if current_user.is_admin and data.overtime_pay and data.overtime_pay > 0 %}{% set _discard = extra.append('OT ' ~ data.overtime_pay|money) %}{% endif %}
                 {% if extra %}<div class="ep-extra">{{ extra|join(' · ') }}</div>{% endif %}
 
                 {% if data.closure %}
@@ -776,6 +776,18 @@ function dvEsc(s) {
     return d.innerHTML;
 }
 
+/* The same rupee as the `money` filter, for the rows this script paints.
+   en-IN grouping is the lakh grouping — 1,95,438 — and paise are shown only
+   when there are any, so the day view reads like every other screen. */
+function dvMoney(amount) {
+    var n = Number(amount) || 0;
+    var paise = Math.abs(Math.round(n * 100) % 100) > 0;
+    return '₹' + Math.abs(n).toLocaleString('en-IN', {
+        minimumFractionDigits: paise ? 2 : 0,
+        maximumFractionDigits: 2
+    });
+}
+
 async function dvLoad(dateStr, opts) {
     opts = opts || {};
     DV_SELECTED = dateStr;
@@ -925,7 +937,7 @@ function dvRender(day) {
             h += '<div class="dv-txn"><span>' + dvEsc(t.worker) + ' · ' + dvEsc(t.type) +
                  (t.status === 'cancelled' ? ' ({{ _('cancelled') }})' : '') + '</span>' +
                  '<b style="color:' + (t.is_earning ? '#16a34a' : '#dc2626') + '">' +
-                 (t.is_earning ? '+' : '−') + '₹' + t.amount.toFixed(2) + '</b></div>';
+                 (t.is_earning ? '+' : '−') + dvMoney(t.amount) + '</b></div>';
         });
     }
 

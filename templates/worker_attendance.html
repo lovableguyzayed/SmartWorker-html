@@ -219,7 +219,7 @@
                     </div>
                 </div>
                 <div class="text-right">
-                    <div class="font-bold text-orange-600">+₹{{ "%.2f"|format(entry.amount) }}</div>
+                    <div class="font-bold text-orange-600">+{{ entry.amount|money }}</div>
                     <div class="text-xs text-gray-500">Closure Bonus</div>
                 </div>
             </div>
@@ -228,7 +228,7 @@
 
         <div class="mt-4 pt-3 border-t border-orange-200 flex justify-between items-center">
             <span class="text-sm font-medium text-gray-700">Total Closure Bonus</span>
-            <span class="text-lg font-bold text-orange-600">+₹{{ "%.2f"|format(pay_summary.closure_extra_pay) }}</span>
+            <span class="text-lg font-bold text-orange-600">+{{ pay_summary.closure_extra_pay|money }}</span>
         </div>
     </section>
     {% endif %}
@@ -291,12 +291,12 @@
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Base Wage</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.base_pay|money0 }}</span>
                 </div>
                 {% elif worker.pay_type == 'monthly' %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Monthly Salary</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.base_pay|money0 }}</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Leave Days</span>
@@ -315,53 +315,53 @@
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Hourly Wage</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.base_pay|money0 }}</span>
                 </div>
                 {% elif worker.pay_type == 'project' %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Project Amount</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.base_pay|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.closure_extra_pay is defined and pay_summary.closure_extra_pay > 0 %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Closure Bonus</span>
-                    <span class="font-semibold text-orange-600">+₹{{ "%.0f"|format(pay_summary.closure_extra_pay) }}</span>
+                    <span class="font-semibold text-orange-600">+{{ pay_summary.closure_extra_pay|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.overtime_pay > 0 %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Overtime Pay</span>
-                    <span class="font-semibold text-green-600">+₹{{ "%.0f"|format(pay_summary.overtime_pay) }}</span>
+                    <span class="font-semibold text-green-600">+{{ pay_summary.overtime_pay|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.leave_deductions > 0 %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Leave Policy Deductions</span>
-                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.leave_deductions) }}</span>
+                    <span class="font-semibold text-red-600">-{{ pay_summary.leave_deductions|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.late_deductions > 0 %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Late Policy Deductions</span>
-                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.late_deductions) }}</span>
+                    <span class="font-semibold text-red-600">-{{ pay_summary.late_deductions|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.deductions > 0 %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Total Deductions</span>
-                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.deductions) }}</span>
+                    <span class="font-semibold text-red-600">-{{ pay_summary.deductions|money0 }}</span>
                 </div>
                 {% endif %}
 
                 <div class="flex justify-between items-center pt-2 border-t">
                     <span class="text-gray-600">Estimated Net Pay</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.estimated_pay) }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.estimated_pay|money0 }}</span>
                 </div>
                 <div class="text-xs text-gray-500">{{ pay_summary.policy_note|lnotes }}</div>
             </div>

@@ -35,11 +35,11 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between">
             <span class="text-sm text-gray-500">Total net payable</span>
-            <span class="text-xl font-bold text-gray-800 amount">₹{{ "%.2f"|format(totals.total_net) }}</span>
+            <span class="text-xl font-bold text-gray-800 amount">{{ totals.total_net|money }}</span>
         </div>
         <div class="flex items-center justify-between mt-1">
-            <span class="text-xs text-gray-400">Gross ₹{{ "%.2f"|format(totals.total_gross) }}</span>
-            <span class="text-xs text-red-500">Deductions ₹{{ "%.2f"|format(totals.total_deductions) }}</span>
+            <span class="text-xs text-gray-400">Gross {{ totals.total_gross|money }}</span>
+            <span class="text-xs text-red-500">Deductions {{ totals.total_deductions|money }}</span>
         </div>
 
         {% if frozen_count %}
@@ -71,7 +71,7 @@
                 {% if not p.worker.has_pay_rate %}<span class="inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold whitespace-nowrap">{{ _('No pay rate') }}</span>{% endif %}
             </div>
             <div class="text-right shrink-0">
-                <div class="font-bold text-gray-800 amount">₹{{ "%.2f"|format(p.net_pay) }}</div>
+                <div class="font-bold text-gray-800 amount">{{ p.net_pay|money }}</div>
                 {% if p.state == 'frozen' %}
                 <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-100 text-gray-500">
                     <i class="fa-solid fa-lock mr-1"></i>Paid
@@ -80,7 +80,7 @@
                 <span class="text-xs px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600">New</span>
                 {% elif p.state == 'changed' %}
                 <span class="text-xs px-2 py-0.5 rounded-lg {{ 'bg-green-50 text-green-700' if p.delta > 0 else 'bg-red-50 text-red-600' }}">
-                    {{ '+' if p.delta > 0 else '' }}₹{{ "%.2f"|format(p.delta) }}
+                    {{ '+' if p.delta > 0 else '' }}{{ p.delta|money }}
                 </span>
                 {% else %}
                 <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-50 text-gray-400">No change</span>
@@ -90,7 +90,7 @@
 
         {% if p.state == 'changed' %}
         <div class="mt-2 text-xs text-gray-500">
-            Saved ₹{{ "%.2f"|format(p.saved_net) }} &rarr; <b class="text-gray-700">₹{{ "%.2f"|format(p.net_pay) }}</b>
+            Saved {{ p.saved_net|money }} &rarr; <b class="text-gray-700">{{ p.net_pay|money }}</b>
         </div>
         {% endif %}
 
@@ -98,7 +98,7 @@
         {% set b = p.breakdown %}
         <div class="grid grid-cols-3 gap-2 mt-3">
             <div class="bg-gray-50 rounded-xl p-2 text-center">
-                <div class="text-sm font-bold text-gray-800 amount">₹{{ "%.0f"|format(b.daily_rate) }}</div>
+                <div class="text-sm font-bold text-gray-800 amount">{{ b.daily_rate|money0 }}</div>
                 <div class="text-xs text-gray-400">per day</div>
             </div>
             <div class="bg-gray-50 rounded-xl p-2 text-center">
@@ -131,7 +131,7 @@
         </details>
         {% else %}
         <div class="mt-2 text-xs text-gray-400">
-            Gross ₹{{ "%.2f"|format(p.gross_pay) }} · deductions ₹{{ "%.2f"|format(p.deductions) }}
+            Gross {{ p.gross_pay|money }} · deductions {{ p.deductions|money }}
         </div>
         {% endif %}
     </section>

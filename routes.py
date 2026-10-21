@@ -22,6 +22,7 @@ import supabase_auth
 import tenancy
 import salary
 import i18n
+import money
 from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
@@ -5381,6 +5382,12 @@ def _inject_language():
 def _ldate(value, fmt='%d %b %Y'):
     """strftime with the day and month names in the interface language."""
     return i18n.format_date(value, fmt, _current_lang())
+
+
+# One way to write a rupee, everywhere. See money.py for why there were four.
+app.add_template_filter(money.money, 'money')
+app.add_template_filter(money.money0, 'money0')
+app.add_template_filter(money.money2, 'money2')
 
 
 @app.template_filter('lnote')
