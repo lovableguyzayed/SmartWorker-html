@@ -1765,6 +1765,13 @@ def add_worker():
         db.session.commit()
         
         flash(f'Worker {worker.full_name} added successfully with ID: {worker_id}', 'success')
+        # A worker with no rate is accepted on purpose (the rate may not be
+        # agreed yet) but they would earn nothing, so say so rather than
+        # letting it pass in silence.
+        if not worker.has_pay_rate:
+            flash(f'{worker.full_name} has no pay rate yet, so payroll will '
+                  f'show ₹0 for them until one is set.', 'warning')
+
         return redirect(url_for('workers'))
     
     return render_template('edit_worker.html', worker=None)
@@ -1944,6 +1951,13 @@ def edit_worker(worker_id):
         log_worker_changes(worker, before_values)
         db.session.commit()
         flash(f'Worker {worker.full_name} updated successfully', 'success')
+        # A worker with no rate is accepted on purpose (the rate may not be
+        # agreed yet) but they would earn nothing, so say so rather than
+        # letting it pass in silence.
+        if not worker.has_pay_rate:
+            flash(f'{worker.full_name} has no pay rate yet, so payroll will '
+                  f'show ₹0 for them until one is set.', 'warning')
+
         return redirect(url_for('worker_profile', worker_id=worker_id))
 
     return render_template('edit_worker.html', worker=worker)

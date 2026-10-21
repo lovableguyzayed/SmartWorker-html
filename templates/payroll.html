@@ -125,7 +125,8 @@
                     {% endif %}
                     <div class="min-w-0">
                         <div class="font-medium text-gray-800 name-wrap">{{ worker.full_name }}</div>
-                        <div class="text-xs text-gray-500">{{ worker.worker_id }} · {{ worker.pay_type | capitalize }}</div>
+                        <div class="text-xs text-gray-500">{{ worker.worker_id }} · {{ _(worker.pay_type|capitalize) }}</div>
+                        {% if not worker.has_pay_rate %}<span class="inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold whitespace-nowrap">{{ _('No pay rate') }}</span>{% endif %}
                     </div>
                 </a>
 

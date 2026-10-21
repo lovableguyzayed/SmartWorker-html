@@ -331,6 +331,32 @@ class Worker(db.Model):
     leave_adjustments = db.relationship('LeaveAdjustment', backref='worker', lazy=True,
                                         order_by='LeaveAdjustment.created_at.desc()')
 
+    #: Which rate column actually pays this worker, per pay_type.
+    PAY_RATE_FIELD = {
+        'daily': 'daily_rate',
+        'monthly': 'monthly_salary',
+        'hourly': 'hourly_rate',
+        'project': 'project_rate',
+    }
+
+    @property
+    def pay_rate(self):
+        """The rate this worker is paid at, whatever their pay type."""
+        field = self.PAY_RATE_FIELD.get(self.pay_type)
+        return getattr(self, field, None) if field else None
+
+    @property
+    def has_pay_rate(self):
+        """False for a worker nobody has given a rate yet.
+
+        An empty rate field is stored as 0.0 rather than rejected — an
+        employer may well add someone before the rate is agreed. But a
+        worker in that state earns ₹0 every month, so everywhere that shows
+        money needs to be able to say so out loud.
+        """
+        rate = self.pay_rate
+        return rate is not None and rate > 0
+
     @property
     def current_assignment(self):
         for assignment in self.assignments:

@@ -67,7 +67,8 @@
             <div class="flex-1 min-w-0">
                 <a href="{{ url_for('worker_profile', worker_id=p.worker.id) }}"
                    class="font-semibold text-gray-800 name-wrap block">{{ p.worker.full_name }}</a>
-                <div class="text-xs text-gray-500">{{ p.worker.worker_id }} · {{ p.worker.pay_type|capitalize }}</div>
+                <div class="text-xs text-gray-500">{{ p.worker.worker_id }} · {{ _(p.worker.pay_type|capitalize) }}</div>
+                {% if not p.worker.has_pay_rate %}<span class="inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold whitespace-nowrap">{{ _('No pay rate') }}</span>{% endif %}
             </div>
             <div class="text-right shrink-0">
                 <div class="font-bold text-gray-800 amount">₹{{ "%.2f"|format(p.net_pay) }}</div>

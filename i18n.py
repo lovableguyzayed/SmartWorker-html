@@ -275,6 +275,7 @@ TRANSLATIONS = {
         'Maintenance': 'मरम्मत',
         'Completed': 'पूरा हुआ',
         'On_hold': 'रुका हुआ',
+        'No pay rate': 'मज़दूरी तय नहीं',
         'Policy in force': 'लागू नियम',
         # salary.describe() labels and its plain values
         'Salary basis': 'तनख़्वाह का आधार',
