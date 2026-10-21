@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -14,7 +14,7 @@
                 <div class="text-sm opacity-90">{{ _('Advances, Loans, Bonuses & Deductions') }}</div>
             </div>
         </div>
-        <button onclick="openTxnModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
+        <button aria-label="{{ _('Add a transaction') }}" onclick="openTxnModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
             <i class="fa-solid fa-plus text-lg"></i>
         </button>
     </div>
@@ -90,7 +90,7 @@
                On their own row the name gets the card's full width back and
                the buttons keep a proper touch target. #}
             <div class="flex items-center justify-end gap-3 mt-2 pt-2 border-t border-gray-100">
-                        <button onclick='editTxn({{ txn.id }}, {{ txn.worker_id }}, "{{ txn.txn_type }}", {{ txn.amount }}, "{{ txn.date.isoformat() }}", {{ (txn.description or "")|tojson }})'
+                        <button aria-label="{{ _('Edit') }}" onclick='editTxn({{ txn.id }}, {{ txn.worker_id }}, "{{ txn.txn_type }}", {{ txn.amount }}, "{{ txn.date.isoformat() }}", {{ (txn.description or "")|tojson }})'
                                 class="tap-target w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('transactions_cancel', txn_id=txn.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -100,7 +100,7 @@
                         <form method="POST" action="{{ url_for('transactions_delete', txn_id=txn.id) }}" onsubmit="return confirm('Delete this transaction permanently?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                            <button class="tap-target w-7 h-7 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button aria-label="{{ _('Delete') }}" class="tap-target w-7 h-7 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                         </form>
             </div>
         </div>

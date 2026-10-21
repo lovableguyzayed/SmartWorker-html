@@ -48,6 +48,30 @@ TRANSLATIONS = {
         'Filter': 'छाँटें',
         'Loading…': 'लोड हो रहा है…',
 
+        # --- names for the controls that show only an icon ----------------
+        # These reach nobody's eye; they are what a screen reader announces
+        # and what a long press shows. A control with no name at all is a
+        # guess until you press it and find out what it did.
+        'Show password': 'पासवर्ड दिखाएँ',
+        'Print': 'प्रिंट करें',
+        'Download PDF': 'PDF डाउनलोड करें',
+        'Share': 'साझा करें',
+        'Export': 'एक्सपोर्ट करें',
+        'Archive': 'संग्रह में डालें',
+        'Restore': 'वापस लाएँ',
+        'Closure days': 'बंदी के दिन',
+        'Previous day': 'पिछला दिन',
+        'Next day': 'अगला दिन',
+        'Previous month': 'पिछला महीना',
+        'Next month': 'अगला महीना',
+        'Change photo': 'फ़ोटो बदलें',
+        'Add a transaction': 'लेन-देन जोड़ें',
+        'Statistics': 'आँकड़े',
+        'More actions': 'और विकल्प',
+        'ID card': 'पहचान पत्र',
+        'Open this worker': 'इस मज़दूर को खोलें',
+        'Mark all as read': 'सब पढ़ा हुआ चिह्नित करें',
+
         # --- attendance ---------------------------------------------------
         'Present': 'हाज़िर',
         'Absent': 'ग़ैरहाज़िर',

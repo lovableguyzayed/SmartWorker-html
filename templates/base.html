@@ -195,7 +195,7 @@
                         <div class="flex items-start gap-3">
                             <i class="fa-solid {{ icon }} mt-0.5 shrink-0"></i>
                             <span class="flex-1 text-sm leading-snug">{{ message|lflash }}</span>
-                            <button onclick="this.closest('.alert').remove()" class="text-white/90 hover:text-white shrink-0 ml-1">
+                            <button aria-label="{{ _('Close') }}" onclick="this.closest('.alert').remove()" class="text-white/90 hover:text-white shrink-0 ml-1">
                                 <i class="fa-solid fa-times text-xs"></i>
                             </button>
                         </div>

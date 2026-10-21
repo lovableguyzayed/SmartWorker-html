@@ -209,7 +209,7 @@
         <form onsubmit="return lookupManual(event)" class="flex gap-2">
             <input type="text" id="manual-id" placeholder="e.g. CO001" autocomplete="off" autocapitalize="characters"
                    class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent uppercase">
-            <button type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors" style="min-height:2.75rem">
+            <button aria-label="{{ _('Search') }}" type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors" style="min-height:2.75rem">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
         </form>

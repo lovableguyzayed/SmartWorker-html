@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -42,7 +42,7 @@
                     <option value="{{ dept }}" {{ 'selected' if dept == selected_department }} style="color: black;">{{ dept }}</option>
                     {% endfor %}
                 </select>
-                <button type="submit" class="px-6 py-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-white font-medium">
+                <button aria-label="{{ _('Filter') }}" type="submit" class="px-6 py-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-white font-medium">
                     <i class="fa-solid fa-filter"></i>
                 </button>
             </div>
@@ -106,15 +106,15 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" 
+                    <a aria-label="{{ _('Attendance') }}" href="{{ url_for('worker_attendance', worker_id=worker.id) }}" 
                        class="tap-target w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-accent hover:text-white transition-colors">
                         <i class="fa-solid fa-calendar-check"></i>
                     </a>
-                    <a href="{{ url_for('id_card', worker_id=worker.id) }}" 
+                    <a aria-label="{{ _('ID card') }}" href="{{ url_for('id_card', worker_id=worker.id) }}" 
                        class="tap-target w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-purple-700 hover:text-white transition-colors">
                         <i class="fa-solid fa-id-card"></i>
                     </a>
-                    <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" 
+                    <a aria-label="{{ _('Open this worker') }}" href="{{ url_for('worker_profile', worker_id=worker.id) }}" 
                        class="tap-target w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white hover:bg-primary transition-colors">
                         <i class="fa-solid fa-eye"></i>
                     </a>

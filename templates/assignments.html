@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('workers') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('workers') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -167,7 +167,7 @@
     <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-800">{{ _('Assign') }} <span id="assign-worker-name" class="text-accent"></span></h3>
-            <button onclick="closeAssignModal()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+            <button aria-label="{{ _('Close') }}" onclick="closeAssignModal()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
                 <i class="fa-solid fa-times"></i>
             </button>
         </div>

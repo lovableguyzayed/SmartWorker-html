@@ -6,7 +6,7 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('profile') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('profile') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
@@ -134,7 +134,7 @@
                         {% if site.contact_person %}<div class="text-xs text-gray-500">{{ site.contact_person }}{% if site.contact_phone %} • {{ site.contact_phone }}{% endif %}</div>{% endif %}
                     </div>
                     <div class="flex items-center space-x-1 ml-2">
-                        <button onclick='editSite({{ site.id }}, {{ site.name|tojson }}, {{ (site.address or "")|tojson }}, {{ (site.contact_person or "")|tojson }}, {{ (site.contact_phone or "")|tojson }})'
+                        <button aria-label="{{ _('Edit') }}" onclick='editSite({{ site.id }}, {{ site.name|tojson }}, {{ (site.address or "")|tojson }}, {{ (site.contact_person or "")|tojson }}, {{ (site.contact_phone or "")|tojson }})'
                                 class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('settings_site_archive', entity_id=site.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -142,7 +142,7 @@
                         </form>
                         <form method="POST" action="{{ url_for('settings_site_delete', entity_id=site.id) }}" onsubmit="return confirm('Delete this site permanently?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button aria-label="{{ _('Delete') }}" class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                         </form>
                     </div>
                 </div>
@@ -232,7 +232,7 @@
                         {% endif %}
                     </div>
                     <div class="flex items-center space-x-1 ml-2">
-                        <button onclick='editProject({{ project.id }}, {{ project.name|tojson }}, {{ (project.description or "")|tojson }}, {{ project.site_id or 0 }}, "{{ project.start_date.isoformat() if project.start_date else '' }}", "{{ project.end_date.isoformat() if project.end_date else '' }}", "{{ project.deadline.isoformat() if project.deadline else '' }}", "{{ project.completion_date.isoformat() if project.completion_date else '' }}", "{{ project.penalty_type }}", {{ project.penalty_value or 0 }}, "{{ project.status }}")'
+                        <button aria-label="{{ _('Edit') }}" onclick='editProject({{ project.id }}, {{ project.name|tojson }}, {{ (project.description or "")|tojson }}, {{ project.site_id or 0 }}, "{{ project.start_date.isoformat() if project.start_date else '' }}", "{{ project.end_date.isoformat() if project.end_date else '' }}", "{{ project.deadline.isoformat() if project.deadline else '' }}", "{{ project.completion_date.isoformat() if project.completion_date else '' }}", "{{ project.penalty_type }}", {{ project.penalty_value or 0 }}, "{{ project.status }}")'
                                 class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('settings_project_archive', entity_id=project.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -240,7 +240,7 @@
                         </form>
                         <form method="POST" action="{{ url_for('settings_project_delete', entity_id=project.id) }}" onsubmit="return confirm('Delete this project permanently?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button aria-label="{{ _('Delete') }}" class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                         </form>
                     </div>
                 </div>
@@ -284,15 +284,15 @@
                         <div class="text-xs text-gray-500">{% if task.project %}{{ task.project.name }}{% endif %}{% if task.category %} • {{ task.category }}{% endif %}</div>
                     </div>
                     <div class="flex items-center space-x-1 ml-2">
-                        <button onclick='editTask({{ task.id }}, {{ task.name|tojson }}, {{ task.project_id or 0 }}, {{ (task.category or "")|tojson }})'
+                        <button aria-label="{{ _('Edit') }}" onclick='editTask({{ task.id }}, {{ task.name|tojson }}, {{ task.project_id or 0 }}, {{ (task.category or "")|tojson }})'
                                 class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('settings_task_archive', entity_id=task.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                            <button aria-label="{{ _('Archive') }}" class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-box-archive text-xs"></i></button>
                         </form>
                         <form method="POST" action="{{ url_for('settings_task_delete', entity_id=task.id) }}" onsubmit="return confirm('Delete this task permanently?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button aria-label="{{ _('Delete') }}" class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                         </form>
                     </div>
                 </div>
@@ -324,11 +324,11 @@
                 <div class="flex items-center space-x-1">
                     <form method="POST" action="{{ url_for('settings_department_archive', entity_id=dept.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                        <button aria-label="{{ _('Archive') }}" class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-box-archive text-xs"></i></button>
                     </form>
                     <form method="POST" action="{{ url_for('settings_department_delete', entity_id=dept.id) }}" onsubmit="return confirm('Delete this department?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                        <button aria-label="{{ _('Delete') }}" class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                     </form>
                 </div>
             </div>
@@ -521,7 +521,7 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-1 ml-2">
-                        <button onclick='editAttendanceUser({{ auser.id }}, {{ auser.full_name|tojson }}, {{ (auser.phone or "")|tojson }}, {{ auser.site_id_list|tojson }}, {{ auser.project_id_list|tojson }})'
+                        <button aria-label="{{ _('Edit') }}" onclick='editAttendanceUser({{ auser.id }}, {{ auser.full_name|tojson }}, {{ (auser.phone or "")|tojson }}, {{ auser.site_id_list|tojson }}, {{ auser.project_id_list|tojson }})'
                                 class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('settings_attendance_user_toggle', user_id=auser.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -529,7 +529,7 @@
                         </form>
                         <form method="POST" action="{{ url_for('settings_attendance_user_delete', user_id=auser.id) }}" onsubmit="return confirm('Delete this attendance user?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button aria-label="{{ _('Delete') }}" class="w-8 h-8 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                         </form>
                     </div>
                 </div>
