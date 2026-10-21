@@ -4896,6 +4896,57 @@ def _lpolicy(value):
     return i18n.translate_policy(value, _current_lang())
 
 
+@app.after_request
+def _translate_json_messages(response):
+    """Translate the notices the day view paints from JSON.
+
+    The attendance day view builds its own markup in JavaScript, so a
+    message in a JSON body lands on the screen verbatim and never passes
+    through a template filter. Doing it here rather than at each of the
+    fourteen jsonify() sites keeps the English in routes.py as the one
+    canonical wording, and covers any message added later.
+    """
+    if _current_lang() == i18n.DEFAULT_LANGUAGE:
+        return response
+    if not response.is_json or response.direct_passthrough:
+        return response
+    try:
+        payload = response.get_json(silent=True)
+    except Exception:
+        return response
+    if not isinstance(payload, dict):
+        return response
+
+    changed = False
+    for item in payload.get('messages') or []:
+        if isinstance(item, dict) and item.get('text'):
+            translated = _lflash(item['text'])
+            if translated != item['text']:
+                item['text'] = translated
+                changed = True
+    day = payload.get('day')
+    if isinstance(day, dict) and day.get('payroll_note'):
+        translated = _lflash(day['payroll_note'])
+        if translated != day['payroll_note']:
+            day['payroll_note'] = translated
+            changed = True
+    if changed:
+        response.set_data(json.dumps(payload))
+    return response
+
+
+@app.template_filter('lflash')
+def _lflash(value):
+    """One flash message, translated where it is shown.
+
+    Translating at the point of display rather than the point of flash()
+    means none of the 105 call sites in this file had to change, and a
+    message already sitting in the session still arrives in the reader's
+    language.
+    """
+    return i18n.translate_flash(value, _current_lang())
+
+
 @app.template_filter('lmonth')
 def _lmonth(value):
     """'October 2026' -> the month name in the interface language.

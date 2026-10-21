@@ -194,7 +194,7 @@
                     <div class="alert {{ bg }} text-white px-4 py-3 rounded-xl shadow-xl max-w-sm border border-white/20">
                         <div class="flex items-start gap-3">
                             <i class="fa-solid {{ icon }} mt-0.5 shrink-0"></i>
-                            <span class="flex-1 text-sm leading-snug">{{ message }}</span>
+                            <span class="flex-1 text-sm leading-snug">{{ message|lflash }}</span>
                             <button onclick="this.closest('.alert').remove()" class="text-white/70 hover:text-white shrink-0 ml-1">
                                 <i class="fa-solid fa-times text-xs"></i>
                             </button>
@@ -289,8 +289,8 @@
             <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="fa-solid fa-lock text-2xl text-red-500"></i>
             </div>
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Access Restricted</h3>
-            <p class="text-gray-600 text-sm mb-6">{{ restricted_messages[0] }}</p>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ _('Access Restricted') }}</h3>
+            <p class="text-gray-600 text-sm mb-6">{{ restricted_messages[0]|lflash }}</p>
             <button onclick="document.getElementById('restricted-modal').remove()"
                     class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
                 OK

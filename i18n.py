@@ -757,6 +757,214 @@ def translate_notes(text, lang):
     return ' '.join(translate_note(p, lang) for p in parts)
 
 
+
+#: Flash messages. Translated where they are shown rather than where they are
+#: raised, so none of the 105 flash() call sites had to change and a message
+#: already in flight still comes out in the reader's language.
+FLASH_MESSAGES = {
+    'hi': {
+        'Assignment does not belong to this worker.':
+            'यह नियुक्ति इस मज़दूर की नहीं है।',
+        'Assignment marked as completed.': 'नियुक्ति पूरी हुई के रूप में दर्ज।',
+        'Attendance user deleted.': 'हाज़िरी वाला यूज़र हटा दिया गया।',
+        'Choose a project and/or a site for the assignment.':
+            'नियुक्ति के लिए प्रोजेक्ट और/या साइट चुनें।',
+        'Closure day added successfully': 'छुट्टी का दिन जुड़ गया',
+        'Closure day deleted successfully': 'छुट्टी का दिन हटा दिया गया',
+        'Closure day updated successfully': 'छुट्टी का दिन बदल दिया गया',
+        'Company settings saved. They will appear on all PDFs and reports.':
+            'कंपनी सेटिंग सेव हो गई। ये सभी PDF और रिपोर्ट पर दिखेंगी।',
+        'Could not upload the logo right now. Other settings were saved.':
+            'लोगो अभी अपलोड नहीं हो सका। बाक़ी सेटिंग सेव हो गईं।',
+        'Current password is incorrect': 'मौजूदा पासवर्ड ग़लत है',
+        'Email already registered': 'यह ईमेल पहले से रजिस्टर्ड है',
+        'Enter a valid closure date.': 'छुट्टी की सही तारीख़ डालें।',
+        'Enter a valid joining date.': 'भर्ती की सही तारीख़ डालें।',
+        'Full name is required for an attendance user.':
+            'हाज़िरी वाले यूज़र का पूरा नाम ज़रूरी है।',
+        'If an account exists for that email, a password reset link has been sent.':
+            'अगर उस ईमेल पर खाता है, तो पासवर्ड बदलने का लिंक भेज दिया गया है।',
+        'Invalid attendance date.': 'हाज़िरी की तारीख़ ग़लत है।',
+        'Invalid attendance status.': 'हाज़िरी की हालत ग़लत है।',
+        'Invalid username or password': 'यूज़रनेम या पासवर्ड ग़लत है',
+        'Mobile number already registered': 'यह मोबाइल नंबर पहले से रजिस्टर्ड है',
+        'Modification note recorded.': 'बदलाव की टिप्पणी दर्ज हो गई।',
+        'New QR code generated successfully': 'नया QR कोड बन गया',
+        'New passwords do not match': 'नए पासवर्ड आपस में नहीं मिलते',
+        'Nothing to update — enter a new designation and/or salary.':
+            'बदलने को कुछ नहीं — नया पद और/या तनख़्वाह डालें।',
+        'Only attendance users can be deleted here.':
+            'यहाँ सिर्फ़ हाज़िरी वाले यूज़र हटाए जा सकते हैं।',
+        'Only attendance users can be edited here.':
+            'यहाँ सिर्फ़ हाज़िरी वाले यूज़र बदले जा सकते हैं।',
+        'Only attendance users can be managed here.':
+            'यहाँ सिर्फ़ हाज़िरी वाले यूज़र संभाले जा सकते हैं।',
+        'Password changed successfully': 'पासवर्ड बदल गया',
+        'Password must be at least 6 characters long.':
+            'पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।',
+        'Password must be at least 8 characters':
+            'पासवर्ड कम से कम 8 अक्षरों का होना चाहिए',
+        'Password must be at least 8 characters long':
+            'पासवर्ड कम से कम 8 अक्षरों का होना चाहिए',
+        'Passwords do not match': 'पासवर्ड आपस में नहीं मिलते',
+        'Please choose a valid transaction type.': 'लेन-देन की सही किस्म चुनें।',
+        'Please choose an image to upload.': 'अपलोड करने के लिए तस्वीर चुनें।',
+        'Please contact the Administrator to make changes.':
+            'बदलाव के लिए एडमिन से कहें।',
+        'Please contact the Administrator to mark absences or leaves.':
+            'ग़ैरहाज़िरी या छुट्टी लगाने के लिए एडमिन से कहें।',
+        'Please enter a valid mobile number': 'सही मोबाइल नंबर डालें',
+        'Please enter a valid mobile number for the attendance user.':
+            'हाज़िरी वाले यूज़र का सही मोबाइल नंबर डालें।',
+        'Please enter the number of leave days to credit or debit.':
+            'कितने दिन की छुट्टी जोड़नी या घटानी है, वह डालें।',
+        'Please enter the payment amount.': 'भुगतान की रक़म डालें।',
+        'Please enter your full name': 'अपना पूरा नाम डालें',
+        'Please enter the new salary amount.': 'नई तनख़्वाह की रक़म डालें।',
+        'Please upload a valid logo image (JPG, JPEG, PNG, GIF, or WEBP).':
+            'सही लोगो तस्वीर अपलोड करें (JPG, JPEG, PNG, GIF या WEBP)।',
+        'Please verify your mobile number with OTP before registering':
+            'रजिस्टर करने से पहले OTP से मोबाइल नंबर जाँच लें',
+        'Profile photo removed.': 'प्रोफ़ाइल फ़ोटो हटा दी गई।',
+        'Profile photo updated.': 'प्रोफ़ाइल फ़ोटो बदल दी गई।',
+        'Profile updated successfully': 'प्रोफ़ाइल बदल गई',
+        'Registration successful! Check your email to confirm your account, then log in.':
+            'रजिस्ट्रेशन हो गया! ईमेल देखकर खाता पक्का करें, फिर लॉगिन करें।',
+        'Registration successful! Please login using your email.':
+            'रजिस्ट्रेशन हो गया! अपने ईमेल से लॉगिन करें।',
+        'Salary calculation policy saved. Payroll already marked paid is not affected.':
+            'तनख़्वाह के हिसाब का नियम सेव हो गया। जिस वेतन पर “दे दिया” लगा है, उस पर असर नहीं पड़ेगा।',
+        'That date is in the future — attendance cannot be marked yet.':
+            'यह तारीख़ आगे की है — अभी हाज़िरी नहीं लग सकती।',
+        'This account has been disabled. Please contact the Administrator.':
+            'यह खाता बंद कर दिया गया है। एडमिन से कहें।',
+        'This mobile number is already registered to another account.':
+            'यह मोबाइल नंबर किसी और खाते पर पहले से है।',
+        'Transaction amount must be greater than zero.':
+            'लेन-देन की रक़म शून्य से ज़्यादा होनी चाहिए।',
+        'Transaction deleted permanently.': 'लेन-देन हमेशा के लिए हटा दिया गया।',
+        'A check-out needs a check-in time as well.':
+            'जाने का समय दर्ज करने के लिए आने का समय भी चाहिए।',
+        'Check-out must be later than check-in.':
+            'जाने का समय आने के समय के बाद होना चाहिए।',
+        'Choose a valid transaction type.': 'लेन-देन की सही किस्म चुनें।',
+        'Amount must be greater than zero.': 'रक़म शून्य से ज़्यादा होनी चाहिए।',
+        'Closure not found for this date.': 'इस तारीख़ की कोई छुट्टी नहीं मिली।',
+        'Closure removed.': 'छुट्टी हटा दी गई।',
+        'A closure needs a reason.': 'छुट्टी की वजह लिखना ज़रूरी है।',
+        'No open shifts to close.': 'बंद करने के लिए कोई खुली शिफ़्ट नहीं है।',
+        'Unknown action.': 'यह काम पहचाना नहीं गया।',
+        'Access Restricted': 'अनुमति नहीं है',
+    },
+}
+
+#: Flash messages that carry a value. Same approach as the salary notes:
+#: match the shape, keep what was interpolated.
+_FLASH_PATTERNS_SOURCE = {
+    'hi': [
+        # Notes the day view paints from JSON rather than raising as a flash.
+        (r'^Payroll for (.+?) has already been generated\. '
+         r'Re-generate it so this change is reflected in pay\.$',
+         r'\1 का वेतन पहले ही बन चुका है। यह बदलाव पे में दिखे, '
+         r'इसके लिए वेतन दोबारा बनाएँ।'),
+        (r'^(.+?) had not joined on this date\.$',
+         r'\1 इस तारीख़ को भर्ती नहीं हुए थे।'),
+        (r'^Attendance is locked for (.+?) on this closure day\.$',
+         r'इस छुट्टी के दिन \1 की हाज़िरी बंद है।'),
+        (r'^Times updated for (.+?)\.$', r'\1 का समय बदल दिया गया।'),
+        (r'^Closure added for (.+?)\.$', r'\1 के लिए छुट्टी जोड़ी गई।'),
+        (r'^Attendance adjusted for (.+?)\.$', r'\1 की हाज़िरी बदल दी गई।'),
+        (r'^Attendance is locked for (.+?) on this closure day \((.+?)\)\.$',
+         r'इस छुट्टी के दिन (\2) \1 की हाज़िरी बंद है।'),
+        (r'^Attendance is locked on this closure day \((.+?)\)\.$',
+         r'इस छुट्टी के दिन (\1) हाज़िरी बंद है।'),
+        (r'^Attendance user (.+?) saved\. They can log in with their mobile number\.$',
+         r'हाज़िरी वाला यूज़र \1 सेव हो गया। वे अपने मोबाइल नंबर से लॉगिन कर सकते हैं।'),
+        (r'^Bulk attendance marked as (.+?) for all workers$',
+         r'सभी मज़दूरों की हाज़िरी “\1” लगा दी गई'),
+        (r'^Cannot delete this (.+?) — it is referenced by (.+?)\. '
+         r'Archive it instead to keep history intact\.$',
+         r'यह \1 हटाया नहीं जा सकता — \2 इससे जुड़ा है। '
+         r'इतिहास बचाए रखने के लिए इसे आर्काइव कर दें।'),
+        (r'^Leave balance adjusted by (\S+) day\(s\) for (.+?)\.$',
+         r'\2 की छुट्टी में \1 दिन का बदलाव किया गया।'),
+        (r'^Promotion recorded for (.+?): (.+)$', r'\1 की तरक़्क़ी दर्ज: \2'),
+        (r'^Salary policy saved for (.+?)\.$', r'\1 के लिए तनख़्वाह का नियम सेव हो गया।'),
+        (r'^Salary updated for (.+?)\. Payroll recalculates automatically\.$',
+         r'\1 की तनख़्वाह बदल दी गई। वेतन अपने-आप दोबारा जुड़ जाएगा।'),
+        (r'^Transaction (.+?)\. Payroll updates automatically\.$',
+         r'लेन-देन \1। वेतन अपने-आप बदल जाएगा।'),
+        (r'^Worker (.+?) added successfully with ID: (.+)$',
+         r'मज़दूर \1 जुड़ गया, आईडी: \2'),
+        (r'^Worker (.+?) updated successfully$', r'मज़दूर \1 की जानकारी बदल गई'),
+        (r'^(.+?) of ₹(\S+) added for (.+?)\.$', r'\3 के लिए \1 ₹\2 जोड़ा गया।'),
+        (r'^(.+?) of ₹(\S+) saved for (.+?)\. Payroll updates automatically\.$',
+         r'\3 के लिए \1 ₹\2 सेव हुआ। वेतन अपने-आप बदल जाएगा।'),
+        (r'^(.+?) deleted successfully\.$', r'\1 हटा दिया गया।'),
+        (r'^(.+?) name is required\.$', r'\1 का नाम ज़रूरी है।'),
+        (r'^(.+?) saved successfully\.$', r'\1 सेव हो गया।'),
+        # 'state' here is whatever the route chose (enabled, archived,
+        # restored...), so this must not insist on a fixed word list.
+        (r'^(.+?) (\S+) successfully\.$', r'\1 \2 कर दिया गया।'),
+        (r'^(.+?) has been permanently deleted\.$', r'\1 हमेशा के लिए हटा दिया गया।'),
+        (r'^(.+?) marked as (.+?) — (.+?)\.$',
+         r'\1 पर “\2” लगा दिया गया — \3।'),
+        (r'^(.+?) is now (.+?)\.$', r'\1 अब \2 है।'),
+        (r'^(.+?) assigned to (.+?)\.$', r'\1 को \2 पर लगा दिया गया।'),
+        (r'^(.+?) has no pay rate yet, so payroll will show ₹0 for them '
+         r'until one is set\.$',
+         r'\1 की मज़दूरी अभी तय नहीं है, इसलिए नियत होने तक वेतन में ₹0 दिखेगा।'),
+        (r'^(.+?) now follows the company salary policy\.$',
+         r'\1 अब कंपनी के तनख़्वाह नियम पर है।'),
+    ],
+}
+
+_FLASH_PATTERNS = {
+    lang: [(re.compile(p), r) for p, r in entries]
+    for lang, entries in _FLASH_PATTERNS_SOURCE.items()
+}
+
+
+_ENGLISH_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                   'July', 'August', 'September', 'October', 'November',
+                   'December']
+
+
+def _localise_months(text, lang):
+    """Swap English month names inside an already-translated message.
+
+    A message carrying a period ("Payroll for October 2026 ...") keeps the
+    month verbatim through the pattern substitution, which would leave one
+    English word stranded in a Hindi sentence.
+    """
+    months = MONTHS.get(lang)
+    if not months:
+        return text
+    for idx, english in enumerate(_ENGLISH_MONTHS):
+        if english in text:
+            text = text.replace(english, months[idx])
+    return text
+
+def translate_flash(text, lang):
+    """One flash message, translated on its way to the screen.
+
+    Tries the plain table first, then the shapes that carry a value, and
+    otherwise returns the English unchanged — a new message added to
+    routes.py shows in English rather than disappearing.
+    """
+    if not text or lang == DEFAULT_LANGUAGE:
+        return text
+    text = str(text).strip()
+    hit = FLASH_MESSAGES.get(lang, {}).get(text)
+    if hit:
+        return hit
+    for pattern, repl in _FLASH_PATTERNS.get(lang, ()):
+        new, count = pattern.subn(repl, text)
+        if count:
+            return _localise_months(new, lang)
+    return text
+
+
 def translate(text, lang):
     """English source string -> the chosen language, or English unchanged."""
     if not text or lang == DEFAULT_LANGUAGE:
