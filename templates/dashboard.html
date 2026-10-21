@@ -180,22 +180,19 @@
     </a>
     {% endif %}
 
-    <!-- Quick Actions -->
+    {# Quick Actions carries what the bar below cannot reach, and nothing else.
+       Mark Attendance, QR Scanner and Transactions were all one tap away in
+       the bar already — three of the six tiles were a second route to a place
+       the person could already see. These four have no other way in. An
+       attendance-role user has no screens outside the bar at all, so for them
+       the section is not rendered rather than filled with duplicates. #}
+    {% if current_user.is_admin %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h2>
         <div class="grid grid-cols-2 gap-3">
-            {% if current_user.is_admin %}
             <a href="{{ url_for('add_worker') }}" class="flex items-center justify-center p-4 bg-accent text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-user-plus mr-2"></i>
                 {{ _('Add Worker') }}
-            </a>
-            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-700 text-white rounded-2xl hover:shadow-lg transition-all">
-                <i class="fa-solid fa-calendar-check mr-2"></i>
-                {{ _('Mark Attendance') }}
-            </a>
-            <a href="{{ url_for('scan') }}" class="flex items-center justify-center p-4 bg-indigo-700 text-white rounded-2xl hover:shadow-lg transition-all">
-                <i class="fa-solid fa-qrcode mr-2"></i>
-                {{ _('QR Scanner') }}
             </a>
             <a href="{{ url_for('transactions') }}" class="flex items-center justify-center p-4 bg-teal-700 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-money-bill-transfer mr-2"></i>
@@ -209,18 +206,9 @@
                 <i class="fa-solid fa-calendar-xmark mr-2"></i>
                 {{ _('Closures') }}
             </a>
-            {% else %}
-            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-700 text-white rounded-2xl hover:shadow-lg transition-all">
-                <i class="fa-solid fa-calendar-check mr-2"></i>
-                {{ _('Mark Attendance') }}
-            </a>
-            <a href="{{ url_for('scan') }}" class="flex items-center justify-center p-4 bg-indigo-700 text-white rounded-2xl hover:shadow-lg transition-all">
-                <i class="fa-solid fa-qrcode mr-2"></i>
-                {{ _('QR Scanner') }}
-            </a>
-            {% endif %}
         </div>
     </section>
+    {% endif %}
 
     <!-- Today's Attendance — fixed-grid ledger: columns always align, fits the
          phone width exactly (no horizontal scrolling), one compact type scale. -->

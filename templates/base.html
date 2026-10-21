@@ -126,15 +126,26 @@
             text-overflow: ellipsis;
         }
 
+        /* The scanner keeps the centre of the bar, but it no longer wears the
+           filled navy on every screen. It used to, which meant that on the
+           dashboard the Home tab was lit AND the scanner looked filled in —
+           two things both saying "you are here". Tinted when it is not the
+           current screen, filled when it is. #0062cc on #e5f2ff reads
+           5.1:1. */
         .app-nav-fab {
             flex: 0 0 3.7rem;
             width: 3.7rem;
             height: 4rem;
             border-radius: 1rem;
-            background: linear-gradient(145deg, #001f3f 0%, #0062cc 100%);
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            color: #ffffff;
-            box-shadow: 0 8px 16px rgba(0, 31, 63, 0.22);
+            /* Neutral, not tinted. The active tab's chip is a blue tint, so a
+               tinted scanner would be the same signal again in a different
+               size. Grey keeps it prominent by shape alone and leaves blue
+               meaning one thing: this is where you are. #4b5563 on #f3f4f6
+               reads 7.2:1. */
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            color: #4b5563;
+            box-shadow: 0 2px 6px rgba(0, 31, 63, 0.08);
         }
 
         .app-nav-fab i {
@@ -155,6 +166,9 @@
         }
 
         .app-nav-fab-active {
+            background: linear-gradient(145deg, #001f3f 0%, #0062cc 100%);
+            border-color: rgba(255, 255, 255, 0.9);
+            color: #ffffff;
             box-shadow: 0 10px 20px rgba(0, 31, 63, 0.28);
         }
         
@@ -222,14 +236,18 @@
       block for position:fixed, making the nav scroll with the page.
     #}
     {% if current_user.is_authenticated and request.endpoint in main_screens %}
+    {# Six tabs for a dozen screens, so every screen lights the section it
+       belongs to rather than leaving the bar blank. Payroll has a tab of its
+       own now: it is the money screen, it was reachable only through a banner
+       on the dashboard, and while you were on it the bar told you that you
+       were on Transactions. Transactions sits under it, which is where it
+       belongs — both are money, and payroll is the one opened every day. #}
     {% set home_active = request.endpoint == 'dashboard' %}
-        {# Worker screens are reached from the Workers list, so they keep the
-           Workers tab lit rather than leaving nothing highlighted. #}
-        {% set workers_active = request.endpoint in ['workers', 'add_worker', 'worker_profile', 'edit_worker', 'worker_report', 'id_card'] %}
+        {% set workers_active = request.endpoint in ['workers', 'add_worker', 'worker_profile', 'edit_worker', 'worker_report', 'id_card', 'assignments', 'worker_login_powers'] %}
         {% set attendance_active = request.endpoint in ['attendance', 'worker_attendance', 'closures'] %}
-        {% set transactions_active = request.endpoint in ['transactions', 'payroll', 'payroll_slip', 'payroll_preview'] %}
+        {% set payroll_active = request.endpoint in ['payroll', 'payroll_slip', 'payroll_preview', 'transactions'] %}
         {% set scan_active = request.endpoint == 'scan' %}
-        {% set profile_active = request.endpoint in ['profile', 'settings'] %}
+        {% set profile_active = request.endpoint in ['profile', 'settings', 'notifications'] %}
         <!-- Bottom Navigation (main screens only) — permanently fixed, never scrolls -->
         <nav class="app-bottom-nav fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm">
             <div class="app-bottom-nav-frame">
@@ -261,9 +279,9 @@
                     </a>
 
                     {% if current_user.is_admin %}
-                    <a href="{{ url_for('transactions') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-transfer text-xl"></i></span>
-                        <span class="app-nav-label">{{ _('Transactions') }}</span>
+                    <a href="{{ url_for('payroll') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if payroll_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-wave text-xl"></i></span>
+                        <span class="app-nav-label">{{ _('Payroll') }}</span>
                     </a>
                     {% else %}
                     <a href="{{ url_for('scan') }}?manual=1" class="app-nav-item transition-colors">
