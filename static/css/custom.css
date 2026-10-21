@@ -178,7 +178,19 @@ input:focus, select:focus, textarea:focus {
     .no-print {
         display: none !important;
     }
-    
+
+    /* The fixed bottom bar printed itself onto every sheet and sat on top
+       of the content — on the worker report it covered a row of the
+       attendance table. It is navigation; paper has none. */
+    .app-bottom-nav {
+        display: none !important;
+    }
+    /* Without the bar there is nothing to clear, and the padding would
+       otherwise leave a blank strip at the foot of each sheet. */
+    .has-bottom-nav {
+        padding-bottom: 0 !important;
+    }
+
     .print-full-width {
         width: 100% !important;
     }

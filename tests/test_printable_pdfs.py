@@ -189,7 +189,12 @@ def check_report_and_card():
     check('[report+card] no javascript errors', errors, [])
 
     doc = pymupdf.open(rpath)
-    flat = flatten(''.join(page.get_text() for page in doc))
+    pages_text = [page.get_text() for page in doc]
+    flat = flatten(''.join(pages_text))
+    # The fixed bottom bar used to print itself onto the sheet and cover a
+    # row of the attendance table. Paper has no navigation.
+    check('[report] the bottom navigation is not printed',
+          'Scan QR' in ''.join(pages_text), False)
     doc.close()
     check('[report] prints as real text, not a raster', len(flat) > 400, True)
     for phrase in ('मज़दूर की रिपोर्ट', 'निजी और नौकरी की जानकारी',
