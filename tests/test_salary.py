@@ -273,8 +273,13 @@ def test_20_explanation_always_reaches_the_final_figure():
     p = policy(rounding='up', monthly_leave_allowance=2, absence_deduction_enabled=True)
     r = salary.compute(W(), p, attendance(s, e, absent_on=(7, 8, 9, 10)), s, e)
     last = r['explanation'][-1]
+    # The figure is grouped the Indian way now — the explanation is read by
+    # the worker on his payslip, so it carries a rupee like everything else.
     check('20 explanation ends with the payable figure',
-          last.startswith('Final payable:') and '20532' in last, True, last)
+          last.startswith('Final payable:') and '₹20,532' in last, True, last)
+    check('20 and the explanation prints no bare float',
+          [n for n in r['explanation'] if __import__('re').search(r'(?<![\d,.])\d{4,}\.\d', n)],
+          [], r['explanation'][-1])
 
 
 if __name__ == '__main__':

@@ -27,6 +27,8 @@ import calendar as _cal
 from datetime import date
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP
 
+from money import money as _rupees   # one way to write an amount
+
 # ---------------------------------------------------------------------------
 # Policy vocabulary. Stored as these exact strings, so changing one is a
 # migration, not an edit.
@@ -308,7 +310,8 @@ def compute(worker, policy, records, period_start: date, period_end: date,
         gross = rounded_rate * payable_days
         explanation.append(
             'Joined %s. Paid for %g attended day(s) from the joining date at '
-            '%s/day.' % (join_date.strftime('%d %b %Y'), float(payable_days), rounded_rate)
+            '%s/day.' % (join_date.strftime('%d %b %Y'), float(payable_days),
+                         _rupees(rounded_rate))
         )
         # Absences are already excluded by only paying attended days; charging
         # them again would deduct the same day twice.
@@ -319,17 +322,20 @@ def compute(worker, policy, records, period_start: date, period_end: date,
         explanation.append(
             'Joined %s, so %d of %d day(s) are eligible: %d x %s = %s.'
             % (join_date.strftime('%d %b %Y'), eligible_days, total_calendar_days,
-               eligible_days, rounded_rate, (rounded_rate * Decimal(eligible_days)))
+               eligible_days, _rupees(rounded_rate),
+               _rupees(rounded_rate * Decimal(eligible_days)))
         )
     elif policy['calculation_method'] == 'rate_times_payable_days':
         payable_days = Decimal(basis) - deduction_days
         gross = rounded_rate * Decimal(basis)
         explanation.append(
-            'Daily rate %s x %d day(s) basis = %s.' % (rounded_rate, basis, gross)
+            'Daily rate %s x %d day(s) basis = %s.'
+            % (_rupees(rounded_rate), basis, _rupees(gross))
         )
     else:
         gross = monthly_salary
-        explanation.append('Full monthly salary %s applies.' % monthly_salary)
+        explanation.append('Full monthly salary %s applies.'
+                           % _rupees(monthly_salary))
 
     # --- deductions --------------------------------------------------------
     # A configured rate wins over the derived one, so a worker set up before
@@ -343,7 +349,8 @@ def compute(worker, policy, records, period_start: date, period_end: date,
     if deduction_days > 0:
         explanation.append(
             'Deduction: %g day(s) x %s = %s.'
-            % (float(deduction_days), deduction_rate, deduction_amount)
+            % (float(deduction_days), _rupees(deduction_rate),
+               _rupees(deduction_amount))
         )
     if policy['paid_leave_enabled'] and leave_info['allowance']:
         explanation.append(
@@ -366,7 +373,8 @@ def compute(worker, policy, records, period_start: date, period_end: date,
     if net < 0:
         net = Decimal('0')
         explanation.append('Deductions exceeded the eligible salary; net floored at 0.')
-    explanation.append('Final payable: %s - %s = %s.' % (gross, deduction_amount, net))
+    explanation.append('Final payable: %s - %s = %s.'
+                       % (_rupees(gross), _rupees(deduction_amount), _rupees(net)))
 
     return {
         # identity / inputs

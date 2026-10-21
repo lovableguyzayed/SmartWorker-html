@@ -717,6 +717,10 @@ def format_date(value, fmt, lang):
 #: things depending on who happened to open it. These patterns translate it on
 #: the way to the screen instead, which also covers snapshots already saved.
 #: Each entry is (compiled pattern, Hindi template using \1, \2…).
+# These replacements put a ₹ in front of each amount, which is right for a
+# note stored before salary.py wrote its own — and gives ₹₹38,000 for one
+# written after. translate_note collapses the double, so both read properly
+# and the stored audit records are left exactly as they were written.
 _NOTE_PATTERNS_SOURCE = {
     'hi': [
         (r'^Joining date (.+?) falls after this period, so no salary is payable\.$',
@@ -811,7 +815,10 @@ def translate_note(text, lang):
     for pattern, repl in _NOTE_PATTERNS.get(lang, ()):
         new, count = pattern.subn(repl, text.strip())
         if count:
-            return new
+            # The replacement supplies a ₹ because a note stored before the
+            # engine wrote its own has none. One written since arrives with
+            # it already, so the two meet as ₹₹ — collapse it.
+            return new.replace('₹₹', '₹')
     return text
 
 

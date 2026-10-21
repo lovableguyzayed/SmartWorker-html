@@ -156,5 +156,30 @@ check('scanner status strings are JSON-encoded for JS',
       "{{ _('Camera unavailable')|tojson }}" in
       open(os.path.join(TEMPLATES, 'scan.html'), encoding='utf-8').read(), True)
 
-print('\n%d checks, %d failed' % (34, len(failures)))
+# 3. salary.py now writes the amount inside a note as a proper rupee, while
+#    notes stored before that carry a bare float. The Hindi replacement
+#    supplies a ₹ for the old shape, so the new shape meets it as ₹₹ unless
+#    translate_note collapses it. Both shapes are checked, because fixing
+#    one by hand broke the other once already.
+doubled, unsigned, untranslated = [], [], []
+for note in ['Full monthly salary ₹38,000 applies.',
+             'Final payable: ₹22,000 - ₹1,468 = ₹20,532.',
+             'Deduction: 2 day(s) x ₹400 = ₹800.',
+             'Daily rate ₹1,462 x 26 day(s) basis = ₹38,012.']:
+    hi = i18n.translate_note(note, 'hi')
+    if '₹₹' in hi:
+        doubled.append(hi)
+    if hi == note:
+        untranslated.append(note)
+check('a note written today does not double the rupee', doubled, [])
+check('and it still matches its pattern', untranslated, [])
+
+for note in ['Full monthly salary 38000.0 applies.',
+             'Final payable: 38000.0 - 1266.67 = 36733.33.']:
+    hi = i18n.translate_note(note, 'hi')
+    if '₹' not in hi:
+        unsigned.append(hi)
+check('a note stored before today still gets its rupee', unsigned, [])
+
+print('\n%d checks, %d failed' % (37, len(failures)))
 sys.exit(1 if failures else 0)
