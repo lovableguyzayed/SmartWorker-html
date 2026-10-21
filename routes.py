@@ -2920,7 +2920,10 @@ def payroll():
     page_rows = rows[start:start + PAYROLL_PER_PAGE]
 
     years = list(range(2024, today.year + 2))
-    months = [(i, MONTH_NAMES[i - 1]) for i in range(1, 13)]
+    # Built in the interface language — i18n already holds the table
+    # format_date uses, and an English month in a Hindi dropdown was
+    # the last obviously untranslated thing on the payroll screen.
+    months = [(i, i18n.month_name(i, _current_lang())) for i in range(1, 13)]
 
     return render_template(
         'payroll.html',
@@ -3403,7 +3406,10 @@ def worker_home():
     today = today_ist()
     month, year = _requested_month(today)
     context = _worker_slip_context(worker, month, year)
-    months = [(i, MONTH_NAMES[i - 1]) for i in range(1, 13)]
+    # Built in the interface language — i18n already holds the table
+    # format_date uses, and an English month in a Hindi dropdown was
+    # the last obviously untranslated thing on the payroll screen.
+    months = [(i, i18n.month_name(i, _current_lang())) for i in range(1, 13)]
     return render_template(
         'worker_home.html',
         years=list(range(max(2024, (worker.join_date or today).year), today.year + 1)),
@@ -3935,7 +3941,10 @@ def transactions():
 
     workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
     years = list(range(2024, today.year + 2))
-    months = [(i, MONTH_NAMES[i - 1]) for i in range(1, 13)]
+    # Built in the interface language — i18n already holds the table
+    # format_date uses, and an English month in a Hindi dropdown was
+    # the last obviously untranslated thing on the payroll screen.
+    months = [(i, i18n.month_name(i, _current_lang())) for i in range(1, 13)]
 
     return render_template('transactions.html',
                            transactions=txns,

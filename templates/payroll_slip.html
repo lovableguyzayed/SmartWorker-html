@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Payroll Slip — {{ worker.full_name }} {{ month_name }} {{ year }}{% endblock %}
+{% block title %}{{ _('Payroll Slip') }} — {{ worker.full_name }} {{ month_name }} {{ year }}{% endblock %}
 
 {% block head %}
 <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>

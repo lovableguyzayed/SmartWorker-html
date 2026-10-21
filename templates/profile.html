@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Profile - SmartWorker{% endblock %}
+{% block title %}{{ _('Profile') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
@@ -296,7 +296,7 @@
                         {{ _('Save Changes') }}
                     </button>
                     <button type="button" onclick="hideEditModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
-                        Cancel
+                        {{ _('Cancel') }}
                     </button>
                 </div>
             </form>
@@ -340,7 +340,7 @@
                         {{ _('Update Password') }}
                     </button>
                     <button type="button" onclick="hidePasswordModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
-                        Cancel
+                        {{ _('Cancel') }}
                     </button>
                 </div>
             </form>

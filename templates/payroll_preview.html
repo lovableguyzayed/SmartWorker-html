@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Payroll Preview - SmartWorker{% endblock %}
+{% block title %}{{ _('Payroll Preview') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-5 rounded-b-3xl shadow-lg">
     <div class="flex items-center gap-3">
-        <a href="{{ url_for('payroll', month=month, year=year) }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Back">
+        <a href="{{ url_for('payroll', month=month, year=year) }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Back') }}">
             <i class="fa-solid fa-arrow-left text-lg"></i>
         </a>
         <div class="min-w-0">
-            <h1 class="text-xl font-bold leading-tight">Payroll Preview</h1>
+            <h1 class="text-xl font-bold leading-tight">{{ _('Payroll Preview') }}</h1>
             <p class="text-sm text-white/90">{{ _(month_name) }} {{ year }} — nothing is saved yet</p>
         </div>
     </div>
@@ -17,15 +17,15 @@
     <div class="grid grid-cols-3 gap-2 mt-4" id="preview-stats">
         <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
             <div class="text-xl font-bold" data-stat="new">{{ new_count }}</div>
-            <div class="text-xs text-white/90">New</div>
+            <div class="text-xs text-white/90">{{ _('New') }}</div>
         </div>
         <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
             <div class="text-xl font-bold" data-stat="changed">{{ changed_count }}</div>
-            <div class="text-xs text-white/90">Changed</div>
+            <div class="text-xs text-white/90">{{ _('Changed') }}</div>
         </div>
         <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
             <div class="text-xl font-bold" data-stat="frozen">{{ frozen_count }}</div>
-            <div class="text-xs text-white/90">Locked</div>
+            <div class="text-xs text-white/90">{{ _('Locked') }}</div>
         </div>
     </div>
 </header>
@@ -34,7 +34,7 @@
 
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-500">Total net payable</span>
+            <span class="text-sm text-gray-500">{{ _('Total net payable') }}</span>
             <span class="text-xl font-bold text-gray-800 amount">{{ totals.total_net|money }}</span>
         </div>
         <div class="flex items-center justify-between mt-1">
@@ -74,16 +74,16 @@
                 <div class="font-bold text-gray-800 amount">{{ p.net_pay|money }}</div>
                 {% if p.state == 'frozen' %}
                 <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600">
-                    <i class="fa-solid fa-lock mr-1"></i>Paid
+                    <i class="fa-solid fa-lock mr-1"></i>{{ _('Paid') }}
                 </span>
                 {% elif p.state == 'new' %}
-                <span class="text-xs px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600">New</span>
+                <span class="text-xs px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600">{{ _('New') }}</span>
                 {% elif p.state == 'changed' %}
                 <span class="text-xs px-2 py-0.5 rounded-lg {{ 'bg-green-50 text-green-700' if p.delta > 0 else 'bg-red-50 text-red-700' }}">
                     {{ '+' if p.delta > 0 else '' }}{{ p.delta|money }}
                 </span>
                 {% else %}
-                <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-50 text-gray-500">No change</span>
+                <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-50 text-gray-500">{{ _('No change') }}</span>
                 {% endif %}
             </div>
         </div>
@@ -99,15 +99,15 @@
         <div class="grid grid-cols-3 gap-2 mt-3">
             <div class="bg-gray-50 rounded-xl p-2 text-center">
                 <div class="text-sm font-bold text-gray-800 amount">{{ b.daily_rate|money0 }}</div>
-                <div class="text-xs text-gray-500">per day</div>
+                <div class="text-xs text-gray-500">{{ _('per day') }}</div>
             </div>
             <div class="bg-gray-50 rounded-xl p-2 text-center">
                 <div class="text-sm font-bold text-gray-800">{{ b.eligible_days }}</div>
-                <div class="text-xs text-gray-500">eligible days</div>
+                <div class="text-xs text-gray-500">{{ _('eligible days') }}</div>
             </div>
             <div class="bg-gray-50 rounded-xl p-2 text-center">
                 <div class="text-sm font-bold {{ 'text-red-700' if b.deduction_days else 'text-gray-800' }}">{{ '%g'|format(b.deduction_days) }}</div>
-                <div class="text-xs text-gray-500">deducted</div>
+                <div class="text-xs text-gray-500">{{ _('deducted') }}</div>
             </div>
         </div>
 

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Attendance - SmartWorker{% endblock %}
+{% block title %}{{ _('Attendance') }} - SmartWorker{% endblock %}
 
 {% block head %}
 <!-- Date picker styles -->
@@ -255,7 +255,7 @@
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <a href="{{ url_for('scan') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="QR Scanner">
+            <a href="{{ url_for('scan') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('QR Scanner') }}">
                 <i class="fa-solid fa-qrcode text-lg"></i>
             </a>
             {% if current_user.is_admin %}
@@ -295,13 +295,13 @@
         <div class="mt-3 space-y-2">
             <div class="relative">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm"></i>
-                <input type="search" name="search" value="{{ search }}" placeholder="Search name or employee ID…"
+                <input type="search" name="search" value="{{ search }}" placeholder="{{ _('Search name or employee ID…') }}"
                        class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 text-sm focus:ring-2 focus:ring-white/50">
             </div>
             <div class="grid grid-cols-2 gap-2">
                 {% if sites %}
                 <select name="site" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                    <option value="0" class="text-gray-800">All sites</option>
+                    <option value="0" class="text-gray-800">{{ _('All sites') }}</option>
                     {% for site in sites %}
                     <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
                     {% endfor %}
@@ -309,7 +309,7 @@
                 {% endif %}
                 {% if current_user.is_admin and attendance_users %}
                 <select name="marked_by" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                    <option value="0" class="text-gray-800">All markers</option>
+                    <option value="0" class="text-gray-800">{{ _('All markers') }}</option>
                     {% for auser in attendance_users %}
                     <option value="{{ auser.id }}" {{ 'selected' if auser.id == marker_filter }} class="text-gray-800">{{ auser.full_name }}</option>
                     {% endfor %}
@@ -401,7 +401,7 @@
     <!-- Day detail — filled from /api/attendance/day/<date> -->
     <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
              tabindex="-1" aria-live="polite">
-        <div id="day-panel-body" class="p-4"><div class="dv-muted">Loading day…</div></div>
+        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Loading day…') }}</div></div>
     </section>
 
     <div class="ep-tabs">
@@ -416,7 +416,7 @@
         <div class="ep-field-label">{{ _('Scan or type employee ID') }}</div>
         <form class="ep-quick" onsubmit="return quickMark(event)">
             <input type="text" id="ep-quick-id" placeholder="CO001" autocomplete="off"
-                   autocapitalize="characters" inputmode="text" aria-label="Employee ID">
+                   autocapitalize="characters" inputmode="text" aria-label="{{ _('Employee ID') }}">
             <button type="submit" id="ep-quick-btn">{{ _('Mark') }}</button>
         </form>
 
@@ -469,7 +469,7 @@
                 </span>
                 {% endif %}
                 {% if data.closure and data.closure.allow_attendance and data.attendance and data.attendance.status in ('present', 'late') and data.worker.closure_extra_pay_enabled %}
-                <span class="ep-chip" style="background:#ffedd5;color:#c2410c">Closure bonus</span>
+                <span class="ep-chip" style="background:#ffedd5;color:#c2410c">{{ _('Closure bonus') }}</span>
                 {% endif %}
 
                 {% if current_user.is_admin and data.attendance %}
@@ -496,7 +496,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <span class="ep-locked">Locked</span>
+            <span class="ep-locked">{{ _('Locked') }}</span>
             {% endif %}
         </div>
         {% endfor %}
@@ -506,11 +506,11 @@
     {# Pager. The counters above and the bulk buttons both cover every worker
        on this date, not just the ones on this page. #}
     {% if has_prev or has_next %}
-    <nav class="flex items-center justify-between gap-3 mt-3" aria-label="Attendance list pages">
+    <nav class="flex items-center justify-between gap-3 mt-3" aria-label="{{ _('Attendance list pages') }}">
         {% if has_prev %}
         <a href="{{ url_for('attendance', page=page-1, date=selected_date.isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
            class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
-            <i class="fa-solid fa-chevron-left mr-2"></i>Previous
+            <i class="fa-solid fa-chevron-left mr-2"></i>{{ _('Previous') }}
         </a>
         {% else %}<span class="flex-1"></span>{% endif %}
 
@@ -519,7 +519,7 @@
         {% if has_next %}
         <a href="{{ url_for('attendance', page=page+1, date=selected_date.isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
            class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
-            Next<i class="fa-solid fa-chevron-right ml-2"></i>
+            {{ _('Next') }}<i class="fa-solid fa-chevron-right ml-2"></i>
         </a>
         {% else %}<span class="flex-1"></span>{% endif %}
     </nav>
@@ -550,11 +550,11 @@
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fa-solid fa-calendar-check text-3xl text-gray-500"></i>
         </div>
-        <h2 class="text-xl font-semibold text-gray-800 mb-2">No Workers Found</h2>
-        <p class="text-gray-600 mb-6">Add workers to start marking attendance.</p>
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Workers Found') }}</h2>
+        <p class="text-gray-600 mb-6">{{ _('Add workers to start marking attendance.') }}</p>
         <a href="{{ url_for('add_worker') }}" 
            class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
-            <i class="fa-solid fa-plus mr-2"></i>Add First Worker
+            <i class="fa-solid fa-plus mr-2"></i>{{ _('Add First Worker') }}
         </a>
     </div>
     {% endif %}
@@ -566,14 +566,14 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-4">
-                <h2 class="text-xl font-semibold text-gray-800">Adjust Attendance</h2>
+                <h2 class="text-xl font-semibold text-gray-800">{{ _('Adjust Attendance') }}</h2>
                 <p class="text-gray-600 text-sm" id="adjust-worker-name"></p>
             </div>
             <form method="POST" id="adjust-form" class="space-y-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Status') }}</label>
                     <select name="status" id="adjust-status" class="w-full p-3 border border-lightGray rounded-xl" onchange="toggleAdjustFields()">
                         <option value="present">{{ _('Present') }}</option>
                         <option value="late">{{ _('Late') }}</option>
@@ -583,33 +583,33 @@
                 </div>
                 <div id="adjust-time-fields" class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Check-in') }}</label>
                         <input type="time" name="check_in_time" id="adjust-checkin" class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Check-out') }}</label>
                         <input type="time" name="check_out_time" id="adjust-checkout" class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                 </div>
                 <div id="adjust-leave-field" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Leave Type') }}</label>
                     <select name="leave_type" id="adjust-leave-type" class="w-full p-3 border border-lightGray rounded-xl">
-                        <option value="">Unspecified</option>
-                        <option value="casual">Casual</option>
-                        <option value="sick">Sick</option>
-                        <option value="paid">Paid</option>
-                        <option value="unpaid">Unpaid</option>
-                        <option value="other">Other</option>
+                        <option value="">{{ _('Unspecified') }}</option>
+                        <option value="casual">{{ _('Casual') }}</option>
+                        <option value="sick">{{ _('Sick') }}</option>
+                        <option value="paid">{{ _('Paid') }}</option>
+                        <option value="unpaid">{{ _('Unpaid') }}</option>
+                        <option value="other">{{ _('Other') }}</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Note <span class="text-gray-500">(optional)</span></label>
-                    <input type="text" name="notes" class="w-full p-3 border border-lightGray rounded-xl" placeholder="Reason for adjustment">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Note') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
+                    <input type="text" name="notes" class="w-full p-3 border border-lightGray rounded-xl" placeholder="{{ _('Reason for adjustment') }}">
                 </div>
-                <p class="text-xs text-gray-500">Late minutes and overtime are recalculated automatically from the worker's shift settings.</p>
+                <p class="text-xs text-gray-500">{{ _("Late minutes and overtime are recalculated automatically from the worker's shift settings.") }}</p>
                 <div class="flex space-x-3 pt-1">
-                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save</button>
-                    <button type="button" onclick="hideAdjustModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save') }}</button>
+                    <button type="button" onclick="hideAdjustModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
                 </div>
             </form>
         </div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}QR Scanner - SmartWorker{% endblock %}
+{% block title %}{{ _('QR Scanner') }} - SmartWorker{% endblock %}
 
 {% block head %}
 <script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Assignments - SmartWorker{% endblock %}
+{% block title %}{{ _('Assignments') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
@@ -14,7 +14,7 @@
                 <div class="text-sm opacity-90">{{ _('Assign & transfer workers to sites, projects, tasks') }}</div>
             </div>
         </div>
-        <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Manage sites & projects">
+        <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Manage sites & projects') }}">
             <i class="fa-solid fa-gear text-lg"></i>
         </a>
     </div>
@@ -23,7 +23,7 @@
     <form method="GET" class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 space-y-2">
         <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm"></i>
-            <input type="search" name="search" value="{{ search }}" placeholder="Search name or employee ID…"
+            <input type="search" name="search" value="{{ search }}" placeholder="{{ _('Search name or employee ID…') }}"
                    class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 text-sm focus:ring-2 focus:ring-white/50">
         </div>
         <div class="grid grid-cols-2 gap-2">
@@ -137,24 +137,24 @@
          class="ms-prompt hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center">
         <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm">
             <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Assign selected workers') }}</h2>
-            <p class="text-xs text-gray-500 mb-4">Any active assignment they already have is closed and replaced.</p>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Site</label>
+            <p class="text-xs text-gray-500 mb-4">{{ _('Any active assignment they already have is closed and replaced.') }}</p>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Site') }}</label>
             <select data-ms-field="site_id" class="w-full mb-3 px-3 border border-gray-200 rounded-xl">
-                <option value="">— No site —</option>
+                <option value="">{{ _('— No site —') }}</option>
                 {% for site in sites %}<option value="{{ site.id }}">{{ site.name }}</option>{% endfor %}
             </select>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Project') }}</label>
             <select data-ms-field="project_id" class="w-full mb-3 px-3 border border-gray-200 rounded-xl">
-                <option value="">— No project —</option>
+                <option value="">{{ _('— No project —') }}</option>
                 {% for project in projects %}<option value="{{ project.id }}">{{ project.name }}</option>{% endfor %}
             </select>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Task') }}</label>
             <select data-ms-field="task_id" class="w-full mb-4 px-3 border border-gray-200 rounded-xl">
-                <option value="">— No task —</option>
+                <option value="">{{ _('— No task —') }}</option>
                 {% for task in tasks %}<option value="{{ task.id }}">{{ task.name }}</option>{% endfor %}
             </select>
             <div class="grid grid-cols-2 gap-3">
-                <button type="button" data-ms-prompt-cancel class="btn-secondary py-3 rounded-xl font-medium">Cancel</button>
+                <button type="button" data-ms-prompt-cancel class="btn-secondary py-3 rounded-xl font-medium">{{ _('Cancel') }}</button>
                 <button type="button" data-ms-prompt-ok class="btn-primary py-3 rounded-xl font-medium">{{ _('Assign') }}</button>
             </div>
         </div>
@@ -175,42 +175,42 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Site</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Site') }}</label>
                 <select name="site_id" id="assign-site" class="w-full p-3 border border-lightGray rounded-xl">
-                    <option value="">— No site —</option>
+                    <option value="">{{ _('— No site —') }}</option>
                     {% for site in sites %}
                     <option value="{{ site.id }}">{{ site.name }}{% if site.status != 'active' %} (archived){% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Project</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Project') }}</label>
                 <select name="project_id" id="assign-project" class="w-full p-3 border border-lightGray rounded-xl">
-                    <option value="">— No project —</option>
+                    <option value="">{{ _('— No project —') }}</option>
                     {% for project in projects %}
                     <option value="{{ project.id }}">{{ project.name }}{% if project.status == 'archived' %} (archived){% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Task <span class="text-gray-500">{{ _('(optional)') }}</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Task') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
                 <select name="task_id" id="assign-task" class="w-full p-3 border border-lightGray rounded-xl">
-                    <option value="">— No task —</option>
+                    <option value="">{{ _('— No task —') }}</option>
                     {% for task in tasks %}
                     <option value="{{ task.id }}">{{ task.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Start date') }}</label>
                 <input type="date" name="start_date" value="{{ today.isoformat() }}" class="w-full p-3 border border-lightGray rounded-xl">
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Notes') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
-                <input type="text" name="notes" placeholder="e.g. Transferred for finishing work"
+                <input type="text" name="notes" placeholder="{{ _('e.g. Transferred for finishing work') }}"
                        class="w-full p-3 border border-lightGray rounded-xl">
             </div>
-            <p class="text-[11px] text-gray-500">If the worker already has an active assignment, it is closed automatically as a transfer the day before the new start date.</p>
+            <p class="text-[11px] text-gray-500">{{ _('If the worker already has an active assignment, it is closed automatically as a transfer the day before the new start date.') }}</p>
             <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
                 <i class="fa-solid fa-check mr-2"></i>Save Assignment
             </button>

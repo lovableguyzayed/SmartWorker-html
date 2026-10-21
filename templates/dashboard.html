@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - SmartWorker{% endblock %}
+{% block title %}{{ _('Dashboard') }} - SmartWorker{% endblock %}
 
 {% block head %}
 <style>
@@ -261,7 +261,7 @@
                     {% if attendance.check_out_time %}
                     <span class="att-time" style="color:#374151">{{ attendance.check_out_time.strftime('%I:%M').lstrip('0') }}<span class="att-ampm">{{ attendance.check_out_time.strftime('%p').lower() }}</span></span>
                     {% elif attendance.check_in_time %}
-                    <span class="att-live"><span class="att-live-dot"></span>shift</span>
+                    <span class="att-live"><span class="att-live-dot"></span>{{ _('shift') }}</span>
                     {% else %}
                     <span class="att-empty">&ndash;</span>
                     {% endif %}

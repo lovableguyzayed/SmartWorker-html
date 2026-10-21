@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Notifications - SmartWorker{% endblock %}
+{% block title %}{{ _('Notifications') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
@@ -10,13 +10,13 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <h1 class="text-xl font-semibold">Notifications</h1>
-                <div class="text-sm opacity-90">Attendance activity from all sites</div>
+                <h1 class="text-xl font-semibold">{{ _('Notifications') }}</h1>
+                <div class="text-sm opacity-90">{{ _('Attendance activity from all sites') }}</div>
             </div>
         </div>
         <form method="POST" action="{{ url_for('notifications_mark_read') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="icon-btn bg-white/10 backdrop-blur-sm" title="Mark all read">
+            <button class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Mark all read') }}">
                 <i class="fa-solid fa-check-double text-lg"></i>
             </button>
         </form>
@@ -50,7 +50,7 @@
         </div>
         {% endfor %}
     </div>
-    <p class="ms-hint">Press and hold a notification to select several at once.</p>
+    <p class="ms-hint">{{ _('Press and hold a notification to select several at once.') }}</p>
 
     {% with sel_scope = 'notifications',
             sel_endpoint = url_for('bulk_action', scope='notifications'),
@@ -67,8 +67,8 @@
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fa-solid fa-bell-slash text-3xl text-gray-500"></i>
         </div>
-        <h2 class="text-xl font-semibold text-gray-800 mb-2">No Notifications</h2>
-        <p class="text-gray-600">Attendance marked by site users will appear here.</p>
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Notifications') }}</h2>
+        <p class="text-gray-600">{{ _('Attendance marked by site users will appear here.') }}</p>
     </div>
     {% endif %}
 </main>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ worker.full_name }} ID Card - SmartWorker{% endblock %}
+{% block title %}{{ worker.full_name }} {{ _('ID Card') }} - SmartWorker{% endblock %}
 
 {% block head %}
 <!-- Additional libraries for ID card generation -->
@@ -135,7 +135,7 @@
                     <div class="ml-4">
                         <div class="bg-white p-3 rounded-2xl shadow-lg">
                             {% if worker.qr_code %}
-                                <img src="{{ worker.qr_code }}" alt="QR Code" class="w-16 h-16">
+                                <img src="{{ worker.qr_code }}" alt="{{ _('QR Code') }}" class="w-16 h-16">
                             {% else %}
                                 <i class="fa-solid fa-qrcode text-primary text-4xl"></i>
                             {% endif %}
@@ -255,7 +255,7 @@
             
             <button onclick="hideDownloadModal()" 
                     class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
-                Cancel
+                {{ _('Cancel') }}
             </button>
         </div>
     </div>

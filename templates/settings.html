@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Settings - SmartWorker{% endblock %}
+{% block title %}{{ _('Settings') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
@@ -46,7 +46,7 @@
                 <div class="flex items-center space-x-4">
                     <div class="w-16 h-16 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
                         {% if company and company.logo %}
-                            <img loading="lazy" decoding="async" src="{{ company.logo }}" alt="Logo" class="w-full h-full object-contain">
+                            <img loading="lazy" decoding="async" src="{{ company.logo }}" alt="{{ _('Logo') }}" class="w-full h-full object-contain">
                         {% else %}
                             <i class="fa-solid fa-building text-2xl text-gray-500"></i>
                         {% endif %}
@@ -84,12 +84,12 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">GST No. <span class="text-gray-500">{{ _('(optional)') }}</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('GST No.') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
                         <input type="text" name="gst_number" value="{{ company.gst_number or '' if company else '' }}"
                                class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Reg. No. <span class="text-gray-500">{{ _('(optional)') }}</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Reg. No.') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
                         <input type="text" name="registration_number" value="{{ company.registration_number or '' if company else '' }}"
                                class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                     </div>
@@ -104,21 +104,21 @@
     <!-- ══════════ Sites Section ══════════ -->
     <section id="section-sites" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Site</h2>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Add / Edit Site') }}</h2>
             <form method="POST" action="{{ url_for('settings_site_save') }}" class="space-y-3" id="site-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" id="site-id" value="">
-                <input type="text" name="name" id="site-name" placeholder="Site name" required
+                <input type="text" name="name" id="site-name" placeholder="{{ _('Site name') }}" required
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
-                <input type="text" name="address" id="site-address" placeholder="Address (optional)"
+                <input type="text" name="address" id="site-address" placeholder="{{ _('Address (optional)') }}"
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
                 <div class="grid grid-cols-2 gap-3">
-                    <input type="text" name="contact_person" id="site-contact" placeholder="Contact person"
+                    <input type="text" name="contact_person" id="site-contact" placeholder="{{ _('Contact person') }}"
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
-                    <input type="tel" name="contact_phone" id="site-phone" placeholder="Contact phone"
+                    <input type="tel" name="contact_phone" id="site-phone" placeholder="{{ _('Contact phone') }}"
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
                 </div>
-                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Site</button>
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save Site') }}</button>
             </form>
         </div>
         <div class="space-y-3" data-ms-scope="sites" data-ms-noun="site" data-ms-plural="sites">
@@ -128,7 +128,7 @@
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-gray-800 truncate">{{ site.name }}
-                            {% if site.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">Archived</span>{% endif %}
+                            {% if site.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">{{ _('Archived') }}</span>{% endif %}
                         </div>
                         {% if site.address %}<div class="text-xs text-gray-500 truncate">{{ site.address }}</div>{% endif %}
                         {% if site.contact_person %}<div class="text-xs text-gray-500">{{ site.contact_person }}{% if site.contact_phone %} • {{ site.contact_phone }}{% endif %}</div>{% endif %}
@@ -138,7 +138,7 @@
                                 class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('settings_site_archive', entity_id=site.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="Archive/Restore"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                            <button class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="{{ _('Archive/Restore') }}"><i class="fa-solid fa-box-archive text-xs"></i></button>
                         </form>
                         <form method="POST" action="{{ url_for('settings_site_delete', entity_id=site.id) }}" onsubmit="return confirm('Delete this site permanently?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -148,7 +148,7 @@
                 </div>
             </div>
             {% else %}
-            <div class="text-center text-sm text-gray-500 py-6">No sites yet. Add your first site above.</div>
+            <div class="text-center text-sm text-gray-500 py-6">{{ _('No sites yet. Add your first site above.') }}</div>
             {% endfor %}
         </div>
     </section>
@@ -156,16 +156,16 @@
     <!-- ══════════ Projects Section ══════════ -->
     <section id="section-projects" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Project</h2>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Add / Edit Project') }}</h2>
             <form method="POST" action="{{ url_for('settings_project_save') }}" class="space-y-3" id="project-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" id="project-id" value="">
-                <input type="text" name="name" id="project-name" placeholder="Project name" required
+                <input type="text" name="name" id="project-name" placeholder="{{ _('Project name') }}" required
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
-                <textarea name="description" id="project-description" rows="2" placeholder="Description (optional)"
+                <textarea name="description" id="project-description" rows="2" placeholder="{{ _('Description (optional)') }}"
                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent"></textarea>
                 <select name="site_id" id="project-site" class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
-                    <option value="">— No site —</option>
+                    <option value="">{{ _('— No site —') }}</option>
                     {# Include archived sites too (marked), so editing a project assigned to an archived site never silently unassigns it #}
                     {% for site in sites %}
                     <option value="{{ site.id }}">{{ site.name }}{% if site.status != 'active' %} (archived){% endif %}</option>
@@ -173,42 +173,42 @@
                 </select>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Start date</label>
+                        <label class="block text-xs text-gray-500 mb-1">{{ _('Start date') }}</label>
                         <input type="date" name="start_date" id="project-start" class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">End date</label>
+                        <label class="block text-xs text-gray-500 mb-1">{{ _('End date') }}</label>
                         <input type="date" name="end_date" id="project-end" class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Deadline</label>
+                        <label class="block text-xs text-gray-500 mb-1">{{ _('Deadline') }}</label>
                         <input type="date" name="deadline" id="project-deadline" class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Completion date</label>
+                        <label class="block text-xs text-gray-500 mb-1">{{ _('Completion date') }}</label>
                         <input type="date" name="completion_date" id="project-completion" class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                 </div>
                 <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
-                    <div class="text-xs font-semibold text-orange-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Delay Penalty (project-based workers)</div>
+                    <div class="text-xs font-semibold text-orange-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ _('Delay Penalty (project-based workers)') }}</div>
                     <div class="grid grid-cols-2 gap-3">
                         <select name="penalty_type" id="project-penalty-type" class="w-full p-2.5 border border-orange-200 rounded-xl text-sm">
-                            <option value="none">No penalty</option>
-                            <option value="fixed">Fixed ₹ / delayed day</option>
-                            <option value="percent">% of project rate / day</option>
+                            <option value="none">{{ _('No penalty') }}</option>
+                            <option value="fixed">{{ _('Fixed ₹ / delayed day') }}</option>
+                            <option value="percent">{{ _('% of project rate / day') }}</option>
                         </select>
-                        <input type="number" name="penalty_value" id="project-penalty-value" step="0.01" min="0" placeholder="Value"
+                        <input type="number" name="penalty_value" id="project-penalty-value" step="0.01" min="0" placeholder="{{ _('Value') }}"
                                class="w-full p-2.5 border border-orange-200 rounded-xl text-sm">
                     </div>
                 </div>
                 <select name="status" id="project-status" class="w-full p-3 border border-lightGray rounded-xl">
-                    <option value="active">Active</option>
-                    <option value="completed">Completed</option>
-                    <option value="archived">Archived</option>
+                    <option value="active">{{ _('Active') }}</option>
+                    <option value="completed">{{ _('Completed') }}</option>
+                    <option value="archived">{{ _('Archived') }}</option>
                 </select>
-                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Project</button>
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save Project') }}</button>
             </form>
         </div>
         <div class="space-y-3" data-ms-scope="projects" data-ms-noun="project" data-ms-plural="projects">
@@ -236,7 +236,7 @@
                                 class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('settings_project_archive', entity_id=project.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="Archive/Restore"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                            <button class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="{{ _('Archive/Restore') }}"><i class="fa-solid fa-box-archive text-xs"></i></button>
                         </form>
                         <form method="POST" action="{{ url_for('settings_project_delete', entity_id=project.id) }}" onsubmit="return confirm('Delete this project permanently?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -246,7 +246,7 @@
                 </div>
             </div>
             {% else %}
-            <div class="text-center text-sm text-gray-500 py-6">No projects yet. Add your first project above.</div>
+            <div class="text-center text-sm text-gray-500 py-6">{{ _('No projects yet. Add your first project above.') }}</div>
             {% endfor %}
         </div>
     </section>
@@ -254,22 +254,22 @@
     <!-- ══════════ Tasks Section ══════════ -->
     <section id="section-tasks" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Add / Edit Task</h2>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Add / Edit Task') }}</h2>
             <form method="POST" action="{{ url_for('settings_task_save') }}" class="space-y-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" id="task-id" value="">
-                <input type="text" name="name" id="task-name" placeholder="Task name" required
+                <input type="text" name="name" id="task-name" placeholder="{{ _('Task name') }}" required
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
                 <select name="project_id" id="task-project" class="w-full p-3 border border-lightGray rounded-xl">
-                    <option value="">— No project —</option>
+                    <option value="">{{ _('— No project —') }}</option>
                     {# Archived projects stay listed (marked) so editing a task keeps its assignment #}
                     {% for project in projects %}
                     <option value="{{ project.id }}">{{ project.name }}{% if project.status == 'archived' %} (archived){% endif %}</option>
                     {% endfor %}
                 </select>
-                <input type="text" name="category" id="task-category" placeholder="Category (optional)"
+                <input type="text" name="category" id="task-category" placeholder="{{ _('Category (optional)') }}"
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
-                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Task</button>
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save Task') }}</button>
             </form>
         </div>
         <div class="space-y-3" data-ms-scope="tasks" data-ms-noun="task" data-ms-plural="tasks">
@@ -279,7 +279,7 @@
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-gray-800 truncate">{{ task.name }}
-                            {% if task.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">Archived</span>{% endif %}
+                            {% if task.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">{{ _('Archived') }}</span>{% endif %}
                         </div>
                         <div class="text-xs text-gray-500">{% if task.project %}{{ task.project.name }}{% endif %}{% if task.category %} • {{ task.category }}{% endif %}</div>
                     </div>
@@ -298,7 +298,7 @@
                 </div>
             </div>
             {% else %}
-            <div class="text-center text-sm text-gray-500 py-6">No tasks yet. Add your first task above.</div>
+            <div class="text-center text-sm text-gray-500 py-6">{{ _('No tasks yet. Add your first task above.') }}</div>
             {% endfor %}
         </div>
     </section>
@@ -306,12 +306,12 @@
     <!-- ══════════ Departments Section ══════════ -->
     <section id="section-departments" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Add Department</h2>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Add Department') }}</h2>
             <form method="POST" action="{{ url_for('settings_department_save') }}" class="flex gap-2">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="text" name="name" placeholder="Department name" required
+                <input type="text" name="name" placeholder="{{ _('Department name') }}" required
                        class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
-                <button type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">Add</button>
+                <button type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Add') }}</button>
             </form>
         </div>
         <div class="space-y-3" data-ms-scope="departments" data-ms-noun="department" data-ms-plural="departments">
@@ -319,7 +319,7 @@
             <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 flex items-center justify-between {{ 'opacity-60' if dept.status == 'archived' else '' }}"
                  data-ms-item="{{ dept.id }}" data-ms-label="{{ dept.name }}">
                 <div class="font-semibold text-gray-800">{{ dept.name }}
-                    {% if dept.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">Archived</span>{% endif %}
+                    {% if dept.status == 'archived' %}<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1">{{ _('Archived') }}</span>{% endif %}
                 </div>
                 <div class="flex items-center space-x-1">
                     <form method="POST" action="{{ url_for('settings_department_archive', entity_id=dept.id) }}">
@@ -333,7 +333,7 @@
                 </div>
             </div>
             {% else %}
-            <div class="text-center text-sm text-gray-500 py-6">No departments yet. Worker forms also accept free-text departments.</div>
+            <div class="text-center text-sm text-gray-500 py-6">{{ _('No departments yet. Worker forms also accept free-text departments.') }}</div>
             {% endfor %}
         </div>
     </section>
@@ -342,7 +342,7 @@
     <!-- ══════════ Salary Calculation Policy ══════════ -->
     <section id="section-salary" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-1">Salary Calculation Policy</h2>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Salary Calculation Policy') }}</h2>
             <p class="text-xs text-gray-500 mb-1">
                 How a fixed monthly salary becomes a payable amount. Applies to the
                 {{ monthly_worker_count }} worker(s) on a monthly salary.
@@ -365,21 +365,21 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Monthly salary basis</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Monthly salary basis') }}</label>
                     <select name="salary_basis" id="sp-basis" class="w-full p-3 border border-lightGray rounded-xl">
-                        <option value="fixed" {{ 'selected' if salary_policy.salary_basis == 'fixed' }}>Fixed number of days</option>
-                        <option value="calendar" {{ 'selected' if salary_policy.salary_basis == 'calendar' }}>Actual calendar days (28/29/30/31)</option>
+                        <option value="fixed" {{ 'selected' if salary_policy.salary_basis == 'fixed' }}>{{ _('Fixed number of days') }}</option>
+                        <option value="calendar" {{ 'selected' if salary_policy.salary_basis == 'calendar' }}>{{ _('Actual calendar days (28/29/30/31)') }}</option>
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Salary is divided by this to get a daily rate.</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('Salary is divided by this to get a daily rate.') }}</p>
                 </div>
 
                 <div id="sp-basis-days-wrap">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Fixed days</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Fixed days') }}</label>
                     <input type="number" name="basis_days" min="1" max="31" value="{{ salary_policy.basis_days }}" class="w-full p-3 border border-lightGray rounded-xl">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Daily salary rounding</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Daily salary rounding') }}</label>
                     <select name="rounding" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.rounding.items() %}
                         <option value="{{ key }}" {{ 'selected' if salary_policy.rounding == key }}>{{ label }}</option>
@@ -388,17 +388,17 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Mid-month joining</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Mid-month joining') }}</label>
                     <select name="joining_mode" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.joining_mode.items() %}
                         <option value="{{ key }}" {{ 'selected' if salary_policy.joining_mode == key }}>{{ label }}</option>
                         {% endfor %}
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Days before the joining date are never paid or deducted.</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('Days before the joining date are never paid or deducted.') }}</p>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Salary calculation method</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Salary calculation method') }}</label>
                     <select name="calculation_method" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.calculation_method.items() %}
                         <option value="{{ key }}" {{ 'selected' if salary_policy.calculation_method == key }}>{{ label }}</option>
@@ -408,32 +408,32 @@
 
                 <div class="border-t border-gray-100 pt-4 space-y-3">
                     <label class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-700">Paid monthly leave</span>
+                        <span class="text-sm font-medium text-gray-700">{{ _('Paid monthly leave') }}</span>
                         <input type="checkbox" name="paid_leave_enabled" {{ 'checked' if salary_policy.paid_leave_enabled }}>
                     </label>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Leave allowance (days per month)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Leave allowance (days per month)') }}</label>
                         <input type="number" name="monthly_leave_allowance" min="0" step="0.5"
                                value="{{ salary_policy.monthly_leave_allowance }}" class="w-full p-3 border border-lightGray rounded-xl">
-                        <p class="text-xs text-gray-500 mt-1">Covers approved leave first, then absences.</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ _('Covers approved leave first, then absences.') }}</p>
                     </div>
                     <label class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-700">Carry unused leave forward</span>
+                        <span class="text-sm font-medium text-gray-700">{{ _('Carry unused leave forward') }}</span>
                         <input type="checkbox" name="leave_carry_forward" {{ 'checked' if salary_policy.leave_carry_forward }}>
                     </label>
                 </div>
 
                 <div class="border-t border-gray-100 pt-4 space-y-3">
                     <label class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-700">Deduct for unpaid absences</span>
+                        <span class="text-sm font-medium text-gray-700">{{ _('Deduct for unpaid absences') }}</span>
                         <input type="checkbox" name="absence_deduction_enabled" {{ 'checked' if salary_policy.absence_deduction_enabled }}>
                     </label>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Deduction rate per day</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Deduction rate per day') }}</label>
                         <input type="number" name="deduction_rate" min="0" step="0.01"
                                value="{{ salary_policy.deduction_rate if salary_policy.deduction_rate is not none else '' }}"
-                               placeholder="Leave blank to use the daily salary" class="w-full p-3 border border-lightGray rounded-xl">
-                        <p class="text-xs text-gray-500 mt-1">Blank = deduct at the rounded daily salary.</p>
+                               placeholder="{{ _('Leave blank to use the daily salary') }}" class="w-full p-3 border border-lightGray rounded-xl">
+                        <p class="text-xs text-gray-500 mt-1">{{ _('Blank = deduct at the rounded daily salary.') }}</p>
                     </div>
                 </div>
 
@@ -445,8 +445,8 @@
 
         {% if policy_audit %}
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-1">Recent policy changes</h2>
-            <p class="text-xs text-gray-500 mb-3">Salary rules decide what people are paid, so every change is recorded.</p>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Recent policy changes') }}</h2>
+            <p class="text-xs text-gray-500 mb-3">{{ _('Salary rules decide what people are paid, so every change is recorded.') }}</p>
             <div class="space-y-2">
                 {% for a in policy_audit %}
                 <div class="text-xs text-gray-600 border-b border-gray-50 pb-2 last:border-0">
@@ -466,42 +466,42 @@
     <!-- ══════════ Attendance Users Section ══════════ -->
     <section id="section-users" class="settings-section hidden space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-1">Authorized Attendance Users</h2>
-            <p class="text-xs text-gray-500 mb-4">These users log in with their mobile number. They can only mark attendance, scan QR codes and view workers on their assigned sites — nothing else.</p>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Authorized Attendance Users') }}</h2>
+            <p class="text-xs text-gray-500 mb-4">{{ _('These users log in with their mobile number. They can only mark attendance, scan QR codes and view workers on their assigned sites — nothing else.') }}</p>
             <form method="POST" action="{{ url_for('settings_attendance_user_save') }}" class="space-y-3" id="att-user-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" id="att-user-id" value="">
-                <input type="text" name="full_name" id="att-user-name" placeholder="Full name" required
+                <input type="text" name="full_name" id="att-user-name" placeholder="{{ _('Full name') }}" required
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
-                <input type="tel" name="mobile" id="att-user-mobile" placeholder="Mobile number (login ID)" required
+                <input type="tel" name="mobile" id="att-user-mobile" placeholder="{{ _('Mobile number (login ID)') }}" required
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
-                <input type="password" name="password" id="att-user-password" placeholder="Password (leave blank to keep current)"
+                <input type="password" name="password" id="att-user-password" placeholder="{{ _('Password (leave blank to keep current)') }}"
                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Sites</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Assigned Sites') }}</label>
                     <div class="max-h-28 overflow-y-auto border border-lightGray rounded-xl p-2 space-y-1" id="att-user-sites">
                         {% for site in sites %}
                         <label class="flex items-center text-sm text-gray-700 gap-2 py-0.5 {{ 'opacity-60' if site.status != 'active' else '' }}">
                             <input type="checkbox" name="site_ids" value="{{ site.id }}" class="rounded"> {{ site.name }}{% if site.status != 'active' %} (archived){% endif %}
                         </label>
                         {% else %}
-                        <div class="text-xs text-gray-500">No sites available — add sites first. Empty = all sites.</div>
+                        <div class="text-xs text-gray-500">{{ _('No sites available — add sites first. Empty = all sites.') }}</div>
                         {% endfor %}
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Projects</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Assigned Projects') }}</label>
                     <div class="max-h-28 overflow-y-auto border border-lightGray rounded-xl p-2 space-y-1" id="att-user-projects">
                         {% for project in projects %}
                         <label class="flex items-center text-sm text-gray-700 gap-2 py-0.5 {{ 'opacity-60' if project.status != 'active' else '' }}">
                             <input type="checkbox" name="project_ids" value="{{ project.id }}" class="rounded"> {{ project.name }}{% if project.status == 'archived' %} (archived){% elif project.status == 'completed' %} (completed){% endif %}
                         </label>
                         {% else %}
-                        <div class="text-xs text-gray-500">No projects yet. Empty = all projects.</div>
+                        <div class="text-xs text-gray-500">{{ _('No projects yet. Empty = all projects.') }}</div>
                         {% endfor %}
                     </div>
                 </div>
-                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save Attendance User</button>
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save Attendance User') }}</button>
             </form>
         </div>
         <div class="space-y-3" data-ms-scope="attendance-users" data-ms-noun="user" data-ms-plural="users">
@@ -525,7 +525,7 @@
                                 class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('settings_attendance_user_toggle', user_id=auser.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="Enable/Disable"><i class="fa-solid fa-power-off text-xs"></i></button>
+                            <button class="w-8 h-8 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="{{ _('Enable/Disable') }}"><i class="fa-solid fa-power-off text-xs"></i></button>
                         </form>
                         <form method="POST" action="{{ url_for('settings_attendance_user_delete', user_id=auser.id) }}" onsubmit="return confirm('Delete this attendance user?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -535,7 +535,7 @@
                 </div>
             </div>
             {% else %}
-            <div class="text-center text-sm text-gray-500 py-6">No attendance users yet.</div>
+            <div class="text-center text-sm text-gray-500 py-6">{{ _('No attendance users yet.') }}</div>
             {% endfor %}
         </div>
     </section>
