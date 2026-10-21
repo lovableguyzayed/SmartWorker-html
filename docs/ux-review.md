@@ -1,9 +1,12 @@
 # SmartWorker — UI and UX review
 
-Branch `claude/worker-management-app-e8mkqg`. **Nothing in the interface has
-been changed by this review.** It is findings and proposals only, waiting on
-a decision, in keeping with the standing instruction not to replace or modify
-the UI before approval.
+Branch `claude/worker-management-app-e8mkqg`.
+
+**Status.** The review below was findings only. Four of them — A, B, C and D
+in the table at the end — were then approved and are done; each is marked
+FIXED in place, with the measurement that proves it. The rest are still
+proposals waiting on a decision, in keeping with the standing instruction
+not to replace or modify the UI before approval.
 
 This is a different question from the Phase 7 audit. That one asked whether
 anything was broken — clipped text, content off the screen, overlapping bars,
@@ -67,7 +70,7 @@ most of why it runs to seven phone screens.
 
 ## Findings, worst first
 
-### 1. Money is printed four different ways, and never grouped — NEEDS REVIEW
+### 1. Money is printed four different ways, and never grouped — FIXED
 
 This is a wages application, and the wage is the thing everyone looks at.
 Across the templates there are **73 places that print a rupee amount: 16 use
@@ -101,7 +104,22 @@ The one deliberate exception is the worker report's "Daily salary (exact)"
 at four decimals, which exists to show how a monthly wage divides; that
 should stay as it is.
 
-### 2. A quarter of the measurable text is below the contrast floor — NEEDS REVIEW
+**Done.** `money.py` does it once — Indian grouping, paise only where there
+are paise, a real minus sign before the symbol, ROUND_HALF_UP on Decimal so
+a figure cannot move by a paisa on its way to the screen. The printable
+documents use the two-place form so their columns still line up, and the day
+view gets the same rupee from `toLocaleString('en-IN')` rather than a second
+convention. `tests/test_money.py` checks the formatting and then checks the
+templates, with the guard pointed at the four shapes that were really in
+these files.
+
+Worth recording: a Jinja filter binds tighter than `or`, so
+`worker.daily_rate or 0|money2` means `worker.daily_rate or (0|money2)` and
+would have gone on printing the raw float for every worker who has a rate —
+the exact bug being removed. Every expression carrying an operator is now
+bracketed.
+
+### 2. A quarter of the measurable text is below the contrast floor — FIXED
 
 **242 of the 965 runs that could be measured fall below WCAG AA (25.1%).**
 Not a theoretical concern: this phone is used on a building site, in sun,
@@ -134,6 +152,39 @@ darken the accent from `#007bff` to about `#0062cc` for text and small
 controls, leaving the brand blue for large fills; move the success green used
 for text from `green-500`/`green-600` to `green-700`. That clears the great
 majority of the 242 and changes the look of the product very little.
+
+**Done, and the figure above was understated.** Two corrections came out of
+doing it.
+
+The first: the `large()` helper was more generous than WCAG, letting any
+18.66px text through regardless of weight. The standard is 18pt regular
+(24px) or 14pt bold (18.66px bold). Corrected, the baseline was **259, not
+242** — 26.8%.
+
+The second is worse, and the review did not know it had the problem. **A
+gradient paints no `background-color`**, so the sweep walked up the DOM,
+found nothing, and filed 374 runs as unmeasurable without looking at them.
+Four of those were the dashboard's stat tiles — the biggest numbers on the
+home screen — carrying white text at **2.27:1 to 3.43:1**. The tool now
+scores text on a gradient against the worst point of the fill instead of
+giving up, which is the only reason they were found.
+
+**Result: 259 → 0 on solid fills.** `gray-400` and its hardcoded twin
+`#9ca3af` go to `gray-500`; the accent moves to `#0062cc` as ink, fill,
+border, focus ring and gradient stop; green, amber, orange, yellow and red
+each move one step for text; the Mark Paid button goes from 2.28:1 to
+5.02:1; the four stat-tile gradients move down a step or two.
+
+A trap for next time: **the purged Tailwind build carries almost none of the
+700-weight fills or gradient stops**, so writing `bg-green-700` in a template
+does nothing at all, silently. Every fill this needed is written out in
+`custom.css` with the ratio it buys, the way `.has-bottom-nav` already was.
+
+What is left is 29 runs, none on a solid fill: 15 are the tool catching a
+card's drop shadow at the edge of a text box, and **14 are the frosted
+`bg-white/20` pills on the headers** — the avatar initial and the
+"permanent" badge, at 2.56:1 to 2.87:1. Those are a deliberate look rather
+than an oversight, so they are left for a decision rather than changed.
 
 ### 3. The attendance screen lists the same twelve workers twice — NEEDS REVIEW
 
@@ -178,7 +229,7 @@ This one needs a decision rather than a preference: the two rosters exist for
 different reasons and somebody who knows how the screen is used in the field
 should say which one goes.
 
-### 4. Seventy-five controls carry no word and no name — FAIL
+### 4. Seventy-five controls carry no word and no name — FIXED
 
 **187 controls across the 17 screens show no text at all; 75 of those carry
 no `aria-label` and no `title` either**, so they are unknowable until you
@@ -195,6 +246,19 @@ the back arrow is unnamed on 14 of the 15 screens that have one.
 tiles already do; and an `aria-label` on every remaining wordless control.
 The first is a design change and needs approval; the second is invisible and
 could be done straight away.
+
+**The invisible half is done: 75 → 0.** Every wordless control now carries a
+name, through `_()` so it is in Hindi too — nineteen new strings. Nothing
+moved on screen. `tests/test_control_names.py` drives the real pages rather
+than reading the templates, because a label can be lost to a branch only one
+role ever sees; pulling a single label out makes it fail.
+
+**Still open:** visible labels under the three workers-list glyphs. That is
+a design change and has not been made.
+
+One snag worth keeping: a link whose `href` holds a Jinja expression with a
+bare `>` in it (`start_date.month > 1`) ends the attribute as far as any
+regex is concerned, so it slipped the automated pass and was named by hand.
 
 ### 5. The date picker shows the date in American order — FAIL
 
@@ -237,7 +301,7 @@ current. Then let Quick Actions carry only what the bar cannot reach — Add
 Worker, Assignments, Closures — and drop the three duplicates, which buys
 back most of a screen on the dashboard.
 
-### 7. The page title is not a heading on any screen — NEEDS REVIEW
+### 7. The page title is not a heading on any screen — FIXED
 
 Every screen shows its name in the navy header — "Workers", "Attendance" —
 but those are `<div class="text-xl font-semibold">`, not headings. The
@@ -251,6 +315,14 @@ announces no title, and "skip to the heading" lands nowhere.
 
 **Proposal.** Make the existing title text an `<h1>` and the section titles
 `<h2>`. No visual change whatsoever — the classes stay as they are.
+
+**Done.** Twenty screens now open with an `<h1>` and their sections sit at
+`<h2>`, with no level skipped; the payslip's three section headings come up
+from `<h4>`. "No visual change" was checked rather than asserted: the build's
+preflight resets headings to inherit their font and carry no margin, and no
+rule in `custom.css` targets a heading tag, so the dashboard, the workers
+list and the payroll screen render **pixel for pixel as before — 0 of
+1,316,640 pixels differ on each**. `tests/test_headings.py` holds it.
 
 ### 8. Thirteen per cent of all text is under 12px — NEEDS REVIEW
 
@@ -347,22 +419,84 @@ Worth saying plainly, because it is the ground to build on:
 
 Grouped so they can be approved separately. Nothing here has been started.
 
-| | Change | Visible? | Rough size |
-|---|---|---|---|
-| A | One `money` filter at all 73 sites | yes, everywhere | half a day |
-| B | Contrast: three colour substitutions | slight | half a day |
-| C | `aria-label` on 75 unnamed controls | no | 2 hours |
-| D | Titles become `<h1>`/`<h2>` | no | 1 hour |
-| E | Attendance: drop one of the two rosters, collapse times, trim meta | yes, large | 1–2 days |
-| F | Labels under the workers-list icons | yes | 2 hours |
-| G | Navigation: payroll tab, FAB state, Quick Actions | yes | half a day |
-| H | Type and spacing scale, one button system | yes, everywhere | 2–3 days |
-| I | Colour given meaning; calendar legend | yes | 1 day |
-| J | Hindi names for sites and projects | yes, Hindi only | 1 day + data entry |
+| | Change | Visible? | Rough size | |
+|---|---|---|---|---|
+| A | One `money` filter at all 73 sites | yes, everywhere | half a day | **DONE** |
+| B | Contrast: colour substitutions | slight | half a day | **DONE** |
+| C | `aria-label` on 75 unnamed controls | no | 2 hours | **DONE** |
+| D | Titles become `<h1>`/`<h2>` | no | 1 hour | **DONE** |
+| E | Attendance: drop one of the two rosters, collapse times, trim meta | yes, large | 1–2 days | waiting |
+| F | Labels under the workers-list icons | yes | 2 hours | waiting |
+| G | Navigation: payroll tab, FAB state, Quick Actions | yes | half a day | waiting |
+| H | Type and spacing scale, one button system | yes, everywhere | 2–3 days | waiting |
+| I | Colour given meaning; calendar legend | yes | 1 day | waiting |
+| J | Hindi names for sites and projects | yes, Hindi only | 1 day + data entry | waiting |
+| K | The frosted `bg-white/20` header pills, 2.56:1 | slight | 2 hours | new, waiting |
 
-C and D change nothing a person can see and could be done without a design
-decision. A and B are corrections rather than redesigns. E through J are
-design changes and should not start until they are approved.
+A, B, C and D are done. C and D changed nothing a person can see; A and B
+were corrections rather than redesigns. **E through K are design changes and
+have not been started.**
+
+E needs a decision rather than a preference, and it is the one worth making
+first: the two attendance rosters exist for different reasons, and somebody
+who has watched the screen used on a site should say which one goes. The
+recommendation here is to keep the compact entry-panel row for marking and
+turn the day view read-only, since its own heading — "Workers on this
+date" — says that is what it was for.
+
+---
+
+## Selecting several at once: where it is, and where it is not
+
+Asked separately, and worth recording because the feature is better than it
+looks: **press and hold any item** and a selection bar appears. It is live on
+eight screens and twelve lists, all served by one endpoint,
+`POST /api/bulk/<scope>` in `bulk.py`, which re-queries every id through the
+tenant-scoped session and checks the permission server-side rather than
+trusting a hidden button.
+
+| Screen | What can be selected | What you can then do |
+|---|---|---|
+| Workers | workers | Activate · Deactivate · Delete |
+| Attendance | workers on the chosen date | Present · Late · Check Out, and for an administrator Absent · Half Day · Leave |
+| Payroll | workers | Generate · Mark Paid · Mark Pending |
+| Transactions | transactions | Cancel · Restore · Delete |
+| Assignments | workers | Assign / Transfer · End Assignment |
+| Closure days | closure days | Allow Attendance · Lock Attendance · Delete |
+| Notifications | notifications | Mark Read · Mark Unread · Delete |
+| Settings | sites, projects, tasks, departments | Archive · Restore · Delete |
+| Settings | attendance users | Enable · Disable · Delete |
+
+### Where it should also be
+
+**1. The mukadam's roll (`/me/team`) — much the most valuable, and not free.**
+He marks two to twenty men one by one, every working day; nobody in the
+product would save more taps. The screen has no selection at all today.
+
+Two things have to happen first, and the second is a security change, so this
+is not the half-hour job it looks like. `bulk_action` is in neither
+`WORKER_ENDPOINTS` nor `SUPERVISOR_ENDPOINTS`, so a worker login that reaches
+it is redirected to its own page — the deny-by-default rule holding exactly
+as intended, and **there is no hole today**. But opening it is not enough:
+`worker_visible_to_user` only knows about site- and project-scoped attendance
+users, and for a mukadam — who has neither list — it falls through to
+`return True`, meaning *every* worker in the tenant. Opening the endpoint
+without first teaching that function about `supervisor_team_ids` would let a
+mukadam post the id of a man who is not his and mark him. The guard belongs
+in that one function, where the rest of the rules already live, with a test
+that removing it fails.
+
+**2. One worker's month (`/worker_attendance/<id>`).** An administrator
+correcting five days to Leave does it five times. The calendar cells are not
+selectable. This needs a new scope — attendance for one worker across several
+dates — rather than reusing the existing one, which is keyed to a single date.
+
+**3. A worker's transactions, on the worker's own profile.** Several advances
+to cancel in a row is a real errand, and the Transactions screen already has
+the bar; the profile list does not.
+
+**4. The payroll preview** could have it, but the payroll screen beside it
+already does, so this one is close to pointless.
 
 ---
 
