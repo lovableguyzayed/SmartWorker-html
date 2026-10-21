@@ -64,6 +64,7 @@ TRANSLATIONS = {
         'Next day': 'अगला दिन',
         'Previous month': 'पिछला महीना',
         'Next month': 'अगला महीना',
+        'Calendar': 'कैलेंडर',
         'Change photo': 'फ़ोटो बदलें',
         'Add a transaction': 'लेन-देन जोड़ें',
         'Statistics': 'आँकड़े',

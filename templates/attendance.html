@@ -166,6 +166,21 @@
            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
            overflow: hidden; overflow-wrap: anywhere; }
 .dv-sub { font-size: 0.74rem; color: #6b7280; line-height: 1.4; }
+/* The folded calendar. A summary is a real control, so it gets a real 44px
+   target and says what it will do; the chevron turns when it is open. */
+.cal-summary {
+    display: flex; align-items: center; gap: 0.5rem;
+    min-height: 2.75rem; padding: 0 0.25rem;
+    cursor: pointer; list-style: none;
+    font-size: 0.85rem; font-weight: 600; color: #1f2937;
+}
+.cal-summary::-webkit-details-marker { display: none; }
+.cal-summary-label { display: flex; align-items: center; gap: 0.45rem; }
+.cal-summary-label i { color: #4b5563; }
+.cal-summary-month { margin-left: auto; font-weight: 500; color: #4b5563; }
+.cal-summary-chevron { color: #4b5563; transition: transform 0.15s ease; }
+#cal-fold[open] .cal-summary-chevron { transform: rotate(180deg); }
+
 /* The day view reports; it does not mark. Where four status buttons used to
    sit on every row there is now one badge saying what happened, and the ink
    on each is dark enough to read in sun. */
@@ -331,23 +346,57 @@
     <!-- Entry panel: the three most common data-entry jobs on one surface.
          Transaction and Worker open their full existing screens rather than
          reimplementing them in a tab. -->
-    <!-- Month calendar — click any date to open its detail below it -->
+    <!-- Month calendar — click any date to open its detail below it.
+         Folded away by default: it cost 600px above the roster, and marking
+         today never needs it. The date field and its day arrows in the header
+         already move between days; this is for looking back over a month. -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
-        <div class="flex items-center justify-between mb-2 px-1">
-            <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
-               class="dv-navbtn" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></a>
-            <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
-            <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
-               class="dv-navbtn" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></a>
-        </div>
-        {% with cal_month_start = month_start,
-                cal_month = selected_date.month, cal_year = selected_date.year,
-                cal_data = calendar_data, cal_closures = closure_days,
-                cal_selected = selected_date, cal_today = today,
-                cal_interactive = true %}
-            {% include '_calendar.html' %}
-        {% endwith %}
+        <details id="cal-fold">
+            <summary class="cal-summary">
+                <span class="cal-summary-label">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    {{ _('Calendar') }}
+                </span>
+                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
+                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
+            </summary>
+            <div class="flex items-center justify-between mb-2 mt-3 px-1">
+                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
+                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
+                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
+            </div>
+            {% with cal_month_start = month_start,
+                    cal_month = selected_date.month, cal_year = selected_date.year,
+                    cal_data = calendar_data, cal_closures = closure_days,
+                    cal_selected = selected_date, cal_today = today,
+                    cal_interactive = true %}
+                {% include '_calendar.html' %}
+            {% endwith %}
+        </details>
     </section>
+    <script>
+    /* The month arrows are links, so changing month reloads the page. Without
+       remembering the fold, the calendar would snap shut under the person
+       every time they stepped back a month. Runs here, during parse, so it
+       does not open with a visible jump.
+
+       Browser storage can throw outright in a private window or with site
+       data blocked, so a failure to remember must never stop the page. */
+    (function () {
+        var fold = document.getElementById('cal-fold');
+        if (!fold) return;
+        try {
+            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
+        } catch (e) { /* not remembered; the calendar simply starts folded */ }
+        fold.addEventListener('toggle', function () {
+            try {
+                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
+            } catch (e) { /* nothing to do: the fold still works for this visit */ }
+        });
+    })();
+    </script>
 
     <!-- Day detail — filled from /api/attendance/day/<date> -->
     <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
