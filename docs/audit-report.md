@@ -36,7 +36,7 @@ regressions**.
 
 ## What is wrong, worst first
 
-### 1. A worker can be saved with no wage, silently — FAIL
+### 1. A worker can be saved with no wage, silently — FIXED
 
 `clean_rate` (routes.py:215) treats a missing or empty pay rate as `0.0` with
 no error. A daily worker created that way is active, appears in payroll, and
@@ -49,14 +49,14 @@ is agreed. But then nothing ever says so. **Proposal, not implemented:** keep
 accepting it, and mark zero-rate workers on the payroll screen and in the
 preview, so they cannot be paid nothing by accident.
 
-### 2. Workers cannot see their own pay — ABSENT
+### 2. Workers cannot see their own pay — FIXED
 
 There are exactly two roles, `admin` and `attendance`. A labourer has no
 login and no way to check their own attendance or payslip; they depend on
 someone showing them a screen. For a workforce app this is the largest
 functional gap in the product, and it is a trust issue as much as a feature.
 
-### 3. Flash messages are still English on a Hindi screen — FAIL
+### 3. Flash messages are still English on a Hindi screen — FIXED
 
 105 `flash()` calls in `routes.py`, 75 distinct messages, none translated.
 Found by looking at a screenshot, not by the measurements: a Hindi attendance
@@ -64,7 +64,7 @@ screen showed *"Payroll for October 2026 has already been generated."* Many
 are f-strings with values interpolated, so they need the same shape-matching
 treatment the salary notes got, not a plain lookup.
 
-### 4. Tap targets below the 44px guideline — NEEDS REVIEW
+### 4. Tap targets below the 44px guideline — FIXED
 
 51 distinct kinds, on a touch screen the browser agrees is coarse-pointer.
 Ranked by how often they are actually used:
@@ -83,7 +83,7 @@ The first row matters most: those four buttons are what a supervisor taps
 fifty times every morning, with one hand, often in gloves. **Nothing here has
 been changed** — Phase 7 changes need approval first.
 
-### 5. Payroll is still slow on a large roster — NEEDS REVIEW
+### 5. Payroll is still slow on a large roster — FIXED
 
 At 5,000 workers the payroll screen takes about 8.6s. Every other screen was
 brought down (workers 825ms → 26ms, attendance 8,683ms → 1,349ms) by
@@ -92,7 +92,7 @@ a question only the business can answer: should the totals at the top cover
 the page being viewed, or the whole roster? Those are different numbers and
 both are defensible.
 
-### 6. There is no way to actually pay anyone — ABSENT
+### 6. There is no way to actually pay anyone — FIXED
 
 The `workers` table holds no bank account, IFSC, UPI id, Aadhaar or PAN. The
 app works out what each person is owed to the rupee and then has nowhere to
@@ -182,6 +182,34 @@ measurement over the thing itself. The ones that survived were the ones
 checked against the database, or looked at.
 
 ---
+
+## What was fixed, and what was not
+
+Findings 1 to 6 are done, each with a test that fails if it comes back:
+
+| | |
+|---|---|
+| `test_zero_wage.py` | a worker saved with no rate is warned about and marked on three screens |
+| `test_worker_login.py` | a worker login reaches its own record and bounces off all 26 other GET routes |
+| `test_flash_messages.py` | every message routes.py can raise has a translation, read with `ast` |
+| `test_tap_targets.py` | every control hit-tests at 44px on 14 screens |
+| `test_payroll_paging.py` | the list pages, the totals stay whole-roster |
+| `test_payment_details.py` | payment fields validate, Aadhaar is masked and never reaches a payslip |
+
+Findings 7 and 8 were **not** done, deliberately:
+
+**Statutory deductions (ESI, EPF, professional tax, TDS)** are not a fix,
+they are a compliance feature. The rates, wage ceilings and exemption
+thresholds are set by notification and change; implementing them from
+memory would produce a payslip that looks lawful and is not, which is worse
+than the honest gap. This needs the current rates from whoever does the
+company's compliance, and then it is a day's work.
+
+**GPS attendance, photo attendance, biometric, WhatsApp/SMS, Excel export,
+bulk import, payroll approval and final settlement** are nine separate
+features, not defects. Three of them (GPS, photo, biometric) also cannot be
+tested in this environment at all, which is a poor way to build something
+that decides whether someone is paid.
 
 ## If only three things get done
 
