@@ -100,7 +100,6 @@ TRANSLATIONS = {
         'Casual': 'आम',
         'Sick': 'बीमारी',
         'Earned': 'जमा की हुई',
-        'Emergency': 'ज़रूरी',
         'Nothing recorded for this date.': 'इस तारीख़ का कोई रिकॉर्ड नहीं।',
         'cancelled': 'रद्द',
         'Press and hold a worker to mark several at once.':
@@ -216,6 +215,116 @@ TRANSLATIONS = {
         'Actual attendance since joining': 'भर्ती के बाद की असली हाज़िरी',
         'Monthly salary minus deductions': 'महीने की तनख़्वाह में से कटौती',
         'Daily rate x payable days': 'दिहाड़ी × देने योग्य दिन',
+
+        # --- worker profile report -----------------------------------------
+        'Employee Report': 'मज़दूर की रिपोर्ट',
+        'Profile Report': 'प्रोफ़ाइल रिपोर्ट',
+        'Personal & Employment Details': 'निजी और नौकरी की जानकारी',
+        'Joined': 'भर्ती',
+        'Pay Type': 'मज़दूरी का तरीक़ा',
+        'Current Assignment': 'अभी कहाँ लगे हैं',
+        'Project': 'प्रोजेक्ट',
+        'Site': 'साइट',
+        'Task': 'काम',
+        'Since': 'कब से',
+        'Not currently assigned.': 'अभी कहीं नहीं लगे हैं।',
+        'Leave Balance': 'छुट्टी का हिसाब',
+        'Monthly Quota': 'महीने का हक़',
+        'day(s)': 'दिन',
+        'Accrued (since joining)': 'जमा हुई (भर्ती से)',
+        'Manual Adjustments': 'हाथ से किए बदलाव',
+        'Used This Month': 'इस महीने ली गई',
+        'Available Balance': 'बची हुई छुट्टी',
+        'Leave policy not applicable.': 'छुट्टी का नियम लागू नहीं है।',
+        'Project & Site History': 'प्रोजेक्ट और साइट का इतिहास',
+        'Project / Site': 'प्रोजेक्ट / साइट',
+        'From': 'से',
+        'To': 'तक',
+        'Days': 'दिन',
+        'No project or site assignments recorded.':
+            'किसी प्रोजेक्ट या साइट पर लगने का रिकॉर्ड नहीं है।',
+        'Promotions & Modification History': 'तरक़्क़ी और बदलावों का इतिहास',
+        'Change': 'बदलाव',
+        'Details': 'ब्योरा',
+        'No modifications recorded since joining.':
+            'भर्ती के बाद से कोई बदलाव दर्ज नहीं है।',
+        'Attendance & Pay — Last 6 Months': 'हाज़िरी और मज़दूरी — पिछले 6 महीने',
+        'Month': 'महीना',
+        'Net Pay': 'देने योग्य रक़म',
+        'P = Present, L = Late, A = Absent, Lv = Leave. Net pay includes '
+        'overtime, transactions and deductions.':
+            'P = हाज़िर, L = देर से, A = ग़ैरहाज़िर, Lv = छुट्टी। देने योग्य रक़म में '
+            'ओवरटाइम, लेन-देन और कटौतियाँ शामिल हैं।',
+        'No attendance history yet.': 'अभी हाज़िरी का कोई इतिहास नहीं है।',
+        'OT': 'ओवरटाइम',
+        'Daily': 'दिहाड़ी',
+        'Monthly': 'महीनेवार',
+        'Hourly': 'घंटेवार',
+        # TRANSACTION_TYPE_LABELS in routes.py
+        'Advance Salary': 'पेशगी तनख़्वाह',
+        'Loan': 'क़र्ज़',
+        'Cash Advance': 'नक़द पेशगी',
+        'Recovery': 'वसूली',
+        'Extra Payment': 'अतिरिक्त भुगतान',
+        'Incentive': 'प्रोत्साहन राशि',
+        'Refreshment Allowance': 'नाश्ते का भत्ता',
+        # Stored enum values shown with .title() in templates
+        'Holiday': 'त्योहार/छुट्टी',
+        'Weather': 'मौसम',
+        'Emergency': 'आपात',
+        'Maintenance': 'मरम्मत',
+        'Completed': 'पूरा हुआ',
+        'On_hold': 'रुका हुआ',
+        'Policy in force': 'लागू नियम',
+        # salary.describe() labels and its plain values
+        'Salary basis': 'तनख़्वाह का आधार',
+        'Daily rate rounding': 'दिहाड़ी का पूर्णांकन',
+        'Mid-month joining': 'महीने के बीच भर्ती',
+        'Paid leave': 'तनख़्वाह वाली छुट्टी',
+        'Leave carry-forward': 'बची छुट्टी आगे बढ़ाना',
+        'Absence deduction': 'ग़ैरहाज़िरी पर कटौती',
+        'Calculation method': 'हिसाब का तरीक़ा',
+        'On': 'चालू',
+        'Off': 'बंद',
+        'Disabled': 'बंद',
+        'Ongoing': 'जारी',
+        'Today': 'आज',
+        'Saved Payroll Records': 'सेव किए गए वेतन रिकॉर्ड',
+        'Period': 'अवधि',
+        'Net': 'देने योग्य',
+        'Transaction History': 'लेन-देन का इतिहास',
+        'Amount': 'रक़म',
+        'No transactions recorded.': 'कोई लेन-देन दर्ज नहीं है।',
+        'Worker Management System': 'मज़दूर प्रबंधन प्रणाली',
+
+        # --- ID card --------------------------------------------------------
+        'Employee ID Card': 'मज़दूर पहचान पत्र',
+        'Digital Identity': 'डिजिटल पहचान',
+        'Preparing ID card…': 'पहचान पत्र तैयार हो रहा है…',
+        'Phone Number': 'फ़ोन नंबर',
+        'Joined Date': 'भर्ती की तारीख़',
+        'QR Code for Attendance': 'हाज़िरी के लिए QR कोड',
+        'Valid for attendance marking': 'हाज़िरी लगाने के लिए मान्य',
+        'Generated': 'बनाया गया',
+        'Download ID': 'पहचान पत्र डाउनलोड करें',
+        'Generate New QR': 'नया QR बनाएँ',
+        'ID Card Information': 'पहचान पत्र की जानकारी',
+        'Card Type': 'कार्ड की किस्म',
+        'Digital Employee ID': 'डिजिटल मज़दूर पहचान',
+        'QR Code Status': 'QR कोड की हालत',
+        'Last Generated': 'पिछली बार बना',
+        'QR Usage Statistics': 'QR के इस्तेमाल का हिसाब',
+        'Successful Check-ins': 'सफल हाज़िरी',
+        'This Week': 'इस हफ़्ते',
+        'Other Records': 'बाक़ी रिकॉर्ड',
+        'Success Rate': 'सफलता दर',
+        'Download Options': 'डाउनलोड के विकल्प',
+        'Choose your preferred format': 'अपनी पसंद का रूप चुनें',
+        'PNG Image': 'PNG तस्वीर',
+        'High quality image format': 'बढ़िया क्वालिटी की तस्वीर',
+        'PDF Document': 'PDF दस्तावेज़',
+        'Printable format': 'छापने लायक़ रूप',
+        'QR Code': 'QR कोड',
 
         'Employer Signature': 'मालिक के हस्ताक्षर',
         'Employee Signature': 'मज़दूर के हस्ताक्षर',
@@ -586,6 +695,39 @@ _NOTE_PATTERNS = {
     lang: [(re.compile(pattern), repl) for pattern, repl in entries]
     for lang, entries in _NOTE_PATTERNS_SOURCE.items()
 }
+
+
+#: salary.describe() composes its values ("Fixed days (26)", "2 day(s) per
+#: month"), so they cannot be looked up as whole strings. Same approach as
+#: the notes above: match the shape, keep the numbers.
+_POLICY_PATTERNS_SOURCE = {
+    'hi': [
+        (r'^Fixed days \((\d+)\)$', r'तय दिन (\1)'),
+        (r'^(\S+) day\(s\) per month$', r'हर महीने \1 दिन'),
+    ],
+}
+
+_POLICY_PATTERNS = {
+    lang: [(re.compile(p), r) for p, r in entries]
+    for lang, entries in _POLICY_PATTERNS_SOURCE.items()
+}
+
+
+def translate_policy(text, lang):
+    """One value out of salary.describe(), translated for display.
+
+    Falls back to translate(), so the plain values ('On', 'Off', 'Nearest
+    rupee') come from the ordinary table and only the composed ones need a
+    pattern. Anything unrecognised stays English rather than being mangled.
+    """
+    if text is None or lang == DEFAULT_LANGUAGE:
+        return text
+    text = str(text).strip()
+    for pattern, repl in _POLICY_PATTERNS.get(lang, ()):
+        new, count = pattern.subn(repl, text)
+        if count:
+            return new
+    return translate(text, lang)
 
 
 def translate_note(text, lang):

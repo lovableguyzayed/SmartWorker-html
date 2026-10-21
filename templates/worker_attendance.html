@@ -166,7 +166,7 @@
                             <div class="font-medium text-gray-800">{{ record.date|ldate('%d %B %Y') }}</div>
                             {% if rec_closure %}
                                 <div class="text-xs text-orange-600 font-medium">
-                                    <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ rec_closure.reason }} ({{ rec_closure.type.title() }})
+                                    <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ rec_closure.reason }} ({{ _(rec_closure.type|capitalize) }})
                                 </div>
                             {% endif %}
                             {% if record.check_in_time %}
@@ -179,7 +179,7 @@
                     </div>
                     <div class="flex flex-col items-end gap-1">
                         <div class="{% if record.status == 'present' %}bg-green-100 text-green-800{% elif record.status == 'absent' %}bg-red-100 text-red-800{% elif record.status == 'late' %}bg-yellow-100 text-yellow-800{% else %}bg-blue-100 text-blue-800{% endif %} px-3 py-1 rounded-full text-xs font-medium">
-                            {{ record.status.title() }}
+                            {{ _(record.status|capitalize) }}
                         </div>
                         {% if rec_closure %}
                             <div class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">

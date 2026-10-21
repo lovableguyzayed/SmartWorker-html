@@ -1,4 +1,7 @@
-"""The payslip PDF, in both languages, checked on the real output.
+"""The printable documents in Hindi, checked on the real output.
+
+The payslip PDF in both languages, plus the worker report (print path)
+and the ID card.
 
 This one is worth the cost of a browser. The Hindi payslip has several parts
 that break silently and only show up in the finished file:
@@ -23,6 +26,7 @@ import re
 import socket
 import subprocess
 import sys
+import unicodedata as ud
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -101,6 +105,121 @@ def build_pdf(pg, lang, worker_id):
     return base64.b64decode(pg.evaluate("window.__pdf"))
 
 
+# ---------------------------------------------------------------------------
+# The worker report and the ID card.
+#
+# Neither has the payslip's font problem — the report prints through the
+# browser (real text) and the ID card is one flat raster with no native
+# jsPDF text — so what is worth checking is different: that no English label
+# survived, and that the QR payload on the card is untouched by translation.
+# ---------------------------------------------------------------------------
+
+def collapse_marks(t):
+    """Fold a Devanagari mark repeated by the text extractor.
+
+    letter-spacing makes PyMuPDF report a matra twice ('प्रोोजेक्ट' — U+094B
+    twice) while the glyphs on the page are correct, checked by eye at 320
+    dpi. Category, not combining(): a matra like U+094B is Mc with canonical
+    combining class 0, so combining() returns 0 and misses it.
+    """
+    out = []
+    for ch in t:
+        if out and ch == out[-1] and ud.category(ch) in ('Mn', 'Mc'):
+            continue
+        out.append(ch)
+    return ''.join(out)
+
+
+def flatten(t):
+    return collapse_marks(re.sub(r'\s+', '', t))
+
+
+def check_report_and_card():
+    with sync_playwright() as p:
+        br = p.chromium.launch(executable_path=EXE, args=['--no-sandbox'])
+        ctx = br.new_context(viewport={'width': 390, 'height': 844},
+                             service_workers='block')
+        pg = ctx.new_page()
+        errors = []
+        pg.on('pageerror', lambda e: errors.append(str(e)[:160]))
+        pg.goto(B + '/login')
+        pg.fill('input[name="username"]', 'demo@acme.test')
+        pg.fill('input[name="password"]', 'demo12345')
+        pg.click('#signin-form button[type="submit"]')
+        pg.wait_for_function("location.pathname !== '/login'", timeout=20000)
+        pg.goto(B + '/profile', wait_until='domcontentloaded')
+        pg.wait_for_timeout(700)
+        pg.locator('form[action*="/language/hi"] button[type=submit]').first.click()
+        pg.wait_for_timeout(1500)
+
+        print('--- worker report (print path) ---')
+        pg.goto(B + '/worker/%d/report' % WORKER, wait_until='domcontentloaded')
+        pg.wait_for_timeout(2500)
+        rpath = os.path.join(OUT, 'report_hi.pdf')
+        pg.pdf(path=rpath, format='A4', print_background=True,
+               margin={'top': '8mm', 'bottom': '8mm', 'left': '8mm', 'right': '8mm'})
+
+        print('--- id card ---')
+        pg.goto(B + '/id_card/%d' % WORKER, wait_until='domcontentloaded')
+        pg.wait_for_timeout(3000)
+        qr = pg.evaluate("""() => {
+            const el = [...document.querySelectorAll('*')]
+                .find(e => e.children.length === 0 && /QR/.test(e.textContent)
+                           && /\\d{4}/.test(e.textContent));
+            return el ? el.textContent.trim() : null;
+        }""")
+        pg.evaluate("""() => {
+            window.__pdf = null;
+            SmartWorkerSave.blob = function (blob) {
+                return new Promise((resolve) => {
+                    const r = new FileReader();
+                    r.onload = () => { window.__pdf = r.result.split(',')[1]; resolve('ok'); };
+                    r.readAsDataURL(blob);
+                });
+            };
+        }""")
+        pg.click('button:has-text("डाउनलोड"), button:has-text("Download")', timeout=5000)
+        pg.wait_for_timeout(800)
+        pg.click('button:has-text("PDF")', timeout=5000)
+        pg.wait_for_function("window.__pdf !== null", timeout=90000)
+        card = base64.b64decode(pg.evaluate("window.__pdf"))
+        ctx.close()
+        br.close()
+
+    check('[report+card] no javascript errors', errors, [])
+
+    doc = pymupdf.open(rpath)
+    flat = flatten(''.join(page.get_text() for page in doc))
+    doc.close()
+    check('[report] prints as real text, not a raster', len(flat) > 400, True)
+    for phrase in ('मज़दूर की रिपोर्ट', 'निजी और नौकरी की जानकारी',
+                   'छुट्टी का हिसाब', 'प्रोजेक्ट और साइट का इतिहास',
+                   'तनख़्वाह का हिसाब', 'यह हिसाब कैसे लगा',
+                   'लागू नियम', 'लेन-देन का इतिहास'):
+        check('[report] contains %r' % phrase, flatten(phrase) in flat, True)
+    leftovers = [w for w in ('Final net payable salary', 'Leave Balance',
+                             'Current Assignment', 'Transaction History',
+                             'Policy in force', 'Salary basis',
+                             'Calculation method', 'Advance Salary')
+                 if flatten(w) in flat]
+    check('[report] no English label survived', leftovers, [])
+
+    cpath = os.path.join(OUT, 'idcard_hi.pdf')
+    with open(cpath, 'wb') as fh:
+        fh.write(card)
+    doc = pymupdf.open(cpath)
+    check('[card] is a single page', doc.page_count, 1)
+    check('[card] page is not blank',
+          len(set(doc[0].get_pixmap(dpi=60).samples[::97])) > 8, True)
+    check('[card] is a pure raster, no native text',
+          ''.join(pg_.get_text() for pg_ in doc).strip(), '')
+    doc.close()
+    # Translating the interface must never touch the scanner payload.
+    print('   QR line:', qr)
+    check('[card] QR payload is untouched by translation',
+          bool(qr and re.search(r'CI002QR\d{4}', qr)), True)
+
+
 try:
     from playwright.sync_api import sync_playwright
     import pymupdf
@@ -162,9 +281,13 @@ try:
           % (sizes['en'] / 1024, sizes['hi'] / 1024, ratio))
     check('hindi pdf is not bloated against english', ratio < 1.5, True)
 
+    check_report_and_card()
+
 finally:
     server.terminate()
     server.wait(timeout=10)
+
+
 
 print('\n%d failed' % len(failures))
 for f in failures:

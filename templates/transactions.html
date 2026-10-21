@@ -71,7 +71,7 @@
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-gray-800 name-wrap">{{ txn.worker.full_name }}</div>
                         <div class="text-xs text-gray-500">
-                            {{ type_labels.get(txn.txn_type, txn.txn_type) }} • {{ txn.date|ldate('%d %b %Y') }}
+                            {{ _(type_labels.get(txn.txn_type, txn.txn_type)) }} • {{ txn.date|ldate('%d %b %Y') }}
                             {% if txn.status == 'cancelled' %} • <span class="text-red-500 font-medium">{{ _('Cancelled') }}</span>{% endif %}
                         </div>
                         {% if txn.description %}<div class="text-xs text-gray-400 truncate">{{ txn.description }}</div>{% endif %}
@@ -159,12 +159,12 @@
                     <select name="txn_type" id="txn-type" required class="w-full p-3 border border-lightGray rounded-xl">
                         <optgroup label="Deducted from pay">
                             {% for t in deduction_types %}
-                            <option value="{{ t }}">{{ type_labels[t] }}</option>
+                            <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
                             {% endfor %}
                         </optgroup>
                         <optgroup label="Added to pay">
                             {% for t in earning_types %}
-                            <option value="{{ t }}">{{ type_labels[t] }}</option>
+                            <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
                             {% endfor %}
                         </optgroup>
                     </select>

@@ -4113,7 +4113,12 @@ def _day_payload(on_date):
             transactions.append({
                 'id': txn.id,
                 'worker': txn.worker.full_name if txn.worker else '',
-                'type': TRANSACTION_TYPE_LABELS.get(txn.txn_type, txn.txn_type.replace('_', ' ').title()),
+                # Built into markup by the day view's own JS, so it has to
+                # arrive in the interface language.
+                'type': i18n.translate(
+                    TRANSACTION_TYPE_LABELS.get(
+                        txn.txn_type, txn.txn_type.replace('_', ' ').title()),
+                    _current_lang()),
                 'amount': round(txn.amount, 2),
                 'is_earning': txn.is_earning,
                 'status': txn.status,
@@ -4869,6 +4874,25 @@ def _lnote(value):
 def _lnotes(value):
     """A run of salary notes joined into one paragraph, translated."""
     return i18n.translate_notes(value, _current_lang())
+
+
+@app.template_filter('lpolicy')
+def _lpolicy(value):
+    """One value out of salary.describe(), translated for display."""
+    return i18n.translate_policy(value, _current_lang())
+
+
+@app.template_filter('lmonth')
+def _lmonth(value):
+    """'October 2026' -> the month name in the interface language.
+
+    The six-month history labels are composed server-side from MONTH_NAMES,
+    so they arrive here already joined to the year.
+    """
+    if not value:
+        return value
+    parts = str(value).split(' ', 1)
+    return ' '.join([i18n.translate(parts[0], _current_lang())] + parts[1:])
 
 
 @app.route('/language/<lang>', methods=['POST'])

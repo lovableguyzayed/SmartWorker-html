@@ -43,8 +43,8 @@
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Employee ID Card</div>
-                <div class="text-sm opacity-90">Digital Identity</div>
+                <div class="text-xl font-semibold">{{ _('Employee ID Card') }}</div>
+                <div class="text-sm opacity-90">{{ _('Digital Identity') }}</div>
             </div>
         </div>
         <div class="flex items-center space-x-3">
@@ -64,7 +64,7 @@
     <div id="card-busy" class="hidden no-print fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
         <div class="bg-white rounded-2xl px-6 py-5 shadow-xl flex items-center space-x-3">
             <i class="fa-solid fa-circle-notch fa-spin text-primary text-xl"></i>
-            <span class="text-sm font-medium text-gray-700">Preparing ID card…</span>
+            <span class="text-sm font-medium text-gray-700">{{ _('Preparing ID card…') }}</span>
         </div>
     </div>
 
@@ -85,7 +85,7 @@
                     <img src="{{ company.logo }}" alt="logo" class="w-10 h-10 mx-auto mb-1 rounded-lg object-contain bg-white/10 p-0.5">
                     {% endif %}
                     <div class="text-xl font-bold text-white mb-1">{{ company.name if company else 'SmartWorker' }}</div>
-                    <div class="text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full inline-block">Employee ID Card</div>
+                    <div class="text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full inline-block">{{ _('Employee ID Card') }}</div>
                 </div>
                 
                 <!-- Employee Info -->
@@ -106,8 +106,8 @@
                         <div class="text-xl font-bold mb-1">{{ worker.full_name }}</div>
                         <div class="text-sm text-white/90 mb-1">{{ worker.position }}</div>
                         <div class="flex items-center space-x-2 mb-2">
-                            <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">ID: {{ worker.worker_id }}</div>
-                            <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">{{ worker.status.title() }}</div>
+                            <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">{{ _('Worker ID') }}: {{ worker.worker_id }}</div>
+                            <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">{{ _(worker.status|capitalize) }}</div>
                         </div>
                     </div>
                 </div>
@@ -115,19 +115,19 @@
                 <!-- Details -->
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/20">
-                        <div class="text-xs text-white/70 mb-1">Phone Number</div>
+                        <div class="text-xs text-white/70 mb-1">{{ _('Phone Number') }}</div>
                         <div class="text-sm font-medium">{{ worker.phone }}</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/20">
-                        <div class="text-xs text-white/70 mb-1">Joined Date</div>
-                        <div class="text-sm font-medium">{{ worker.join_date.strftime('%d %b %Y') }}</div>
+                        <div class="text-xs text-white/70 mb-1">{{ _('Joined Date') }}</div>
+                        <div class="text-sm font-medium">{{ worker.join_date|ldate('%d %b %Y') }}</div>
                     </div>
                 </div>
                 
                 <!-- QR Code Section -->
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex-1">
-                        <div class="text-xs text-white/70 mb-2">QR Code for Attendance</div>
+                        <div class="text-xs text-white/70 mb-2">{{ _('QR Code for Attendance') }}</div>
                         <div class="text-sm font-medium text-white/90 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
                             QR ID: {{ worker.worker_id }}QR{{ worker.join_date.strftime('%Y') }}
                         </div>
@@ -146,8 +146,8 @@
                 <!-- Footer -->
                 <div class="border-t border-white/20 pt-4">
                     <div class="flex items-center justify-between text-xs text-white/70">
-                        <span>Valid for attendance marking</span>
-                        <span>Generated: {{ worker.updated_at.strftime('%d %b %Y') if worker.updated_at else 'Today' }}</span>
+                        <span>{{ _('Valid for attendance marking') }}</span>
+                        <span>{{ _('Generated') }}: {{ worker.updated_at|ldate('%d %b %Y') if worker.updated_at else _('Today') }}</span>
                     </div>
                 </div>
             </div>
@@ -158,34 +158,34 @@
     <section class="grid grid-cols-2 gap-4 mb-6">
         <button onclick="showDownloadModal()" class="bg-accent text-white p-4 rounded-2xl text-center font-medium shadow-lg hover:bg-primary transition-colors">
             <i class="fa-solid fa-download text-2xl mb-2 block"></i>
-            Download ID
+            {{ _('Download ID') }}
         </button>
         <button onclick="generateNewQR()" class="bg-purple-600 text-white p-4 rounded-2xl text-center font-medium shadow-lg hover:bg-purple-700 transition-colors">
             <i class="fa-solid fa-qrcode text-2xl mb-2 block"></i>
-            Generate New QR
+            {{ _('Generate New QR') }}
         </button>
     </section>
 
     <!-- ID Card Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4 mb-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">ID Card Information</h3>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('ID Card Information') }}</h3>
         <div class="space-y-3">
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Card Type</span>
-                <span class="font-medium text-gray-800">Digital Employee ID</span>
+                <span class="text-gray-600">{{ _('Card Type') }}</span>
+                <span class="font-medium text-gray-800">{{ _('Digital Employee ID') }}</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">QR Code Status</span>
+                <span class="text-gray-600">{{ _('QR Code Status') }}</span>
                 <span class="font-medium text-green-600 flex items-center">
-                    <i class="fa-solid fa-check-circle mr-2"></i>Active
+                    <i class="fa-solid fa-check-circle mr-2"></i>{{ _('Active') }}
                 </span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Last Generated</span>
-                <span class="font-medium text-gray-800">{{ worker.updated_at.strftime('%d %b %Y, %H:%M') if worker.updated_at else 'Today, Now' }}</span>
+                <span class="text-gray-600">{{ _('Last Generated') }}</span>
+                <span class="font-medium text-gray-800">{{ worker.updated_at|ldate('%d %b %Y, %H:%M') if worker.updated_at else _('Today') }}</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Department</span>
+                <span class="text-gray-600">{{ _('Department') }}</span>
                 <span class="font-medium text-accent">{{ worker.department }}</span>
             </div>
         </div>
@@ -193,7 +193,7 @@
 
     <!-- Usage Statistics -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">QR Usage Statistics</h3>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('QR Usage Statistics') }}</h3>
         <div class="grid grid-cols-2 gap-4">
             {% set present_count = worker.attendance_records|selectattr('status', 'equalto', 'present')|list|length %}
             {% set total_records = worker.attendance_records|list|length %}
@@ -202,19 +202,19 @@
             
             <div class="text-center p-3 bg-green-50 rounded-2xl">
                 <div class="text-2xl font-bold text-green-600">{{ present_count }}</div>
-                <div class="text-sm text-gray-600">Successful Check-ins</div>
+                <div class="text-sm text-gray-600">{{ _('Successful Check-ins') }}</div>
             </div>
             <div class="text-center p-3 bg-blue-50 rounded-2xl">
                 <div class="text-2xl font-bold text-blue-600">{{ this_week }}</div>
-                <div class="text-sm text-gray-600">This Week</div>
+                <div class="text-sm text-gray-600">{{ _('This Week') }}</div>
             </div>
             <div class="text-center p-3 bg-purple-50 rounded-2xl">
                 <div class="text-2xl font-bold text-purple-600">{{ total_records - present_count }}</div>
-                <div class="text-sm text-gray-600">Other Records</div>
+                <div class="text-sm text-gray-600">{{ _('Other Records') }}</div>
             </div>
             <div class="text-center p-3 bg-orange-50 rounded-2xl">
                 <div class="text-2xl font-bold text-orange-600">{{ "%.0f"|format(success_rate) }}%</div>
-                <div class="text-sm text-gray-600">Success Rate</div>
+                <div class="text-sm text-gray-600">{{ _('Success Rate') }}</div>
             </div>
         </div>
     </section>
@@ -225,8 +225,8 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">Download Options</h3>
-                <p class="text-gray-600">Choose your preferred format</p>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ _('Download Options') }}</h3>
+                <p class="text-gray-600">{{ _('Choose your preferred format') }}</p>
             </div>
             
             <div class="space-y-3 mb-6">
@@ -234,8 +234,8 @@
                     <div class="flex items-center space-x-3">
                         <i class="fa-solid fa-file-image text-blue-600 text-xl"></i>
                         <div class="text-left">
-                            <div class="font-medium text-gray-800">PNG Image</div>
-                            <div class="text-sm text-gray-600">High quality image format</div>
+                            <div class="font-medium text-gray-800">{{ _('PNG Image') }}</div>
+                            <div class="text-sm text-gray-600">{{ _('High quality image format') }}</div>
                         </div>
                     </div>
                     <i class="fa-solid fa-chevron-right text-gray-400"></i>
@@ -245,8 +245,8 @@
                     <div class="flex items-center space-x-3">
                         <i class="fa-solid fa-file-pdf text-red-600 text-xl"></i>
                         <div class="text-left">
-                            <div class="font-medium text-gray-800">PDF Document</div>
-                            <div class="text-sm text-gray-600">Printable format</div>
+                            <div class="font-medium text-gray-800">{{ _('PDF Document') }}</div>
+                            <div class="text-sm text-gray-600">{{ _('Printable format') }}</div>
                         </div>
                     </div>
                     <i class="fa-solid fa-chevron-right text-gray-400"></i>

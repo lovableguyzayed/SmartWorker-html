@@ -305,14 +305,14 @@
                     <div class="bg-orange-500/20 border border-orange-400/30 rounded-lg px-3 py-2 mt-2">
                         <div class="text-sm text-orange-100">
                             <i class="fa-solid fa-exclamation-triangle mr-2"></i>
-                            {{ closure.reason }} - {{ closure.type.title() }} (Attendance allowed if present)
+                            {{ closure.reason }} - {{ _(closure.type|capitalize) }} (Attendance allowed if present)
                         </div>
                     </div>
                 {% else %}
                     <div class="bg-red-500/20 border border-red-400/30 rounded-lg px-3 py-2 mt-2">
                         <div class="text-sm text-red-200">
                             <i class="fa-solid fa-calendar-times mr-2"></i>
-                            {{ closure.reason }} - {{ closure.type.title() }} (Attendance locked)
+                            {{ closure.reason }} - {{ _(closure.type|capitalize) }} (Attendance locked)
                         </div>
                     </div>
                 {% endif %}
