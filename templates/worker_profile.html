@@ -346,6 +346,56 @@
         </div>
     </section>
 
+    {# Payment details. Admin only: this is where someone's bank account and
+       identity numbers live, and an attendance user has no business here. #}
+    {% if current_user.is_admin %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Payment Details') }}</h3>
+        {% if worker.has_payment_details or worker.aadhaar_number or worker.pan_number %}
+        <div class="space-y-3 text-sm">
+            {% if worker.bank_account_number %}
+            <div class="flex justify-between gap-3">
+                <span class="text-gray-500">{{ _('Bank Account Number') }}</span>
+                <span class="font-medium text-gray-800 text-right">{{ worker.bank_account_number }}</span>
+            </div>
+            {% endif %}
+            {% if worker.bank_ifsc %}
+            <div class="flex justify-between gap-3">
+                <span class="text-gray-500">{{ _('IFSC') }}</span>
+                <span class="font-medium text-gray-800 text-right">{{ worker.bank_ifsc }}</span>
+            </div>
+            {% endif %}
+            {% if worker.bank_account_name %}
+            <div class="flex justify-between gap-3">
+                <span class="text-gray-500">{{ _('Account Holder Name') }}</span>
+                <span class="font-medium text-gray-800 text-right">{{ worker.bank_account_name }}</span>
+            </div>
+            {% endif %}
+            {% if worker.upi_id %}
+            <div class="flex justify-between gap-3">
+                <span class="text-gray-500">{{ _('UPI ID') }}</span>
+                <span class="font-medium text-gray-800 text-right">{{ worker.upi_id }}</span>
+            </div>
+            {% endif %}
+            {% if worker.masked_aadhaar %}
+            <div class="flex justify-between gap-3">
+                <span class="text-gray-500">{{ _('Aadhaar Number') }}</span>
+                <span class="font-medium text-gray-800 text-right">{{ worker.masked_aadhaar }}</span>
+            </div>
+            {% endif %}
+            {% if worker.pan_number %}
+            <div class="flex justify-between gap-3">
+                <span class="text-gray-500">{{ _('PAN') }}</span>
+                <span class="font-medium text-gray-800 text-right">{{ worker.pan_number }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">{{ _('No way to pay this worker is recorded yet.') }}</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
     <!-- Work Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Work Information</h3>

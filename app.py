@@ -168,6 +168,14 @@ SCHEMA_PATCHES = {
         ('closure_extra_pay_enabled', "BOOLEAN NOT NULL DEFAULT 0"),
         ('closure_calculation_method', "VARCHAR(20) DEFAULT 'daily_percent'"),
         ('closure_extra_percentage', "FLOAT DEFAULT 0.0"),
+        # How a worker actually gets paid. The app worked out what each
+        # person was owed to the rupee and then had nowhere to send it.
+        ('bank_account_name', "VARCHAR(120)"),
+        ('bank_account_number', "VARCHAR(34)"),
+        ('bank_ifsc', "VARCHAR(11)"),
+        ('upi_id', "VARCHAR(100)"),
+        ('aadhaar_number', "VARCHAR(12)"),
+        ('pan_number', "VARCHAR(10)"),
     ],
     'attendance_records': [
         ('late_minutes', "INTEGER DEFAULT 0"),

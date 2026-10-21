@@ -319,6 +319,16 @@ class Worker(db.Model):
     status = db.Column(db.String(20), default='active')  # active, inactive
     profile_image = db.Column(db.Text, nullable=True)
     qr_code = db.Column(db.Text, nullable=True)
+
+    # --- how this worker actually gets paid --------------------------------
+    # Held so a payment can be made and recorded against the figure the app
+    # computes. Nothing here is used in any calculation.
+    bank_account_name = db.Column(db.String(120), nullable=True)
+    bank_account_number = db.Column(db.String(34), nullable=True)
+    bank_ifsc = db.Column(db.String(11), nullable=True)
+    upi_id = db.Column(db.String(100), nullable=True)
+    aadhaar_number = db.Column(db.String(12), nullable=True)
+    pan_number = db.Column(db.String(10), nullable=True)
     created_at = db.Column(db.DateTime, default=now_ist)
     updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
@@ -338,6 +348,23 @@ class Worker(db.Model):
         'hourly': 'hourly_rate',
         'project': 'project_rate',
     }
+
+    @property
+    def masked_aadhaar(self):
+        """Aadhaar with all but the last four digits hidden.
+
+        Aadhaar is sensitive personal data; it is held so a payment can be
+        made and is never shown in full, nor printed on a payslip.
+        """
+        value = (self.aadhaar_number or '').strip()
+        if len(value) != 12:
+            return None
+        return 'XXXX XXXX ' + value[-4:]
+
+    @property
+    def has_payment_details(self):
+        """True once there is some way to actually send this worker money."""
+        return bool((self.bank_account_number and self.bank_ifsc) or self.upi_id)
 
     @property
     def pay_rate(self):

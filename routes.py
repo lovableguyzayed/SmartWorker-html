@@ -5,6 +5,7 @@ import base64
 import csv
 import json
 import random
+import re
 import calendar as _cal
 from datetime import datetime, date, timedelta
 from functools import wraps
@@ -210,6 +211,61 @@ def clean_text(value, field, required=False):
     if limit:
         text = text[:limit]
     return text if (text or not required) else ''
+
+
+# --- payment details ------------------------------------------------------
+# Format checks only. A correctly shaped account number can still be the
+# wrong account, so these catch typing mistakes, not fraud.
+IFSC_RE = re.compile(r'^[A-Z]{4}0[A-Z0-9]{6}$')
+PAN_RE = re.compile(r'^[A-Z]{5}[0-9]{4}[A-Z]$')
+UPI_RE = re.compile(r'^[\w.\-]{2,60}@[A-Za-z]{2,20}$')
+ACCOUNT_RE = re.compile(r'^\d{9,18}$')
+AADHAAR_RE = re.compile(r'^\d{12}$')
+
+
+def clean_payment_details(form):
+    """Read the payment fields off a form. Returns (values, errors).
+
+    Every field is optional — an employer may know a worker's UPI id long
+    before their bank details, and refusing the whole save over a blank
+    field would just mean nobody fills any of them in.
+    """
+    def squash(name, upper=False):
+        raw = (form.get(name) or '').strip()
+        raw = re.sub(r'[\s-]', '', raw) if name != 'bank_account_name' else raw
+        return raw.upper() if upper and raw else raw
+
+    values = {
+        'bank_account_name': (form.get('bank_account_name') or '').strip()[:120],
+        'bank_account_number': squash('bank_account_number'),
+        'bank_ifsc': squash('bank_ifsc', upper=True),
+        'upi_id': (form.get('upi_id') or '').strip(),
+        'aadhaar_number': squash('aadhaar_number'),
+        'pan_number': squash('pan_number', upper=True),
+    }
+    errors = []
+    checks = (
+        ('bank_account_number', ACCOUNT_RE, 'Bank account number should be 9 to 18 digits.'),
+        ('bank_ifsc', IFSC_RE, 'IFSC should look like HDFC0001234.'),
+        ('upi_id', UPI_RE, 'UPI id should look like name@bank.'),
+        ('aadhaar_number', AADHAAR_RE, 'Aadhaar number should be 12 digits.'),
+        ('pan_number', PAN_RE, 'PAN should look like ABCDE1234F.'),
+    )
+    for field, pattern, message in checks:
+        if values[field] and not pattern.match(values[field]):
+            errors.append(message)
+            values[field] = None
+    # An empty string and "not provided" are the same thing here; storing ''
+    # would make "has details" checks lie.
+    return {k: (v or None) for k, v in values.items()}, errors
+
+
+def apply_payment_details(worker, form):
+    """Copy validated payment details onto a worker. Returns any errors."""
+    values, errors = clean_payment_details(form)
+    for field, value in values.items():
+        setattr(worker, field, value)
+    return errors
 
 
 def clean_rate(value):
@@ -1762,6 +1818,12 @@ def add_worker():
         worker.qr_code = generate_qr_code(worker_id)
         
         db.session.add(worker)
+
+        # Payment details: optional, format-checked. A bad format is
+        # reported and that one field left unset rather than losing the
+        # whole save.
+        for payment_error in apply_payment_details(worker, request.form):
+            flash(payment_error, 'error')
         db.session.commit()
         
         flash(f'Worker {worker.full_name} added successfully with ID: {worker_id}', 'success')
@@ -1949,6 +2011,12 @@ def edit_worker(worker_id):
         worker.updated_at = now_ist()
 
         log_worker_changes(worker, before_values)
+
+        # Payment details: optional, format-checked. A bad format is
+        # reported and that one field left unset rather than losing the
+        # whole save.
+        for payment_error in apply_payment_details(worker, request.form):
+            flash(payment_error, 'error')
         db.session.commit()
         flash(f'Worker {worker.full_name} updated successfully', 'success')
         # A worker with no rate is accepted on purpose (the rate may not be

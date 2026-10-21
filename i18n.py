@@ -276,6 +276,19 @@ TRANSLATIONS = {
         'Completed': 'पूरा हुआ',
         'On_hold': 'रुका हुआ',
         'No pay rate': 'मज़दूरी तय नहीं',
+        'Payment Details': 'भुगतान की जानकारी',
+        'Where the money goes. Every field is optional — fill in what you have.':
+            'पैसा कहाँ जाएगा। हर ख़ाना ज़रूरी नहीं — जो पता है वही भरें।',
+        'Account Holder Name': 'खाताधारक का नाम',
+        'Bank Account Number': 'बैंक खाता संख्या',
+        'IFSC': 'IFSC',
+        'UPI ID': 'UPI आईडी',
+        'Aadhaar Number': 'आधार संख्या',
+        'PAN': 'PAN',
+        'Shown masked, and never printed on a payslip.':
+            'ढकी हुई दिखती है, और तनख़्वाह पर्ची पर कभी नहीं छपती।',
+        'No way to pay this worker is recorded yet.':
+            'इस मज़दूर को पैसा भेजने का कोई ज़रिया अभी दर्ज नहीं है।',
         'Policy in force': 'लागू नियम',
         # salary.describe() labels and its plain values
         'Salary basis': 'तनख़्वाह का आधार',
