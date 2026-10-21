@@ -112,7 +112,7 @@
         <div class="flex items-center justify-between mb-3">
             <h3 class="text-lg font-semibold text-gray-800">Current Assignment</h3>
             {% if current_user.is_admin %}
-            <button onclick="showAssignModal()" class="text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>Assign</button>
+            <button onclick="showAssignModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>Assign</button>
             {% endif %}
         </div>
         {% if assignment %}
@@ -137,7 +137,7 @@
         {% if current_user.is_admin %}
         <form method="POST" action="{{ url_for('worker_assignment_end', worker_id=worker.id, assignment_id=assignment.id) }}" class="mt-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="w-full py-2.5 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors">
+            <button class="tap-target w-full py-2.5 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors">
                 <i class="fa-solid fa-flag-checkered mr-1"></i>Mark Assignment Completed
             </button>
         </form>
@@ -294,7 +294,7 @@
         <div class="flex items-center justify-between mb-3">
             <h3 class="text-lg font-semibold text-gray-800">Leave Balance</h3>
             {% if current_user.is_admin %}
-            <button onclick="showLeaveModal()" class="text-accent text-sm font-medium"><i class="fa-solid fa-pen mr-1"></i>Adjust</button>
+            <button onclick="showLeaveModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-pen mr-1"></i>Adjust</button>
             {% endif %}
         </div>
         <div class="grid grid-cols-3 gap-3 mb-3">
@@ -454,7 +454,7 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-800">This Month's Summary</h3>
-            <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" class="text-accent text-sm font-medium">View Details</a>
+            <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" class="tap-target inline-flex items-center text-accent text-sm font-medium">View Details</a>
         </div>
         <div class="grid grid-cols-2 gap-4">
             <div class="text-center p-3 bg-green-50 rounded-2xl">
@@ -506,7 +506,7 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-800">Transactions</h3>
-            <a href="{{ url_for('transactions', worker=worker.id) }}" class="text-accent text-sm font-medium">Manage</a>
+            <a href="{{ url_for('transactions', worker=worker.id) }}" class="tap-target inline-flex items-center text-accent text-sm font-medium">Manage</a>
         </div>
         {% if recent_transactions %}
         <div class="space-y-2">
@@ -531,7 +531,7 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-800">Modification History</h3>
-            <button onclick="showModifyModal()" class="text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>New</button>
+            <button onclick="showModifyModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>New</button>
         </div>
         {% if worker.modifications %}
         <div class="space-y-2">

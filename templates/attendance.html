@@ -99,9 +99,11 @@
 
 .ep-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
 .ep-pill {
-    /* 36px visual, but ::after grows the hit area to 44px so the row stays
-       compact enough for the name and status line without shrinking the
-       tap target below the accessible minimum. */
+    /* The ::after overlay below was meant to buy a 44px hit area from a 36px
+       button, but neighbouring pills are only 0.3rem apart, so the overlays
+       overlapped and each pill actually won 40-43px — measured by
+       hit-testing, not by box size. On a touch screen the button itself is
+       now 44px and the overlay only rounds off the gap. */
     position: relative;
     width: 2.25rem; height: 2.25rem;
     border: 0; border-radius: 0.65rem;
@@ -180,6 +182,20 @@
 .dv-pill-on.dv-pill-absent  { background: #ef4444; color: #fff; }
 .dv-pill-on.dv-pill-late    { background: #eab308; color: #fff; }
 .dv-pill-on.dv-pill-leave   { background: #3b82f6; color: #fff; }
+
+/* Real 44px targets on touch screens. The roster row still fits: four pills
+   at 44px plus the 0.3rem gaps come to 190px of a 390px screen, and the
+   worker name beside them already wraps to two lines. */
+@media (pointer: coarse) {
+    .ep-pill, .dv-pill { width: 2.75rem; height: 2.75rem; }
+    .ep-pill::after, .dv-pill::after { inset: 0; }
+    /* Padding, not line-height: a name that wraps to two lines would get
+       44px between the lines and fall apart. */
+    .ep-name, .dv-name { display: inline-block; min-height: 2.75rem; padding-block: 0.4rem; }
+    .ep-adjust { min-height: 2.75rem; padding-left: 0.75rem; padding-right: 0.75rem; }
+    .ep-tab { min-height: 2.75rem; display: inline-flex; align-items: center; }
+}
+
 
 .dv-times { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
 .dv-times input[type="time"] {
@@ -260,11 +276,11 @@
             </div>
             <div class="flex items-end space-x-2">
                 <a href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
-                   class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
+                   class="tap-target w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
                     <i class="fa-solid fa-chevron-left text-white"></i>
                 </a>
                 <a href="{{ url_for('attendance', date=(selected_date + timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
-                   class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
+                   class="tap-target w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
                     <i class="fa-solid fa-chevron-right text-white"></i>
                 </a>
             </div>

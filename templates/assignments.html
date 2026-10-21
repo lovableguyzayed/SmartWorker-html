@@ -43,7 +43,7 @@
         <div class="grid grid-cols-3 gap-2">
             {% for value, label in [('all', _('All')), ('assigned', _('Assigned')), ('unassigned', _('Unassigned'))] %}
             <button type="submit" name="show" value="{{ value }}"
-                    class="py-3 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/80 border border-white/30' }}">
+                    class="tap-target py-3 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/80 border border-white/30' }}">
                 {{ label }}
             </button>
             {% endfor %}
@@ -94,7 +94,7 @@
             </div>
             <div class="flex flex-col gap-1.5 shrink-0">
                 <button onclick='openAssignModal({{ worker.id }}, {{ worker.full_name|tojson }}, {{ (assignment.site_id if assignment else 0) or 0 }}, {{ (assignment.project_id if assignment else 0) or 0 }}, {{ (assignment.task_id if assignment else 0) or 0 }})'
-                        class="px-3 py-3 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
+                        class="tap-target px-3 py-3 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
                     <i class="fa-solid fa-{{ 'shuffle' if assignment else 'plus' }} mr-1"></i>{{ _('Transfer') if assignment else _('Assign') }}
                 </button>
                 {% if assignment %}
@@ -102,7 +102,7 @@
                       onsubmit="return confirm('End the current assignment for {{ worker.full_name }}?')">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                    <button class="w-full px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors">
+                    <button class="tap-target w-full px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors">
                         <i class="fa-solid fa-flag-checkered mr-1"></i>{{ _('End') }}
                     </button>
                 </form>

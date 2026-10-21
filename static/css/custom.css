@@ -488,6 +488,21 @@ input:checked + .toggle-slider:before {
         min-width: 44px;
         min-height: 44px;
     }
+    /* An inline <a> ignores min-height, so anything that opted in needs a
+       box that can actually take one. */
+    .tap-target:is(a, span) {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    /* A worker's name is the link that opens their profile. It is wide but
+       only 24px tall, which is a thin line to hit on a list of fifty.
+       Padding, not flex: .name-wrap needs display:-webkit-box for its
+       two-line clamp, and changing display would drop the clamp. */
+    a.name-wrap, a > .name-wrap {
+        min-height: 44px;
+        padding-block: 0.625rem;
+    }
 }
 
 /* Form controls: one height (48px), one radius, one border.

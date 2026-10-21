@@ -106,15 +106,15 @@
                 </div>
                 <div class="flex items-center space-x-2">
                     <a href="{{ url_for('worker_attendance', worker_id=worker.id) }}" 
-                       class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-accent hover:text-white transition-colors">
+                       class="tap-target w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-accent hover:text-white transition-colors">
                         <i class="fa-solid fa-calendar-check"></i>
                     </a>
                     <a href="{{ url_for('id_card', worker_id=worker.id) }}" 
-                       class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-purple-500 hover:text-white transition-colors">
+                       class="tap-target w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-purple-500 hover:text-white transition-colors">
                         <i class="fa-solid fa-id-card"></i>
                     </a>
                     <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" 
-                       class="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white hover:bg-primary transition-colors">
+                       class="tap-target w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white hover:bg-primary transition-colors">
                         <i class="fa-solid fa-eye"></i>
                     </a>
                 </div>

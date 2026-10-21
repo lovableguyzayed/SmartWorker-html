@@ -166,12 +166,12 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     {% if row.status == 'paid' %}
                     <button type="submit"
-                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-300 transition-colors">
+                            class="tap-target px-4 py-2 bg-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-300 transition-colors">
                         <i class="fa-solid fa-rotate-left mr-1"></i>{{ _('Mark Pending') }}
                     </button>
                     {% else %}
                     <button type="submit"
-                            class="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                            class="tap-target px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
                         <i class="fa-solid fa-check mr-1"></i>{{ _('Mark Paid') }}
                     </button>
                     {% endif %}
