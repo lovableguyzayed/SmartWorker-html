@@ -10,22 +10,22 @@
         </a>
         <div class="min-w-0">
             <h1 class="text-xl font-bold leading-tight">Payroll Preview</h1>
-            <p class="text-sm text-white/70">{{ _(month_name) }} {{ year }} — nothing is saved yet</p>
+            <p class="text-sm text-white/90">{{ _(month_name) }} {{ year }} — nothing is saved yet</p>
         </div>
     </div>
 
     <div class="grid grid-cols-3 gap-2 mt-4" id="preview-stats">
         <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
             <div class="text-xl font-bold" data-stat="new">{{ new_count }}</div>
-            <div class="text-xs text-white/70">New</div>
+            <div class="text-xs text-white/90">New</div>
         </div>
         <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
             <div class="text-xl font-bold" data-stat="changed">{{ changed_count }}</div>
-            <div class="text-xs text-white/70">Changed</div>
+            <div class="text-xs text-white/90">Changed</div>
         </div>
         <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
             <div class="text-xl font-bold" data-stat="frozen">{{ frozen_count }}</div>
-            <div class="text-xs text-white/70">Locked</div>
+            <div class="text-xs text-white/90">Locked</div>
         </div>
     </div>
 </header>
@@ -38,12 +38,12 @@
             <span class="text-xl font-bold text-gray-800 amount">{{ totals.total_net|money }}</span>
         </div>
         <div class="flex items-center justify-between mt-1">
-            <span class="text-xs text-gray-400">Gross {{ totals.total_gross|money }}</span>
-            <span class="text-xs text-red-500">Deductions {{ totals.total_deductions|money }}</span>
+            <span class="text-xs text-gray-500">Gross {{ totals.total_gross|money }}</span>
+            <span class="text-xs text-red-700">Deductions {{ totals.total_deductions|money }}</span>
         </div>
 
         {% if frozen_count %}
-        <p class="text-xs text-gray-400 mt-3 leading-relaxed">
+        <p class="text-xs text-gray-500 mt-3 leading-relaxed">
             {{ frozen_count }} worker(s) are already marked Paid for this month. Generating
             payroll leaves those rows exactly as they are.
         </p>
@@ -73,17 +73,17 @@
             <div class="text-right shrink-0">
                 <div class="font-bold text-gray-800 amount">{{ p.net_pay|money }}</div>
                 {% if p.state == 'frozen' %}
-                <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-100 text-gray-500">
+                <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600">
                     <i class="fa-solid fa-lock mr-1"></i>Paid
                 </span>
                 {% elif p.state == 'new' %}
                 <span class="text-xs px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600">New</span>
                 {% elif p.state == 'changed' %}
-                <span class="text-xs px-2 py-0.5 rounded-lg {{ 'bg-green-50 text-green-700' if p.delta > 0 else 'bg-red-50 text-red-600' }}">
+                <span class="text-xs px-2 py-0.5 rounded-lg {{ 'bg-green-50 text-green-700' if p.delta > 0 else 'bg-red-50 text-red-700' }}">
                     {{ '+' if p.delta > 0 else '' }}{{ p.delta|money }}
                 </span>
                 {% else %}
-                <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-50 text-gray-400">No change</span>
+                <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-50 text-gray-500">No change</span>
                 {% endif %}
             </div>
         </div>
@@ -99,15 +99,15 @@
         <div class="grid grid-cols-3 gap-2 mt-3">
             <div class="bg-gray-50 rounded-xl p-2 text-center">
                 <div class="text-sm font-bold text-gray-800 amount">{{ b.daily_rate|money0 }}</div>
-                <div class="text-xs text-gray-400">per day</div>
+                <div class="text-xs text-gray-500">per day</div>
             </div>
             <div class="bg-gray-50 rounded-xl p-2 text-center">
                 <div class="text-sm font-bold text-gray-800">{{ b.eligible_days }}</div>
-                <div class="text-xs text-gray-400">eligible days</div>
+                <div class="text-xs text-gray-500">eligible days</div>
             </div>
             <div class="bg-gray-50 rounded-xl p-2 text-center">
-                <div class="text-sm font-bold {{ 'text-red-600' if b.deduction_days else 'text-gray-800' }}">{{ '%g'|format(b.deduction_days) }}</div>
-                <div class="text-xs text-gray-400">deducted</div>
+                <div class="text-sm font-bold {{ 'text-red-700' if b.deduction_days else 'text-gray-800' }}">{{ '%g'|format(b.deduction_days) }}</div>
+                <div class="text-xs text-gray-500">deducted</div>
             </div>
         </div>
 
@@ -122,7 +122,7 @@
             <div class="mt-2 pt-2 border-t border-gray-100 space-y-1">
                 {% for label, value in p.policy_rows %}
                 <div class="flex justify-between text-xs">
-                    <span class="text-gray-400">{{ label }}</span>
+                    <span class="text-gray-500">{{ label }}</span>
                     <span class="text-gray-600">{{ value }}</span>
                 </div>
                 {% endfor %}
@@ -130,7 +130,7 @@
             {% endif %}
         </details>
         {% else %}
-        <div class="mt-2 text-xs text-gray-400">
+        <div class="mt-2 text-xs text-gray-500">
             Gross {{ p.gross_pay|money }} · deductions {{ p.deductions|money }}
         </div>
         {% endif %}

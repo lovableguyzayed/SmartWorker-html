@@ -37,7 +37,7 @@
                 <div class="flex-1 min-w-0">
                     <div class="font-semibold text-gray-800 text-sm">{{ item.title }}</div>
                     {% if item.body %}<div class="text-xs text-gray-600 mt-0.5">{{ item.body }}</div>{% endif %}
-                    <div class="text-xs text-gray-400 mt-1">{{ item.created_at.strftime('%d %b %Y, %H:%M') }} UTC</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ item.created_at.strftime('%d %b %Y, %H:%M') }} UTC</div>
                 </div>
                 {% if not item.is_read %}<span class="w-2.5 h-2.5 bg-accent rounded-full shrink-0 mt-1"></span>{% endif %}
             </div>
@@ -59,7 +59,7 @@
     {% else %}
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fa-solid fa-bell-slash text-3xl text-gray-400"></i>
+            <i class="fa-solid fa-bell-slash text-3xl text-gray-500"></i>
         </div>
         <h3 class="text-xl font-semibold text-gray-800 mb-2">No Notifications</h3>
         <p class="text-gray-600">Attendance marked by site users will appear here.</p>

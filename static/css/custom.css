@@ -105,7 +105,7 @@ button, a, input, select, textarea {
 /* Custom focus states */
 input:focus, select:focus, textarea:focus {
     outline: none;
-    ring: 2px solid #007BFF;
+    ring: 2px solid #0062CC;
     ring-opacity: 0.5;
 }
 
@@ -125,7 +125,7 @@ input:focus, select:focus, textarea:focus {
 
 /* Gradient text */
 .gradient-text {
-    background: linear-gradient(135deg, #001F3F, #007BFF);
+    background: linear-gradient(135deg, #001F3F, #0062CC);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -266,7 +266,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 input:checked + .toggle-slider {
-    background-color: #007BFF;
+    background-color: #0062CC;
 }
 
 input:checked + .toggle-slider:before {
@@ -275,7 +275,7 @@ input:checked + .toggle-slider:before {
 
 /* Calendar specific styles */
 .calendar-day-today {
-    background-color: #007BFF;
+    background-color: #0062CC;
     color: white;
     font-weight: bold;
 }
@@ -375,7 +375,7 @@ input:checked + .toggle-slider:before {
 
 /* Accessibility improvements */
 .focus-visible:focus {
-    outline: 2px solid #007BFF;
+    outline: 2px solid #0062CC;
     outline-offset: 2px;
 }
 
@@ -421,7 +421,7 @@ input:checked + .toggle-slider:before {
     position: relative;
     color: #1f2937;
 }
-.cal-cell.other   { background: #f9fafb; color: #9ca3af; }
+.cal-cell.other   { background: #f9fafb; color: #6b7280; }
 .cal-cell.present { background: #dcfce7; color: #166534; }
 .cal-cell.absent  { background: #fecaca; color: #991b1b; }
 .cal-cell.late    { background: #fef3c7; color: #92400e; }
@@ -541,7 +541,7 @@ input:checked + .toggle-slider:before {
     font-weight: 600;
     border: 0;
 }
-.btn-primary { background: #007BFF; color: #fff; }
+.btn-primary { background: #0062CC; color: #fff; }
 .btn-primary:active { filter: brightness(0.94); }
 .btn-secondary { background: #f3f4f6; color: #374151; }
 
@@ -613,8 +613,8 @@ input:checked + .toggle-slider:before {
     pointer-events: none;
 }
 .ms-on [data-ms-item].ms-picked::after {
-    border-color: #007BFF;
-    background: #007BFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E") center/0.95rem no-repeat;
+    border-color: #0062CC;
+    background: #0062CC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E") center/0.95rem no-repeat;
 }
 
 .ms-on [data-ms-item] {
@@ -624,7 +624,7 @@ input:checked + .toggle-slider:before {
     -webkit-touch-callout: none;
 }
 .ms-on [data-ms-item].ms-picked {
-    box-shadow: 0 0 0 2px #007BFF inset;
+    box-shadow: 0 0 0 2px #0062CC inset;
     background-color: #f0f7ff;
 }
 /* Selection mode owns the row, so inner controls must not look tappable. */
@@ -668,7 +668,7 @@ input:checked + .toggle-slider:before {
 .ms-link {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #007BFF;
+    color: #0062CC;
     background: none;
     border: none;
     padding: 0.4rem 0.5rem;
@@ -701,7 +701,7 @@ input:checked + .toggle-slider:before {
 .ms-action i { font-size: 0.95rem; }
 .ms-action:active:not(:disabled) { background: #eef2f7; transform: scale(0.97); }
 .ms-action:disabled { opacity: 0.45; }
-.ms-action-primary { background: #007BFF; border-color: #007BFF; color: #fff; }
+.ms-action-primary { background: #0062CC; border-color: #0062CC; color: #fff; }
 .ms-action-primary:active:not(:disabled) { filter: brightness(0.94); }
 .ms-action-danger { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
 .ms-action-good { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
@@ -757,3 +757,71 @@ body.ms-active nav.app-bottom-nav { display: none; }
     from { opacity: 0; transform: translateY(-8px); }
     to { opacity: 1; transform: none; }
 }
+
+/* ---------------------------------------------------------------------
+   Contrast floor
+   ---------------------------------------------------------------------
+   Measured on the running application, 259 of the 965 runs of text whose
+   background could be read sat below the WCAG AA floor. This phone is used
+   on a building site, in sun, so that is not a theoretical number.
+
+   These rules live here rather than in the Tailwind build for the reason
+   `.has-bottom-nav` does: the build is purged, so a utility that is not
+   already in it — bg-green-700 is not — silently does nothing. custom.css
+   loads after tailwind.min.css, so same-specificity rules here win.
+
+   The brand blue goes one notch darker as an ink and as a fill. #007bff
+   carries white at 3.98:1 and sits on white at 3.98:1, which fails for
+   anything but large text, and the primary button is the most pressed
+   control in the application. #0062cc reads 5.80:1 both ways and is still
+   recognisably the same blue.                                           */
+
+.text-accent { color: #0062cc; }
+.bg-accent { background-color: #0062cc; }
+.border-accent { border-color: #0062cc; }
+.hover\:bg-accent:hover { background-color: #0062cc; }
+
+/* Fills that carry white text. At the 500 weights none of them reached the
+   floor — white on amber-500 is 2.15:1, on teal-500 2.49:1, on green-500
+   2.28:1 — and the purged build carries almost none of the 700s, so they
+   are written out here. These are used by the dashboard's action tiles, the
+   Mark Paid button, the flash toasts and the notification badge. */
+.bg-red-700    { background-color: #b91c1c; }   /* white 6.47:1 */
+.bg-amber-700  { background-color: #b45309; }   /* white 5.02:1 */
+.bg-green-700  { background-color: #15803d; }   /* white 5.02:1 */
+.bg-blue-700   { background-color: #1d4ed8; }   /* white 6.70:1 */
+.bg-indigo-700 { background-color: #4338ca; }   /* white 7.90:1 */
+.bg-teal-700   { background-color: #0f766e; }   /* white 5.47:1 */
+.bg-purple-700 { background-color: #7e22ce; }   /* white 6.98:1 */
+.bg-orange-700 { background-color: #c2410c; }   /* white 5.18:1 */
+.hover\:bg-green-800:hover { background-color: #166534; }
+
+/* Gradient stops for the stat tiles. A gradient paints no
+   background-color, so the contrast sweep could not see these at all
+   and reported them unmeasurable; read off the pixels, white on the
+   lighter end of each ran 2.27:1 to 3.43:1 — and they carry the
+   biggest numbers on the home screen. Both stops move one step, which
+   keeps the tile the same colour and clears the floor. Written out
+   here because the purged build carries none of them. */
+.from-blue-600 { --tw-gradient-from: #2563eb var(--tw-gradient-from-position); --tw-gradient-to: rgba(37,99,235, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.from-green-600 { --tw-gradient-from: #16a34a var(--tw-gradient-from-position); --tw-gradient-to: rgba(22,163,74, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.from-purple-600 { --tw-gradient-from: #9333ea var(--tw-gradient-from-position); --tw-gradient-to: rgba(147,51,234, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.from-orange-600 { --tw-gradient-from: #ea580c var(--tw-gradient-from-position); --tw-gradient-to: rgba(234,88,12, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.to-blue-700 { --tw-gradient-to: #1d4ed8 var(--tw-gradient-to-position); }
+.to-green-700 { --tw-gradient-to: #15803d var(--tw-gradient-to-position); }
+.to-purple-700 { --tw-gradient-to: #7e22ce var(--tw-gradient-to-position); }
+.to-orange-700 { --tw-gradient-to: #c2410c var(--tw-gradient-to-position); }
+
+.from-green-700 { --tw-gradient-from: #15803d var(--tw-gradient-from-position); --tw-gradient-to: rgba(21,128,61, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.from-orange-700 { --tw-gradient-from: #c2410c var(--tw-gradient-from-position); --tw-gradient-to: rgba(194,65,12, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.to-green-800 { --tw-gradient-to: #166534 var(--tw-gradient-to-position); }
+.to-orange-800 { --tw-gradient-to: #9a3412 var(--tw-gradient-to-position); }
+
+.from-amber-700 { --tw-gradient-from: #b45309 var(--tw-gradient-from-position); --tw-gradient-to: rgba(180,83,9, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.to-orange-800 { --tw-gradient-to: #9a3412 var(--tw-gradient-to-position); }
+
+/* The gradient-stop utilities carry their own copy of the accent, so the
+   .bg-accent override above does not reach them and every header still
+   ended at the old #007bff. */
+.from-accent { --tw-gradient-from: #0062cc var(--tw-gradient-from-position); --tw-gradient-to: rgba(0,98,204, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.to-accent { --tw-gradient-to: #0062cc var(--tw-gradient-to-position); }

@@ -28,7 +28,7 @@
                 <div class="relative">
                     <input type="date" name="date" required value="{{ date.today().isoformat() }}"
                            class="w-full p-3 border border-lightGray rounded-2xl focus:border-accent focus:outline-none">
-                    <i class="fa-solid fa-calendar-alt absolute right-3 top-3 text-gray-400"></i>
+                    <i class="fa-solid fa-calendar-alt absolute right-3 top-3 text-gray-500"></i>
                 </div>
             </div>
 
@@ -116,7 +116,7 @@
                         <div class="text-sm font-semibold {{ 'text-red-800' if not closure.allow_attendance else 'text-green-800' }}">
                             {{ closure.date|ldate('%b %d, %Y') }}
                         </div>
-                        <span class="text-xs px-2 py-1 rounded-full {{ 'bg-red-100 text-red-600' if not closure.allow_attendance else 'bg-green-100 text-green-600' }}">
+                        <span class="text-xs px-2 py-1 rounded-full {{ 'bg-red-100 text-red-700' if not closure.allow_attendance else 'bg-green-100 text-green-700' }}">
                             {{ _(closure.type|capitalize) }}
                         </span>
                         {% if closure.scope == 'site' and closure.site %}
@@ -127,20 +127,20 @@
                         <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">Company-wide</span>
                         {% endif %}
                     </div>
-                    <div class="text-xs {{ 'text-red-600' if not closure.allow_attendance else 'text-green-600' }}">{{ closure.reason }}</div>
+                    <div class="text-xs {{ 'text-red-700' if not closure.allow_attendance else 'text-green-700' }}">{{ closure.reason }}</div>
                     <div class="flex items-center space-x-1 mt-1">
                         {% if closure.allow_attendance %}
-                            <i class="fa-solid fa-check-circle text-green-500 text-xs"></i>
+                            <i class="fa-solid fa-check-circle text-green-700 text-xs"></i>
                             <span class="text-xs text-gray-500">Attendance allowed if present</span>
                         {% else %}
-                            <i class="fa-solid fa-times-circle text-red-500 text-xs"></i>
+                            <i class="fa-solid fa-times-circle text-red-700 text-xs"></i>
                             <span class="text-xs text-gray-500">No attendance allowed</span>
                         {% endif %}
                     </div>
                 </div>
                 <form method="POST" action="{{ url_for('delete_closure', closure_id=closure.id) }}" onsubmit="return confirm('Delete this closure date?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="text-red-500 hover:text-red-700 p-2">
+                    <button type="submit" class="text-red-700 hover:text-red-700 p-2">
                         <i class="fa-solid fa-trash text-sm"></i>
                     </button>
                 </form>

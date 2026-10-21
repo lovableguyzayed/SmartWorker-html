@@ -65,20 +65,20 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3 flex-1 min-w-0">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
-                        {{ 'bg-green-100 text-green-600' if txn.is_earning else 'bg-red-100 text-red-600' }}">
+                        {{ 'bg-green-100 text-green-700' if txn.is_earning else 'bg-red-100 text-red-700' }}">
                         <i class="fa-solid {{ 'fa-arrow-down' if txn.is_earning else 'fa-arrow-up' }}"></i>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-gray-800 name-wrap">{{ txn.worker.full_name }}</div>
                         <div class="text-xs text-gray-500">
                             {{ _(type_labels.get(txn.txn_type, txn.txn_type)) }} • {{ txn.date|ldate('%d %b %Y') }}
-                            {% if txn.status == 'cancelled' %} • <span class="text-red-500 font-medium">{{ _('Cancelled') }}</span>{% endif %}
+                            {% if txn.status == 'cancelled' %} • <span class="text-red-700 font-medium">{{ _('Cancelled') }}</span>{% endif %}
                         </div>
-                        {% if txn.description %}<div class="text-xs text-gray-400 truncate">{{ txn.description }}</div>{% endif %}
+                        {% if txn.description %}<div class="text-xs text-gray-500 truncate">{{ txn.description }}</div>{% endif %}
                     </div>
                 </div>
                 <div class="text-right ml-2 shrink-0">
-                    <div class="font-bold {{ 'text-green-600' if txn.is_earning else 'text-red-600' }}">
+                    <div class="font-bold {{ 'text-green-700' if txn.is_earning else 'text-red-700' }}">
                         {{ '+' if txn.is_earning else '−' }}{{ txn.amount|money }}
                     </div>
                 </div>
@@ -95,12 +95,12 @@
                         <form method="POST" action="{{ url_for('transactions_cancel', txn_id=txn.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                            <button class="tap-target w-7 h-7 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center" title="{{ _('Cancel / Restore') }}"><i class="fa-solid fa-ban text-xs"></i></button>
+                            <button class="tap-target w-7 h-7 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="{{ _('Cancel / Restore') }}"><i class="fa-solid fa-ban text-xs"></i></button>
                         </form>
                         <form method="POST" action="{{ url_for('transactions_delete', txn_id=txn.id) }}" onsubmit="return confirm('Delete this transaction permanently?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                            <button class="tap-target w-7 h-7 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button class="tap-target w-7 h-7 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                         </form>
             </div>
         </div>
@@ -122,7 +122,7 @@
     {% else %}
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fa-solid fa-money-bill-transfer text-3xl text-gray-400"></i>
+            <i class="fa-solid fa-money-bill-transfer text-3xl text-gray-500"></i>
         </div>
         <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Transactions') }}</h3>
         <p class="text-gray-600 mb-6">Record advances, loans, bonuses and deductions for {{ month_name }} {{ year }}.</p>
@@ -182,7 +182,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Notes') }} <span class="text-gray-400">{{ _('(optional)') }}</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Notes') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
                     <textarea name="description" id="txn-description" rows="2" class="w-full p-3 border border-lightGray rounded-xl"></textarea>
                 </div>
                 <div class="flex space-x-3 pt-2">

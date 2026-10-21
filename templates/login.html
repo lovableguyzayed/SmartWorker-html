@@ -38,7 +38,7 @@
                             </div>
                         </div>
                         <div class="flex space-x-1">
-                            <div class="w-2 h-2 bg-white rounded-full opacity-80"></div>
+                            <div class="w-2 h-2 bg-white rounded-full opacity-90"></div>
                             <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
                             <div class="w-2 h-2 bg-green-400 rounded-full"></div>
                         </div>
@@ -58,7 +58,7 @@
                     <input type="hidden" name="redirect_to" value="{{ url_for('login') }}">
                     <button type="submit" class="tap-target px-4 py-2 rounded-xl text-sm font-semibold border
                            {{ 'bg-white/25 border-white/60 text-white' if current_lang == code
-                              else 'bg-white/10 border-white/25 text-white/80' }}">
+                              else 'bg-white/10 border-white/25 text-white/90' }}">
                         {{ label }}
                     </button>
                 </form>
@@ -80,7 +80,7 @@
                     <label for="username" class="text-sm font-semibold text-gray-700 block">{{ _('Username or Email') }}</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-user text-gray-400"></i>
+                            <i class="fa-solid fa-user text-gray-500"></i>
                         </div>
                         <input
                             id="username"
@@ -97,7 +97,7 @@
                     <label for="password" class="text-sm font-semibold text-gray-700 block">{{ _('Password') }}</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-lock text-gray-400"></i>
+                            <i class="fa-solid fa-lock text-gray-500"></i>
                         </div>
                         <input
                             id="password"
@@ -108,7 +108,7 @@
                             class="w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
                         >
                         <button id="password-toggle" type="button" class="absolute inset-y-0 right-0 pr-4 flex items-center">
-                            <i class="fa-solid fa-eye text-gray-400 hover:text-gray-600 transition-colors"></i>
+                            <i class="fa-solid fa-eye text-gray-500 hover:text-gray-600 transition-colors"></i>
                         </button>
                     </div>
                 </div>
@@ -137,7 +137,7 @@
                     <label for="login_mobile" class="text-sm font-semibold text-gray-700 block">{{ _('Mobile Number for OTP Login') }}</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-mobile-alt text-gray-400"></i>
+                            <i class="fa-solid fa-mobile-alt text-gray-500"></i>
                         </div>
                         <input
                             id="login_mobile"
@@ -159,7 +159,7 @@
 
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-shield-halved text-gray-400"></i>
+                        <i class="fa-solid fa-shield-halved text-gray-500"></i>
                     </div>
                     <input
                         id="login_otp"
@@ -205,11 +205,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function setLoginOtpStatus(message, state) {
         if (!loginOtpStatus) return;
         loginOtpStatus.textContent = message;
-        loginOtpStatus.classList.remove('text-gray-500', 'text-green-600', 'text-red-600');
+        loginOtpStatus.classList.remove('text-gray-500', 'text-green-700', 'text-red-700');
         if (state === 'success') {
-            loginOtpStatus.classList.add('text-green-600');
+            loginOtpStatus.classList.add('text-green-700');
         } else if (state === 'error') {
-            loginOtpStatus.classList.add('text-red-600');
+            loginOtpStatus.classList.add('text-red-700');
         } else {
             loginOtpStatus.classList.add('text-gray-500');
         }

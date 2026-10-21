@@ -49,6 +49,20 @@ TAG = r"""
 STEP = r"""
 (seen) => {
   const rows = [];
+  // Anything painted over the page — a flash toast, the bottom bar — makes
+  // the pixels under it someone else's. Collect their boxes and skip text
+  // that falls inside one, rather than scoring it against an overlay.
+  const covers = [];
+  for (const el of document.querySelectorAll('body *')) {
+    const s = getComputedStyle(el);
+    if (s.position !== 'fixed' && s.position !== 'sticky') continue;
+    if (!el.checkVisibility || !el.checkVisibility()) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) covers.push(r);
+  }
+  const covered = (r) => covers.some(c => !(r.right <= c.left ||
+      r.left >= c.right || r.bottom <= c.top || r.top >= c.bottom));
+
   for (const el of document.querySelectorAll('body *')) {
     if (seen.includes(el.dataset.uxid)) continue;
     if (!el.checkVisibility || !el.checkVisibility()) continue;
@@ -60,6 +74,7 @@ STEP = r"""
     if (r.width < 2 || r.height < 2) continue;
     if (r.top < 0 || r.left < 0) continue;
     if (r.bottom > window.innerHeight || r.right > window.innerWidth) continue;
+    if (covered(r)) continue;
     const s = getComputedStyle(el);
     rows.push({
       id: el.dataset.uxid, t: own.slice(0, 44),
@@ -154,15 +169,43 @@ with sync_playwright() as p:
                 if x1 - x0 < 2 or y1 - y0 < 2:
                     continue
                 crop = img.crop((x0, y0, x1, y1))
-                counts = Counter(crop.getdata())
+                # Inset by a pixel or two: the edge of a text box catches the
+                # card's border and its drop shadow, and a shadow is not the
+                # background the text sits on.
+                if crop.width > 8 and crop.height > 8:
+                    crop = crop.crop((2, 2, crop.width - 2, crop.height - 2))
+                px = list(crop.getdata())
+                counts = Counter(px)
                 bg, n = counts.most_common(1)[0]
                 share = n / float(crop.width * crop.height)
                 fg, alpha = parse(r['fg'])
                 if alpha < 1:
                     fg = [fg[i] * alpha + bg[i] * (1 - alpha) for i in range(3)]
+
+                if share >= 0.33:
+                    # A solid fill: the mode is exactly what is behind the text.
+                    ratio, how = contrast(fg, list(bg)), 'solid'
+                else:
+                    # A gradient has no dominant colour, so the mode is
+                    # meaningless and the old version gave up here and called
+                    # the row unmeasurable — which is how four tiles carrying
+                    # the biggest numbers on the home screen went unseen.
+                    # White text on a gradient is only as safe as the
+                    # gradient's lightest point, so score the worst of it.
+                    # Pixels within 2:1 of the ink are glyph and anti-aliased
+                    # edge; of what is left, take the fifth percentile, which
+                    # is the hard end of the fill without chasing a stray.
+                    rest = [q for q in px if contrast(fg, list(q)) >= 2.0]
+                    if len(rest) < 12:
+                        ratio, how, bg = contrast(fg, list(bg)), 'unclear', bg
+                    else:
+                        rest.sort(key=lambda q: contrast(fg, list(q)))
+                        worst = rest[int(len(rest) * 0.10)]
+                        ratio, how, bg = contrast(fg, list(worst)), 'gradient', worst
+
                 results[slug].append(dict(
                     r, bg='rgb(%d, %d, %d)' % bg, bgshare=round(share, 2),
-                    ratio=round(contrast(fg, list(bg)), 2)))
+                    how=how, ratio=round(ratio, 2)))
                 seen.append(r['id'])
             if y + VH >= height:
                 break
@@ -176,13 +219,22 @@ with open(os.path.join(OUT, 'contrast2.json'), 'w') as fh:
 
 
 def large(r):
-    return r['fs'] >= 18.66 or (r['fs'] >= 14 and r['fw'] >= 700)
+    """WCAG 'large scale': 18pt regular, or 14pt bold.
+
+    Those are 24px and 18.66px at the usual 96dpi. An earlier version of
+    this let any 18.66px text through regardless of weight, and any 14px
+    bold — both more generous than the standard, which made the failure
+    count read lower than it is.
+    """
+    return r['fs'] >= 24 or (r['fs'] >= 18.66 and r['fw'] >= 700)
 
 
 allrows = [(s, r) for s, rows in results.items() for r in rows]
-solid = [(s, r) for s, r in allrows if r['bgshare'] >= 0.33]
-print('\n%d runs scored, %d with a clear background, %d unmeasurable'
-      % (len(allrows), len(solid), len(allrows) - len(solid)))
+solid = [(s, r) for s, r in allrows if r['how'] != 'unclear']
+exact = sum(1 for s, r in solid if r['how'] == 'solid')
+print('\n%d runs scored: %d on a solid fill (exact), %d on a gradient'
+      ' (worst point), %d unreadable'
+      % (len(allrows), exact, len(solid) - exact, len(allrows) - len(solid)))
 
 fails = [(s, r) for s, r in solid if r['ratio'] < (3.0 if large(r) else 4.5)]
 print('%d below the WCAG AA floor — %.1f%% of what could be measured\n'
@@ -195,8 +247,9 @@ print('--- by colour pair, most common first ---')
 for key, rows in sorted(groups.items(), key=lambda kv: -len(kv[1])):
     fg, bg, fs, fw = key
     scr = sorted({s for s, r in rows})
-    print('  %5.2f:1  %-7s w%-3s %-19s on %-19s %3d runs  %d screens'
-          % (rows[0][1]['ratio'], '%gpx' % fs, fw, fg, bg, len(rows), len(scr)))
+    print('  %5.2f:1  %-7s w%-3s %-19s on %-19s %3d runs  %d screens  [%s]'
+          % (rows[0][1]['ratio'], '%gpx' % fs, fw, fg, bg, len(rows), len(scr),
+             rows[0][1]['how']))
     print('           %r  [%s]  %s' % (rows[0][1]['t'], rows[0][1]['cls'],
                                        ','.join(scr[:4])))
 

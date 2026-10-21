@@ -41,7 +41,7 @@
             <div class="min-w-0">
                 <div class="font-semibold text-gray-800 name-wrap">{{ worker.full_name }}</div>
                 <div class="text-xs text-gray-500">{{ worker.worker_id }}</div>
-                <div class="text-xs mt-1 {{ 'text-green-600' if rec else 'text-gray-400' }}">
+                <div class="text-xs mt-1 {{ 'text-green-700' if rec else 'text-gray-500' }}">
                     {% if rec %}
                         {{ _(rec.status|capitalize) }}
                         {% if rec.check_in_time %}· {{ rec.check_in_time.strftime('%H:%M') }}{% endif %}
@@ -102,7 +102,7 @@
     </section>
     {% endfor %}
 
-    <p class="text-xs text-gray-400 text-center leading-relaxed">
+    <p class="text-xs text-gray-500 text-center leading-relaxed">
         {{ _('You can mark present and late. Absences, leave and any correction are the Administrator\'s to make.') }}
     </p>
 </main>

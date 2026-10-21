@@ -40,21 +40,21 @@
 <main class="p-4 pb-8 space-y-6">
     <!-- Summary Tiles -->
     <section class="grid grid-cols-2 gap-4">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-2xl shadow-lg">
             <div class="text-2xl font-bold">{{ totals.total_gross|money0 }}</div>
             <div class="text-sm opacity-90">{{ _('Gross Payroll') }}</div>
         </div>
-        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-green-700 to-green-800 text-white p-4 rounded-2xl shadow-lg">
             <div class="text-2xl font-bold">{{ totals.total_net|money0 }}</div>
             <div class="text-sm opacity-90">{{ _('Net Payable') }}</div>
         </div>
-        <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-orange-700 to-orange-800 text-white p-4 rounded-2xl shadow-lg">
             <div class="text-2xl font-bold">{{ totals.total_deductions|money0 }}</div>
             <div class="text-sm opacity-90">{{ _('Total Deductions') }}</div>
         </div>
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-purple-600 to-purple-700 text-white p-4 rounded-2xl shadow-lg">
             <div class="text-2xl font-bold">
-                {{ totals.paid_count }}<span class="text-base font-medium opacity-80"> {{ _('paid') }}</span>
+                {{ totals.paid_count }}<span class="text-base font-medium opacity-90"> {{ _('paid') }}</span>
             </div>
             <div class="text-sm opacity-90">{{ totals.pending_count }} {{ _('pending') }}</div>
         </div>
@@ -101,7 +101,7 @@
 
         {% if not rows %}
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 text-center">
-            <i class="fa-solid fa-users text-4xl text-gray-300 mb-4"></i>
+            <i class="fa-solid fa-users text-4xl text-gray-500 mb-4"></i>
             <p class="text-gray-500">{{ _('No active workers found.') }}</p>
         </div>
         {% endif %}
@@ -151,7 +151,7 @@
                 </div>
                 <div class="bg-gray-50 rounded-xl py-2">
                     <div class="text-xs text-gray-500">{{ _('Deduct.') }}</div>
-                    <div class="font-semibold text-red-600">{{ row.deductions|money0 }}</div>
+                    <div class="font-semibold text-red-700">{{ row.deductions|money0 }}</div>
                 </div>
             </div>
 
@@ -172,18 +172,18 @@
                     </button>
                     {% else %}
                     <button type="submit"
-                            class="tap-target px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors">
+                            class="tap-target px-4 py-2 bg-green-700 text-white rounded-xl text-sm font-medium hover:bg-green-800 transition-colors">
                         <i class="fa-solid fa-check mr-1"></i>{{ _('Mark Paid') }}
                     </button>
                     {% endif %}
                 </form>
                 {% else %}
-                <span class="text-xs text-gray-400 italic">{{ _('Generate to enable') }}</span>
+                <span class="text-xs text-gray-500 italic">{{ _('Generate to enable') }}</span>
                 {% endif %}
             </div>
 
             {% if pay.policy_note %}
-            <p class="text-xs text-gray-400 mt-3 leading-relaxed">{{ pay.policy_note|lnotes }}</p>
+            <p class="text-xs text-gray-500 mt-3 leading-relaxed">{{ pay.policy_note|lnotes }}</p>
             {% endif %}
         </div>
         {% endfor %}

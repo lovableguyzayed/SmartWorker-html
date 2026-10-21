@@ -30,7 +30,7 @@
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <form method="GET" class="space-y-3">
             <div class="relative">
-                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70"></i>
+                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white/90"></i>
                 <input type="text" name="search" value="{{ search }}" 
                        placeholder="{{ _('Search by name, ID, or phone...') }}"
                        class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/70 focus:ring-2 focus:ring-white/50">
@@ -81,13 +81,13 @@
                         <div class="flex items-center space-x-2">
                             {% if not worker.has_pay_rate %}<span class="inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold whitespace-nowrap">{{ _('No pay rate') }}</span>{% endif %}
                             {% if worker.pay_type == 'daily' %}
-                                <span class="text-sm font-medium text-green-600">{{ worker.daily_rate|money }}/day</span>
+                                <span class="text-sm font-medium text-green-700">{{ worker.daily_rate|money }}/day</span>
                             {% elif worker.pay_type == 'monthly' %}
-                                <span class="text-sm font-medium text-green-600">{{ worker.monthly_salary|money }}/month</span>
+                                <span class="text-sm font-medium text-green-700">{{ worker.monthly_salary|money }}/month</span>
                             {% elif worker.pay_type == 'hourly' %}
-                                <span class="text-sm font-medium text-green-600">{{ worker.hourly_rate|money }}/hour</span>
+                                <span class="text-sm font-medium text-green-700">{{ worker.hourly_rate|money }}/hour</span>
                             {% elif worker.pay_type == 'project' %}
-                                <span class="text-sm font-medium text-green-600">
+                                <span class="text-sm font-medium text-green-700">
                                     {{ (worker.project_rate|money ~ '/project') if worker.project_rate else 'Project Based' }}
                                 </span>
                             {% endif %}
@@ -111,7 +111,7 @@
                         <i class="fa-solid fa-calendar-check"></i>
                     </a>
                     <a href="{{ url_for('id_card', worker_id=worker.id) }}" 
-                       class="tap-target w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-purple-500 hover:text-white transition-colors">
+                       class="tap-target w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-purple-700 hover:text-white transition-colors">
                         <i class="fa-solid fa-id-card"></i>
                     </a>
                     <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" 
@@ -167,7 +167,7 @@
     {% else %}
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fa-solid fa-users text-3xl text-gray-400"></i>
+            <i class="fa-solid fa-users text-3xl text-gray-500"></i>
         </div>
         <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Workers Found') }}</h3>
         <p class="text-gray-600 mb-6">

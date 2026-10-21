@@ -51,10 +51,10 @@
                         <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30 mb-1">
                             <i class="fa-solid fa-qrcode text-white text-2xl"></i>
                         </div>
-                        <div class="text-xs opacity-75 text-center">Auto-Generated</div>
+                        <div class="text-xs opacity-90 text-center">Auto-Generated</div>
                     </div>
                 </div>
-                <div id="worker-photo-hint" class="text-xs opacity-80 mt-2">
+                <div id="worker-photo-hint" class="text-xs opacity-90 mt-2">
                     {% if worker and worker.profile_image %}
                         Tap camera to replace profile photo
                     {% else %}
@@ -138,7 +138,7 @@
                         <input type="text" name="aadhaar_number" inputmode="numeric" maxlength="12"
                                value="{{ worker.aadhaar_number or '' if worker else '' }}"
                                class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                        <p class="text-[0.65rem] text-gray-400 mt-1">{{ _('Shown masked, and never printed on a payslip.') }}</p>
+                        <p class="text-[0.65rem] text-gray-500 mt-1">{{ _('Shown masked, and never printed on a payslip.') }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('PAN') }}</label>
@@ -251,7 +251,7 @@
                         <div class="bg-orange-50 rounded-2xl p-4 border border-orange-200">
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center space-x-2">
-                                    <i class="fa-solid fa-calendar-xmark text-orange-600"></i>
+                                    <i class="fa-solid fa-calendar-xmark text-orange-700"></i>
                                     <h4 class="text-md font-semibold text-gray-800">Closure Day Payment</h4>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
@@ -339,7 +339,7 @@
                 <div id="leave-settings" class="hidden">
                     <div class="bg-green-50 rounded-2xl p-4 border border-green-200">
                         <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                            <i class="fa-solid fa-calendar-days text-green-600 mr-2"></i>
+                            <i class="fa-solid fa-calendar-days text-green-700 mr-2"></i>
                             Leave Policy
                         </h4>
                         
@@ -401,7 +401,7 @@
                     <!-- Absence Policy -->
                     <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
                         <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                            <i class="fa-solid fa-user-slash text-red-600 mr-2"></i>
+                            <i class="fa-solid fa-user-slash text-red-700 mr-2"></i>
                             Absence Policy
                         </h4>
                         <div class="space-y-3">
@@ -513,7 +513,7 @@
                     <!-- Absence Policy (Monthly) -->
                     <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
                         <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                            <i class="fa-solid fa-user-slash text-red-600 mr-2"></i>
+                            <i class="fa-solid fa-user-slash text-red-700 mr-2"></i>
                             Absence Policy
                         </h4>
                         <div class="space-y-3">

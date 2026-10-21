@@ -43,7 +43,7 @@
         <div class="grid grid-cols-3 gap-2">
             {% for value, label in [('all', _('All')), ('assigned', _('Assigned')), ('unassigned', _('Unassigned'))] %}
             <button type="submit" name="show" value="{{ value }}"
-                    class="tap-target py-3 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/80 border border-white/30' }}">
+                    class="tap-target py-3 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/90 border border-white/30' }}">
                 {{ label }}
             </button>
             {% endfor %}
@@ -54,11 +54,11 @@
 <main class="p-4 pb-8 space-y-3">
     <!-- Summary -->
     <section class="grid grid-cols-2 gap-3">
-        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-3 rounded-2xl text-center">
+        <div class="bg-gradient-to-br from-green-700 to-green-800 text-white p-3 rounded-2xl text-center">
             <div class="text-xl font-bold">{{ assigned_count }}</div>
             <div class="text-xs opacity-90">{{ _('Assigned') }}</div>
         </div>
-        <div class="bg-gradient-to-br from-amber-500 to-orange-500 text-white p-3 rounded-2xl text-center">
+        <div class="bg-gradient-to-br from-amber-700 to-orange-800 text-white p-3 rounded-2xl text-center">
             <div class="text-xl font-bold">{{ rows|length - assigned_count }}</div>
             <div class="text-xs opacity-90">{{ _('Unassigned') }}</div>
         </div>
@@ -87,9 +87,9 @@
                     {% if assignment.project %} • <i class="fa-solid fa-diagram-project text-accent mr-1"></i>{{ assignment.project.name }}{% endif %}
                     {% if assignment.task %} • {{ assignment.task.name }}{% endif %}
                 </div>
-                <div class="text-[11px] text-gray-400">Since {{ assignment.start_date|ldate('%d %b %Y') }}</div>
+                <div class="text-[11px] text-gray-500">Since {{ assignment.start_date|ldate('%d %b %Y') }}</div>
                 {% else %}
-                <div class="text-xs text-amber-600 font-medium mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ _('Not assigned') }}</div>
+                <div class="text-xs text-amber-700 font-medium mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ _('Not assigned') }}</div>
                 {% endif %}
             </div>
             <div class="flex flex-col gap-1.5 shrink-0">
@@ -112,7 +112,7 @@
     </section>
     {% else %}
     <div class="text-center text-sm text-gray-500 py-10">
-        <i class="fa-solid fa-users-slash text-3xl text-gray-300 mb-3 block"></i>
+        <i class="fa-solid fa-users-slash text-3xl text-gray-500 mb-3 block"></i>
         No workers match these filters.
     </div>
     {% endfor %}
@@ -193,7 +193,7 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Task <span class="text-gray-400">{{ _('(optional)') }}</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Task <span class="text-gray-500">{{ _('(optional)') }}</span></label>
                 <select name="task_id" id="assign-task" class="w-full p-3 border border-lightGray rounded-xl">
                     <option value="">— No task —</option>
                     {% for task in tasks %}
@@ -206,11 +206,11 @@
                 <input type="date" name="start_date" value="{{ today.isoformat() }}" class="w-full p-3 border border-lightGray rounded-xl">
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Notes') }} <span class="text-gray-400">{{ _('(optional)') }}</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Notes') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
                 <input type="text" name="notes" placeholder="e.g. Transferred for finishing work"
                        class="w-full p-3 border border-lightGray rounded-xl">
             </div>
-            <p class="text-[11px] text-gray-400">If the worker already has an active assignment, it is closed automatically as a transfer the day before the new start date.</p>
+            <p class="text-[11px] text-gray-500">If the worker already has an active assignment, it is closed automatically as a transfer the day before the new start date.</p>
             <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
                 <i class="fa-solid fa-check mr-2"></i>Save Assignment
             </button>

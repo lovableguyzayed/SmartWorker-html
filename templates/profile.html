@@ -53,15 +53,15 @@
                 <div class="text-xl font-bold mb-1 truncate">{{ current_user.full_name }}</div>
                 <div class="text-sm opacity-90 mb-2">{{ _('Admin Account') if current_user.role == 'admin' else current_user.role.title() ~ ' ' ~ _('Account') }}</div>
                 <div class="flex items-center flex-wrap gap-2">
-                    <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">@{{ current_user.username }}</div>
-                    <div class="text-xs text-white/80 bg-green-500/20 px-2 py-1 rounded-lg border border-green-400/30">
+                    <div class="text-xs text-white/90 bg-white/10 px-2 py-1 rounded-lg">@{{ current_user.username }}</div>
+                    <div class="text-xs text-white/90 bg-green-500/20 px-2 py-1 rounded-lg border border-green-400/30">
                         <i class="fa-solid fa-check-circle mr-1"></i>{{ _('Active') }}
                     </div>
                     {% if current_user.profile_image %}
                     <form method="POST" action="{{ url_for('profile_remove_avatar') }}" class="inline"
                           onsubmit="return confirm('Remove your profile photo?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button class="text-xs text-white/80 bg-red-500/20 px-2 py-1 rounded-lg border border-red-400/30 hover:bg-red-500/30 transition-colors">
+                        <button class="text-xs text-white/90 bg-red-500/20 px-2 py-1 rounded-lg border border-red-400/30 hover:bg-red-500/30 transition-colors">
                             <i class="fa-solid fa-trash mr-1"></i>{{ _('Remove photo') }}
                         </button>
                     </form>
@@ -86,7 +86,7 @@
         {% set today = date.today() %}
         {% set present_today = AttendanceRecord.query.filter_by(date=today, status='present').count() %}
         
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-2xl shadow-lg">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ total_workers }}</div>
@@ -98,7 +98,7 @@
             </div>
         </div>
         
-        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-green-700 to-green-800 text-white p-4 rounded-2xl shadow-lg">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ present_today }}</div>
@@ -151,18 +151,18 @@
             {% if current_user.is_admin %}
                 {% for perm in [_('Manage workers & payroll'), _('Mark and edit attendance'), _('Company settings & closures'), _('Transactions & reports'), _('Manage attendance users')] %}
                 <div class="flex items-center text-sm text-gray-700">
-                    <i class="fa-solid fa-circle-check text-green-500 mr-2"></i>{{ perm }}
+                    <i class="fa-solid fa-circle-check text-green-700 mr-2"></i>{{ perm }}
                 </div>
                 {% endfor %}
             {% else %}
                 {% for perm in ['Mark attendance', 'Scan QR codes', 'View workers on assigned sites'] %}
                 <div class="flex items-center text-sm text-gray-700">
-                    <i class="fa-solid fa-circle-check text-green-500 mr-2"></i>{{ perm }}
+                    <i class="fa-solid fa-circle-check text-green-700 mr-2"></i>{{ perm }}
                 </div>
                 {% endfor %}
                 {% for perm in ['Edit attendance', 'Modify payroll', 'Change worker records', 'Admin settings'] %}
-                <div class="flex items-center text-sm text-gray-400">
-                    <i class="fa-solid fa-circle-xmark text-red-400 mr-2"></i>{{ perm }}
+                <div class="flex items-center text-sm text-gray-500">
+                    <i class="fa-solid fa-circle-xmark text-red-700 mr-2"></i>{{ perm }}
                 </div>
                 {% endfor %}
             {% endif %}
@@ -177,7 +177,7 @@
                 <i class="fa-solid fa-user-edit mr-2"></i>
                 {{ _('Edit Profile') }}
             </button>
-            <button onclick="showPasswordModal()" class="flex items-center justify-center p-4 bg-orange-500/10 text-orange-600 rounded-2xl hover:bg-orange-500/20 transition-colors">
+            <button onclick="showPasswordModal()" class="flex items-center justify-center p-4 bg-orange-500/10 text-orange-700 rounded-2xl hover:bg-orange-500/20 transition-colors">
                 <i class="fa-solid fa-key mr-2"></i>
                 {{ _('Change Password') }}
             </button>
@@ -194,10 +194,10 @@
                 <i class="fa-solid fa-bell mr-2"></i>
                 {{ _('Notifications') }}
                 {% if unread_notifications %}
-                <span class="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
+                <span class="absolute top-2 right-2 bg-red-700 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
                 {% endif %}
             </a>
-            <button onclick="exportData()" class="flex items-center justify-center p-4 bg-green-500/10 text-green-600 rounded-2xl hover:bg-green-500/20 transition-colors">
+            <button onclick="exportData()" class="flex items-center justify-center p-4 bg-green-500/10 text-green-700 rounded-2xl hover:bg-green-500/20 transition-colors">
                 <i class="fa-solid fa-download mr-2"></i>
                 {{ _('Export Data') }}
             </button>
@@ -206,7 +206,7 @@
                 <i class="fa-solid fa-qrcode mr-2"></i>
                 {{ _('QR Scanner') }}
             </a>
-            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500/10 text-green-600 rounded-2xl hover:bg-green-500/20 transition-colors">
+            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500/10 text-green-700 rounded-2xl hover:bg-green-500/20 transition-colors">
                 <i class="fa-solid fa-calendar-check mr-2"></i>
                 {{ _('Attendance') }}
             </a>
@@ -224,7 +224,7 @@
             </div>
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Database Status') }}</span>
-                <span class="font-medium text-green-600 flex items-center">
+                <span class="font-medium text-green-700 flex items-center">
                     <i class="fa-solid fa-circle text-xs mr-2"></i>{{ _('Connected') }}
                 </span>
             </div>
@@ -259,7 +259,7 @@
 
     <!-- Logout Section -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <button onclick="confirmLogout()" class="w-full flex items-center justify-center p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-colors">
+        <button onclick="confirmLogout()" class="w-full flex items-center justify-center p-4 bg-red-50 text-red-700 rounded-2xl hover:bg-red-100 transition-colors">
             <i class="fa-solid fa-sign-out-alt mr-2"></i>
             {{ _('Sign Out') }}
         </button>

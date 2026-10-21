@@ -75,7 +75,7 @@
             <div class="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-20 translate-x-20"></div>
             <div class="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
             <div class="absolute top-4 right-4 w-16 h-16 bg-white/10 rounded-2xl backdrop-blur-sm flex items-center justify-center">
-                <i class="fa-solid fa-building text-white/70 text-xl"></i>
+                <i class="fa-solid fa-building text-white/90 text-xl"></i>
             </div>
             
             <div class="relative z-10">
@@ -85,7 +85,7 @@
                     <img src="{{ company.logo }}" alt="logo" class="w-10 h-10 mx-auto mb-1 rounded-lg object-contain bg-white/10 p-0.5">
                     {% endif %}
                     <div class="text-xl font-bold text-white mb-1">{{ company.name if company else 'SmartWorker' }}</div>
-                    <div class="text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full inline-block">{{ _('Employee ID Card') }}</div>
+                    <div class="text-sm text-white/90 bg-white/10 px-3 py-1 rounded-full inline-block">{{ _('Employee ID Card') }}</div>
                 </div>
                 
                 <!-- Employee Info -->
@@ -106,8 +106,8 @@
                         <div class="text-xl font-bold mb-1">{{ worker.full_name }}</div>
                         <div class="text-sm text-white/90 mb-1">{{ worker.position }}</div>
                         <div class="flex items-center space-x-2 mb-2">
-                            <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">{{ _('Worker ID') }}: {{ worker.worker_id }}</div>
-                            <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">{{ _(worker.status|capitalize) }}</div>
+                            <div class="text-xs text-white/90 bg-white/10 px-2 py-1 rounded-lg">{{ _('Worker ID') }}: {{ worker.worker_id }}</div>
+                            <div class="text-xs text-white/90 bg-white/10 px-2 py-1 rounded-lg">{{ _(worker.status|capitalize) }}</div>
                         </div>
                     </div>
                 </div>
@@ -115,11 +115,11 @@
                 <!-- Details -->
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/20">
-                        <div class="text-xs text-white/70 mb-1">{{ _('Phone Number') }}</div>
+                        <div class="text-xs text-white/90 mb-1">{{ _('Phone Number') }}</div>
                         <div class="text-sm font-medium">{{ worker.phone }}</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/20">
-                        <div class="text-xs text-white/70 mb-1">{{ _('Joined Date') }}</div>
+                        <div class="text-xs text-white/90 mb-1">{{ _('Joined Date') }}</div>
                         <div class="text-sm font-medium">{{ worker.join_date|ldate('%d %b %Y') }}</div>
                     </div>
                 </div>
@@ -127,7 +127,7 @@
                 <!-- QR Code Section -->
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex-1">
-                        <div class="text-xs text-white/70 mb-2">{{ _('QR Code for Attendance') }}</div>
+                        <div class="text-xs text-white/90 mb-2">{{ _('QR Code for Attendance') }}</div>
                         <div class="text-sm font-medium text-white/90 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
                             QR ID: {{ worker.worker_id }}QR{{ worker.join_date.strftime('%Y') }}
                         </div>
@@ -145,7 +145,7 @@
                 
                 <!-- Footer -->
                 <div class="border-t border-white/20 pt-4">
-                    <div class="flex items-center justify-between text-xs text-white/70">
+                    <div class="flex items-center justify-between text-xs text-white/90">
                         <span>{{ _('Valid for attendance marking') }}</span>
                         <span>{{ _('Generated') }}: {{ worker.updated_at|ldate('%d %b %Y') if worker.updated_at else _('Today') }}</span>
                     </div>
@@ -176,7 +176,7 @@
             </div>
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('QR Code Status') }}</span>
-                <span class="font-medium text-green-600 flex items-center">
+                <span class="font-medium text-green-700 flex items-center">
                     <i class="fa-solid fa-check-circle mr-2"></i>{{ _('Active') }}
                 </span>
             </div>
@@ -201,7 +201,7 @@
             {% set success_rate = (present_count / total_records * 100) if total_records > 0 else 0 %}
             
             <div class="text-center p-3 bg-green-50 rounded-2xl">
-                <div class="text-2xl font-bold text-green-600">{{ present_count }}</div>
+                <div class="text-2xl font-bold text-green-700">{{ present_count }}</div>
                 <div class="text-sm text-gray-600">{{ _('Successful Check-ins') }}</div>
             </div>
             <div class="text-center p-3 bg-blue-50 rounded-2xl">
@@ -213,7 +213,7 @@
                 <div class="text-sm text-gray-600">{{ _('Other Records') }}</div>
             </div>
             <div class="text-center p-3 bg-orange-50 rounded-2xl">
-                <div class="text-2xl font-bold text-orange-600">{{ "%.0f"|format(success_rate) }}%</div>
+                <div class="text-2xl font-bold text-orange-700">{{ "%.0f"|format(success_rate) }}%</div>
                 <div class="text-sm text-gray-600">{{ _('Success Rate') }}</div>
             </div>
         </div>
@@ -238,18 +238,18 @@
                             <div class="text-sm text-gray-600">{{ _('High quality image format') }}</div>
                         </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                    <i class="fa-solid fa-chevron-right text-gray-500"></i>
                 </button>
                 
                 <button onclick="downloadPDF()" class="w-full flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
                     <div class="flex items-center space-x-3">
-                        <i class="fa-solid fa-file-pdf text-red-600 text-xl"></i>
+                        <i class="fa-solid fa-file-pdf text-red-700 text-xl"></i>
                         <div class="text-left">
                             <div class="font-medium text-gray-800">{{ _('PDF Document') }}</div>
                             <div class="text-sm text-gray-600">{{ _('Printable format') }}</div>
                         </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                    <i class="fa-solid fa-chevron-right text-gray-500"></i>
                 </button>
             </div>
             
