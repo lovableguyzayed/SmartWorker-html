@@ -163,6 +163,14 @@
 .pay-field:focus { outline: 2px solid #4338ca; outline-offset: -1px; }
 .pay-note { margin-top: 0.6rem; }
 .pay-save { width: 100%; margin-top: 0.7rem; }
+.scan-back {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    min-height: 2.75rem; padding: 0 0.85rem; margin-top: 0.75rem;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff; font-size: 0.85rem; font-weight: 600;
+}
 .res-profile {
     display: flex; align-items: center; justify-content: center; gap: 0.4rem;
     min-height: 2.75rem; margin-top: 0.6rem;
@@ -196,6 +204,15 @@
 <header class="scan-header bg-gradient-to-br from-primary via-blue-900 to-accent text-white rounded-b-3xl shadow-xl">
     <h1 class="scan-title">SmartWorker</h1>
     <div class="scan-sub">{{ _('Scan a worker\'s ID card to mark attendance') }}</div>
+
+    {# A mukadam gets no bottom navigation — none of its tabs are screens a
+       worker login may open — so this screen has to carry its own way back,
+       or the scanner is somewhere you can arrive and not leave. #}
+    {% if current_user.is_worker %}
+    <a href="{{ url_for('supervisor_team') }}" class="scan-back">
+        <i class="fa-solid fa-arrow-left"></i>{{ _('My Team') }}
+    </a>
+    {% endif %}
 
     <!-- Live counts for today, refreshed in place after every mark -->
     <div class="scan-stats">
@@ -316,9 +333,14 @@
                     id="btn-pay" data-act="recordPayment">{{ _('Record payment') }}</button>
         </div>
 
+        {# Admins only: worker_profile is not a screen a worker login may
+           open, so for a mukadam this link would be a button that throws
+           them back to their own page. #}
+        {% if current_user.is_admin %}
         <a href="#" id="result-profile-link" class="res-profile">
             <i class="fa-solid fa-user"></i>{{ _('Open full profile') }}
         </a>
+        {% endif %}
     </section>
 </main>
 
@@ -568,7 +590,9 @@ function renderResult(data) {
     site.textContent = where.join(' · ');
     site.style.display = where.length ? '' : 'none';
 
-    document.getElementById('result-profile-link').href = w.profile_url;
+    // Absent for a mukadam — see the note on the link in the markup.
+    var profileLink = document.getElementById('result-profile-link');
+    if (profileLink) profileLink.href = w.profile_url;
 
     applyAttendance(data.attendance);
     applyPayment(w);

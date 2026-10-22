@@ -674,6 +674,16 @@ SUPERVISOR_ENDPOINTS = frozenset({
     'supervisor_team',
     'supervisor_mark',
     'supervisor_transaction',
+    # The gate scanner, which is four endpoints and not one: the screen, the
+    # lookup behind a scan, and the two things the card can then do. Every
+    # one of them scopes to the mukadam's own list through
+    # worker_visible_to_user / may_record_transaction_for — adding a name
+    # here does not grant anything on its own, but it does mean those checks
+    # are now the only thing standing between a mukadam and the roster.
+    'scan',
+    'api_worker_lookup',
+    'api_mark_attendance',
+    'api_worker_transaction',
 })
 
 
@@ -813,6 +823,16 @@ def worker_visible_to_user(worker, user, on_date=None):
     """
     if user.is_admin:
         return True
+
+    # A worker login is scoped by name, not by site: a mukadam is given a
+    # list of people, and a plain labourer is given nobody. This has to come
+    # before the site rule below, which reads an empty site list as "no
+    # restriction" and would otherwise hand a mukadam the whole company —
+    # harmless while worker logins could not reach any screen that asks this
+    # question, and not harmless the moment one can.
+    if user.is_worker:
+        return worker.id in set(user.supervisor_team_ids)
+
     site_ids = user.site_id_list
     project_ids = user.project_id_list
     if not site_ids and not project_ids:

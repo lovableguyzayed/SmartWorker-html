@@ -244,23 +244,110 @@ try:
         db.session.add(sup)
         db.session.commit()
         probe_users.append(sup.id)
+        SUP_ID = sup.id
 
     sup_op = session_for('zzscanpay_sup', 'probe12345')
     code, where = fetch(sup_op, '/scan')
-    check('confined away from the scanner', (code, where), (302, '/me'))
-    code, where = fetch(sup_op, '/api/worker_lookup?worker_id=%d' % OTHER_ID)
-    check('confined away from the lookup', (code, where), (302, '/me'))
-    # Their own page carries a token, so the post below is a real attempt
-    # at the endpoint and not a csrf rejection on the way in.
-    code, where = pay(sup_op, OTHER_ID, token(sup_op, '/me'))
-    check('confined away from the endpoint', (code, where), (302, '/me'))
+    check('the scanner opens for them', code, 200)
     code, where = fetch(sup_op, '/me/team')
     check('their own team screen still opens', code, 200)
+
+    # The whole point of giving them the scanner is that it stays inside
+    # their own list. The allowlist opened four endpoints; each one is asked
+    # about a worker who is not on that list, and about themselves, because
+    # a mukadam marking or paying himself is the fraud the design exists to
+    # stop.
+    sup_csrf = token(sup_op, '/scan')
+
+    def lookup(op, worker_code):
+        try:
+            r = op.open(B + '/api/worker_lookup?code=' + worker_code)
+            return r.getcode(), json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode())
+
+    def mark(op, worker_id, csrf):
+        """Status, and whether the endpoint says it did anything.
+
+        It answers 200 either way — the refusal is carried in the body, the
+        way the day view expects to read it — so the body is what matters.
+        """
+        body = {'csrf_token': csrf, 'worker_id': worker_id,
+                'date': date.today().isoformat(), 'status': 'present',
+                'marked_via': 'qr'}
+        try:
+            r = op.open(urllib.request.Request(
+                B + '/api/mark_attendance', urllib.parse.urlencode(body).encode()))
+            return r.getcode(), json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            return e.code, {}
+
+    with app.app_context():
+        mine_code = m.Worker.query.get(OTHER_ID).worker_id
+        own_code = m.Worker.query.get(WID).worker_id
+        outsider = m.Worker.query.filter(
+            m.Worker.account_id == ACCT, m.Worker.status == 'active',
+            m.Worker.id.notin_([WID, OTHER_ID])).first()
+        out_code, OUT_ID = (outsider.worker_id, outsider.id) if outsider else (None, None)
+        total_active = m.Worker.query.filter_by(status='active').count()
+
+    code, said = lookup(sup_op, mine_code)
+    check('may look up the worker on their list', code, 200)
+    check('and is offered the payment section', said['worker']['can_pay'], True)
+
+    code, said = lookup(sup_op, own_code)
+    check('may not look themselves up', code, 404)
+
+    if out_code:
+        code, said = lookup(sup_op, out_code)
+        check('may not look up a worker off their list', code, 404)
+        # The same wording for missing, inactive and out-of-scope, so the
+        # endpoint never confirms which employee IDs exist.
+        check('and is told nothing about whether that ID exists',
+              'No matching worker on your site' in said.get('message', ''), True)
+        code, said = mark(sup_op, OUT_ID, sup_csrf)
+        check('may not mark a worker off their list',
+              said.get('success'), False)
+        with app.app_context():
+            marked = m.AttendanceRecord.query.filter_by(
+                worker_id=OUT_ID, date=date.today()).first()
+            check('and nothing was written for them',
+                  marked is None or marked.marked_by != SUP_ID, True)
+        code, _ = pay(sup_op, OUT_ID, sup_csrf)
+        check('may not pay a worker off their list', code, 403)
+    else:
+        print('  SKIP  no third worker to stand outside the list')
+
+    code, _ = pay(sup_op, WID, sup_csrf)
+    check('may not pay themselves', code, 403)
+
+    # The header counters run off the same visibility rule, so they are the
+    # cheapest place to see a scoping mistake: a company-wide number here
+    # means a company-wide roster somewhere.
+    page = sup_op.open(B + '/scan').read().decode()
+    counted = sum(int(n) for n in re.findall(
+        r'id="stat-(?:present|late|absent)"[^>]*>(\d+)<', page))
+    check('the header counts their list, not the company',
+          counted <= 1, True)
+    check('(their list holds one worker, the company holds more)',
+          total_active > 1, True)
+    # The bottom nav's tabs are all screens a worker login may not open, so
+    # its presence would be six buttons that throw them back to /me. Looked
+    # for by href and not by class name: the class is also a CSS rule in the
+    # <style> block, which is on every page either way.
+    check('no bottom navigation to screens they cannot open',
+          'href="/dashboard"' in page, False)
+    check('but a way back to their team', '/me/team' in page, True)
 
     print('\n--- an administrator, and what even they may not post ---')
     admin_op = session_for('demo@acme.test', 'demo12345')
     csrf = token(admin_op, '/scan')
     check('the scanner carries a csrf token', bool(csrf), True)
+    # The other half of the nav check above: an administrator does get the
+    # bottom bar, so its absence for a mukadam is the guard working and not
+    # the marker having moved.
+    check('an administrator still gets the bottom navigation',
+          'href="/dashboard"' in admin_op.open(B + '/scan').read().decode(), True)
     code, _ = pay(admin_op, OTHER_ID, csrf)
     check('may record for any worker', code, 200)
     for label, over, want in [

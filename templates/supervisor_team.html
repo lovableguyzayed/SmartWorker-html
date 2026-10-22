@@ -18,6 +18,15 @@
         </a>
     </div>
 
+    {# The gate scanner. Marking from this list means finding a name in it;
+       at a gate with a queue, scanning the card in the man's hand is the
+       faster way round, and it is the same two acts either way. #}
+    <a href="{{ url_for('scan') }}"
+       class="tap-target mt-3 flex items-center justify-center gap-2 px-3 py-2
+              rounded-xl bg-white/15 border border-white/25 text-sm font-semibold">
+        <i class="fa-solid fa-qrcode"></i>{{ _('Scan QR') }}
+    </a>
+
     <form method="GET" class="mt-4">
         <input type="date" name="date" value="{{ on_date.isoformat() }}"
                max="{{ today.isoformat() }}" data-act="submit-form"
