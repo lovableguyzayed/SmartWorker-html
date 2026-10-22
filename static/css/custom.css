@@ -185,11 +185,11 @@ input:focus, select:focus, textarea:focus {
     .app-bottom-nav {
         display: none !important;
     }
-    /* Without the bar there is nothing to clear, and the padding would
-       otherwise leave a blank strip at the foot of each sheet. */
-    .has-bottom-nav {
-        padding-bottom: 0 !important;
-    }
+    /* The reset for .has-bottom-nav is NOT here. It cannot be: base.html
+       declares the clearance in an inline <style> after this file is
+       linked, with !important at the same specificity, so a copy here
+       always loses on source order. It lives next to the declaration it
+       undoes, in base.html. */
 
     .print-full-width {
         width: 100% !important;

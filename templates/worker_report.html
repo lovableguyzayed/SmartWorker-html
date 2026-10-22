@@ -9,10 +9,22 @@
     body, #mobile-app { background: white !important; max-width: 100% !important; }
     .report-page { box-shadow: none !important; border: none !important; margin: 0 !important; }
     @page { margin: 12mm; }
-    /* Keep logical blocks together across page breaks. The report is built
-       from divs — it contains no <section> tags — so target those. */
-    .report-body > div { break-inside: avoid; page-break-inside: avoid; }
+    /* Keep logical blocks together across page breaks — but only the ones
+       that are small enough for that to mean anything.
+
+       This used to read `.report-body > div`, which made every section
+       atomic. The Salary Calculation section is 222mm, 83% of a sheet: a
+       block that large can only ever begin at the top of a page, so it
+       shoved everything after it down and left 28mm unused on the sheet
+       before — which is how a report that fits on two sheets printed a
+       third one holding a heading and a line of small print.
+
+       What actually has to stay whole is a table row and a two-column
+       grid. A long section may flow; its heading still cannot be the last
+       thing on a page (.report-section-title below), so it arrives with
+       its table rather than ahead of it. */
     .report-table tr { break-inside: avoid; page-break-inside: avoid; }
+    .report-body .grid { break-inside: avoid; page-break-inside: avoid; }
     /* A section title must never be the last thing on a page. */
     .report-section-title { break-after: avoid; page-break-after: avoid; }
     .report-page { orphans: 3; widows: 3; }
@@ -21,6 +33,44 @@
        it does repeat a <thead> when a table spans pages. So the whole report
        lives in a one-cell table whose header carries the identity strip. */
     .print-running-header { display: flex !important; }
+
+    /* ---- why the report printed a third sheet --------------------------
+       Measured: 544mm of content, and two sheets hold 534mm once the
+       running header above is repeated on each — 10mm over, which spilled
+       the signature line onto a sheet that was then 81% empty.
+
+       Nine section gaps of 24px are set for a screen you scroll. On a
+       printed sheet they cost 19mm between them, so taking them to 16px
+       returns twice the overflow and still separates the sections
+       plainly. Type size and table padding are untouched — this document
+       goes to a worker and to an inspector. */
+    .report-body .mb-6 { margin-bottom: 16px; }
+
+    /* The report is mostly table rows — about thirty of them. 5px of
+       padding above and below each is set for a finger-sized screen row;
+       on paper a row only has to be readable, and the two millimetres per
+       row add up to more than the sheet this document was overflowing
+       by. Type size is untouched.
+
+       Scoped through .report-body deliberately: the screen rule that sets
+       this padding is declared further down this same stylesheet, so an
+       equally specific print rule up here would lose on source order and
+       silently do nothing. */
+    .report-body .report-table td { padding-top: 3px; padding-bottom: 3px; }
+    .report-body .report-table th { padding-top: 4px; padding-bottom: 4px; }
+
+    /* With the above, every line of the report fits on two sheets — and
+       Chrome still printed a third, completely blank one.
+
+       The content ended at 501mm; the page box ran to 537mm. The extra
+       36mm is the app shell: #mobile-app carries min-h-screen so a short
+       screen still fills the phone, and main carries pb-8 to clear the
+       bottom navigation. Neither means anything on paper, and empty space
+       still counts towards the page box — so 36mm of nothing nobody can
+       see was enough to start a sheet. */
+    #mobile-app { min-height: 0 !important; }
+    main { padding-bottom: 0 !important; }
+    .report-body > div:last-child { margin-bottom: 0 !important; }
 }
 .print-frame { width: 100%; border-collapse: collapse; }
 .print-frame > thead > tr > th { padding: 0 0 6px; text-align: left; font-weight: 400; }

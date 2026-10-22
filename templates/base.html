@@ -57,6 +57,23 @@
             padding-bottom: calc(7rem + env(safe-area-inset-bottom)) !important;
         }
 
+        /* Paper has no bottom navigation, so there is nothing to clear.
+           custom.css carries this same reset inside its own @media print,
+           and it could never win: both declarations are !important at
+           equal specificity, and that file is linked above this block, so
+           the rule right here is the last word on .has-bottom-nav. The
+           reset has to live beside the declaration it undoes.
+
+           Unreset, it adds 112px — about 30mm — of blank clearance to the
+           foot of every printed screen. On the worker report that was the
+           whole reason a document which ends on page two printed a third,
+           completely empty sheet. */
+        @media print {
+            .has-bottom-nav {
+                padding-bottom: 0 !important;
+            }
+        }
+
         .app-bottom-nav-frame {
             position: relative;
             overflow: hidden;

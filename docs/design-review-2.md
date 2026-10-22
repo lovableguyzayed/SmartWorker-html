@@ -6,11 +6,9 @@ corrections of copy and of one wrong timestamp were made as the review
 went; everything that changed a layout was written down first and done
 afterwards, in the order agreed.
 
-**Where it stands: 11 of 13 findings fixed.** The two left open are #5, the
-near-empty last page of the printed payslip and report, and #12, the
-frosted header pills below the contrast floor. Both are deliberate design
-choices — a signature strip kept whole, and a look — so changing either is
-a decision to take, not a defect to fix.
+**Where it stands: 12 of 13 findings fixed.** The one left open is #12,
+the frosted header pills below the contrast floor, which is a deliberate
+look rather than a defect.
 
 What was measured is in `tools/ux/`: `documents.py` generates all eight
 documents and reads every page, `hindi_gaps.py` renders each screen in
@@ -83,25 +81,59 @@ headings became `h2` in the headings change. It had been doing nothing
 since, which lets a heading sit alone at the foot of a page with its table
 overleaf.
 
-### 5. The printed payslip and report still end on a near-empty page — OPEN
+### 5. The printed payslip and report still end on a near-empty page — FIXED
 
-| document | pages | last page |
+| document | pages before | pages now |
 |---|---|---|
-| worker report (Print) | 3 | 81% empty |
-| payslip (Print) | 3 | 85% empty |
+| worker report (Print) | 3, last 81% empty | **2** |
+| payslip (Print) | 3, last 85% empty | **2** |
 
-Pages one and two fill to 91–93%, so only about a tenth of a page spills.
-What lands on page three is the signature strip and the generated-on line,
-which are deliberately kept whole.
+Both documents, both languages. `tools/ux/documents.py` reports 0 findings
+across all eight.
+
+**A correction to what this entry used to say.** It claimed the documents
+had to lose about 30mm, and offered smaller type, a tighter calendar, or
+moving the signature strip as the three ways to find it. That was wrong on
+the measurement and therefore wrong on the remedy. Measured properly: the
+payslip ran **9mm** over two sheets and the report **10mm**, against a
+capacity of 534mm once the repeating running header is counted on each
+sheet. Nothing needed redesigning. The space was already there, in the
+wrong places.
+
+**Where it came from.** All of it was white space set for a phone and
+inherited by paper, and none of it was type:
+
+- the Salary Calculation table — 212mm, 39% of the payslip — at 40px for a
+  row holding one 12px line;
+- the pay rows at 0.45rem above and below;
+- the calendar's day cells, still carrying the 44px *tap target* minimum,
+  on a sheet where nothing is ever tapped;
+- the report's thirty-odd table rows at 5px of padding each, and its nine
+  24px section gaps.
+
+**The blank sheet was a different bug, and a real one.** `base.html`
+declares the bottom-navigation clearance — 112px, about 30mm — with
+`!important` in an inline `<style>`. `custom.css` carried a print reset for
+it that **could never have worked**: both declarations are `!important` at
+equal specificity, and `custom.css` is linked before that inline block, so
+the reset lost on source order and had been dead since it was written.
+Every printed screen in the application was padded with 30mm of clearance
+for a navigation bar that paper does not have. The reset now lives beside
+the declaration it undoes.
+
+**Also fixed on the way:** the payslip printed its policy note in English
+on a Hindi payslip, directly under the same sentences translated into
+Hindi as bullets. The four screens that show that note all pass it through
+`lnotes`; the payslip — the one document that goes to the worker — did not.
 
 **Tried and reverted:** 9mm margins instead of 12mm. It reclaimed 6mm a
-page and did not remove the sheet, so it went back — 12mm is the safer,
-more conventional margin and the change bought nothing.
+page and did not remove the sheet, so it went back.
 
-To actually fix this the document has to lose about 30mm: either smaller
-type, a tighter attendance calendar, or letting the signature strip sit
-beside the net-payable panel rather than under it. All three are design
-decisions, so none has been made.
+`tests/test_print_pages.py` holds the line: it checks both documents in
+both languages, rejects a sheet carrying only the running header, pins the
+print stylesheets against ever setting a `font-size` — shrinking the
+figures is the one way this must not be won — and asserts that the
+bottom-nav reset stays in the file where it can win.
 
 **A correction.** My first read of a 58dpi thumbnail said the calendar
 legend was sliced in half across a page. It is not. Asking the paginator

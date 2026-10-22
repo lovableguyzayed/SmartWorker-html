@@ -54,6 +54,61 @@
        slip is wrapped in a one-cell table carrying the identity strip.
        The jsPDF path draws its own native header and page numbers instead. */
     .print-running-header { display: flex !important; }
+
+    /* ---- why the slip printed a third sheet ----------------------------
+       Measured: 543mm of content, and two sheets hold 534mm once the
+       running header above is repeated on each — so it ran 9mm over and
+       spilled the signature strip onto a sheet that was then 85% empty.
+
+       The 9mm was not missing space, it was loose space. The Salary
+       Calculation table alone is 212mm, 39% of the whole document, at
+       40px for a row holding one 12px line. Trimming its padding on paper
+       returns about 21mm, which is twice what the overflow needs. Type
+       size is untouched: these go to a worker and to an inspector, and
+       shrinking the figures to win a page would be the wrong trade. The
+       screen keeps the roomier rows — nothing here applies to it. */
+    .slip-wrapper [data-pdf-split] { padding-top: 4px; padding-bottom: 4px; }
+
+    /* Same lesson as the report. [data-pdf-block] marks an atomic unit for
+       the jsPDF exporter, and the rule above hands every one of them to
+       the browser's paginator too — including the Pay Breakdown wrapper,
+       which is 69mm of heading plus rows that are each already atomic in
+       their own right. Keeping the wrapper whole as well bought nothing
+       and stranded up to 21mm at the foot of a sheet. The rows still
+       cannot split, and h2 above still cannot end a page, so the heading
+       arrives with its figures. The calendar stays atomic deliberately —
+       a month cut in half across two sheets is unreadable. */
+    .slip-wrapper [data-pdf-flow] { break-inside: auto; page-break-inside: auto; }
+
+    /* The calendar is already down from the screen's 44px tap target to
+       30px. On paper a day cell holds two digits and a colour and nothing
+       is ever tapped, so 26px is still comfortable and returns another
+       6mm across the six rows of a month. */
+    .slip-wrapper .cal-cell { min-height: 26px; }
+    .slip-wrapper .cal-cell.header { min-height: 18px; }
+
+    /* The gaps between the panels below Pay Breakdown — leave balance,
+       transactions, salary calculation, net payable — are 12px apiece, set
+       for a screen you scroll. Six of them at 8px still read as separate
+       panels and return another 6mm. */
+    .slip-wrapper .mt-3 { margin-top: 8px; }
+    /* The explanation under the salary table is five lines at 1.625
+       leading. 1.4 is still comfortably readable prose. */
+    .slip-wrapper .leading-relaxed { line-height: 1.4; }
+
+    /* The pay rows carry 0.45rem above and below — a comfortable row to
+       read on a phone. Six of them on paper at 4px still sit clearly
+       apart on their hairlines and return another 10mm, which is what the
+       slip was overflowing by. */
+    .slip-wrapper .pay-row { padding-top: 4px; padding-bottom: 4px; }
+
+    /* The app shell, which means nothing on paper: #mobile-app carries
+       min-h-screen so a short screen still fills the phone, and main
+       carries pb-8 to clear the bottom navigation. Empty space still
+       counts towards the page box, so that invisible tail was enough on
+       its own to start a third sheet carrying only the running header. */
+    #mobile-app { min-height: 0 !important; }
+    main { padding-bottom: 0 !important; }
 }
 .print-frame { width: 100%; border-collapse: collapse; }
 .print-frame > thead > tr > th { padding: 0 0 6px; text-align: left; font-weight: 400; }
@@ -257,7 +312,11 @@
 
             <!-- Pay Breakdown -->
             <div>
-                <div data-pdf-block>
+                {# data-pdf-flow: atomic for the jsPDF exporter, which needs
+                   whole blocks, but free to break for the browser's own
+                   paginator, whose finer rules already hold each pay row
+                   together. See the print stylesheet. #}
+                <div data-pdf-block data-pdf-flow>
                 <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ _('Pay Breakdown') }}</h2>
                 <div class="bg-gray-50 rounded-2xl p-3 space-y-0">
 
@@ -518,7 +577,11 @@
                 </div>
 
                 {% if pay_summary.policy_note %}
-                <p class="text-xs text-gray-500 mt-2 leading-relaxed px-1" data-pdf-block>{{ pay_summary.policy_note }}</p>
+                {# The four screens that show this note all run it through
+                   lnotes; this one did not, so a Hindi payslip printed the
+                   bullet list in Hindi and then repeated it underneath in
+                   English — on the one document that goes to the worker. #}
+                <p class="text-xs text-gray-500 mt-2 leading-relaxed px-1" data-pdf-block>{{ pay_summary.policy_note|lnotes }}</p>
                 {% endif %}
             </div>
 
