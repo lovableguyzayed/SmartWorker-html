@@ -22,8 +22,8 @@
             <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Settings') }}">
                 <i class="fa-solid fa-gear text-lg"></i>
             </a>
-            <button type="button" data-export-url="{{ url_for('export_data') }}"
-                    data-export-name="smartworker_data.csv"
+            <button type="button" data-export-url="{{ url_for('export_data_xlsx') }}"
+                    data-export-name="smartworker_data.xlsx"
                     class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Export Data') }}">
                 <i class="fa-solid fa-download text-lg"></i>
             </button>
@@ -372,7 +372,7 @@ function hidePasswordModal() {
 function exportData() {
     // window.location to a CSV attachment silently does nothing in the
     // Android WebView; go through the shared saver instead.
-    SmartWorkerSave.url('{{ url_for("export_data") }}', 'smartworker_data.csv')
+    SmartWorkerSave.url('{{ url_for("export_data_xlsx") }}', 'smartworker_data.xlsx')
         .then(SmartWorkerSave.toast)
         .catch(SmartWorkerSave.fail);
 }

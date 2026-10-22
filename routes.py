@@ -23,6 +23,7 @@ import tenancy
 import salary
 import i18n
 import money
+import excel
 from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
@@ -3543,6 +3544,251 @@ def payroll_export():
     response.headers['Content-Type'] = 'text/csv'
     response.headers['Content-Disposition'] = f'attachment; filename={filename}'
     return response
+
+
+def _company_name():
+    row = CompanySetting.query.first()
+    return (row.name if row and row.name else 'SmartWorker')
+
+
+def _xlsx_response(wb, filename):
+    response = make_response(excel.to_bytes(wb))
+    response.headers['Content-Type'] = (
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response.headers['Content-Disposition'] = (
+        f'attachment; filename={filename}')
+    return response
+
+
+# (heading, key, kind, width). Kind drives the number format, so a column
+# is described once and every cell in it agrees. Money goes in as a float,
+# never as a preformatted string: a column of text that looks like money
+# will not sum, will not sort, and is the single thing that makes a
+# spreadsheet feel like a printout of a screen.
+PAYROLL_COLUMNS = [
+    ('Worker ID', 'worker_id', None, 12),
+    ('Full Name', 'full_name', None, 26),
+    ('Department', 'department', None, 16),
+    ('Position', 'position', None, 18),
+    ('Pay Type', 'pay_type', None, 12),
+    ('Marked Days', 'marked_days', 'int', 11),
+    ('Paid Days', 'paid_days', 'int', 10),
+    ('Gross Pay', 'gross_pay', 'money', 14),
+    ('Deductions', 'deductions', 'money', 13),
+    ('Net Payable', 'net_pay', 'money', 15),
+    ('Overtime (min)', 'overtime_minutes', 'int', 13),
+    ('Closure Bonus', 'closure_bonus', 'money', 13),
+    ('Status', 'status', None, 11),
+    ('Joining Date', 'join_date', 'date', 13),
+    ('Monthly Salary', 'monthly_salary', 'money', 14),
+    ('Salary Basis', 'salary_basis', None, 16),
+    ('Basis Days', 'basis_days', 'int', 10),
+    ('Daily Rate', 'daily_rate', 'money', 12),
+    ('Eligible Days', 'eligible_days', 'int', 12),
+    ('Present Days', 'present_days', 'int', 12),
+    ('Absent Days', 'absent_days', 'int', 11),
+    ('Paid Leave Used', 'paid_leave_used', 'int', 14),
+    ('Unpaid Leave', 'unpaid_leave', 'int', 12),
+    ('Deduction Days', 'deduction_days', 'int', 13),
+    ('Salary Deduction', 'salary_deduction', 'money', 15),
+]
+
+
+def _payroll_export_rows(month, year):
+    """The same rows the payroll screen shows, shaped for a spreadsheet.
+
+    Nothing is recalculated here. _build_payroll_rows is what the screen
+    renders from, so the file and the screen cannot disagree — which is the
+    whole reason an export reads from the app's own figures rather than
+    going back to the database on its own.
+    """
+    rows, totals, _ = _build_payroll_rows(month, year)
+    out = []
+    total_bonus = 0.0
+    for row in rows:
+        w, pay, att = row['worker'], row['pay_summary'], row['att_summary']
+        b = pay.get('salary_breakdown')
+        bonus = pay.get('closure_extra_pay', 0.0) or 0.0
+        total_bonus += bonus
+        out.append({
+            'worker_id': w.worker_id,
+            'full_name': w.full_name,
+            'department': w.department,
+            'position': w.position,
+            'pay_type': w.pay_type,
+            'marked_days': att['total_marked_days'],
+            'paid_days': pay['paid_days'],
+            'gross_pay': float(row['gross_pay'] or 0),
+            'deductions': float(row['deductions'] or 0),
+            'net_pay': float(row['net_pay'] or 0),
+            'overtime_minutes': pay['overtime_minutes'],
+            'closure_bonus': bonus or None,
+            'status': row['status'],
+            # Blank, not zero, for anyone not on a fixed monthly salary:
+            # these rules do not apply to a daily or hourly worker, and a
+            # zero reads as a real figure.
+            'join_date': w.join_date if b else None,
+            'monthly_salary': b['monthly_salary'] if b else None,
+            'salary_basis': (salary.LABELS['salary_basis'].get(
+                b['salary_basis'], b['salary_basis']) if b else None),
+            'basis_days': b['basis_days'] if b else None,
+            'daily_rate': b['daily_rate'] if b else None,
+            'eligible_days': b['eligible_days'] if b else None,
+            'present_days': (b['present_days'] + b['late_days']) if b else None,
+            'absent_days': b['absent_days'] if b else None,
+            'paid_leave_used': b['paid_leave_used'] if b else None,
+            'unpaid_leave': b['unpaid_leave_days'] if b else None,
+            'deduction_days': b['deduction_days'] if b else None,
+            'salary_deduction': b['deduction_amount'] if b else None,
+        })
+    summary = {
+        'full_name': 'TOTAL — %d workers' % len(out),
+        'gross_pay': float(totals['total_gross'] or 0),
+        'deductions': float(totals['total_deductions'] or 0),
+        'net_pay': float(totals['total_net'] or 0),
+        'closure_bonus': total_bonus or None,
+        'status': '%d paid / %d pending' % (totals['paid_count'],
+                                            totals['pending_count']),
+    }
+    return out, summary
+
+
+@app.route('/payroll/export.xlsx')
+@admin_required
+def payroll_export_xlsx():
+    """Payroll for one month, as a workbook somebody can hand to an accountant."""
+    today = today_ist()
+    try:
+        month = max(1, min(12, int(request.args.get('month', today.month))))
+        year = max(2020, min(2099, int(request.args.get('year', today.year))))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+
+    rows, totals = _payroll_export_rows(month, year)
+    month_name = MONTH_NAMES[month - 1]
+
+    wb = excel.new_workbook()
+    ws = wb.create_sheet('Payroll')
+    excel.write_sheet(
+        ws, PAYROLL_COLUMNS, rows,
+        title='Payroll — %s %d' % (month_name, year),
+        subtitle='Generated %s · %d workers'
+                 % (now_ist().strftime('%d %b %Y, %I:%M %p'), len(rows)),
+        company=_company_name(), totals=totals)
+    return _xlsx_response(
+        wb, 'payroll_%s_%d.xlsx' % (month_name.lower(), year))
+
+
+WORKER_COLUMNS = [
+    ('Worker ID', 'worker_id', None, 12),
+    ('Full Name', 'full_name', None, 26),
+    ('Department', 'department', None, 16),
+    ('Position', 'position', None, 18),
+    ('Phone', 'phone', None, 14),
+    ('Email', 'email', None, 24),
+    ('Employee Type', 'employee_type', None, 14),
+    ('Join Date', 'join_date', 'date', 13),
+    ('Status', 'status', None, 10),
+    ('Pay Type', 'pay_type', None, 11),
+    ('Daily Rate', 'daily_rate', 'money', 12),
+    ('Monthly Salary', 'monthly_salary', 'money', 14),
+    ('Hourly Rate', 'hourly_rate', 'money', 12),
+    ('Project Rate', 'project_rate', 'money', 12),
+    ('Salary Basis', 'salary_basis', None, 16),
+    ('Basis Days', 'basis_days', 'int', 10),
+    ('Rounding', 'rounding', None, 14),
+    ('Mid-Month Joining', 'joining_mode', None, 18),
+    ('Paid Leave', 'paid_leave', None, 11),
+    ('Leave Allowance', 'leave_allowance', 'int', 14),
+    ('Carry Forward', 'carry_forward', None, 13),
+    ('Absence Deduction', 'absence_deduction', None, 17),
+    ('Deduction Rate', 'deduction_rate', 'money', 14),
+    ('Calculation Method', 'calculation_method', None, 20),
+    ('Attendance Records', 'record_count', 'int', 17),
+]
+
+ATTENDANCE_COLUMNS = [
+    ('Date', 'date', 'date', 13),
+    ('Worker ID', 'worker_id', None, 12),
+    ('Full Name', 'full_name', None, 26),
+    ('Department', 'department', None, 16),
+    ('Status', 'status', None, 12),
+    ('Check In', 'check_in', None, 10),
+    ('Check Out', 'check_out', None, 10),
+]
+
+
+@app.route('/export_data.xlsx')
+@admin_required
+def export_data_xlsx():
+    """Everything, as a workbook — one sheet per kind of thing.
+
+    The CSV this replaces joined each worker to each of their attendance
+    rows, so a worker's twenty-four pay-policy columns were repeated once
+    per day they had been marked (sixty-four times, for the busiest worker
+    in the demo data), and a worker with no attendance at all appeared
+    nowhere in the file. Separate sheets say each fact once and lose
+    nobody.
+    """
+    workers = (Worker.query
+               .options(db.joinedload(Worker.attendance_records))
+               .order_by(Worker.full_name).all())
+
+    worker_rows, attendance_rows = [], []
+    for w in workers:
+        pol = resolve_salary_policy(w) if w.pay_type == 'monthly' else None
+        worker_rows.append({
+            'worker_id': w.worker_id, 'full_name': w.full_name,
+            'department': w.department, 'position': w.position,
+            'phone': w.phone, 'email': w.email or '',
+            'employee_type': w.employee_type, 'join_date': w.join_date,
+            'status': w.status, 'pay_type': w.pay_type,
+            'daily_rate': w.daily_rate or None,
+            'monthly_salary': w.monthly_salary or None,
+            'hourly_rate': w.hourly_rate or None,
+            'project_rate': w.project_rate or None,
+            'salary_basis': (salary.LABELS['salary_basis'].get(
+                pol['salary_basis'], pol['salary_basis']) if pol else None),
+            'basis_days': pol['basis_days'] if pol else None,
+            'rounding': (salary.LABELS['rounding'].get(
+                pol['rounding'], pol['rounding']) if pol else None),
+            'joining_mode': (salary.LABELS['joining_mode'].get(
+                pol['joining_mode'], pol['joining_mode']) if pol else None),
+            'paid_leave': ('Yes' if pol['paid_leave_enabled'] else 'No') if pol else None,
+            'leave_allowance': pol['monthly_leave_allowance'] if pol else None,
+            'carry_forward': ('Yes' if pol['leave_carry_forward'] else 'No') if pol else None,
+            'absence_deduction': ('Yes' if pol['absence_deduction_enabled'] else 'No') if pol else None,
+            'deduction_rate': (pol['deduction_rate'] if pol else None),
+            'calculation_method': (salary.LABELS['calculation_method'].get(
+                pol['calculation_method'], pol['calculation_method']) if pol else None),
+            'record_count': len(w.attendance_records),
+        })
+        for a in w.attendance_records:
+            attendance_rows.append({
+                'date': a.date, 'worker_id': w.worker_id,
+                'full_name': w.full_name, 'department': w.department,
+                'status': a.status,
+                'check_in': a.check_in_time.strftime('%H:%M') if a.check_in_time else '',
+                'check_out': a.check_out_time.strftime('%H:%M') if a.check_out_time else '',
+            })
+    attendance_rows.sort(key=lambda r: (r['date'], r['full_name']), reverse=True)
+
+    company = _company_name()
+    stamp = now_ist().strftime('%d %b %Y, %I:%M %p')
+    wb = excel.new_workbook()
+    excel.write_sheet(
+        wb.create_sheet('Workers'), WORKER_COLUMNS, worker_rows,
+        title='Workers and pay rules',
+        subtitle='Generated %s · %d workers' % (stamp, len(worker_rows)),
+        company=company)
+    excel.write_sheet(
+        wb.create_sheet('Attendance'), ATTENDANCE_COLUMNS, attendance_rows,
+        title='Attendance records',
+        subtitle='Generated %s · %d records, newest first'
+                 % (stamp, len(attendance_rows)),
+        company=company)
+    return _xlsx_response(
+        wb, 'smartworker_%s.xlsx' % today_ist().isoformat())
 
 
 @app.route('/export_data')

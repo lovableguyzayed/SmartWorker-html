@@ -505,6 +505,7 @@ TRANSLATIONS = {
         'Not Saved': 'सेव नहीं',
         'Gross': 'कुल',
         'Export CSV': 'CSV निकालें',
+        'Download Excel': 'एक्सेल डाउनलोड करें',
         'Deduct.': 'कटौती',
         'Mark Pending': 'बाक़ी लगाएँ',
         'Mark Paid': 'दे दिया लगाएँ',

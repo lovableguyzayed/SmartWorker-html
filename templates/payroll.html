@@ -84,10 +84,19 @@
         {# Fetched and saved via SmartWorkerSave rather than linked: a plain
            <a href> was intercepted by the SPA router and its CSV painted into
            the page, and a link download does nothing at all in the APK. #}
+        {# Excel first and bigger: it is the one somebody opens, sorts and
+           mails on. CSV stays for whatever script is already reading it. #}
+        <button type="button"
+                data-export-url="{{ url_for('payroll_export_xlsx', month=month, year=year) }}"
+                data-export-name="payroll_{{ month_name|lower }}_{{ year }}.xlsx"
+                class="w-full mt-3 flex items-center justify-center p-3 bg-green-700 text-white rounded-2xl font-medium hover:bg-green-800 transition-colors">
+            <i class="fa-solid fa-file-excel mr-2"></i>
+            {{ _('Download Excel') }} — {{ _(month_name) }} {{ year }}
+        </button>
         <button type="button"
                 data-export-url="{{ url_for('payroll_export', month=month, year=year) }}"
                 data-export-name="payroll_{{ month_name }}_{{ year }}.csv"
-                class="w-full mt-3 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium hover:border-accent hover:text-accent transition-colors">
+                class="w-full mt-2 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium hover:border-accent hover:text-accent transition-colors">
             <i class="fa-solid fa-file-csv mr-2"></i>
             {{ _('Export CSV') }} — {{ _(month_name) }} {{ year }}
         </button>
