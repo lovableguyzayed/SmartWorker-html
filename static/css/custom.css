@@ -1,13 +1,35 @@
 /* SmartWorker Custom Styles */
 
-/* ── Page content slides in on every load ── */
+/* ── Screens arrive from the side they came from ──
+   The first paint of a cold start still rises, because nothing was on
+   screen to come from anywhere. After that the direction carries meaning:
+   right means you went somewhere, left means you came back. */
 @keyframes pageSlideIn {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes screenPush {
+    from { opacity: 0; transform: translateX(14px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes screenPop {
+    from { opacity: 0; transform: translateX(-14px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
 
 #mobile-app {
     animation: pageSlideIn 0.18s ease-out both;
+}
+#mobile-app.screen-push { animation: screenPush 0.19s cubic-bezier(.22,.61,.36,1) both; }
+#mobile-app.screen-pop  { animation: screenPop  0.19s cubic-bezier(.22,.61,.36,1) both; }
+
+/* Someone who has asked for less movement gets the screen, not the
+   journey. `both` above holds the opening frame, so the animation has to
+   be removed rather than merely shortened or the screen stays invisible. */
+@media (prefers-reduced-motion: reduce) {
+    #mobile-app,
+    #mobile-app.screen-push,
+    #mobile-app.screen-pop { animation: none; }
 }
 
 /* ── Native touch & scroll feel ── */
@@ -32,7 +54,34 @@ input, textarea, [contenteditable="true"] {
     user-select: text;
 }
 
-/* ── Skeleton shimmer (only for uncached screens >150ms) ── */
+/* ── "It is coming": a hairline, not a blanked screen ──
+   Creeps toward the right and never reaches it, because it has no idea how
+   far along the request is and a bar that completes and then waits is a
+   worse lie than one that is still moving. */
+@keyframes navProgress {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(0.9); }
+}
+#nav-progress {
+    position: fixed;
+    top: 0; left: 50%;
+    width: 100%; max-width: 24rem;
+    margin-left: -12rem;
+    height: 2px;
+    z-index: 70;
+    background: #007bff;                  /* the accent, as bg-accent compiles it */
+    transform-origin: left center;
+    animation: navProgress 2.4s cubic-bezier(.1,.6,.3,1) forwards;
+}
+/* Narrow screens: max-width already caps it, so centre on the viewport. */
+@media (max-width: 24rem) {
+    #nav-progress { left: 0; margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #nav-progress { animation: none; transform: scaleX(0.3); }
+}
+
+/* ── Skeleton shimmer (only for screens that really are slow) ── */
 @keyframes skShimmer {
     from { background-position: -200% 0; }
     to   { background-position: 200% 0; }

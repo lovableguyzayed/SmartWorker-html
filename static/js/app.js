@@ -469,6 +469,9 @@ const NativeShell = {
     skeletonTimer: null,
     navigating: false,
 
+    // The one piece of the document that survives a screen change.
+    NAV: 'nav.app-bottom-nav',
+
     PRELOAD_SCREENS: ['/dashboard', '/workers', '/attendance', '/payroll',
                       '/transactions', '/assignments', '/settings',
                       '/notifications', '/closures', '/profile'],
@@ -572,9 +575,28 @@ const NativeShell = {
         }
     },
 
+    /* Where the reader had got to on the screen they are leaving.
+     *
+     * Written onto the history entry itself rather than a side table, so it
+     * travels with the entry: the browser hands it straight back on the pop
+     * that returns here, and a reload or a restored tab does not resurrect
+     * a position from some other visit.
+     */
+    saveScroll() {
+        try {
+            history.replaceState(
+                Object.assign({}, history.state, { y: window.scrollY }),
+                '', location.href);
+        } catch (_) { /* a history that will not take state is not fatal */ }
+    },
+
     async visit(href, opts = {}) {
         if (this.navigating) return;
         this.navigating = true;
+        // Before anything is fetched: once the body is replaced the old
+        // scroll position is unrecoverable.
+        if (opts.push !== false) this.saveScroll();
+        this.back = opts.push === false;
         document.dispatchEvent(new Event('page:before-swap'));
         this.scheduleSkeleton();
         try {
@@ -630,7 +652,22 @@ const NativeShell = {
         // for why the fetched page's own nonce is the wrong one to use.
         const incoming = [...doc.body.querySelectorAll('script')];
 
+        // The tab bar outlives the screen. Replacing the body destroys it
+        // and builds a new one, which is how a native-looking app gives
+        // itself away: the bar blinks, its press animation restarts, and
+        // the active tab arrives already lit instead of lighting up. Holding
+        // a reference keeps the live node alive while it is detached, so the
+        // same element — with its CSS state and its listeners — goes back in
+        // afterwards and only its highlight changes.
+        const keptNav = document.querySelector(this.NAV);
+
         document.body.innerHTML = doc.body.innerHTML;
+
+        const freshNav = document.querySelector(this.NAV);
+        if (keptNav && freshNav) {
+            this.syncNav(freshNav, keptNav);
+            freshNav.replaceWith(keptNav);
+        }
 
         // innerHTML never executes scripts — replace each with a live clone.
         document.body.querySelectorAll('script').forEach((old, i) => {
@@ -645,8 +682,57 @@ const NativeShell = {
 
         if (push && url !== location.href) history.pushState({}, '', url);
         else if (push) history.replaceState({}, '', url);
-        window.scrollTo(0, 0);
+
+        // Going back puts the reader where they were; going forward starts
+        // at the top. A list you had scrolled half way down and must scroll
+        // again after a glance at one row is the clearest sign that these
+        // are pages and not screens.
+        const y = (!push && history.state && history.state.y) || 0;
+        window.scrollTo(0, y);
+
+        this.animate(this.back);
         document.dispatchEvent(new Event('page:load'));
+    },
+
+    /* Push forward, pop backward.
+     *
+     * The same arrival animation in both directions reads as a page that
+     * re-rendered. Which way the screen comes from is the cue that says
+     * whether you went somewhere or came back, and it is the cue people
+     * read without noticing they are reading it.
+     *
+     * Set as a class rather than in the CSS for #mobile-app, so the rule
+     * can be dropped whole under prefers-reduced-motion.
+     */
+    animate(back) {
+        const screen = document.getElementById('mobile-app');
+        if (!screen) return;
+        screen.classList.add(back ? 'screen-pop' : 'screen-push');
+    },
+
+    /* Move the highlight from one tab to another, and nothing else.
+     *
+     * Which tab is lit is decided server-side — a worker profile lights
+     * Workers, a payslip lights Payroll — so the answer is read off the
+     * freshly rendered bar rather than worked out again here. Only the two
+     * active classes are touched: anything else the live bar is carrying
+     * (a press, a transition in flight) is left alone, which is the whole
+     * point of keeping it.
+     */
+    syncNav(fresh, live) {
+        const ACTIVE = ['app-nav-item-active', 'app-nav-fab-active'];
+        const want = new Map();
+        fresh.querySelectorAll('a[href]').forEach((a) =>
+            want.set(a.getAttribute('href'),
+                     ACTIVE.filter((c) => a.classList.contains(c))));
+        live.querySelectorAll('a[href]').forEach((a) => {
+            const on = want.get(a.getAttribute('href'));
+            // A tab the new bar does not have at all: leave it as it is
+            // rather than guess. The bar's shape only changes with the
+            // user's role, and that cannot change without a fresh document.
+            if (!on) return;
+            ACTIVE.forEach((c) => a.classList.toggle(c, on.includes(c)));
+        });
     },
 
     /* The nonce this document was served with.
@@ -683,9 +769,30 @@ const NativeShell = {
         return s;
     },
 
-    // Skeleton shimmer — only appears if a screen takes longer than 150ms
-    // (cached screens swap instantly and never show it)
+    /* Two stages of "it is coming", and the screen you are on stays up.
+     *
+     * Screens were measured swapping in 106–287ms against a 150ms skeleton,
+     * so an ordinary tap covered a perfectly readable screen in grey
+     * shimmer for a tenth of a second and then showed the next one. That
+     * flash of placeholder IS the feeling of a page loading; a native app
+     * holds the screen you are on until the next one is ready.
+     *
+     * So: a hairline at the top almost at once, because a tap with no
+     * acknowledgement feels broken, and the full skeleton only after
+     * 450ms — by then the wait is long enough that a blank frame reads as
+     * progress rather than a stutter.
+     */
+    PROGRESS_AFTER: 110,
+    SKELETON_AFTER: 450,
+
     scheduleSkeleton() {
+        this.progressTimer = setTimeout(() => {
+            if (document.getElementById('nav-progress')) return;
+            const bar = document.createElement('div');
+            bar.id = 'nav-progress';
+            document.body.appendChild(bar);
+        }, this.PROGRESS_AFTER);
+
         this.skeletonTimer = setTimeout(() => {
             if (document.getElementById('skeleton-overlay')) return;
             const el = document.createElement('div');
@@ -696,13 +803,16 @@ const NativeShell = {
                            '<div class="sk-bar sk-line"></div>' +
                            '<div class="sk-bar sk-line short"></div>';
             document.body.appendChild(el);
-        }, 150);
+        }, this.SKELETON_AFTER);
     },
 
     cancelSkeleton() {
         clearTimeout(this.skeletonTimer);
+        clearTimeout(this.progressTimer);
         const el = document.getElementById('skeleton-overlay');
         if (el) el.remove();
+        const bar = document.getElementById('nav-progress');
+        if (bar) bar.remove();
     },
 
     // Android hardware Back. Cordova's default is to exit the app the moment
