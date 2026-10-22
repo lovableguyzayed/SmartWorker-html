@@ -207,6 +207,31 @@ check('and the check is actually looking at the scanner',
           open(os.path.join(TEMPLATES, 'scan.html'), encoding='utf-8').read()
           .replace('|tojson', ''))) > 10, True)
 
+# 2b. The check above only sees a string somebody remembered to wrap in _().
+#     An English sentence written straight into the script is invisible to
+#     it, and that is how the scanned card kept saying "Check in" and "Not
+#     marked today yet" on an otherwise Hindi screen — found in a screenshot,
+#     which is not a way to find things.
+#
+#     So: in the two templates that paint their own markup, no English
+#     sentence may be assigned to textContent or pushed onto a display list.
+#     A word list would go stale; the shape of the literal is the signal.
+_SPEAKS = re.compile(
+    r"""(?:\.textContent\s*=\s*|\.push\(|innerHTML\s*=\s*)"""
+    r"""(['"])((?:[A-Z][a-z]+|[a-z]+)(?:[ :,][^'"]*)?)\1""")
+spoken = []
+for name in ('scan.html', 'attendance.html'):
+    body = open(os.path.join(TEMPLATES, name), encoding='utf-8').read()
+    for script in re.findall(r'<script\b[^>]*>(.*?)</script>', body,
+                             re.S | re.I):
+        for m in _SPEAKS.finditer(script):
+            text = m.group(2)
+            # A class name, an element name or a lone key is not a sentence.
+            if ' ' in text.strip() or text.endswith(':'):
+                spoken.append((name, text[:46]))
+check('no English sentence is painted straight onto these screens',
+      spoken, [])
+
 # 3. salary.py now writes the amount inside a note as a proper rupee, while
 #    notes stored before that carry a bare float. The Hindi replacement
 #    supplies a ₹ for the old shape, so the new shape meets it as ₹₹ unless

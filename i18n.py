@@ -580,6 +580,22 @@ TRANSLATIONS = {
         # never pass through the flash filter or the JSON translator — the
         # template hands them over already translated, via _()|tojson.
         'Scanner unavailable': 'स्कैनर उपलब्ध नहीं',
+        # The scanned card: the line under the worker's name, and the label
+        # on the green button.
+        'Today: %s': 'आज: %s',
+        'in %s': 'आए %s',
+        'out %s': 'गए %s',
+        # 'shift open' is already in the table further up, for the same
+        # meaning on another screen — one wording, not two.
+        'Not marked today yet': 'आज अभी हाज़िरी नहीं लगी',
+        'Closure day: %s — attendance is locked.':
+            'छुट्टी का दिन: %s — हाज़िरी बंद है।',
+        # Mirrors 'Check in' ('हाज़िरी लगाएँ') and uses the same word for a
+        # departure the rest of the app does: जाने का समय.
+        'Check out': 'जाने का समय लगाएँ',
+        'Shift closed': 'शिफ़्ट पूरी हुई',
+        'Site: %s': 'साइट: %s',
+        'Project: %s': 'प्रोजेक्ट: %s',
         "Couldn't load the scanner. Check your connection, or enter the "
         'Employee ID below.':
             'स्कैनर चालू नहीं हो सका। कनेक्शन देखें, या नीचे मज़दूर की आईडी डालें।',

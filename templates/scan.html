@@ -340,6 +340,32 @@ var currentVia = 'qr';
 var SCAN_TODAY = "{{ today.isoformat() }}";
 var SCAN_CSRF = "{{ csrf_token() }}";
 
+// The card's own words. This script paints the line under the name and the
+// label on the green button, so nothing here reaches a template filter —
+// without this the card stayed in English on an otherwise Hindi screen.
+var SCAN_TEXT = {
+    today_is: {{ _('Today: %s')|tojson }},
+    checked_in: {{ _('in %s')|tojson }},
+    checked_out: {{ _('out %s')|tojson }},
+    shift_open: {{ _('shift open')|tojson }},
+    not_marked: {{ _('Not marked today yet')|tojson }},
+    closure: {{ _('Closure day: %s — attendance is locked.')|tojson }},
+    check_in: {{ _('Check in')|tojson }},
+    check_out: {{ _('Check out')|tojson }},
+    shift_closed: {{ _('Shift closed')|tojson }},
+    site: {{ _('Site: %s')|tojson }},
+    project: {{ _('Project: %s')|tojson }}
+};
+// Status comes back from the API as the stored English value, the same way
+// the attendance day view receives it.
+var SCAN_STATUS_LABEL = {
+    present: {{ _('Present')|tojson }},
+    absent:  {{ _('Absent')|tojson }},
+    late:    {{ _('Late')|tojson }},
+    leave:   {{ _('Leave')|tojson }},
+    half_day: {{ _('Half Day')|tojson }}
+};
+
 function escapeHtml(str) {
     var div = document.createElement('div');
     div.textContent = str == null ? '' : str;
@@ -537,8 +563,8 @@ function renderResult(data) {
 
     var site = document.getElementById('result-site');
     var where = [];
-    if (w.site) where.push('Site: ' + w.site);
-    if (w.project) where.push('Project: ' + w.project);
+    if (w.site) where.push(SCAN_TEXT.site.replace('%s', w.site));
+    if (w.project) where.push(SCAN_TEXT.project.replace('%s', w.project));
     site.textContent = where.join(' · ');
     site.style.display = where.length ? '' : 'none';
 
@@ -566,12 +592,13 @@ function applyPayment(w) {
 function applyAttendance(a) {
     var parts = [];
     if (a.status) {
-        parts.push('Today: ' + a.status);
-        if (a.check_in) parts.push('in ' + a.check_in);
-        if (a.check_out) parts.push('out ' + a.check_out);
-        else if (a.shift_open) parts.push('shift open');
+        parts.push(SCAN_TEXT.today_is.replace(
+            '%s', SCAN_STATUS_LABEL[a.status] || a.status));
+        if (a.check_in) parts.push(SCAN_TEXT.checked_in.replace('%s', a.check_in));
+        if (a.check_out) parts.push(SCAN_TEXT.checked_out.replace('%s', a.check_out));
+        else if (a.shift_open) parts.push(SCAN_TEXT.shift_open);
     } else {
-        parts.push('Not marked today yet');
+        parts.push(SCAN_TEXT.not_marked);
     }
     document.getElementById('result-today').textContent = parts.join(' · ');
 
@@ -584,7 +611,8 @@ function applyAttendance(a) {
 
     var locked = !!(currentClosure && currentClosure.locked);
     if (locked) {
-        closureBox.textContent = 'Closure day: ' + currentClosure.reason + ' — attendance is locked.';
+        closureBox.textContent = SCAN_TEXT.closure.replace(
+            '%s', currentClosure.reason);
         closureBox.classList.remove('hidden');
     } else {
         closureBox.classList.add('hidden');
@@ -592,16 +620,16 @@ function applyAttendance(a) {
 
     // Green button: check in → check out → done.
     if (a.can_check_in) {
-        primaryLabel.textContent = 'Check in';
+        primaryLabel.textContent = SCAN_TEXT.check_in;
         primary.dataset.status = 'present';
         primary.disabled = locked;
     } else if (a.can_check_out) {
-        primaryLabel.textContent = 'Check out';
+        primaryLabel.textContent = SCAN_TEXT.check_out;
         // Re-posting the active status is what closes the shift server-side.
         primary.dataset.status = a.status;
         primary.disabled = locked;
     } else {
-        primaryLabel.textContent = 'Shift closed';
+        primaryLabel.textContent = SCAN_TEXT.shift_closed;
         primary.dataset.status = '';
         primary.disabled = true;
     }
