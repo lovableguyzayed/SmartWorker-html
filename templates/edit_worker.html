@@ -64,7 +64,7 @@
                         <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30 mb-1">
                             <i class="fa-solid fa-qrcode text-white text-2xl"></i>
                         </div>
-                        <div class="text-xs opacity-90 text-center">{{ _('QR Code') }}</div>
+                        <div class="text-xs text-center">{{ _('QR Code') }}</div>
                     </div>
                 </div>
                 <div id="worker-photo-hint" class="text-xs opacity-90 mt-2">
@@ -230,7 +230,7 @@
                     <div id="daily-rate" class="hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Daily Rate') }}</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                             <input type="number" name="daily_rate" value="{{ worker.daily_rate if worker else '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
@@ -240,7 +240,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Monthly Salary') }}</label>
                             <div class="relative">
-                                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                 <input type="number" name="monthly_salary" value="{{ worker.monthly_salary if worker else '' }}" step="0.01"
                                        class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                             </div>
@@ -334,7 +334,7 @@
                     <div id="hourly-rate" class="hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Hourly Rate') }}</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                             <input type="number" name="hourly_rate" value="{{ worker.hourly_rate if worker else '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
@@ -343,7 +343,7 @@
                     <div id="project-rate" class="hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Project Amount') }}</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                             <input type="number" name="project_rate" value="{{ worker.project_rate if worker else '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
@@ -370,7 +370,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Leave Deduction per Day') }}</label>
                                 <div class="relative">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="leave_deduction" value="{{ worker.leave_deduction_per_day if worker else '500' }}" step="0.01"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
@@ -431,7 +431,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Half Day Rate') }}</label>
                                 <div class="relative">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="half_day_rate"
                                            value="{{ worker.half_day_rate if worker and worker.half_day_rate is not none else '' }}"
                                            step="0.01" min="0" placeholder="{{ _('Half day payment amount') }}"
@@ -467,7 +467,7 @@
                                     <option value="minute" {{ 'selected' if worker and worker.overtime_type == 'minute' }}>{{ _('Per Minute') }}</option>
                                 </select>
                                 <div class="relative flex-1">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="overtime_rate" value="{{ worker.overtime_rate if worker and worker.overtime_rate is not none else '100' }}" step="0.01" min="0"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
@@ -493,7 +493,7 @@
                                     <option value="day" {{ 'selected' if worker and worker.late_deduction_type == 'day' else '' }}>{{ _('Per Day') }}</option>
                                 </select>
                                 <div class="relative flex-1">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="late_deduction"
                                            value="{{ worker.late_deduction_per_day if worker and worker.late_deduction_per_day is not none else '25' }}"
                                            step="0.01" min="0"
@@ -543,7 +543,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Half Day Rate') }}</label>
                                 <div class="relative">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="half_day_rate"
                                            value="{{ worker.half_day_rate if worker and worker.half_day_rate is not none else '' }}"
                                            step="0.01" min="0" placeholder="{{ _('Half day payment amount') }}"
@@ -579,7 +579,7 @@
                                     <option value="minute" {{ 'selected' if worker and worker.overtime_type == 'minute' }}>{{ _('Per Minute') }}</option>
                                 </select>
                                 <div class="relative flex-1">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="overtime_rate" value="{{ worker.overtime_rate if worker and worker.overtime_rate is not none else '100' }}" step="0.01" min="0"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
@@ -605,7 +605,7 @@
                                     <option value="day" {{ 'selected' if worker and worker.late_deduction_type == 'day' else '' }}>{{ _('Per Day') }}</option>
                                 </select>
                                 <div class="relative flex-1">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="late_deduction"
                                            value="{{ worker.late_deduction_per_day if worker and worker.late_deduction_per_day is not none else '25' }}"
                                            step="0.01" min="0"

@@ -36,7 +36,7 @@ not tracked.
 | `documents.py` | generates all eight printable documents and reads every page for blank sheets, cut lines and stranded headings |
 | `hindi_gaps.py` | what is still English when the interface is set to Hindi, screen by screen |
 
-## Four things that will bite you
+## Six things that will bite you
 
 **Do not take a full-page screenshot to measure against.** Chromium stretches
 the viewport to capture one and the page reflows, so coordinates read at
@@ -58,9 +58,31 @@ It was not: asking the paginator for its cut points showed every one
 falling exactly on a block edge. `documents.py` reads the page at 110dpi
 and reports where the ink actually is.
 
-**Do not take the background from the stylesheet.** The navy header is a
-gradient, which paints no `background-color`, so walking up the ancestors for
-one finds the page behind it and reports white text on a white page. The
-most common colour inside the text's own box is what is actually behind it.
-Where glyphs or a gradient leave no clear majority, `contrast.py` calls the
-row unmeasurable rather than guessing.
+**Do not take the background from the stylesheet — but do not ignore it
+either.** The navy header is a gradient, which paints no
+`background-color`, so walking up the ancestors for one finds the page
+behind it and reports white text on a white page. That is why `contrast.py`
+reads pixels. But sampling inside the text run's own box is only sound when
+the run really is on a gradient: a tight box around small text is mostly
+glyph and anti-aliased edge, the flat colour behind it never reaches a
+majority, and the fallback then picks a dark edge pixel as though it were
+the background. That reported the worker-card buttons at 3.69:1 and 2.74:1
+when the colours they declare are 9.37:1 and 5.80:1 — and twenty of
+twenty-eight reported failures were this. It now reads the nearest declared
+background when nothing translucent or gradient is in the way, and reaches
+for pixels only otherwise.
+
+**A `[gradient]` row is a floor, not a reading.** It is the worst point
+anywhere under the run, which is not necessarily what the glyphs sit on.
+Before changing a colour because of one, measure that element properly —
+screenshot it with its glyphs set to `transparent`, average the backdrop,
+composite the text colour over it. `tests/test_glass_contrast.py` does
+exactly that, and it is the reason the avatar initials were left alone:
+the sweep calls them 2.82:1 against a 3.0 floor, and composited they are
+3.4:1.
+
+**Do not call an inline onclick a missing function.** `this.closest(...)`
+and `event.preventDefault()` start with an identifier and a bracket, so the
+"is this function defined?" check matched them and reported the flash
+toast's close button as broken. The root there is bound at call time, not a
+global to look up; `controls.py` skips `this` and `event`.

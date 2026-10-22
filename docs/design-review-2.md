@@ -6,9 +6,7 @@ corrections of copy and of one wrong timestamp were made as the review
 went; everything that changed a layout was written down first and done
 afterwards, in the order agreed.
 
-**Where it stands: 12 of 13 findings fixed.** The one left open is #12,
-the frosted header pills below the contrast floor, which is a deliberate
-look rather than a defect.
+**Where it stands: all 13 findings fixed.**
 
 What was measured is in `tools/ux/`: `documents.py` generates all eight
 documents and reads every page, `hindi_gaps.py` renders each screen in
@@ -269,11 +267,52 @@ photo button and one line of explanation. The phantom **N** avatar, the
 *"Position • Department"* placeholder, the second *"Auto-Generated"* and
 the QR placeholder are gone from the Add screen.
 
-### 12. The frosted header pills remain below the contrast floor — OPEN
+### 12. The frosted header pills remain below the contrast floor — FIXED
 
-Carried over from the first review: the avatar initial and the "permanent"
-badge sit on `bg-white/20` over the blue header at **2.56–2.87:1**. They
-are a deliberate look, so changing them is a design decision.
+Carried over from the first review. Measured properly this time, by
+screenshotting each chip with its glyphs made transparent and reading the
+composited backdrop off the pixels — neither the text nor the fill has a
+colour you can read off a stylesheet, since both are rgba over a gradient.
+
+| chip | was | now |
+|---|---|---|
+| "permanent" badge | 2.91:1 | **6.47:1** |
+| profile pills (@demo, Active) | 4.19–4.44:1 | **7.15:1** |
+| assignment chips | 3.52:1 | **6.42–6.92:1** |
+| avatar initials | 3.41:1 | unchanged — see below |
+
+**What the look change is.** `bg-white/20` lays a white veil over the blue
+header, and inside a hero card — itself `bg-white/15` — that is two veils
+stacked, which is why the text washed out. The new `.glass-chip` tints
+*down* instead of up: same blur, same translucency, the header still
+showing through, but the chip now reads as inset rather than faded. The
+hero card and the avatar keep the light veil, so the header keeps its
+layered look; only the small text moved.
+
+**The avatar initials were never a failure.** At 24px bold their WCAG floor
+is 3.0, not 4.5, and composited they measure 3.4:1. This entry used to name
+them as part of the problem; that was wrong. They are left alone.
+
+**A correction about the sweep.** `tools/ux/contrast.py` reported 24–28
+runs under the floor. Checked one by one against the painted pixels, **all
+but one were measurement artifacts** — the worker-card buttons it scored at
+3.69:1 and 2.74:1 actually declare `#374151` on `#f3f4f6` (9.37:1) and
+white on `#0062cc` (5.80:1); the attendance legend and the payroll labels
+measure 4.63:1, not 3.13–4.35:1. The cause: where the tool could not read a
+flat colour it sampled inside the text run's own box, and a tight box
+around small text is mostly glyph and anti-aliased edge, so the fallback
+picked a dark edge pixel as though it were the background.
+
+The tool now reads the nearest declared background off the page when
+nothing translucent or gradient intervenes, and only reaches for pixels
+otherwise: **944 of 1,112 runs are now exact**, and the failure count is 7,
+every one of them a `[gradient]` worst-point row verified by hand as
+passing. The one genuine find the fix surfaced was the rupee prefix on an
+invalid field — `text-gray-500` on `red-50` at 4.42:1, now `gray-600` at
+6.91:1, in eleven places.
+
+`tests/test_glass_contrast.py` holds the line, and was confirmed to fail on
+all four chips when the tint is reverted.
 
 ### 13. The selection hint was under the floor — FIXED
 

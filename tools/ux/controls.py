@@ -84,10 +84,15 @@ PROBE = r"""
     let handler = '', handlerOk = null;
     if (onclick) {
       const match = onclick.match(/^\s*(?:return\s+)?([A-Za-z_$][\w$.]*)\s*\(/);
-      if (match) {
+      // `this.closest(...)`, `event.preventDefault()` and friends begin with
+      // an identifier and a bracket, so they match — but the root is a
+      // keyword bound at call time, not a global to look up, and reporting
+      // them as undefined functions is a false alarm against code that
+      // works. The flash toast's close button is one.
+      const root = match ? match[1].split('.')[0] : '';
+      if (match && root !== 'this' && root !== 'event') {
         handler = match[1];
         try {
-          const root = handler.split('.')[0];
           handlerOk = typeof window[root] === 'function'
                    || typeof window[root] === 'object';
         } catch (e) { handlerOk = false; }

@@ -47,7 +47,11 @@
         <div class="grid grid-cols-3 gap-2">
             {% for value, label in [('all', _('All')), ('assigned', _('Assigned')), ('unassigned', _('Unassigned'))] %}
             <button type="submit" name="show" value="{{ value }}"
-                    class="tap-target flex flex-col items-center justify-center py-2 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/90 border border-white/30' }}">
+                    {# The unselected chips ran 3.52:1 — a white veil on the
+                       header carrying 90% white text. Tinted down, at full
+                       white, they read 8.6:1 and still show the header
+                       through. The selected chip is already solid white. #}
+                    class="tap-target flex flex-col items-center justify-center py-2 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'glass-chip glass-chip-bordered' }}">
                 <span class="text-base font-bold leading-tight">{{ counts[value] }}</span>
                 <span>{{ label }}</span>
             </button>

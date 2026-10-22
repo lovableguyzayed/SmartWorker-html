@@ -76,12 +76,40 @@ STEP = r"""
     if (r.bottom > window.innerHeight || r.right > window.innerWidth) continue;
     if (covered(r)) continue;
     const s = getComputedStyle(el);
+    // The nearest painted backdrop, read rather than sampled.
+    //
+    // Sampling the pixels inside a text run's own box is only sound when
+    // the run actually sits on a gradient. On a flat fill it is not: a
+    // tight box around small text is mostly glyph and anti-aliased edge,
+    // the flat colour fails to reach a majority, and the fallback below
+    // then picks a dark edge pixel as if it were the background. That is
+    // how the worker-card buttons were reported at 3.69:1 when the colours
+    // they actually declare — #374151 on #f3f4f6 — are 9.37:1.
+    //
+    // So walk up for the first ancestor that paints something. A solid
+    // colour with nothing translucent in the way is exact and needs no
+    // pixels. A gradient, or any translucency stacked above it, still
+    // needs the camera.
+    let solid = null, veiled = false;
+    for (let node = el; node && node !== document.documentElement;
+         node = node.parentElement) {
+      const cs = getComputedStyle(node);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') break;
+      const c = cs.backgroundColor;
+      if (!c || c === 'rgba(0, 0, 0, 0)' || c === 'transparent') continue;
+      const n = c.match(/[\d.]+/g) || [];
+      const a = n.length > 3 ? parseFloat(n[3]) : 1;
+      if (a < 1) { veiled = true; continue; }
+      solid = c;
+      break;
+    }
     rows.push({
       id: el.dataset.uxid, t: own.slice(0, 44),
       fs: parseFloat(s.fontSize), fw: +s.fontWeight, fg: s.color,
       x: r.left, y: r.top, w: r.width, h: r.height,
       cls: (el.className || '').toString().slice(0, 44),
-      tag: el.tagName.toLowerCase()
+      tag: el.tagName.toLowerCase(),
+      solid: (solid && !veiled) ? solid : null
     });
   }
   return rows;
@@ -182,7 +210,18 @@ with sync_playwright() as p:
                 if alpha < 1:
                     fg = [fg[i] * alpha + bg[i] * (1 - alpha) for i in range(3)]
 
-                if share >= 0.33:
+                if r.get('solid'):
+                    # The page itself says what is behind this text: a flat
+                    # fill, with nothing translucent or gradient between the
+                    # two. Nothing to sample, and nothing to get wrong.
+                    declared, _a = parse(r['solid'])
+                    fg2, alpha2 = parse(r['fg'])
+                    if alpha2 < 1:
+                        fg2 = [fg2[i] * alpha2 + declared[i] * (1 - alpha2)
+                               for i in range(3)]
+                    ratio, how, bg = contrast(fg2, declared), 'declared', \
+                        tuple(int(v) for v in declared)
+                elif share >= 0.33:
                     # A solid fill: the mode is exactly what is behind the text.
                     ratio, how = contrast(fg, list(bg)), 'solid'
                 else:
@@ -231,10 +270,15 @@ def large(r):
 
 allrows = [(s, r) for s, rows in results.items() for r in rows]
 solid = [(s, r) for s, r in allrows if r['how'] != 'unclear']
+declared = sum(1 for s, r in solid if r['how'] == 'declared')
 exact = sum(1 for s, r in solid if r['how'] == 'solid')
-print('\n%d runs scored: %d on a solid fill (exact), %d on a gradient'
-      ' (worst point), %d unreadable'
-      % (len(allrows), exact, len(solid) - exact, len(allrows) - len(solid)))
+print('\n%d runs scored: %d read off the page (exact), %d on a solid fill'
+      ' (exact), %d on a gradient (worst point), %d unreadable'
+      % (len(allrows), declared, exact,
+         len(solid) - exact - declared, len(allrows) - len(solid)))
+print('A [gradient] row is the worst point under the run, which is a floor'
+      ' and not\nnecessarily what the glyphs sit on — check one before'
+      ' changing a colour over it.')
 
 fails = [(s, r) for s, r in solid if r['ratio'] < (3.0 if large(r) else 4.5)]
 print('%d below the WCAG AA floor — %.1f%% of what could be measured\n'

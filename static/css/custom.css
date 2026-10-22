@@ -844,6 +844,32 @@ body.ms-active nav.app-bottom-nav { display: none; }
 .to-accent { --tw-gradient-to: #0062cc var(--tw-gradient-to-position); }
 
 /* ---------------------------------------------------------------------
+   Frosted chips that carry text
+   ---------------------------------------------------------------------
+   A chip styled bg-white/20 lays a white veil over the blue header, and
+   inside a hero card — itself bg-white/15 — that is two veils stacked.
+   Measured on the painted pixels, the backdrop comes out at rgb(113,153,
+   209) and the "permanent" badge reads 2.91:1, where small text needs
+   4.5. The assignment chips are 3.52:1.
+
+   Frosted does not have to mean lighter. This keeps the blur and the
+   translucency — still glass, still the header showing through — but
+   tints down instead of up, so white text sits on rgb(56,95,154) at
+   6.5:1 and the chip reads as inset rather than washed out. The hero
+   card and the avatar keep the light veil, so the header still has its
+   layered look; it is only the small text that moves.
+
+   Deliberately not applied to the avatar initials: at 24px bold their
+   floor is 3.0 and they measure 3.4, so they pass as they are. */
+.glass-chip {
+    background-color: rgba(8, 24, 60, 0.32);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    color: #fff;
+}
+.glass-chip-bordered { border: 1px solid rgba(255, 255, 255, 0.3); }
+
+/* ---------------------------------------------------------------------
    The three actions on a worker card
    ---------------------------------------------------------------------
    They were circles holding a calendar, an ID card and an eye, with no word

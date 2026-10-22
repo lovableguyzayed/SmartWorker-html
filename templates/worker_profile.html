@@ -45,7 +45,9 @@
                 <div class="text-sm opacity-90 mb-2">{{ worker.position }} • {{ worker.department }}</div>
                 <div class="flex items-center justify-between">
                     <div class="text-sm opacity-90">ID: {{ worker.worker_id }}</div>
-                    <div class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl text-xs font-medium">{{ worker.employee_type }}</div>
+                    {# A white veil on a white-veiled card: this read 2.91:1.
+                       glass-chip tints down instead of up — see custom.css. #}
+                    <div class="glass-chip px-3 py-1 rounded-xl text-xs font-medium">{{ worker.employee_type }}</div>
                 </div>
             </div>
         </div>
