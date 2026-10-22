@@ -38,6 +38,11 @@
    large enough that the longest names in the data now fit two lines. */
 .att-name { font-size: 0.75rem; font-weight: 500; color: #1f2937; line-height: 1.3; }
 .att-id   { font-size: 0.7rem; color: #6b7280; line-height: 1.2; }
+/* The whole row opens a profile, and a 2rem avatar beside a one-line name
+   comes to 32px — under the tap floor, but only for workers whose name does
+   not wrap, which is why it hid behind the test data for so long. The row
+   already has the width; this gives it the height. */
+.att-worker-link { min-height: 2.75rem; }
 .att-avatar {
     width: 2rem; height: 2rem; border-radius: 9999px;
     object-fit: cover; object-position: center;
@@ -239,7 +244,7 @@
             <div class="att-row hover:bg-gray-50 transition-colors">
                 <!-- Worker: photo + name open the full profile -->
                 <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
-                   class="flex items-center space-x-2 min-w-0" title="Open {{ worker.full_name }}'s profile">
+                   class="att-worker-link flex items-center space-x-2 min-w-0" title="Open {{ worker.full_name }}'s profile">
                     {% if worker.profile_image %}
                     <img loading="lazy" decoding="async" src="{{ worker.profile_image }}"
                          alt="{{ worker.full_name }}" class="att-avatar">

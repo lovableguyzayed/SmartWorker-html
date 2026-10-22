@@ -27,6 +27,11 @@ from datetime import date
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
+# The app's clock, not the system's: everything SmartWorker stores is
+# naive IST (see timeutil.py), so for the 5.5 hours between 18:30 UTC
+# and midnight the system date is a day behind the app's.
+from timeutil import today_ist
+
 from playwright.sync_api import sync_playwright
 
 EXE = os.environ.get('UX_CHROME',
@@ -80,7 +85,7 @@ try:
 
     with app.app_context():
         # Somebody with no record today, so "Not marked" is the real state.
-        today = date.today()
+        today = today_ist()
         marked = {r.worker_id for r in m.AttendanceRecord.query.filter_by(date=today)}
         who = next((w for w in m.Worker.query.filter_by(status='active')
                     .order_by(m.Worker.id) if w.id not in marked), None)
@@ -141,7 +146,7 @@ finally:
     import models as m
     with app.app_context():
         gone = m.AttendanceRecord.query.filter_by(
-            worker_id=WHO_ID, date=date.today()).delete()
+            worker_id=WHO_ID, date=today_ist()).delete()
         db.session.commit()
         print('\n  cleaned up %d record(s) this test created' % gone)
 

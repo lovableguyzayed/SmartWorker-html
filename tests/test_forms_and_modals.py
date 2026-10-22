@@ -35,6 +35,11 @@ from datetime import date
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
+# The app's clock, not the system's: everything SmartWorker stores is
+# naive IST (see timeutil.py), so for the 5.5 hours between 18:30 UTC
+# and midnight the system date is a day behind the app's.
+from timeutil import today_ist
+
 from playwright.sync_api import sync_playwright
 
 from app import app, db
@@ -237,7 +242,7 @@ try:
 
     code = post('/transactions/save',
                 {'worker_id': AWID, 'txn_type': 'advance', 'amount': '250',
-                 'date': date.today().isoformat(),
+                 'date': today_ist().isoformat(),
                  'description': MARK + ' advance'}, '/transactions')
     with app.app_context():
         txn = (m.WorkerTransaction.query

@@ -28,10 +28,16 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date, timedelta
+from datetime import timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+
+# The app's clock, not the system's. Everything SmartWorker stores is
+# naive IST (see timeutil.py), so between 18:30 and midnight UTC a test
+# asking the system for its date is a day behind the app and fails on a correct
+# answer — which is exactly how this was found.
+from timeutil import today_ist
 
 from playwright.sync_api import sync_playwright
 
@@ -173,7 +179,7 @@ try:
             check('against the right worker', r.worker_id, WID)
             check('the right type', r.txn_type, 'advance')
             check('the right amount', float(r.amount), 250.0)
-            check('dated today', r.date, date.today())
+            check('dated today', r.date, today_ist())
             check('stamped with the account', r.account_id, ACCT)
             check('and with who booked it', bool(r.created_by), True)
 
@@ -217,7 +223,7 @@ try:
 
     def pay(op, who, csrf, **over):
         body = {'csrf_token': csrf, 'worker_id': who, 'txn_type': 'advance',
-                'amount': 99, 'date': date.today().isoformat(),
+                'amount': 99, 'date': today_ist().isoformat(),
                 'description': NOTE + ' perms'}
         body.update(over)
         return fetch(op, '/api/worker_transaction', body)
@@ -273,7 +279,7 @@ try:
         way the day view expects to read it — so the body is what matters.
         """
         body = {'csrf_token': csrf, 'worker_id': worker_id,
-                'date': date.today().isoformat(), 'status': 'present',
+                'date': today_ist().isoformat(), 'status': 'present',
                 'marked_via': 'qr'}
         try:
             r = op.open(urllib.request.Request(
@@ -310,7 +316,7 @@ try:
               said.get('success'), False)
         with app.app_context():
             marked = m.AttendanceRecord.query.filter_by(
-                worker_id=OUT_ID, date=date.today()).first()
+                worker_id=OUT_ID, date=today_ist()).first()
             check('and nothing was written for them',
                   marked is None or marked.marked_by != SUP_ID, True)
         code, _ = pay(sup_op, OUT_ID, sup_csrf)
@@ -357,7 +363,7 @@ try:
             ('a negative amount', {'amount': -500}, 400),
             ('a type that is not a type', {'txn_type': 'skim'}, 400),
             ('a date in the future',
-             {'date': (date.today() + timedelta(days=1)).isoformat()}, 400),
+             {'date': (today_ist() + timedelta(days=1)).isoformat()}, 400),
             ('no csrf token', {'csrf_token': ''}, 400),
     ]:
         code, _ = pay(admin_op, OTHER_ID, csrf, **over)
@@ -425,7 +431,7 @@ try:
         B + '/api/worker_transaction', urllib.parse.urlencode({
             'csrf_token': hi_csrf, 'worker_id': OTHER_ID,
             'txn_type': 'refreshment', 'amount': 120,
-            'date': date.today().isoformat(),
+            'date': today_ist().isoformat(),
             'description': NOTE + ' hindi'}).encode())).read().decode()
     # jsonify escapes non-ASCII, so the Devanagari is \uXXXX in the wire
     # bytes — read the decoded message, not the body.
