@@ -14,7 +14,7 @@
                 <div class="text-sm opacity-90">{{ _('Advances, Loans, Bonuses & Deductions') }}</div>
             </div>
         </div>
-        <button aria-label="{{ _('Add a transaction') }}" onclick="openTxnModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
+        <button aria-label="{{ _('Add a transaction') }}" data-act="openTxnModal" class="icon-btn bg-white/10 backdrop-blur-sm">
             <i class="fa-solid fa-plus text-lg"></i>
         </button>
     </div>
@@ -22,17 +22,17 @@
     <!-- Month / worker filter -->
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <form method="GET" class="grid grid-cols-3 gap-2">
-            <select name="month" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+            <select name="month" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                 {% for m, name in months %}
                 <option value="{{ m }}" {{ 'selected' if m == month }} class="text-gray-800">{{ name }}</option>
                 {% endfor %}
             </select>
-            <select name="year" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+            <select name="year" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                 {% for y in years %}
                 <option value="{{ y }}" {{ 'selected' if y == year }} class="text-gray-800">{{ y }}</option>
                 {% endfor %}
             </select>
-            <select name="worker" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+            <select name="worker" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                 <option value="0" class="text-gray-800">{{ _('All workers') }}</option>
                 {% for w in workers %}
                 <option value="{{ w.id }}" {{ 'selected' if w.id == worker_filter }} class="text-gray-800">{{ w.full_name }}</option>
@@ -90,14 +90,14 @@
                On their own row the name gets the card's full width back and
                the buttons keep a proper touch target. #}
             <div class="flex items-center justify-end gap-3 mt-2 pt-2 border-t border-gray-100">
-                        <button aria-label="{{ _('Edit') }}" onclick='editTxn({{ txn.id }}, {{ txn.worker_id }}, "{{ txn.txn_type }}", {{ txn.amount }}, "{{ txn.date.isoformat() }}", {{ (txn.description or "")|tojson }})'
+                        <button aria-label="{{ _('Edit') }}" data-act="editTxn" data-act-args='[{{ txn.id }}, {{ txn.worker_id }}, "{{ txn.txn_type }}", {{ txn.amount }}, "{{ txn.date.isoformat() }}", {{ (txn.description or "")|tojson }}]'
                                 class="tap-target w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('transactions_cancel', txn_id=txn.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
                             <button class="tap-target w-7 h-7 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="{{ _('Cancel / Restore') }}"><i class="fa-solid fa-ban text-xs"></i></button>
                         </form>
-                        <form method="POST" action="{{ url_for('transactions_delete', txn_id=txn.id) }}" onsubmit="return confirm('Delete this transaction permanently?')">
+                        <form method="POST" action="{{ url_for('transactions_delete', txn_id=txn.id) }}" data-confirm="Delete this transaction permanently?">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
                             <button aria-label="{{ _('Delete') }}" class="tap-target w-7 h-7 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
@@ -126,7 +126,7 @@
         </div>
         <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Transactions') }}</h2>
         <p class="text-gray-600 mb-6">Record advances, loans, bonuses and deductions for {{ month_name }} {{ year }}.</p>
-        <button onclick="openTxnModal()" class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
+        <button data-act="openTxnModal" class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
             <i class="fa-solid fa-plus mr-2"></i>{{ _('Add Transaction') }}
         </button>
     </div>
@@ -187,14 +187,14 @@
                 </div>
                 <div class="flex space-x-3 pt-2">
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save') }}</button>
-                    <button type="button" onclick="closeTxnModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
+                    <button type="button" data-act="closeTxnModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function openTxnModal() {
     document.getElementById('txn-modal-title').textContent = 'Add Transaction';
     document.getElementById('txn-id').value = '';

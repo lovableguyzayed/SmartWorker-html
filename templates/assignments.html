@@ -27,13 +27,13 @@
                    class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 text-sm focus:ring-2 focus:ring-white/50">
         </div>
         <div class="grid grid-cols-2 gap-2">
-            <select name="site" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+            <select name="site" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                 <option value="0" class="text-gray-800">{{ _('All sites') }}</option>
                 {% for site in sites %}
                 <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
                 {% endfor %}
             </select>
-            <select name="project" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+            <select name="project" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                 <option value="0" class="text-gray-800">{{ _('All projects') }}</option>
                 {% for project in projects %}
                 <option value="{{ project.id }}" {{ 'selected' if project.id == project_filter }} class="text-gray-800">{{ project.name }}</option>
@@ -90,13 +90,13 @@
                 {% endif %}
             </div>
             <div class="flex flex-col gap-1.5 shrink-0">
-                <button onclick='openAssignModal({{ worker.id }}, {{ worker.full_name|tojson }}, {{ (assignment.site_id if assignment else 0) or 0 }}, {{ (assignment.project_id if assignment else 0) or 0 }}, {{ (assignment.task_id if assignment else 0) or 0 }})'
+                <button data-act="openAssignModal" data-act-args='[{{ worker.id }}, {{ worker.full_name|tojson }}, {{ (assignment.site_id if assignment else 0) or 0 }}, {{ (assignment.project_id if assignment else 0) or 0 }}, {{ (assignment.task_id if assignment else 0) or 0 }}]'
                         class="tap-target px-3 py-3 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
                     <i class="fa-solid fa-{{ 'shuffle' if assignment else 'plus' }} mr-1"></i>{{ _('Transfer') if assignment else _('Assign') }}
                 </button>
                 {% if assignment %}
                 <form method="POST" action="{{ url_for('worker_assignment_end', worker_id=worker.id, assignment_id=assignment.id) }}"
-                      onsubmit="return confirm('End the current assignment for {{ worker.full_name }}?')">
+                      data-confirm="End the current assignment for {{ worker.full_name }}?">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
                     <button class="tap-target w-full px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors">
@@ -164,7 +164,7 @@
     <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-800">{{ _('Assign') }} <span id="assign-worker-name" class="text-accent"></span></h2>
-            <button aria-label="{{ _('Close') }}" onclick="closeAssignModal()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+            <button aria-label="{{ _('Close') }}" data-act="closeAssignModal" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
                 <i class="fa-solid fa-times"></i>
             </button>
         </div>
@@ -215,7 +215,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function openAssignModal(workerId, workerName, siteId, projectId, taskId) {
     document.getElementById('assign-worker-name').textContent = workerName;
     document.getElementById('assign-form').action = '/worker/' + workerId + '/assign';

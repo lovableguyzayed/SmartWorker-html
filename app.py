@@ -3,7 +3,7 @@ import secrets
 import string
 import hashlib
 import logging
-from flask import Flask
+from flask import Flask, g, request
 from flask_compress import Compress
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
@@ -93,12 +93,72 @@ app.config.update(
 )
 
 
+@app.before_request
+def _csp_nonce():
+    """A fresh nonce per request, for this page's own inline <script> blocks.
+
+    The policy below allows no inline script except what carries this value,
+    and it is unguessable and never reused, so markup an attacker manages to
+    inject cannot carry a nonce that matches.
+    """
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+@app.context_processor
+def _expose_csp_nonce():
+    return {'csp_nonce': getattr(g, 'csp_nonce', '')}
+
+
+# The policy, assembled once. Every library the app uses is vendored under
+# /static — Tailwind, Font Awesome, jsPDF, html2canvas — so the only outside
+# origin is Google Fonts.
+_CSP = "; ".join([
+    "default-src 'self'",
+    # No 'unsafe-inline' here, which is the whole point: an injected <script>
+    # or an onclick= an attacker gets into the page does not run. The app's
+    # own inline blocks are allowed by nonce; its event handlers are
+    # delegated from static/js/actions.js instead of written as attributes.
+    "script-src 'self' 'nonce-{nonce}'",
+    # Styles keep 'unsafe-inline'. Tailwind's utilities arrive as a
+    # stylesheet, but the app also sets style="" in a couple of dozen places
+    # and the day view computes a few widths at runtime. Injected CSS can
+    # restyle a page; it cannot execute, which is a different order of risk,
+    # and removing it would be a separate piece of work.
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    # data: for the QR codes the app draws into <img>; blob: for the canvas
+    # the PDF exporter rasterises before handing it to jsPDF.
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self'",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+])
+
+
 @app.after_request
 def _security_headers(response):
-    """Baseline headers. The app had none of these."""
+    """The app had none of these. Three were added first; the policy, the
+    permissions and HSTS came later, once the interface had been moved off
+    inline event handlers and could live without 'unsafe-inline'."""
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
     response.headers.setdefault('Referrer-Policy', 'same-origin')
+    response.headers.setdefault(
+        'Content-Security-Policy',
+        _CSP.format(nonce=getattr(g, 'csp_nonce', '')))
+    # Nothing in the application uses a camera beyond the QR scanner, which is
+    # same-origin, and nothing uses the rest at all.
+    response.headers.setdefault(
+        'Permissions-Policy',
+        'camera=(self), microphone=(), geolocation=(), payment=(), usb=()')
+    # Only where TLS is actually terminated — announcing HSTS over plain http
+    # on a laptop would lock the developer out of their own dev server.
+    if request.is_secure:
+        response.headers.setdefault(
+            'Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     return response
 
 

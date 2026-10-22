@@ -23,13 +23,13 @@
     </div>
 
     <form method="GET" class="grid grid-cols-2 gap-2 mt-4">
-        <select name="month" onchange="this.form.submit()"
+        <select name="month" data-act="submit-form"
                 class="tap-target p-2 rounded-xl bg-white/15 border border-white/25 text-white text-sm">
             {% for value, label in months %}
             <option value="{{ value }}" class="text-gray-800" {{ 'selected' if value == month }}>{{ _(label) }}</option>
             {% endfor %}
         </select>
-        <select name="year" onchange="this.form.submit()"
+        <select name="year" data-act="submit-form"
                 class="tap-target p-2 rounded-xl bg-white/15 border border-white/25 text-white text-sm">
             {% for value in years %}
             <option value="{{ value }}" class="text-gray-800" {{ 'selected' if value == year }}>{{ value }}</option>

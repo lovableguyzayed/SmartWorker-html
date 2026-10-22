@@ -66,7 +66,14 @@ def build_via_button(pg, url, button, lang, name):
         pg.evaluate("downloadPDF()")
     else:
         pg.click(button, timeout=8000)
-    pg.wait_for_function("window.__pdf !== null", timeout=120000)
+    # Polled rather than wait_for_function: a string predicate is
+    # eval()d in the page, which the CSP blocks.
+    for _ in range(240):
+        if pg.evaluate("() => window.__pdf !== null"):
+            break
+        pg.wait_for_timeout(500)
+    else:
+        raise AssertionError("the PDF never arrived")
     import base64
     data = base64.b64decode(pg.evaluate("window.__pdf"))
     path = os.path.join(OUT, name)
@@ -164,7 +171,11 @@ with sync_playwright() as p:
     pg.fill('input[name="username"]', 'demo@acme.test')
     pg.fill('input[name="password"]', 'demo12345')
     pg.click('#signin-form button[type="submit"]')
-    pg.wait_for_function("location.pathname !== '/login'", timeout=20000)
+    # wait_for_url rather than a string predicate: Playwright
+    # evaluates those with eval(), which the page's
+    # Content-Security-Policy refuses.
+
+    pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
 
     jobs = []
     for lang in ('en', 'hi'):

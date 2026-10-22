@@ -276,7 +276,7 @@
                     <i class="fa-solid fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-white/90"></i>
                     <input type="date" name="date" value="{{ selected_date }}"
                            class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50"
-                           onchange="this.form.submit()">
+                           data-act="submit-form">
                 </div>
             </div>
             <div class="flex items-end space-x-2">
@@ -300,7 +300,7 @@
             </div>
             <div class="grid grid-cols-2 gap-2">
                 {% if sites %}
-                <select name="site" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                <select name="site" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                     <option value="0" class="text-gray-800">{{ _('All sites') }}</option>
                     {% for site in sites %}
                     <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
@@ -308,7 +308,7 @@
                 </select>
                 {% endif %}
                 {% if current_user.is_admin and attendance_users %}
-                <select name="marked_by" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                <select name="marked_by" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                     <option value="0" class="text-gray-800">{{ _('All markers') }}</option>
                     {% for auser in attendance_users %}
                     <option value="{{ auser.id }}" {{ 'selected' if auser.id == marker_filter }} class="text-gray-800">{{ auser.full_name }}</option>
@@ -376,7 +376,7 @@
             {% endwith %}
         </details>
     </section>
-    <script>
+    <script nonce="{{ csp_nonce }}">
     /* The month arrows are links, so changing month reloads the page. Without
        remembering the fold, the calendar would snap shut under the person
        every time they stepped back a month. Runs here, during parse, so it
@@ -414,7 +414,7 @@
     <section class="mb-5">
         <div class="ep-section-label" id="ep-date-label">{{ _('Mark') }} {{ _('today') if selected_date == today else selected_date|ldate('%d %b') }}</div>
         <div class="ep-field-label">{{ _('Scan or type employee ID') }}</div>
-        <form class="ep-quick" onsubmit="return quickMark(event)">
+        <form class="ep-quick" data-act="quickMark">
             <input type="text" id="ep-quick-id" placeholder="CO001" autocomplete="off"
                    autocapitalize="characters" inputmode="text" aria-label="{{ _('Employee ID') }}">
             <button type="submit" id="ep-quick-btn">{{ _('Mark') }}</button>
@@ -422,10 +422,10 @@
 
         <div class="ep-bulk">
             {% if current_user.is_admin %}
-            <button type="button" onclick="bulkAction('present', this)">{{ _('All present') }}</button>
-            <button type="button" onclick="bulkAction('absent', this)">{{ _('All absent') }}</button>
+            <button type="button" data-act="bulkAction" data-act-args='["present"]'>{{ _('All present') }}</button>
+            <button type="button" data-act="bulkAction" data-act-args='["absent"]'>{{ _('All absent') }}</button>
             {% endif %}
-            <button type="button" onclick="bulkAction('close', this)"
+            <button type="button" data-act="bulkAction" data-act-args='["close"]'
                     {% if not current_user.is_admin %}style="grid-column: span 3"{% endif %}>{{ _('Close shifts') }}</button>
         </div>
 
@@ -474,7 +474,7 @@
 
                 {% if current_user.is_admin and data.attendance %}
                 <button type="button" class="ep-adjust"
-                        onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }})'>{{ _('Adjust times') }}</button>
+                        data-act="openAdjustModal" data-act-args='[{{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }}]'>{{ _('Adjust times') }}</button>
                 {% endif %}
             </div>
 
@@ -490,7 +490,7 @@
                 <button type="button" data-status="{{ value }}"
                         class="ep-pill ep-pill-{{ cls }}{{ ' ep-pill-on' if current_status == value else '' }}"
                         aria-label="{{ _('Mark') }} {{ value }}"
-                        onclick="markWorker({{ data.worker.id }}, '{{ value }}', this)">
+                        data-act="markWorker" data-act-args='[{{ data.worker.id }}, "{{ value }}"]'>
                     <i class="fa-solid {{ icon }}"></i>
                 </button>
                 {% endfor %}
@@ -574,7 +574,7 @@
                 <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Status') }}</label>
-                    <select name="status" id="adjust-status" class="w-full p-3 border border-lightGray rounded-xl" onchange="toggleAdjustFields()">
+                    <select name="status" id="adjust-status" class="w-full p-3 border border-lightGray rounded-xl" data-act="toggleAdjustFields">
                         <option value="present">{{ _('Present') }}</option>
                         <option value="late">{{ _('Late') }}</option>
                         <option value="absent">{{ _('Absent') }}</option>
@@ -609,7 +609,7 @@
                 <p class="text-xs text-gray-500">{{ _("Late minutes and overtime are recalculated automatically from the worker's shift settings.") }}</p>
                 <div class="flex space-x-3 pt-1">
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save') }}</button>
-                    <button type="button" onclick="hideAdjustModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
+                    <button type="button" data-act="hideAdjustModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -619,7 +619,7 @@
 
 <div id="ep-toasts"></div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // var, not let/const: this script re-executes on every SPA navigation back
 // into /attendance, and a top-level let re-declaration throws a SyntaxError
 // that would kill the whole screen.
@@ -724,7 +724,9 @@ async function markWorker(workerId, status, btn) {
 
 // Type an employee ID and mark without hunting for the row. First tap checks
 // in; a second tap on an open shift checks out, matching the roster pills.
-async function quickMark(event) {
+// The dispatcher in actions.js passes (…declared args, element, event), so
+// the event is the second parameter here rather than the first.
+async function quickMark(form, event) {
     event.preventDefault();
     var input = document.getElementById('ep-quick-id');
     var btn = document.getElementById('ep-quick-btn');
@@ -898,14 +900,14 @@ function dvRender(day) {
 
     h += '<div class="dv-head"><div><div class="dv-date">' + dvEsc(day.date_label) + '</div>' +
          '<div class="dv-weekday">' + dvEsc(day.weekday) + (day.is_today ? ' · {{ _('today') }}' : '') + '</div></div>';
-    h += '<button type="button" class="dv-navbtn" aria-label="Close day detail" onclick="dvClose()">' +
+    h += '<button type="button" class="dv-navbtn" aria-label="Close day detail" data-act="dvClose">' +
          '<i class="fa-solid fa-xmark"></i></button></div>';
 
     (day.closures || []).forEach(function (c) {
         h += '<div class="dv-banner ' + (c.allow_attendance ? 'dv-banner-warn' : 'dv-banner-block') + '">' +
              '<b>Closure — ' + dvEsc(c.reason) + '</b> (' + dvEsc(c.type) + ', ' + dvEsc(c.scope) + '). ' +
              (c.allow_attendance ? 'Attendance is still allowed.' : 'Attendance is locked for this date.') +
-             (DV_IS_ADMIN ? ' <button type="button" class="dv-adjust" style="color:#0062CC;font-weight:600" onclick="dvRemoveClosure(' + c.id + ')">Remove</button>' : '') +
+             (DV_IS_ADMIN ? ' <button type="button" class="dv-adjust" style="color:#0062CC;font-weight:600" data-act="dvRemoveClosure" data-act-args="[' + c.id + ']">Remove</button>' : '') +
              '</div>';
     });
     if (!editable && day.reason === 'future') {
@@ -978,8 +980,8 @@ function dvRender(day) {
 
     if (DV_IS_ADMIN && editable) {
         h += '<div class="dv-actions" style="grid-template-columns:1fr 1fr">' +
-             '<button type="button" onclick="dvAddTxn()">{{ _('Add transaction') }}</button>' +
-             '<button type="button" onclick="dvAddClosure()">{{ _('Add closure') }}</button></div>';
+             '<button type="button" data-act="dvAddTxn">{{ _('Add transaction') }}</button>' +
+             '<button type="button" data-act="dvAddClosure">{{ _('Add closure') }}</button></div>';
     }
 
     document.getElementById('day-panel-body').innerHTML = h;

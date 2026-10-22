@@ -65,14 +65,17 @@ const SmartWorker = {
         // Show toast notification
         showToast(message, type = 'info', duration = 5000) {
             const toast = document.createElement('div');
-            toast.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${this.getToastClass(type)} slide-up`;
+            // app-toast is what the close button climbs to. It used to walk
+            // up two parentElements from an inline onclick; naming the root
+            // means the dismissal survives a change to the markup inside.
+            toast.className = `app-toast fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${this.getToastClass(type)} slide-up`;
             toast.innerHTML = `
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <i class="fa-solid ${this.getToastIcon(type)} mr-2"></i>
                         <span>${message}</span>
                     </div>
-                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-current opacity-70 hover:opacity-100">
+                    <button data-act="remove-closest" data-act-target=".app-toast" class="ml-4 text-current opacity-70 hover:opacity-100">
                         <i class="fa-solid fa-times"></i>
                     </button>
                 </div>
@@ -618,16 +621,26 @@ const NativeShell = {
         const incomingLang = doc.documentElement.getAttribute('lang');
         if (incomingLang) applyLanguage(incomingLang);
 
+        // The scripts as the parser produced them. Chrome blanks the nonce
+        // attribute on any element that reaches a document — and strips it
+        // outright from one created through innerHTML — so the copies about
+        // to appear in the page carry nonce="". These still have their
+        // attributes intact, which keeps the clone below honest. The nonce
+        // it ends up with comes from pageNonce(), not from here: see there
+        // for why the fetched page's own nonce is the wrong one to use.
+        const incoming = [...doc.body.querySelectorAll('script')];
+
         document.body.innerHTML = doc.body.innerHTML;
 
-        // innerHTML never executes scripts — replace each with a live clone
-        document.body.querySelectorAll('script').forEach((old) => {
+        // innerHTML never executes scripts — replace each with a live clone.
+        document.body.querySelectorAll('script').forEach((old, i) => {
+            const source = incoming[i] || old;
             if (old.src) {
                 const path = new URL(old.src, location.href).pathname;
                 if (this.loadedAssets.has(path)) { old.remove(); return; }
                 this.loadedAssets.add(path);
             }
-            old.replaceWith(this.executable(old));
+            old.replaceWith(this.executable(source));
         });
 
         if (push && url !== location.href) history.pushState({}, '', url);
@@ -636,10 +649,36 @@ const NativeShell = {
         document.dispatchEvent(new Event('page:load'));
     },
 
+    /* The nonce this document was served with.
+     *
+     * Not the one on the page being navigated to. The browser enforces the
+     * Content-Security-Policy header of the document that is open, and that
+     * header named a nonce minted for that one request; a script carrying
+     * the *fetched* page's nonce is refused, because as far as the open
+     * document is concerned it is an unknown value. So every re-created
+     * script has to be stamped with the open document's own nonce.
+     *
+     * Read from the property rather than the attribute: browsers blank the
+     * attribute once an element is in a document — nonce hiding, so that
+     * markup an attacker injects cannot read a nonce off a neighbour. The
+     * property stays readable to first-party code like this, which is
+     * already running and could do anything it liked anyway.
+     */
+    pageNonce() {
+        // Parked on window by base.html while this document was parsed, and
+        // so still correct after the body has been replaced — every element
+        // that carried the nonce is gone by then.
+        return window.__swNonce || '';
+    },
+
     executable(node) {
         if (node.tagName !== 'SCRIPT') return node.cloneNode(true);
         const s = document.createElement('script');
         [...node.attributes].forEach((a) => s.setAttribute(a.name, a.value));
+        if (!node.src) {
+            const nonce = this.pageNonce();
+            if (nonce) s.nonce = nonce;
+        }
         s.textContent = node.textContent;
         return s;
     },

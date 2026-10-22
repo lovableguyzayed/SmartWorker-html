@@ -49,7 +49,7 @@ the page having filtered nothing passes every script here. Two tests in
 | `test_forms_and_modals.py` | opens all eleven modals and checks they appear with their fields, then posts every create form and looks for the row |
 | `test_no_script_errors.py` | loads every screen in both languages and listens for a thrown exception, a console error or a failed request — a screen can answer 200 with its scripts dead, and then every icon on it that needs them does nothing |
 
-## Six things that will bite you
+## Seven things that will bite you
 
 **Do not take a full-page screenshot to measure against.** Chromium stretches
 the viewport to capture one and the page reflows, so coordinates read at
@@ -93,6 +93,16 @@ composite the text colour over it. `tests/test_glass_contrast.py` does
 exactly that, and it is the reason the avatar initials were left alone:
 the sweep calls them 2.82:1 against a 3.0 floor, and composited they are
 3.4:1.
+
+**Do not write an inline event handler, and do not use a string predicate
+to drive the browser.** The application sends a Content-Security-Policy
+whose `script-src` allows no inline script: an `onclick=` is refused, and so
+is anything evaluated from a string. Markup declares `data-act="fnName"`
+and `static/js/actions.js` dispatches it. In these scripts that means
+Playwright's `wait_for_function("some expression")` fails with an EvalError,
+because Playwright evaluates a string predicate with `eval()` inside the
+page — use `wait_for_url(...)` or poll with `evaluate("() => …")`, which go
+through the debugger protocol instead.
 
 **Do not call an inline onclick a missing function.** `this.closest(...)`
 and `event.preventDefault()` start with an identifier and a bracket, so the

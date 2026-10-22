@@ -143,11 +143,11 @@
             </div>
         </div>
         <div class="flex items-center space-x-2">
-            <button aria-label="{{ _('Print') }}" onclick="printSlip()"
+            <button aria-label="{{ _('Print') }}" data-act="printSlip"
                     class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-print text-lg"></i>
             </button>
-            <button aria-label="{{ _('Download PDF') }}" onclick="downloadPDF()"
+            <button aria-label="{{ _('Download PDF') }}" data-act="downloadPDF"
                     class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-file-pdf text-lg"></i>
             </button>
@@ -610,11 +610,11 @@
 
     <!-- Action buttons (hidden on print) -->
     <div class="grid grid-cols-2 gap-3 no-print">
-        <button onclick="printSlip()"
+        <button data-act="printSlip"
                 class="flex items-center justify-center p-4 bg-primary text-white rounded-2xl font-medium shadow-lg hover:bg-accent transition-colors">
             <i class="fa-solid fa-print mr-2"></i>{{ _('Print Slip') }}
         </button>
-        <button onclick="downloadPDF()"
+        <button data-act="downloadPDF"
                 class="flex items-center justify-center p-4 bg-red-600 text-white rounded-2xl font-medium shadow-lg hover:bg-red-700 transition-colors">
             <i class="fa-solid fa-file-pdf mr-2"></i>{{ _('Save PDF') }}
         </button>
@@ -629,7 +629,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function printSlip() {
     window.print();
 }

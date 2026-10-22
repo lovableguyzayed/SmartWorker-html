@@ -26,12 +26,30 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
-          media="print" onload="this.media='all'">
+          media="print" data-swap-media>
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"></noscript>
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
-    
+
+    {# This document's nonce, kept where app.js can still find it.
+
+       The browser enforces the policy of the document that is open, and
+       that policy names the nonce minted for this one request. When the SPA
+       engine swaps the body for another screen's, it has to re-create that
+       screen's inline scripts carrying *this* nonce, not the one the fetched
+       page was served with — and by then every element that held this one
+       has been replaced. So it is read here, at parse time, from the
+       property (the attribute is blanked once the element is in the
+       document, so that injected markup cannot read a nonce off a
+       neighbour) and parked on window, which survives the swap.
+
+       Readable only to code that can already run JavaScript in the page,
+       which is to say code for which the policy has already failed. #}
+    <script nonce="{{ csp_nonce }}">
+        window.__swNonce = document.currentScript.nonce || '';
+    </script>
+
     <!-- Additional libraries for specific pages -->
     {% block head %}{% endblock %}
     
@@ -226,7 +244,7 @@
                         <div class="flex items-start gap-3">
                             <i class="fa-solid {{ icon }} mt-0.5 shrink-0"></i>
                             <span class="flex-1 text-sm leading-snug">{{ message|lflash }}</span>
-                            <button aria-label="{{ _('Close') }}" onclick="this.closest('.alert').remove()" class="text-white/90 hover:text-white shrink-0 ml-1">
+                            <button aria-label="{{ _('Close') }}" data-act="remove-closest" data-act-target=".alert" class="text-white/90 hover:text-white shrink-0 ml-1">
                                 <i class="fa-solid fa-times text-xs"></i>
                             </button>
                         </div>
@@ -326,7 +344,7 @@
             </div>
             <h2 class="text-lg font-semibold text-gray-800 mb-2">{{ _('Access Restricted') }}</h2>
             <p class="text-gray-600 text-sm mb-6">{{ restricted_messages[0]|lflash }}</p>
-            <button onclick="document.getElementById('restricted-modal').remove()"
+            <button data-act="remove-target" data-act-target="restricted-modal"
                     class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
                 OK
             </button>
@@ -336,6 +354,10 @@
     {% endwith %}
     
     <!-- Custom JavaScript -->
+    {# Turns data-act / data-confirm into real calls. Loaded before the page
+       scripts that define those functions, which is fine: it only looks a
+       name up when something is actually pressed. #}
+    <script src="{{ url_for('static', filename='js/actions.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
     {# Delegated from document, so it keeps working after every SPA swap and
@@ -349,7 +371,7 @@
     {% block scripts %}{% endblock %}
     
     <!-- Auto-hide flash messages -->
-    <script>
+    <script nonce="{{ csp_nonce }}">
         setTimeout(function() {
             const flashMessages = document.getElementById('flash-messages');
             if (flashMessages) {
@@ -363,7 +385,7 @@
          when it was uploaded before Supabase Storage was configured and the
          local file was wiped on a Render redeploy), swap in a neutral
          placeholder so the UI never shows a broken-image icon. -->
-    <script>
+    <script nonce="{{ csp_nonce }}">
         document.addEventListener('error', function (e) {
             var img = e.target;
             if (!img || img.tagName !== 'IMG' || img.dataset.fallbackApplied) return;
@@ -374,7 +396,7 @@
 
     <!-- Service Worker Registration — root scope so it controls the whole app
          (page caching + instant navigation + offline for real screens). -->
-    <script>
+    <script nonce="{{ csp_nonce }}">
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })

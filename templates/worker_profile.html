@@ -19,7 +19,7 @@
             <a aria-label="{{ _('Edit') }}" href="{{ url_for('edit_worker', worker_id=worker.id) }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-edit text-lg"></i>
             </a>
-            <button aria-label="{{ _('More actions') }}" onclick="showWorkerActionsModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <button aria-label="{{ _('More actions') }}" data-act="showWorkerActionsModal" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-ellipsis-v text-lg"></i>
             </button>
         </div>
@@ -84,14 +84,14 @@
     </section>
 
     <section class="grid grid-cols-3 gap-3">
-        <button onclick="showModifyModal()"
+        <button data-act="showModifyModal"
            class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
             <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-2">
                 <i class="fa-solid fa-arrow-up-right-dots text-amber-500 text-xl"></i>
             </div>
             <span class="text-sm font-medium text-gray-800">{{ _('Promote') }}</span>
         </button>
-        <button onclick="showAssignModal()"
+        <button data-act="showAssignModal"
            class="flex flex-col items-center p-4 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all">
             <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-2">
                 <i class="fa-solid fa-diagram-project text-blue-500 text-xl"></i>
@@ -114,7 +114,7 @@
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold text-gray-800">{{ _('Current Assignment') }}</h2>
             {% if current_user.is_admin %}
-            <button onclick="showAssignModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>{{ _('Assign') }}</button>
+            <button data-act="showAssignModal" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>{{ _('Assign') }}</button>
             {% endif %}
         </div>
         {% if assignment %}
@@ -296,7 +296,7 @@
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold text-gray-800">{{ _('Leave Balance') }}</h2>
             {% if current_user.is_admin %}
-            <button onclick="showLeaveModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-pen mr-1"></i>{{ _('Adjust') }}</button>
+            <button data-act="showLeaveModal" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-pen mr-1"></i>{{ _('Adjust') }}</button>
             {% endif %}
         </div>
         <div class="grid grid-cols-3 gap-3 mb-3">
@@ -369,7 +369,7 @@
                 </button>
             </form>
             <form method="POST" action="{{ url_for('worker_revoke_login', worker_id=worker.id) }}"
-                  onsubmit="return confirm({{ _('Remove this login?')|tojson }})">
+                  data-confirm="{{ _('Remove this login?') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit"
                         class="tap-target w-full p-3 rounded-xl border-2 border-red-200 text-red-700 font-medium text-sm">
@@ -635,7 +635,7 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-800">{{ _('Modification History') }}</h2>
-            <button onclick="showModifyModal()" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>{{ _('New') }}</button>
+            <button data-act="showModifyModal" class="tap-target inline-flex items-center text-accent text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i>{{ _('New') }}</button>
         </div>
         {% if worker.modifications %}
         <div class="space-y-2">
@@ -674,7 +674,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Modification Type') }}</label>
-                    <select name="mod_type" id="mod-type" onchange="toggleModFields()" class="w-full p-3 border border-lightGray rounded-xl">
+                    <select name="mod_type" id="mod-type" data-act="toggleModFields" class="w-full p-3 border border-lightGray rounded-xl">
                         <option value="promotion">{{ _('Promotion (designation + salary)') }}</option>
                         <option value="salary_change">{{ _('Salary Increment') }}</option>
                         <option value="bonus">{{ _('One-time Bonus') }}</option>
@@ -712,7 +712,7 @@
                 </div>
                 <div class="flex space-x-3 pt-1">
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save') }}</button>
-                    <button type="button" onclick="hideModifyModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
+                    <button type="button" data-act="hideModifyModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -766,7 +766,7 @@
                 </div>
                 <div class="flex space-x-3 pt-1">
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Assign') }}</button>
-                    <button type="button" onclick="hideAssignModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
+                    <button type="button" data-act="hideAssignModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -794,7 +794,7 @@
                 </div>
                 <div class="flex space-x-3 pt-1">
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save') }}</button>
-                    <button type="button" onclick="hideLeaveModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
+                    <button type="button" data-act="hideLeaveModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -841,7 +841,7 @@
                 </form>
 
                 <form method="POST" action="{{ url_for('delete_worker', worker_id=worker.id) }}"
-                      onsubmit="return confirm('Permanently delete {{ worker.full_name }}? This will erase all their attendance and payroll records and cannot be undone.');">
+                      data-confirm="Permanently delete {{ worker.full_name }}? This will erase all their attendance and payroll records and cannot be undone.">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit"
                             class="w-full flex items-center space-x-3 p-4 bg-red-50 hover:bg-red-100 rounded-2xl transition-colors">
@@ -856,7 +856,7 @@
                 </form>
             </div>
 
-            <button onclick="hideWorkerActionsModal()"
+            <button data-act="hideWorkerActionsModal"
                     class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
                 {{ _('Cancel') }}
             </button>
@@ -864,7 +864,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function showWorkerActionsModal() {
     document.getElementById('worker-actions-modal').classList.remove('hidden');
 }

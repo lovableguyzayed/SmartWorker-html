@@ -21,13 +21,13 @@
 
     <form method="GET" action="{{ url_for('payroll') }}" class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20">
         <div class="flex items-center space-x-2">
-            <select name="month" onchange="this.form.submit()"
+            <select name="month" data-act="submit-form"
                     class="flex-1 bg-white/90 text-gray-800 text-sm p-2 rounded-xl focus:ring-2 focus:ring-white/60 border-0">
                 {% for m_num, m_name in months %}
                 <option value="{{ m_num }}" {% if m_num == month %}selected{% endif %}>{{ m_name }}</option>
                 {% endfor %}
             </select>
-            <select name="year" onchange="this.form.submit()"
+            <select name="year" data-act="submit-form"
                     class="w-24 bg-white/90 text-gray-800 text-sm p-2 rounded-xl focus:ring-2 focus:ring-white/60 border-0">
                 {% for y in years %}
                 <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>

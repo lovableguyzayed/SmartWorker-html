@@ -20,7 +20,7 @@
 
     <form method="GET" class="mt-4">
         <input type="date" name="date" value="{{ on_date.isoformat() }}"
-               max="{{ today.isoformat() }}" onchange="this.form.submit()"
+               max="{{ today.isoformat() }}" data-act="submit-form"
                class="tap-target w-full p-2 rounded-xl bg-white/15 border border-white/25 text-white text-sm">
     </form>
 </header>

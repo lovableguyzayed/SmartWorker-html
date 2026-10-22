@@ -81,7 +81,11 @@ def build_pdf(pg, lang, worker_id):
     pg.fill('input[name="username"]', 'demo@acme.test')
     pg.fill('input[name="password"]', 'demo12345')
     pg.click('#signin-form button[type="submit"]')
-    pg.wait_for_function("location.pathname !== '/login'", timeout=20000)
+    # wait_for_url rather than a string predicate: Playwright
+    # evaluates those with eval(), which the page's
+    # Content-Security-Policy refuses.
+
+    pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
     pg.goto(B + '/profile', wait_until='domcontentloaded')
     pg.wait_for_timeout(700)
     pg.locator('form[action*="/language/%s"] button[type=submit]' % lang
@@ -101,7 +105,14 @@ def build_pdf(pg, lang, worker_id):
         };
     }""")
     pg.click('button:has-text("PDF")', timeout=5000)
-    pg.wait_for_function("window.__pdf !== null", timeout=120000)
+    # Polled rather than wait_for_function: a string predicate is
+    # eval()d in the page, which the CSP blocks.
+    for _ in range(240):
+        if pg.evaluate("() => window.__pdf !== null"):
+            break
+        pg.wait_for_timeout(500)
+    else:
+        raise AssertionError("the PDF never arrived")
     return base64.b64decode(pg.evaluate("window.__pdf"))
 
 
@@ -146,7 +157,11 @@ def check_report_and_card():
         pg.fill('input[name="username"]', 'demo@acme.test')
         pg.fill('input[name="password"]', 'demo12345')
         pg.click('#signin-form button[type="submit"]')
-        pg.wait_for_function("location.pathname !== '/login'", timeout=20000)
+        # wait_for_url rather than a string predicate: Playwright
+        # evaluates those with eval(), which the page's
+        # Content-Security-Policy refuses.
+
+        pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
         pg.goto(B + '/profile', wait_until='domcontentloaded')
         pg.wait_for_timeout(700)
         pg.locator('form[action*="/language/hi"] button[type=submit]').first.click()
@@ -181,7 +196,14 @@ def check_report_and_card():
         pg.click('button:has-text("डाउनलोड"), button:has-text("Download")', timeout=5000)
         pg.wait_for_timeout(800)
         pg.click('button:has-text("PDF")', timeout=5000)
-        pg.wait_for_function("window.__pdf !== null", timeout=90000)
+        # Polled rather than wait_for_function: a string predicate is
+        # eval()d in the page, which the CSP blocks.
+        for _ in range(180):
+            if pg.evaluate("() => window.__pdf !== null"):
+                break
+            pg.wait_for_timeout(500)
+        else:
+            raise AssertionError("the PDF never arrived")
         card = base64.b64decode(pg.evaluate("window.__pdf"))
         ctx.close()
         br.close()

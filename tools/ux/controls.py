@@ -77,12 +77,23 @@ PROBE = r"""
     const text = (el.innerText || el.value || '').trim().slice(0, 36);
     const aria = el.getAttribute('aria-label') || '';
     const onclick = el.getAttribute('onclick') || '';
+    // Inline handlers are gone — the Content-Security-Policy forbids them —
+    // so the question "what does this control call?" is now answered by
+    // data-act, which static/js/actions.js dispatches on.
+    const act = el.getAttribute('data-act') || '';
     const href = el.getAttribute('href') || '';
     const form = el.closest('form');
 
-    // The first identifier in an onclick is the function it means to call.
+    // data-act names the function outright; the dispatcher's own verbs
+    // (submit-form, print, remove-closest…) are not globals and are listed
+    // here so they are not reported as missing.
+    const VERBS = ['submit-form', 'submit-form-if-file', 'remove-closest',
+                   'remove-target', 'print'];
     let handler = '', handlerOk = null;
-    if (onclick) {
+    if (act) {
+      handler = act;
+      handlerOk = VERBS.indexOf(act) !== -1 || typeof window[act] === 'function';
+    } else if (onclick) {
       const match = onclick.match(/^\s*(?:return\s+)?([A-Za-z_$][\w$.]*)\s*\(/);
       // `this.closest(...)`, `event.preventDefault()` and friends begin with
       // an identifier and a bracket, so they match — but the root is a
@@ -104,6 +115,8 @@ PROBE = r"""
 
     let kind;
     if (href && href !== '#' && !href.startsWith('javascript:')) kind = 'link';
+    else if (act) kind = 'action';
+    else if (el.hasAttribute('data-confirm')) kind = 'confirm';
     else if (onclick) kind = 'onclick';
     else if (tag === 'summary' || tag === 'details') kind = 'disclosure';
     else if (el.type === 'submit' || (tag === 'button' && !el.type && form)) kind = 'submit';
@@ -116,7 +129,7 @@ PROBE = r"""
 
     rows.push({
       tag: tag, kind: kind, text: text, aria: aria,
-      href: href, onclick: onclick.slice(0, 60),
+      href: href, onclick: (act || onclick).slice(0, 60),
       handler: handler, handlerOk: handlerOk,
       formAction: form ? (form.getAttribute('action') || '(self)') : '',
       cls: (el.className || '').toString().slice(0, 44),
@@ -162,7 +175,11 @@ with sync_playwright() as p:
     pg.fill('input[name="username"]', 'demo@acme.test')
     pg.fill('input[name="password"]', 'demo12345')
     pg.click('#signin-form button[type="submit"]')
-    pg.wait_for_function("location.pathname !== '/login'", timeout=20000)
+    # wait_for_url rather than a string predicate: Playwright
+    # evaluates those with eval(), which the page's
+    # Content-Security-Policy refuses.
+
+    pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
 
     for path, slug in SCREENS:
         pg.goto(B + (path % WID if '%d' in path else path),
@@ -197,7 +214,7 @@ if not dead:
     print('  none — every control is a link, a submit, a handler or a listener')
 
 broken = [(s, r) for s, r in allrows if r['handlerOk'] is False]
-print('\n--- onclick naming a function that is not defined: %d ---' % len(broken))
+print('\n--- data-act naming a function that is not defined: %d ---' % len(broken))
 for s, r in broken[:40]:
     print('  %-20s %-22s %r' % (s, r['handler'], r['text'] or r['aria']))
 
@@ -210,4 +227,4 @@ print('\n%d distinct internal links written to out/links.txt' % len(links))
 
 handlers = sorted({r['handler'] for s, r in allrows if r['handler']
                    and r['handler'] != '(inline statement)'})
-print('%d distinct onclick handlers: %s' % (len(handlers), ', '.join(handlers[:14])))
+print('%d distinct actions: %s' % (len(handlers), ', '.join(handlers[:14])))

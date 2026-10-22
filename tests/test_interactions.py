@@ -90,7 +90,11 @@ try:
         pg.fill('input[name="username"]', 'demo@acme.test')
         pg.fill('input[name="password"]', 'demo12345')
         pg.click('#signin-form button[type="submit"]')
-        pg.wait_for_function("location.pathname !== '/login'", timeout=20000)
+        # wait_for_url rather than a string predicate: Playwright
+        # evaluates those with eval(), which the page's
+        # Content-Security-Policy refuses.
+
+        pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
 
         # ---------------------------------------------------------------
         print('--- assignments: the counted chips actually filter ---')
@@ -295,8 +299,15 @@ try:
                 return new Promise(r => { window.__pdf = b.size; r('ok'); });
             };
         }""")
-        pg.click('button[aria-label][onclick*="downloadPDF"]')
-        pg.wait_for_function("window.__pdf !== null", timeout=120000)
+        pg.click('button[data-act="downloadPDF"]')
+        # Polled rather than wait_for_function: a string predicate is
+        # eval()d in the page, which the CSP blocks.
+        for _ in range(240):
+            if pg.evaluate("() => window.__pdf !== null"):
+                break
+            pg.wait_for_timeout(500)
+        else:
+            raise AssertionError("the PDF never arrived")
         size = pg.evaluate("() => window.__pdf")
         truthy('the payslip PDF button produces a file', size and size > 20000,
                '%d bytes' % (size or 0))

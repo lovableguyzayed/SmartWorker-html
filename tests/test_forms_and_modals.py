@@ -61,20 +61,23 @@ with app.app_context():
     WID = m.Worker.query.filter_by(pay_type='monthly', status='active').first().id
     AWID = m.Worker.query.filter_by(status='active').first().id
 
-# modal id -> the screen it lives on, and how that screen opens it
+# modal id -> the screen it lives on, and the opener: either the marker
+# 'bulkbar' or (function name, arguments). Kept as name-plus-arguments
+# rather than a snippet to eval, because the page's own policy forbids
+# evaluating a string as code — the test has to play by the same rules.
 MODALS = [
-    ('/transactions',               'txn-modal',              'openTxnModal()'),
+    ('/transactions',               'txn-modal',              ('openTxnModal', [])),
     ('/assignments',                'bulk-assign-picker',     'bulkbar'),
     ('/attendance',                 'adjust-modal',
-     "openAdjustModal(1,'Test Worker','present','09:00','18:00','')"),
-    ('/worker/%d' % WID,            'worker-actions-modal',   'showWorkerActionsModal()'),
-    ('/worker/%d' % WID,            'assign-modal',           'showAssignModal()'),
-    ('/worker/%d' % WID,            'leave-modal',            'showLeaveModal()'),
-    ('/worker/%d' % WID,            'modify-modal',           'showModifyModal()'),
-    ('/worker_attendance/%d' % WID, 'stats-modal',            'showStatsModal()'),
-    ('/id_card/%d' % WID,           'download-options-modal', 'showDownloadModal()'),
-    ('/profile',                    'edit-profile-modal',     'showEditModal()'),
-    ('/profile',                    'password-modal',         'showPasswordModal()'),
+     ('openAdjustModal', [1, 'Test Worker', 'present', '09:00', '18:00', ''])),
+    ('/worker/%d' % WID,            'worker-actions-modal',   ('showWorkerActionsModal', [])),
+    ('/worker/%d' % WID,            'assign-modal',           ('showAssignModal', [])),
+    ('/worker/%d' % WID,            'leave-modal',            ('showLeaveModal', [])),
+    ('/worker/%d' % WID,            'modify-modal',           ('showModifyModal', [])),
+    ('/worker_attendance/%d' % WID, 'stats-modal',            ('showStatsModal', [])),
+    ('/id_card/%d' % WID,           'download-options-modal', ('showDownloadModal', [])),
+    ('/profile',                    'edit-profile-modal',     ('showEditModal', [])),
+    ('/profile',                    'password-modal',         ('showPasswordModal', [])),
 ]
 
 VISIBLE = """(id) => {
@@ -117,7 +120,11 @@ try:
         pg.fill('input[name="username"]', 'demo@acme.test')
         pg.fill('input[name="password"]', 'demo12345')
         pg.click('#signin-form button[type="submit"]')
-        pg.wait_for_function("location.pathname !== '/login'", timeout=20000)
+        # wait_for_url rather than a string predicate: Playwright
+        # evaluates those with eval(), which the page's
+        # Content-Security-Policy refuses.
+
+        pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
 
         last = None
         for url, mid, how in MODALS:
@@ -152,16 +159,20 @@ try:
                 btn.click()
                 pg.wait_for_timeout(700)
             else:
-                fn = how.split('(')[0]
+                fn, fn_args = how
+                # The markup declares data-act="fn" now; inline handlers were
+                # removed so that the Content-Security-Policy could forbid
+                # them. Same question as before: does any control call this?
                 wired = pg.evaluate(
-                    """(fn) => [...document.querySelectorAll('[onclick]')]
-                         .some(e => (e.getAttribute('onclick') || '').includes(fn))""",
+                    """(fn) => [...document.querySelectorAll('[data-act]')]
+                         .some(e => e.getAttribute('data-act') === fn)""",
                     fn)
                 if not wired:
                     fails.append((mid, '%s is wired to no control' % fn, 'wired'))
                     print('  FAIL  %-24s %s opens it but nothing calls %s'
                           % (mid, fn, fn))
-                pg.evaluate("(c) => eval(c)", how)
+                pg.evaluate(
+                    "([f, a]) => window[f].apply(null, a)", [fn, fn_args])
                 pg.wait_for_timeout(700)
 
             state = pg.evaluate(VISIBLE, mid)

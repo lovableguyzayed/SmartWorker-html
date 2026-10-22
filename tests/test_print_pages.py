@@ -91,7 +91,11 @@ try:
         pg.fill('input[name="username"]', 'demo@acme.test')
         pg.fill('input[name="password"]', 'demo12345')
         pg.click('#signin-form button[type="submit"]')
-        pg.wait_for_function("location.pathname !== '/login'", timeout=20000)
+        # wait_for_url rather than a string predicate: Playwright
+        # evaluates those with eval(), which the page's
+        # Content-Security-Policy refuses.
+
+        pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
 
         for lang in ('en', 'hi'):
             pg.goto(B + '/profile', wait_until='domcontentloaded')

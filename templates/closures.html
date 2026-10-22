@@ -52,7 +52,7 @@
 
             <div>
                 <label class="text-sm font-medium text-gray-700 mb-2 block">{{ _('Applies To') }}</label>
-                <select name="scope" id="closure-scope" onchange="toggleScopeFields()"
+                <select name="scope" id="closure-scope" data-act="toggleScopeFields"
                         class="w-full p-3 border border-lightGray rounded-2xl focus:border-accent focus:outline-none">
                     <option value="company">{{ _('Entire company') }}</option>
                     <option value="site">{{ _('Individual site') }}</option>
@@ -138,7 +138,7 @@
                         {% endif %}
                     </div>
                 </div>
-                <form method="POST" action="{{ url_for('delete_closure', closure_id=closure.id) }}" onsubmit="return confirm('Delete this closure date?');">
+                <form method="POST" action="{{ url_for('delete_closure', closure_id=closure.id) }}" data-confirm="Delete this closure date?">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button aria-label="{{ _('Delete') }}" type="submit" class="text-red-700 hover:text-red-700 p-2">
                         <i class="fa-solid fa-trash text-sm"></i>
@@ -168,7 +168,7 @@
     </section>
 </main>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleScopeFields() {
     const scope = document.getElementById('closure-scope').value;
     document.getElementById('closure-site-field').classList.toggle('hidden', scope !== 'site');

@@ -15,7 +15,7 @@
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <button aria-label="{{ _('Edit') }}" onclick="showEditModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <button aria-label="{{ _('Edit') }}" data-act="showEditModal" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-edit text-lg"></i>
             </button>
             {% if current_user.is_admin %}
@@ -63,7 +63,7 @@
                     </div>
                     {% if current_user.profile_image %}
                     <form method="POST" action="{{ url_for('profile_remove_avatar') }}" class="inline"
-                          onsubmit="return confirm('Remove your profile photo?')">
+                          data-confirm="Remove your profile photo?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="text-xs glass-chip px-2 py-1 rounded-lg border border-red-400/60 hover:bg-red-500/30 transition-colors">
                             <i class="fa-solid fa-trash mr-1"></i>{{ _('Remove photo') }}
@@ -78,7 +78,7 @@
               enctype="multipart/form-data" data-native class="hidden">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="file" id="avatar-file-input" name="avatar" accept="image/*"
-                   onchange="if(this.files.length){document.getElementById('avatar-upload-form').submit();}">
+                   data-act="submit-form-if-file">
         </form>
     </div>
 </header>
@@ -177,11 +177,11 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h2>
         <div class="grid grid-cols-2 gap-3">
-            <button onclick="showEditModal()" class="flex items-center justify-center p-4 bg-accent/10 text-accent rounded-2xl hover:bg-accent/20 transition-colors">
+            <button data-act="showEditModal" class="flex items-center justify-center p-4 bg-accent/10 text-accent rounded-2xl hover:bg-accent/20 transition-colors">
                 <i class="fa-solid fa-user-edit mr-2"></i>
                 {{ _('Edit Profile') }}
             </button>
-            <button onclick="showPasswordModal()" class="flex items-center justify-center p-4 bg-orange-500/10 text-orange-700 rounded-2xl hover:bg-orange-500/20 transition-colors">
+            <button data-act="showPasswordModal" class="flex items-center justify-center p-4 bg-orange-500/10 text-orange-700 rounded-2xl hover:bg-orange-500/20 transition-colors">
                 <i class="fa-solid fa-key mr-2"></i>
                 {{ _('Change Password') }}
             </button>
@@ -201,7 +201,7 @@
                 <span class="absolute top-2 right-2 bg-red-700 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
                 {% endif %}
             </a>
-            <button onclick="exportData()" class="flex items-center justify-center p-4 bg-green-500/10 text-green-700 rounded-2xl hover:bg-green-500/20 transition-colors">
+            <button data-act="exportData" class="flex items-center justify-center p-4 bg-green-500/10 text-green-700 rounded-2xl hover:bg-green-500/20 transition-colors">
                 <i class="fa-solid fa-download mr-2"></i>
                 {{ _('Export Data') }}
             </button>
@@ -263,7 +263,7 @@
 
     <!-- Logout Section -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <button onclick="confirmLogout()" class="w-full flex items-center justify-center p-4 bg-red-50 text-red-700 rounded-2xl hover:bg-red-100 transition-colors">
+        <button data-act="confirmLogout" class="w-full flex items-center justify-center p-4 bg-red-50 text-red-700 rounded-2xl hover:bg-red-100 transition-colors">
             <i class="fa-solid fa-sign-out-alt mr-2"></i>
             {{ _('Sign Out') }}
         </button>
@@ -299,7 +299,7 @@
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
                         {{ _('Save Changes') }}
                     </button>
-                    <button type="button" onclick="hideEditModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                    <button type="button" data-act="hideEditModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
                         {{ _('Cancel') }}
                     </button>
                 </div>
@@ -343,7 +343,7 @@
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
                         {{ _('Update Password') }}
                     </button>
-                    <button type="button" onclick="hidePasswordModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                    <button type="button" data-act="hidePasswordModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
                         {{ _('Cancel') }}
                     </button>
                 </div>
@@ -352,7 +352,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function showEditModal() {
     document.getElementById('edit-profile-modal').classList.remove('hidden');
 }

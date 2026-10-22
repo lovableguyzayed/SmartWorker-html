@@ -20,7 +20,7 @@
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <button aria-label="{{ _('Statistics') }}" onclick="showStatsModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <button aria-label="{{ _('Statistics') }}" data-act="showStatsModal" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-chart-bar text-lg"></i>
             </button>
         </div>
@@ -366,7 +366,7 @@
                 <div class="text-xs text-gray-500">{{ pay_summary.policy_note|lnotes }}</div>
             </div>
             
-            <button onclick="hideStatsModal()" 
+            <button data-act="hideStatsModal" 
                     class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
                 {{ _('Close') }}
             </button>
@@ -374,7 +374,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function showStatsModal() {
     document.getElementById('stats-modal').classList.remove('hidden');
 }

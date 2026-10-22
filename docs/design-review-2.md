@@ -383,3 +383,92 @@ Both are fixed. The lesson is written into `tools/ux/README.md`: these
 scripts answer *"is this control attached to something?"* and never *"does
 the thing it is attached to work?"* — `tests/test_interactions.py` and
 `tests/test_forms_and_modals.py` cover that second question.
+
+
+---
+
+## After the review: a Content-Security-Policy
+
+The final sweep noted that the application sent three security headers but
+no CSP, and said plainly that adding one was its own piece of work because
+the interface was built on inline `onclick` handlers. That work is done.
+
+**Why it could not just be switched on.** The directive that earns a CSP
+its keep is `script-src` without `'unsafe-inline'` — that is what stops an
+injected `<script>`, or an `onclick=` an attacker gets into a page, from
+running. But the browser cannot tell our inline code from theirs, so the
+same rule blocked all 97 of the application's own handlers. Turning the
+policy on without moving them would have broken every button; keeping
+`'unsafe-inline'` to avoid that would have bought a header and no
+protection.
+
+**What moved.** All 97 handlers across 16 templates became declarative:
+
+    <button onclick="showEditModal()">        <button data-act="showEditModal">
+    <button onclick="bulkAction('present', this)">
+                                              <button data-act="bulkAction"
+                                                      data-act-args='["present"]'>
+    <form onsubmit="return confirm('Delete this site permanently?')">
+                                              <form data-confirm="Delete this site permanently?">
+    <select onchange="this.form.submit()">    <select data-act="submit-form">
+
+`static/js/actions.js` is one delegated listener that reads those
+attributes. Arguments are JSON, parsed with `JSON.parse`; nothing
+evaluates a string as code, because a dispatcher that did would hand back
+the hole the policy had just closed and would need `'unsafe-eval'` to run
+at all. Being delegated from `document`, it also covers markup the day
+view builds after load, and survives the SPA engine replacing the body.
+
+**Two things this turned up that were worth the trip.**
+
+A single-page app and a per-request nonce do not compose, and the failure
+is silent. The browser enforces the policy of the document that is *open*,
+naming the nonce minted for that one request — so when the SPA engine
+fetches the next screen and re-creates its inline scripts, those scripts
+must carry *this* document's nonce, not the fetched page's. Worse, Chrome
+strips the nonce from any script created through `innerHTML`, deliberately,
+so that injected markup cannot read a nonce back out. The nonce is
+therefore read once at parse time from `document.currentScript.nonce` and
+parked on `window`, where it survives the swap. Without that, every inline
+block on every screen reached by in-app navigation was refused — which
+showed up first as the attendance calendar quietly forgetting whether it
+was folded.
+
+The test harness broke too, and for a reason worth recording: Playwright
+evaluates a string predicate with `eval()` inside the page, so
+`wait_for_function("location.pathname !== '/login'")` fails under the
+policy. Eighteen of those became `wait_for_url`, and four polls of a
+JavaScript variable became `evaluate("() => …")`, which goes through the
+debugger protocol rather than the page.
+
+**What the policy says.** Everything the app uses is vendored under
+`/static` — Tailwind, Font Awesome, jsPDF, html2canvas — so the only
+outside origin is Google Fonts:
+
+    default-src 'self'
+    script-src  'self' 'nonce-<per request>'
+    style-src   'self' 'unsafe-inline' https://fonts.googleapis.com
+    font-src    'self' https://fonts.gstatic.com data:
+    img-src     'self' data: blob: https:
+    connect-src 'self'
+    worker-src  'self' blob:
+    object-src  'none'
+    base-uri    'self'
+    form-action 'self'
+    frame-ancestors 'self'
+
+`style-src` keeps `'unsafe-inline'`, and that is a deliberate limit rather
+than an oversight: the app sets `style=""` in a couple of dozen places and
+the day view computes a few widths at runtime. Injected CSS can restyle a
+page; it cannot execute, which is a different order of risk. Removing it
+is a separate piece of work.
+
+Alongside it, `Permissions-Policy` denies everything the app does not use
+and allows the camera only to itself, for the QR scanner; and
+`Strict-Transport-Security` is sent only where TLS is actually terminated,
+so announcing it cannot lock a developer out of their own machine.
+
+`tests/test_csp.py` holds the line from both ends — the header must keep
+forbidding `'unsafe-inline'` and `'unsafe-eval'`, and no template may
+contain an inline handler for it to have to allow. Both halves were
+confirmed to fail when deliberately broken.

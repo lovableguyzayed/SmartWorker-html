@@ -620,7 +620,7 @@
     </form>
 </main>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const payTypeSelect = document.getElementById('pay-type-select');
     const dailyRate = document.getElementById('daily-rate');
