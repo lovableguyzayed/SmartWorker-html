@@ -36,6 +36,34 @@
 </header>
 
 <main class="p-4 pb-8 space-y-6">
+    {# Photos that vanish after a restart look like a bug in the app. They
+       are a setting, and this is the only place that says so. Shown only on
+       the hosted app: on a laptop the uploads folder is as permanent as
+       anything else. #}
+    {% if photo_storage.hosted and not photo_storage.permanent %}
+    <section class="bg-amber-50 border border-amber-300 rounded-3xl p-4">
+        <h2 class="text-sm font-semibold text-amber-900 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            {{ _('Uploaded photos are not being kept') }}
+        </h2>
+        <p class="text-xs text-amber-900/90 mt-2 leading-relaxed">
+            {{ _('Worker photos and the company logo are being written to this '
+                 'server\'s temporary disk. They show now, and disappear the next '
+                 'time the app restarts or is updated. To keep them, set '
+                 'SUPABASE_URL and SUPABASE_SERVICE_KEY in the hosting '
+                 'environment and upload the photos again.') }}
+        </p>
+    </section>
+    {% elif photo_storage.permanent %}
+    <section class="bg-green-50 border border-green-200 rounded-3xl p-4">
+        <p class="text-xs text-green-900 flex items-center gap-2">
+            <i class="fa-solid fa-circle-check"></i>
+            {{ _('Photos are stored permanently.') }}
+            <span class="opacity-70">{{ photo_storage.bucket }}</span>
+        </p>
+    </section>
+    {% endif %}
+
     <!-- ══════════ Company Section ══════════ -->
     <section id="section-company" class="settings-section space-y-4">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">

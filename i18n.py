@@ -606,6 +606,21 @@ TRANSLATIONS = {
         'Looking up %s…': '%s देख रहे हैं…',
         'No matching worker.': 'इस आईडी का कोई मज़दूर नहीं मिला।',
         'Enter or scan an employee ID.': 'मज़दूर की आईडी डालें या स्कैन करें।',
+        # Whether uploaded photos will still be there tomorrow.
+        'Uploaded photos are not being kept':
+            'अपलोड की गई तस्वीरें सेव नहीं हो रही हैं',
+        "Worker photos and the company logo are being written to this "
+        "server's temporary disk. They show now, and disappear the next "
+        'time the app restarts or is updated. To keep them, set '
+        'SUPABASE_URL and SUPABASE_SERVICE_KEY in the hosting '
+        'environment and upload the photos again.':
+            'मज़दूरों की तस्वीरें और कंपनी का लोगो इस सर्वर की अस्थायी डिस्क पर '
+            'लिखे जा रहे हैं। अभी दिखते हैं, पर ऐप के दोबारा चालू होते ही या '
+            'अपडेट होते ही मिट जाएँगे। इन्हें बनाए रखने के लिए होस्टिंग में '
+            'SUPABASE_URL और SUPABASE_SERVICE_KEY सेट करें और तस्वीरें दोबारा '
+            'अपलोड करें।',
+        'Photos are stored permanently.':
+            'तस्वीरें हमेशा के लिए सेव हो रही हैं।',
         # The attendance day view paints its own markup too; these two were
         # the last English left in it.
         'Close day detail': 'दिन की जानकारी बंद करें',

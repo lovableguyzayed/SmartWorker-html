@@ -3642,7 +3642,19 @@ def settings():
     policy_audit = (SalaryPolicyAudit.query
                     .order_by(SalaryPolicyAudit.created_at.desc()).limit(12).all())
 
+    # Whether uploaded photos will still exist tomorrow. The app already
+    # logs this at startup, but a warning in Render's log is not somewhere
+    # an administrator looks, and the symptom — a photo that shows once and
+    # is gone after the next restart — looks like a bug in the app rather
+    # than a setting nobody was told about.
+    photo_storage = {
+        'permanent': storage.storage_enabled(),
+        'bucket': storage.BUCKET,
+        'hosted': bool(os.environ.get('RENDER')),
+    }
+
     return render_template('settings.html',
+                           photo_storage=photo_storage,
                            company=company,
                            sites=sites,
                            projects=projects,
