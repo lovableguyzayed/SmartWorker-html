@@ -3,6 +3,7 @@ mistakes that are easy to make and invisible until a Hindi user hits them.
 
 Run from the project root:  python3 tests/test_i18n.py
 """
+import ast
 import os
 import re
 import sys
@@ -49,16 +50,29 @@ check('no translation carries a stray quote that would break inline JS',
 
 # A repeated key in the dict literal is legal Python — the later one silently
 # wins — so a well-meant addition can change an unrelated screen's wording.
-# Count the key literals in the source instead of trusting the parsed dict.
+# Read the key literals out of the source rather than trusting the parsed
+# dict, which has already lost the duplicate.
+#
+# With ast and not a regex: a regex for single-quoted keys skips every key
+# written with double quotes (there are several, because the English contains
+# an apostrophe) and a skipped key is exactly what this is meant to catch.
 _src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                          'i18n.py'), encoding='utf-8').read()
-_table = _src[_src.index("TRANSLATIONS = {"):_src.index("def weekday_names")]
-_keys = re.findall(r"^\s{8}((?:'[^']*'\s*)+):", _table, re.M)
-_joined = [''.join(re.findall(r"'([^']*)'", k)) for k in _keys]
+_assign = next(n for n in ast.parse(_src).body
+               if isinstance(n, ast.Assign)
+               and getattr(n.targets[0], 'id', None) == 'TRANSLATIONS')
+# Per language, not across all of them: the same English key in 'hi' and in
+# a second language is the point, not a duplicate.
+_hi_literal = next(v for k, v in zip(_assign.value.keys, _assign.value.values)
+                   if isinstance(k, ast.Constant) and k.value == 'hi')
+_joined = [k.value for k in _hi_literal.keys
+           if isinstance(k, ast.Constant) and isinstance(k.value, str)]
 check('no key appears twice in the Hindi table',
       sorted({k for k in _joined if _joined.count(k) > 1}), [])
 check('the duplicate check actually found the table',
       len(_joined) > 150, True)
+check('and found the keys the old regex skipped',
+      "Scan a worker's ID card to mark attendance" in _joined, True)
 
 # --- dates ----------------------------------------------------------------
 d = date(2026, 10, 20)   # a Tuesday
@@ -150,11 +164,48 @@ check('no template shadows _() with {% set _ = ... %}', shadowed, [])
 
 # 2. _() inside an inline <script> is rendered straight into a JS string
 #    literal, so a translation containing a quote would break the script. The
-#    table is already checked above; this checks the templates use the safe
-#    form (|tojson) for anything assigned to a JS variable.
-check('scanner status strings are JSON-encoded for JS',
-      "{{ _('Camera unavailable')|tojson }}" in
-      open(os.path.join(TEMPLATES, 'scan.html'), encoding='utf-8').read(), True)
+#    table is already checked above for quotes; this checks the templates use
+#    the safe form, so one slip in the table cannot take a screen down.
+def _unguarded_in_scripts(body):
+    """Every `_()` inside a <script> that is not piped through |tojson.
+
+    Scans for the closing paren rather than matching the whole call with a
+    regex, because a long message is written as several adjacent literals and
+    a regex for that kept missing one form or another.
+    """
+    out = []
+    for script in re.findall(r'<script\b[^>]*>(.*?)</script>', body,
+                             re.S | re.I):
+        for start in (m.start() for m in re.finditer(r'\b_\(', script)):
+            i, quote = start + 2, None
+            while i < len(script):
+                ch = script[i]
+                if quote:
+                    if ch == quote:
+                        quote = None
+                elif ch in '\'"':
+                    quote = ch
+                elif ch == ')':
+                    break
+                i += 1
+            if not re.match(r'\s*\|\s*tojson', script[i + 1:]):
+                out.append(script[start:i + 1].replace('\n', ' ')[:48])
+    return out
+
+
+# Every template, not just the scanner: the trap is the same wherever a
+# translated string is rendered into JavaScript, and the one that broke a
+# screen was found by hand.
+unguarded = []
+for name in sorted(os.listdir(TEMPLATES)):
+    if name.endswith('.html'):
+        unguarded += [(name, call) for call in _unguarded_in_scripts(
+            open(os.path.join(TEMPLATES, name), encoding='utf-8').read())]
+check('every _() inside a <script> is JSON-encoded for JS', unguarded, [])
+check('and the check is actually looking at the scanner',
+      len(_unguarded_in_scripts(
+          open(os.path.join(TEMPLATES, 'scan.html'), encoding='utf-8').read()
+          .replace('|tojson', ''))) > 10, True)
 
 # 3. salary.py now writes the amount inside a note as a proper rupee, while
 #    notes stored before that carry a bare float. The Hindi replacement

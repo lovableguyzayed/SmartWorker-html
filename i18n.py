@@ -576,6 +576,47 @@ TRANSLATIONS = {
         'Open full profile': 'पूरी प्रोफ़ाइल खोलें',
         'Camera unavailable': 'कैमरा उपलब्ध नहीं',
 
+        # The scanner's own notices. These are raised in JavaScript, so they
+        # never pass through the flash filter or the JSON translator — the
+        # template hands them over already translated, via _()|tojson.
+        'Scanner unavailable': 'स्कैनर उपलब्ध नहीं',
+        "Couldn't load the scanner. Check your connection, or enter the "
+        'Employee ID below.':
+            'स्कैनर चालू नहीं हो सका। कनेक्शन देखें, या नीचे मज़दूर की आईडी डालें।',
+        'Scanner paused': 'स्कैनर रुका हुआ है',
+        'Scanner paused — tap Resume to scan again.':
+            'स्कैनर रुका हुआ है — दोबारा स्कैन करने के लिए “चालू करें” दबाएँ।',
+        'Resume': 'चालू करें',
+        'Looking up %s…': '%s देख रहे हैं…',
+        'No matching worker.': 'इस आईडी का कोई मज़दूर नहीं मिला।',
+        'Enter or scan an employee ID.': 'मज़दूर की आईडी डालें या स्कैन करें।',
+        # The attendance day view paints its own markup too; these two were
+        # the last English left in it.
+        'Close day detail': 'दिन की जानकारी बंद करें',
+        'Select a date to see its detail.':
+            'जानकारी देखने के लिए कोई तारीख़ चुनें।',
+        'No matching worker on your site. Check the ID or contact the '
+        'Administrator.':
+            'आपकी साइट पर इस आईडी का कोई मज़दूर नहीं है। आईडी देखें या एडमिन '
+            'से कहें।',
+        'No connection — check your internet and try again, or mark '
+        'attendance from the Attendance screen.':
+            'कनेक्शन नहीं है — इंटरनेट देखकर दोबारा कोशिश करें, या हाज़िरी '
+            'वाली स्क्रीन से हाज़िरी लगाएँ।',
+        'The server returned an unexpected response. Please try again.':
+            'सर्वर से अनपेक्षित जवाब आया। दोबारा कोशिश करें।',
+        'Attendance updated.': 'हाज़िरी दर्ज हो गई।',
+        'Could not update attendance.': 'हाज़िरी दर्ज नहीं हो सकी।',
+        'Could not save attendance. Please try again.':
+            'हाज़िरी सेव नहीं हुई। दोबारा कोशिश करें।',
+        'No connection — attendance was not saved.':
+            'कनेक्शन नहीं है — हाज़िरी सेव नहीं हुई।',
+        'Amount must be greater than zero.': 'रक़म शून्य से ज़्यादा होनी चाहिए।',
+        'Could not record the payment. Please try again.':
+            'रक़म दर्ज नहीं हो सकी। दोबारा कोशिश करें।',
+        'No connection — the payment was not recorded.':
+            'कनेक्शन नहीं है — रक़म दर्ज नहीं हुई।',
+
         # --- closure days ---------------------------------------------------
         'Closure Days': 'छुट्टी के दिन',
         'Holidays & Scheduled Closures': 'त्योहार और तय छुट्टियाँ',
@@ -704,6 +745,18 @@ TRANSLATIONS = {
             'चालू करें',
         'Amount (₹)':
             'रक़म (₹)',
+        # The scanner's payment section: an advance booked at the gate, on
+        # the same card that marks the worker present.
+        'Payment':
+            'भुगतान',
+        'Record payment':
+            'भुगतान दर्ज करें',
+        'Note (optional)':
+            'टिप्पणी (ज़रूरी नहीं)',
+        'Deducted from pay':
+            'तनख़्वाह से कटेगा',
+        'Added to pay':
+            'तनख़्वाह में जुड़ेगा',
         'Assign / Transfer':
             'नियुक्त करें / तबादला',
         'Auto-Generated':
@@ -1321,7 +1374,11 @@ FLASH_MESSAGES = {
         'Check-out must be later than check-in.':
             'जाने का समय आने के समय के बाद होना चाहिए।',
         'Choose a valid transaction type.': 'लेन-देन की सही किस्म चुनें।',
-        'Amount must be greater than zero.': 'रक़म शून्य से ज़्यादा होनी चाहिए।',
+        # 'Amount must be greater than zero.' is in TRANSLATIONS instead: the
+        # scanner raises it in JavaScript as well as receiving it from the
+        # endpoint, and only that table is readable from a template's _().
+        # translate_flash falls back to it, so the JSON path is unaffected.
+        'That date is in the future.': 'यह तारीख़ आने वाले दिन की है।',
         'Closure not found for this date.': 'इस तारीख़ की कोई छुट्टी नहीं मिली।',
         'Closure removed.': 'छुट्टी हटा दी गई।',
         'A closure needs a reason.': 'छुट्टी की वजह लिखना ज़रूरी है।',
@@ -1342,6 +1399,25 @@ FLASH_MESSAGES = {
         'Access Restricted': 'अनुमति नहीं है',
     },
 }
+
+
+def _hi_money(shape):
+    """A money message whose first captured group is itself translatable.
+
+    These messages begin with a transaction type — 'Advance Salary',
+    'Refreshment Allowance' — which already has a Hindi name, the one the
+    dropdown on the same screen shows. A plain replacement string would
+    leave the English word sitting in the middle of a Hindi sentence, so the
+    replacement is a function and the label is looked up. re.subn takes
+    either. `shape` numbers its slots from the captured groups, so {0} is
+    the translated label.
+    """
+    def repl(match):
+        parts = list(match.groups())
+        parts[0] = TRANSLATIONS['hi'].get(parts[0], parts[0])
+        return shape.format(*parts)
+    return repl
+
 
 #: Flash messages that carry a value. Same approach as the salary notes:
 #: match the shape, keep what was interpolated.
@@ -1386,9 +1462,20 @@ _FLASH_PATTERNS_SOURCE = {
         (r'^Worker (.+?) added successfully with ID: (.+)$',
          r'मज़दूर \1 जुड़ गया, आईडी: \2'),
         (r'^Worker (.+?) updated successfully$', r'मज़दूर \1 की जानकारी बदल गई'),
-        (r'^(.+?) of ₹(\S+) added for (.+?)\.$', r'\3 के लिए \1 ₹\2 जोड़ा गया।'),
+        # The scanner's two lookup failures, which carry a value.
+        (r'^No worker found for ID (.+?)\.$',
+         r'आईडी \1 का कोई मज़दूर नहीं मिला।'),
+        # Only a worker is ever described this way today; the Hindi says so
+        # ("no longer at work"), so a site or project worded the same later
+        # wants its own shape rather than this one.
+        (r'^(.+?) is inactive\.$', r'\1 अब काम पर नहीं है।'),
+        # These three all start with a transaction type; see _hi_money.
+        (r'^(.+?) of ₹(\S+) added for (.+?)\.$',
+         _hi_money('{2} के लिए {0} ₹{1} जोड़ा गया।')),
+        (r'^(.+?) (₹\S+) recorded for (.+?)\.$',
+         _hi_money('{2} के लिए {0} {1} दर्ज कर लिया गया।')),
         (r'^(.+?) of ₹(\S+) saved for (.+?)\. Payroll updates automatically\.$',
-         r'\3 के लिए \1 ₹\2 सेव हुआ। वेतन अपने-आप बदल जाएगा।'),
+         _hi_money('{2} के लिए {0} ₹{1} सेव हुआ। वेतन अपने-आप बदल जाएगा।')),
         (r'^(.+?) deleted successfully\.$', r'\1 हटा दिया गया।'),
         (r'^(.+?) name is required\.$', r'\1 का नाम ज़रूरी है।'),
         (r'^(.+?) saved successfully\.$', r'\1 सेव हो गया।'),
@@ -1437,9 +1524,15 @@ def _localise_months(text, lang):
 def translate_flash(text, lang):
     """One flash message, translated on its way to the screen.
 
-    Tries the plain table first, then the shapes that carry a value, and
-    otherwise returns the English unchanged — a new message added to
-    routes.py shows in English rather than disappearing.
+    Tries the plain table first, then the shapes that carry a value, then
+    the interface table, and otherwise returns the English unchanged — a new
+    message added to routes.py shows in English rather than disappearing.
+
+    The interface table is consulted last because a few notices are worded
+    exactly like the control that raises them: 'Amount must be greater than
+    zero.' is both a message the scanner raises in JavaScript and one the
+    endpoint returns in JSON, and one Hindi sentence for it beats two that
+    drift apart.
     """
     if not text or lang == DEFAULT_LANGUAGE:
         return text
@@ -1451,7 +1544,7 @@ def translate_flash(text, lang):
         new, count = pattern.subn(repl, text)
         if count:
             return _localise_months(new, lang)
-    return text
+    return TRANSLATIONS.get(lang, {}).get(text, text)
 
 
 def translate(text, lang):

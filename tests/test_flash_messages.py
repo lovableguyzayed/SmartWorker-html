@@ -39,7 +39,21 @@ check('a message carrying a name keeps the name',
       'Sunita Devi की हाज़िरी बदल दी गई।')
 check('a message carrying money keeps the figure',
       i18n.translate_flash('Advance Salary of ₹1,500.00 added for Sunita Devi.', 'hi'),
-      'Sunita Devi के लिए Advance Salary ₹1,500.00 जोड़ा गया।')
+      'Sunita Devi के लिए पेशगी तनख़्वाह ₹1,500.00 जोड़ा गया।')
+# The transaction type is itself translatable — it is the same word the
+# dropdown shows — so it is looked up rather than passed through. A type
+# with no Hindi name still comes out, in English, rather than vanishing.
+check('a type with no Hindi name still comes through',
+      i18n.translate_flash('Hardship Top-Up of ₹90.00 added for Sunita Devi.', 'hi'),
+      'Sunita Devi के लिए Hardship Top-Up ₹90.00 जोड़ा गया।')
+check('the scanner confirmation translates, type and all',
+      i18n.translate_flash('Bonus ₹5,000.00 recorded for Sunita Devi.', 'hi'),
+      'Sunita Devi के लिए इनाम ₹5,000.00 दर्ज कर लिया गया।')
+# A message worded identically to a control falls back to the interface
+# table, so there is one Hindi sentence for it rather than two.
+check('a message only the interface table knows is still translated',
+      i18n.translate_flash('Amount must be greater than zero.', 'hi'),
+      'रक़म शून्य से ज़्यादा होनी चाहिए।')
 check('an unknown message stays English rather than vanishing',
       i18n.translate_flash('Something nobody has translated yet.', 'hi'),
       'Something nobody has translated yet.')

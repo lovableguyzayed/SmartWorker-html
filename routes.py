@@ -4448,7 +4448,14 @@ def _scan_stats(on_date):
 @login_required
 def scan():
     today = today_ist()
-    return render_template('scan.html', today=today, stats=_scan_stats(today))
+    # The payment picker's options. Grouped the way the transactions screen
+    # groups them, because "Advance" taking money off a wage and "Bonus"
+    # adding to it are opposite acts that read alike in a flat list.
+    return render_template(
+        'scan.html', today=today, stats=_scan_stats(today),
+        deduction_types=TRANSACTION_DEDUCTION_TYPES,
+        earning_types=TRANSACTION_EARNING_TYPES,
+        type_labels=TRANSACTION_TYPE_LABELS)
 
 @app.route('/api/worker_lookup')
 @login_required
@@ -4493,6 +4500,10 @@ def api_worker_lookup():
             'profile_url': url_for('worker_profile', worker_id=worker.id),
             'site': assignment.site.name if assignment and assignment.site else None,
             'project': assignment.project.name if assignment and assignment.project else None,
+            # Whether to offer the payment section at all. Checked per worker,
+            # not per user: a mukadam may book money for their own list and
+            # nobody else's, so the answer can differ between two scans.
+            'can_pay': may_record_transaction_for(current_user, worker),
         },
         'attendance': _attendance_state(record),
         'closure': {
@@ -4965,6 +4976,105 @@ def api_attendance_bulk():
         'rows': _attendance_rows(on_date),
         # Full day state so the day panel refreshes from this one response.
         'day': _day_payload(on_date),
+    })
+
+
+def may_record_transaction_for(user, worker):
+    """Who may book money against this worker, and on what terms.
+
+    One place for a rule that already existed in two: an administrator may
+    record for anyone, and a mukadam only for the people on their own list,
+    and only if that power was granted to their login. Recording only —
+    editing or cancelling stays administrative, because a transaction
+    somebody can both create and erase is a way to take wages off a worker
+    quietly.
+
+    In practice the scanner is administrators only today, because
+    `_confine_worker_logins` holds a worker login to WORKER_ENDPOINTS and
+    SUPERVISOR_ENDPOINTS and `scan` is in neither; a mukadam books money on
+    their team screen instead. The mukadam branch stays here so that opening
+    the scanner to them later is one line in that set and not a new rule.
+    """
+    if not worker:
+        return False
+    if user.is_admin:
+        return True
+    if (user.is_worker and user.can_record_transactions
+            and _supervisor_may_touch(user, worker.id)):
+        return True
+    return False
+
+
+@app.route('/api/worker_transaction', methods=['POST'])
+@login_required
+def api_worker_transaction():
+    """Record an advance or a payment from the scanner, without navigating.
+
+    The scanner's whole design is that marking a worker never tears down the
+    camera — a page load costs about a second of black preview, and there is
+    a queue at the gate. Money has to work the same way, so this answers in
+    JSON like /api/mark_attendance does, and the existing form posts at
+    /transactions/save and /supervisor/transaction are left exactly as they
+    are for the screens that can afford to redirect.
+    """
+    worker = tenant_get(Worker, parse_int(request.form.get('worker_id'), 0))
+    messages = []
+
+    if not may_record_transaction_for(current_user, worker):
+        # The same wording a site user gets anywhere else they are stopped,
+        # and deliberately no hint about whether the worker exists.
+        return jsonify({'success': False, 'messages': [
+            {'category': 'restricted',
+             'text': 'Please contact the Administrator to make changes.'}]}), 403
+
+    txn_type = request.form.get('txn_type', '')
+    if txn_type not in TRANSACTION_TYPE_LABELS:
+        messages.append({'category': 'error',
+                         'text': 'Choose a valid transaction type.'})
+
+    amount = parse_float(request.form.get('amount'), 0.0)
+    if amount <= 0:
+        messages.append({'category': 'error',
+                         'text': 'Amount must be greater than zero.'})
+
+    on_date = parse_date_or(request.form.get('date')) or today_ist()
+    if on_date > today_ist():
+        messages.append({'category': 'error', 'text': 'That date is in the future.'})
+
+    if messages:
+        return jsonify({'success': False, 'messages': messages}), 400
+
+    label = TRANSACTION_TYPE_LABELS[txn_type]
+    note = (request.form.get('description') or '').strip() or label
+    db.session.add(WorkerTransaction(
+        worker_id=worker.id, txn_type=txn_type, amount=amount, date=on_date,
+        description=note, created_by=current_user.id,
+        account_id=worker.account_id,
+    ))
+
+    # Money booked by somebody who is not an administrator should be visible
+    # to one without their having to go looking, the same way attendance
+    # marked at a site is.
+    if not current_user.is_admin:
+        notify_admin(
+            f'{worker.full_name} ({worker.worker_id}){NOTE_DASH}{label}',
+            f'{current_user.full_name} · {money.money(amount)} · scanner',
+            category='transaction',
+        )
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'messages': [{'category': 'success',
+                      'text': f'{label} {money.money(amount)} recorded for '
+                              f'{worker.full_name}.'}],
+        'transaction': {
+            'type': txn_type,
+            'label': label,
+            'amount': amount,
+            'amount_text': money.money(amount),
+            'date': on_date.isoformat(),
+        },
     })
 
 
@@ -5555,13 +5665,18 @@ def _lpolicy(value):
 
 @app.after_request
 def _translate_json_messages(response):
-    """Translate the notices the day view paints from JSON.
+    """Translate the notices a screen paints from JSON.
 
-    The attendance day view builds its own markup in JavaScript, so a
-    message in a JSON body lands on the screen verbatim and never passes
-    through a template filter. Doing it here rather than at each of the
-    fourteen jsonify() sites keeps the English in routes.py as the one
-    canonical wording, and covers any message added later.
+    The attendance day view and the scanner build their own markup in
+    JavaScript, so a message in a JSON body lands on the screen verbatim and
+    never passes through a template filter. Doing it here rather than at each
+    jsonify() site keeps the English in routes.py as the one canonical
+    wording, and covers any message added later.
+
+    Messages a screen raises *itself*, without asking the server — 'No
+    connection — the payment was not recorded.' — cannot come through here;
+    the template hands those to the script already translated. See
+    docs/language.md.
     """
     if _current_lang() == i18n.DEFAULT_LANGUAGE:
         return response
@@ -5581,6 +5696,13 @@ def _translate_json_messages(response):
             if translated != item['text']:
                 item['text'] = translated
                 changed = True
+    # The worker lookup answers with one message rather than a list, and the
+    # scanner prints it as the status line under the camera.
+    if isinstance(payload.get('message'), str) and payload['message']:
+        translated = _lflash(payload['message'])
+        if translated != payload['message']:
+            payload['message'] = translated
+            changed = True
     day = payload.get('day')
     if isinstance(day, dict) and day.get('payroll_note'):
         translated = _lflash(day['payroll_note'])

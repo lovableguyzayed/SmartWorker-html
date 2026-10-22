@@ -127,6 +127,42 @@
 .res-btn-amber { background: #eab308; }
 .res-btn-red   { background: #ef4444; }
 .res-btn-blue  { background: #3b82f6; }
+/* indigo-700: white on it reads 7.9:1, and it is distinct from the four
+   attendance colours so money never looks like another status. */
+.res-btn-indigo { background: #4338ca; }
+
+/* Payment ---------------------------------------------------------------
+   A second act on the same card, so it has to be separated from the
+   attendance buttons by more than a gap — a rule and a heading, or a tired
+   thumb books an advance when it meant to mark someone present. */
+.pay-divider {
+    height: 1px; background: #e5e7eb;
+    margin: 1rem -1rem 0.85rem;
+}
+.pay-title {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: #4b5563; margin: 0 0 0.6rem;
+}
+.pay-grid {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 0.6rem;
+}
+.pay-field {
+    min-height: 2.75rem;            /* same tap floor as every other control */
+    width: 100%;
+    padding: 0 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    color: #1f2937;
+    background: #fff;
+}
+.pay-field:focus { outline: 2px solid #4338ca; outline-offset: -1px; }
+.pay-note { margin-top: 0.6rem; }
+.pay-save { width: 100%; margin-top: 0.7rem; }
 .res-profile {
     display: flex; align-items: center; justify-content: center; gap: 0.4rem;
     min-height: 2.75rem; margin-top: 0.6rem;
@@ -240,6 +276,46 @@
             {% endif %}
         </div>
 
+        {# Money, under a divider and under its own heading.
+
+           Deliberately not a chooser in front of the attendance buttons.
+           The answer at a gate at seven in the morning is "attendance"
+           forty times in a row, and a question costs a tap on every one of
+           them. The buttons above stay one press away; this waits below
+           for the day somebody also needs an advance.
+
+           Shown only when the server says this user may book money for
+           this particular worker — a mukadam may for their own list and
+           nobody else's, so it can differ between two scans. The endpoint
+           checks again; this only decides what to draw. #}
+        <div id="result-pay" class="hidden">
+            <div class="pay-divider"></div>
+            <h3 class="pay-title">
+                <i class="fa-solid fa-indian-rupee-sign"></i>{{ _('Payment') }}
+            </h3>
+            <div class="pay-grid">
+                <select id="pay-type" class="pay-field" aria-label="{{ _('Type') }}">
+                    <optgroup label="{{ _('Deducted from pay') }}">
+                        {% for t in deduction_types %}
+                        <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="{{ _('Added to pay') }}">
+                        {% for t in earning_types %}
+                        <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+                <input type="number" id="pay-amount" class="pay-field" inputmode="decimal"
+                       step="0.01" min="0.01" placeholder="{{ _('Amount (₹)') }}"
+                       aria-label="{{ _('Amount (₹)') }}">
+            </div>
+            <input type="text" id="pay-note" class="pay-field pay-note"
+                   placeholder="{{ _('Note (optional)') }}" aria-label="{{ _('Note (optional)') }}">
+            <button type="button" class="res-btn res-btn-indigo pay-save"
+                    id="btn-pay" data-act="recordPayment">{{ _('Record payment') }}</button>
+        </div>
+
         <a href="#" id="result-profile-link" class="res-profile">
             <i class="fa-solid fa-user"></i>{{ _('Open full profile') }}
         </a>
@@ -327,12 +403,13 @@ function ensureLibraryLoaded() {
 
 async function startScanner() {
     if (scannerRunning) return;               // already live — don't double-start
-    setIdle('Starting camera…');
+    setIdle({{ _('Starting camera…')|tojson }});
     try {
         await ensureLibraryLoaded();
     } catch (e) {
-        setIdle('Scanner unavailable');
-        setStatus("Couldn't load the scanner. Check your connection, or enter the Employee ID below.");
+        setIdle({{ _('Scanner unavailable')|tojson }});
+        setStatus({{ _("Couldn't load the scanner. Check your connection, "
+                       "or enter the Employee ID below.")|tojson }});
         return;
     }
     try {
@@ -346,7 +423,7 @@ async function startScanner() {
         scannerRunning = true;
         scannerPaused = false;
         setIdle('');
-        setStatus('Point the camera at the QR code on the ID card.');
+        setStatus({{ _('Point the camera at the QR code on the ID card.')|tojson }});
         setPauseLabel();
     } catch (err) {
         scannerRunning = false;
@@ -379,8 +456,8 @@ async function togglePause() {
         await stopScannerInternal();
         html5Qrcode = null;
         scannerPaused = true;
-        setIdle('Scanner paused');
-        setStatus('Scanner paused — tap Resume to scan again.');
+        setIdle({{ _('Scanner paused')|tojson }});
+        setStatus({{ _('Scanner paused — tap Resume to scan again.')|tojson }});
     } else {
         scannerPaused = false;
         await startScanner();
@@ -393,7 +470,8 @@ function setPauseLabel() {
     var btn = document.getElementById('cam-pause');
     if (!label || !btn) return;
     var paused = !scannerRunning;
-    label.textContent = paused ? 'Resume' : 'Pause';
+    label.textContent = paused ? {{ _('Resume')|tojson }}
+                               : {{ _('Pause')|tojson }};
     var icon = btn.querySelector('i');
     if (icon) icon.className = paused ? 'fa-solid fa-play' : 'fa-solid fa-pause';
 }
@@ -415,30 +493,33 @@ function lookupManual(form, e) {
 }
 
 async function lookupWorker(code, via) {
-    setStatus('Looking up ' + code + '…');
+    // A placeholder and not concatenation: Hindi puts the ID first.
+    setStatus({{ _('Looking up %s…')|tojson }}.replace('%s', code));
     currentVia = via;
     var res;
     try {
         res = await fetch('/api/worker_lookup?code=' + encodeURIComponent(code), { credentials: 'same-origin' });
     } catch (err) {
-        setStatus('No connection — check your internet and try again, or mark attendance from the Attendance screen.');
+        setStatus({{ _('No connection — check your internet and try again, '
+                       'or mark attendance from the Attendance screen.')|tojson }});
         return;
     }
     var data;
     try {
         data = await res.json();
     } catch (err) {
-        setStatus('The server returned an unexpected response. Please try again.');
+        setStatus({{ _('The server returned an unexpected response. '
+                       'Please try again.')|tojson }});
         return;
     }
     if (!data.success) {
-        setStatus(data.message || 'No matching worker.');
+        setStatus(data.message || {{ _('No matching worker.')|tojson }});
         document.getElementById('result-card').classList.add('hidden');
         currentWorker = null;
         return;
     }
     renderResult(data);
-    setStatus('Point the camera at the QR code on the ID card.');
+    setStatus({{ _('Point the camera at the QR code on the ID card.')|tojson }});
 }
 
 function renderResult(data) {
@@ -464,9 +545,21 @@ function renderResult(data) {
     document.getElementById('result-profile-link').href = w.profile_url;
 
     applyAttendance(data.attendance);
+    applyPayment(w);
     var card = document.getElementById('result-card');
     card.classList.remove('hidden');
     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// The payment section appears only for a worker this user may book money
+// for. Cleared between workers, so an amount typed for one person can never
+// be sent against the next one scanned.
+function applyPayment(w) {
+    var box = document.getElementById('result-pay');
+    if (!box) return;
+    document.getElementById('pay-amount').value = '';
+    document.getElementById('pay-note').value = '';
+    box.classList.toggle('hidden', !w.can_pay);
 }
 
 // Renders today's line and drives every button's enabled state / label.
@@ -540,6 +633,57 @@ function markPrimary() {
     if (status) markAttendance(status);
 }
 
+// Books an advance or a payment against the worker on the card. Posts JSON
+// for the same reason attendance does: a navigation would tear down the
+// camera, and there is a queue behind this person.
+async function recordPayment() {
+    if (!currentWorker) return;
+    var typeEl = document.getElementById('pay-type');
+    var amountEl = document.getElementById('pay-amount');
+    var noteEl = document.getElementById('pay-note');
+    var btn = document.getElementById('btn-pay');
+
+    var amount = parseFloat(amountEl.value);
+    if (!(amount > 0)) {
+        toast({{ _('Amount must be greater than zero.')|tojson }}, 'error');
+        amountEl.focus();
+        return;
+    }
+
+    var fd = new FormData();
+    fd.append('csrf_token', SCAN_CSRF);
+    fd.append('worker_id', currentWorker.id);
+    fd.append('txn_type', typeEl.value);
+    fd.append('amount', amount);
+    fd.append('date', SCAN_TODAY);
+    fd.append('description', noteEl.value.trim());
+
+    btn.disabled = true;
+    try {
+        var res = await fetch('/api/worker_transaction', {
+            method: 'POST', body: fd, credentials: 'same-origin'
+        });
+        var data = await res.json().catch(function () { return null; });
+        if (!data) {
+            toast({{ _('Could not record the payment. Please try again.')|tojson }}
+                  + ' (' + res.status + ')', 'error');
+            return;
+        }
+        (data.messages || []).forEach(function (m) { toast(m.text, m.category); });
+        if (data.success) {
+            // Cleared so a second press cannot book the same money twice,
+            // and the type is left alone because the next one is usually
+            // the same kind.
+            amountEl.value = '';
+            noteEl.value = '';
+        }
+    } catch (err) {
+        toast({{ _('No connection — the payment was not recorded.')|tojson }}, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 // Marks via JSON so the camera keeps running — a page navigation would tear
 // down the stream and cost a second of black preview on every worker.
 async function markAttendance(status) {
@@ -557,7 +701,8 @@ async function markAttendance(status) {
             method: 'POST', body: fd, credentials: 'same-origin'
         });
         if (!res.ok) {
-            toast('Could not save attendance (' + res.status + '). Please try again.', 'error');
+            toast({{ _('Could not save attendance. Please try again.')|tojson }}
+                  + ' (' + res.status + ')', 'error');
             return;
         }
         var data = await res.json();
@@ -566,13 +711,14 @@ async function markAttendance(status) {
         if (data.messages && data.messages.length) {
             data.messages.forEach(function (m) { toast(m.text, m.category); });
         } else {
-            toast(data.success ? 'Attendance updated.' : 'Could not update attendance.',
+            toast(data.success ? {{ _('Attendance updated.')|tojson }}
+                               : {{ _('Could not update attendance.')|tojson }},
                   data.success ? 'success' : 'error');
         }
         // Let the same card be re-scanned immediately after a state change.
         lastScan = { code: null, at: 0 };
     } catch (err) {
-        toast('No connection — attendance was not saved.', 'error');
+        toast({{ _('No connection — attendance was not saved.')|tojson }}, 'error');
     } finally {
         setActionsDisabled(false);
         // Re-apply real state (setActionsDisabled(false) enables everything).

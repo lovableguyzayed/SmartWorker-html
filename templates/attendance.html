@@ -821,6 +821,26 @@ var DV_STATUS_LABEL = {
     leave:   {{ _('Leave')|tojson }},
     half_day: {{ _('Half Day')|tojson }}
 };
+// The rest of the words this script paints. Handed over through |tojson and
+// not written into the markup strings below, because a translation holding
+// an apostrophe would close the JavaScript string it sits in — the table is
+// checked for quotes, but one table-level slip would take the screen down
+// and the day that happens is not the day to find this out.
+var DV_TEXT = {
+    today: {{ _('today')|tojson }},
+    // The five marked states are in DV_STATUS_LABEL above, keyed by the
+    // value the API returns; this is the one state that is not a mark.
+    unmarked: {{ _('Unmarked')|tojson }},
+    on_roll: {{ _('Workers on this date')|tojson }},
+    none_on_roll: {{ _('No workers were on the roll on this date.')|tojson }},
+    transactions: {{ _('Transactions on this date')|tojson }},
+    nothing: {{ _('Nothing recorded for this date.')|tojson }},
+    cancelled: {{ _('cancelled')|tojson }},
+    add_txn: {{ _('Add transaction')|tojson }},
+    add_closure: {{ _('Add closure')|tojson }},
+    close_detail: {{ _('Close day detail')|tojson }},
+    pick_a_date: {{ _('Select a date to see its detail.')|tojson }}
+};
 var dvDay = null;
 
 function dvEsc(s) {
@@ -874,7 +894,7 @@ function dvSyncEntryPanel(data) {
     var label = document.getElementById('ep-date-label');
     if (label) {
         label.textContent = {{ _('Mark')|tojson }} + ' ' +
-            (data.day.is_today ? {{ _('today')|tojson }} : data.day.date_label);
+            (data.day.is_today ? DV_TEXT.today : data.day.date_label);
     }
 }
 
@@ -899,8 +919,8 @@ function dvRender(day) {
     var h = '';
 
     h += '<div class="dv-head"><div><div class="dv-date">' + dvEsc(day.date_label) + '</div>' +
-         '<div class="dv-weekday">' + dvEsc(day.weekday) + (day.is_today ? ' · {{ _('today') }}' : '') + '</div></div>';
-    h += '<button type="button" class="dv-navbtn" aria-label="Close day detail" data-act="dvClose">' +
+         '<div class="dv-weekday">' + dvEsc(day.weekday) + (day.is_today ? ' · ' + DV_TEXT.today : '') + '</div></div>';
+    h += '<button type="button" class="dv-navbtn" aria-label="' + DV_TEXT.close_detail + '" data-act="dvClose">' +
          '<i class="fa-solid fa-xmark"></i></button></div>';
 
     (day.closures || []).forEach(function (c) {
@@ -919,19 +939,19 @@ function dvRender(day) {
 
     var c = day.counts;
     h += '<div class="dv-counts">' +
-         '<div class="dv-count"><b>' + c.present + '</b><span>{{ _('Present') }}</span></div>' +
-         '<div class="dv-count"><b>' + c.late + '</b><span>{{ _('Late') }}</span></div>' +
-         '<div class="dv-count"><b>' + c.absent + '</b><span>{{ _('Absent') }}</span></div>' +
-         '<div class="dv-count"><b>' + c.leave + '</b><span>{{ _('Leave') }}</span></div>' +
-         '<div class="dv-count"><b>' + c.not_marked + '</b><span>{{ _('Unmarked') }}</span></div></div>';
+         '<div class="dv-count"><b>' + c.present + '</b><span>' + DV_STATUS_LABEL.present + '</span></div>' +
+         '<div class="dv-count"><b>' + c.late + '</b><span>' + DV_STATUS_LABEL.late + '</span></div>' +
+         '<div class="dv-count"><b>' + c.absent + '</b><span>' + DV_STATUS_LABEL.absent + '</span></div>' +
+         '<div class="dv-count"><b>' + c.leave + '</b><span>' + DV_STATUS_LABEL.leave + '</span></div>' +
+         '<div class="dv-count"><b>' + c.not_marked + '</b><span>' + DV_TEXT.unmarked + '</span></div></div>';
 
     // No bulk buttons here any more. "All present", "All absent" and "Close
     // shifts" are on the marking panel below, which is where marking happens
     // now — see the note on dvRender.
 
-    h += '<div class="dv-section-label">{{ _('Workers on this date') }}</div>';
+    h += '<div class="dv-section-label">' + DV_TEXT.on_roll + '</div>';
     if (!day.rows.length) {
-        h += '<div class="dv-empty">{{ _('No workers were on the roll on this date.') }}</div>';
+        h += '<div class="dv-empty">' + DV_TEXT.none_on_roll + '</div>';
     }
     day.rows.forEach(function (r) {
         h += '<div class="dv-row"><div class="dv-row-top"><div style="flex:1;min-width:0">' +
@@ -966,13 +986,13 @@ function dvRender(day) {
         h += '</div>';                       // .dv-row
     });
 
-    h += '<div class="dv-section-label">{{ _('Transactions on this date') }}</div>';
+    h += '<div class="dv-section-label">' + DV_TEXT.transactions + '</div>';
     if (!day.transactions.length) {
-        h += '<div class="dv-empty">{{ _('Nothing recorded for this date.') }}</div>';
+        h += '<div class="dv-empty">' + DV_TEXT.nothing + '</div>';
     } else {
         day.transactions.forEach(function (t) {
             h += '<div class="dv-txn"><span>' + dvEsc(t.worker) + ' · ' + dvEsc(t.type) +
-                 (t.status === 'cancelled' ? ' ({{ _('cancelled') }})' : '') + '</span>' +
+                 (t.status === 'cancelled' ? ' (' + DV_TEXT.cancelled + ')' : '') + '</span>' +
                  '<b style="color:' + (t.is_earning ? '#16a34a' : '#dc2626') + '">' +
                  (t.is_earning ? '+' : '−') + dvMoney(t.amount) + '</b></div>';
         });
@@ -980,8 +1000,8 @@ function dvRender(day) {
 
     if (DV_IS_ADMIN && editable) {
         h += '<div class="dv-actions" style="grid-template-columns:1fr 1fr">' +
-             '<button type="button" data-act="dvAddTxn">{{ _('Add transaction') }}</button>' +
-             '<button type="button" data-act="dvAddClosure">{{ _('Add closure') }}</button></div>';
+             '<button type="button" data-act="dvAddTxn">' + DV_TEXT.add_txn + '</button>' +
+             '<button type="button" data-act="dvAddClosure">' + DV_TEXT.add_closure + '</button></div>';
     }
 
     document.getElementById('day-panel-body').innerHTML = h;
@@ -989,7 +1009,7 @@ function dvRender(day) {
 
 function dvClose() {
     var body = document.getElementById('day-panel-body');
-    if (body) body.innerHTML = '<div class="dv-muted">Select a date to see its detail.</div>';
+    if (body) body.innerHTML = '<div class="dv-muted">' + DV_TEXT.pick_a_date + '</div>';
 }
 
 function dvApply(data) {

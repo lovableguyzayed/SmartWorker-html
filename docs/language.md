@@ -90,6 +90,56 @@ A note shape with no pattern comes back in English rather than being dropped,
 and `tests/test_i18n.py` fails if the engine or the payroll route grows a note
 that has no Hindi pattern.
 
+## Messages that never pass through a template
+
+Most notices are `flash()`ed and translated where they are shown, by the
+`lflash` filter. Two kinds skip templates entirely and need looking after:
+
+**Messages returned as JSON.** The scanner and the attendance day view paint
+their own markup, so a message in a response body lands on the screen
+verbatim. `_translate_json_messages` (an `after_request` in `routes.py`) walks
+any JSON `messages` list — and the lone `message` the worker lookup answers
+with — running each through the same translator, so the English in `routes.py`
+stays the one canonical wording and a message added later is covered without
+touching the endpoint.
+
+**Messages raised in JavaScript.** `'No connection — the payment was not
+recorded.'` never reaches the server at all; it is raised by the browser when
+the request fails. Those strings are handed to the script already translated:
+
+```jinja
+toast({{ _('No connection — the payment was not recorded.')|tojson }}, 'error');
+```
+
+`|tojson` and not plain interpolation, because a Hindi sentence containing an
+apostrophe would otherwise close the JavaScript string literal. (The test
+suite also fails on a translation containing a quote, for the same reason.)
+
+A string used on **both** sides — `'Amount must be greater than zero.'` is
+raised in JavaScript when the amount box is empty, and returned by the
+endpoint when a post arrives with a zero in it — lives in `TRANSLATIONS`, not
+`FLASH_MESSAGES`: only `TRANSLATIONS` is readable from a template's `_()`.
+`translate_flash` falls back to `TRANSLATIONS` after its own table and its
+shapes, so the JSON path still finds it and there is one Hindi sentence rather
+than two that drift apart.
+
+## A shape whose captured group is itself translatable
+
+`'Advance Salary ₹250 recorded for Arvind Kejriwal.'` has a translatable word
+*inside* it: `Advance Salary` is a transaction type with a Hindi name of its
+own, the one the dropdown on the same screen shows. A replacement string would
+leave the English word sitting in the middle of a Hindi sentence. So those
+three money shapes use `_hi_money`, which makes the replacement a function
+(`re.subn` takes either) and looks the label up:
+
+```python
+(r'^(.+?) (₹\S+) recorded for (.+?)\.$',
+ _hi_money('{2} के लिए {0} {1} दर्ज कर लिया गया।')),
+```
+
+A transaction type with no Hindi name still comes through, in English, rather
+than vanishing — the same fall-through as everywhere else.
+
 ## What is *not* translated, and why
 
 | | |
