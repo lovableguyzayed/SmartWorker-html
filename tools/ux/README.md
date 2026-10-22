@@ -36,6 +36,19 @@ not tracked.
 | `documents.py` | generates all eight printable documents and reads every page for blank sheets, cut lines and stranded headings |
 | `hindi_gaps.py` | what is still English when the interface is set to Hindi, screen by screen |
 
+### What these cannot tell you
+
+They answer "is this control attached to something?" — never "does the
+thing it is attached to work?". A filter chip bound to a form that reloads
+the page having filtered nothing passes every script here. Two tests in
+`tests/` cover that gap and should be run alongside them:
+
+| Test | Answers |
+|---|---|
+| `test_interactions.py` | presses the controls that change something and checks the change: the chips filter, the search searches, the pager pages, the fold folds, the selection bar counts records rather than rows, mark-all-read marks all read |
+| `test_forms_and_modals.py` | opens all eleven modals and checks they appear with their fields, then posts every create form and looks for the row |
+| `test_no_script_errors.py` | loads every screen in both languages and listens for a thrown exception, a console error or a failed request — a screen can answer 200 with its scripts dead, and then every icon on it that needs them does nothing |
+
 ## Six things that will bite you
 
 **Do not take a full-page screenshot to measure against.** Chromium stretches

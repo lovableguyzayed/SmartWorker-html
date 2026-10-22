@@ -1285,6 +1285,15 @@ def workers():
         if len(chunk) < batch:
             break
 
+    # A page past the end used to render the "No Workers Found" empty state —
+    # "Start by adding your first worker to the system" on a roster of 58 —
+    # and the pager is inside that same branch, so there was no Previous
+    # link and no way back. Reachable by a stale bookmark, or by deleting
+    # enough workers while standing on the last page. Land on the last real
+    # page instead; somebody asking for page 9 of 2 wants the workers.
+    if page > 1 and visible and (page - 1) * WORKERS_PER_PAGE >= len(visible):
+        page = (len(visible) + WORKERS_PER_PAGE - 1) // WORKERS_PER_PAGE
+
     start = (page - 1) * WORKERS_PER_PAGE
     workers_list = visible[start:start + WORKERS_PER_PAGE]
     has_next = len(visible) > start + WORKERS_PER_PAGE

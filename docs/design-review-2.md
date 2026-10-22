@@ -343,14 +343,43 @@ Worth saying, because this is the second pass and the ground has moved:
 
 ---
 
-## What to do next, in order
+## The sweep after the work
 
-1. **Finish the Hindi** (#6). A day, plus somebody to check the wording. It
-   is the largest visible gap and it is pure addition — no layout moves.
-2. **Notifications** (#9) and **Assignments** (#10). Half a day each, both
-   remove things rather than add them.
-3. **The Add screen's phantom preview** (#11). Two hours.
-4. **The third printed page** (#5) and **the header pills** (#12) — both
-   need a design decision before anyone writes code.
+Everything above was then re-checked, and the interface swept again for
+controls that do not do what they appear to do.
 
-Nothing in 1–4 has been started.
+| | result |
+|---|---|
+| controls bound to something | 612 of 612; 0 dead, 0 handlers undefined |
+| internal links followed | 71 of 71 answer; 0 broken, 0 bounce to login |
+| icons with no word | 0 of them unnamed, across 17 screens |
+| bulk actions exercised against the database | 35 actions, 42 checks, 0 failed |
+| modals opened | 11 of 11 appear, with their fields |
+| create forms posted | 5 of 5 save; one edited back and checked |
+| screens loaded in both languages | 42 loads, 0 scripts threw, 0 console errors, 0 failed requests |
+
+Three things came out of it.
+
+**The notification bell had no name.** It is the one icon in the
+application that was never labelled, and it looked labelled for as long as
+there was unread mail: the badge renders a number, a number counts as text,
+and the check passes. Empty the unread count and the bell is a bare glyph
+announcing nothing. The test now empties it deliberately before looking —
+a check that only fails on certain data is a check that hides things.
+
+**A roster page past the end was a dead end.** `/workers?page=9` of a
+two-page roster rendered the "No Workers Found" empty state — *"Start by
+adding your first worker to the system"* — on a roster of 58, and the
+pager lives inside that same branch, so there was no Previous link and no
+way back. Reachable from a stale bookmark or by deleting enough workers
+while standing on the last page. It now lands on the last real page, which
+is what `/payroll` already did.
+
+**The sweeps themselves were wrong more often than the application was.**
+`contrast.py` reported 24–28 failures of which all but one were artifacts
+(see #12); `controls.py` called the flash toast's close button a missing
+function because `this.closest(…)` starts with an identifier and a bracket.
+Both are fixed. The lesson is written into `tools/ux/README.md`: these
+scripts answer *"is this control attached to something?"* and never *"does
+the thing it is attached to work?"* — `tests/test_interactions.py` and
+`tests/test_forms_and_modals.py` cover that second question.

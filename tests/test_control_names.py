@@ -50,6 +50,26 @@ PATHS = ['/', '/workers', '/attendance', '/payroll', '/payroll/preview',
          '/transactions', '/closures', '/assignments', '/scan', '/settings',
          '/profile', '/notifications', '/add_worker']
 
+# Strip the interface of anything that supplies text by accident, so each
+# control is judged on the name it carries rather than on the demo data.
+#
+# The dashboard's notification bell is why this exists. It had no
+# aria-label at all, and for months it looked labelled: with unread mail
+# the badge renders a number, the number counts as text, and the check
+# passes. Empty the unread count and the bell is a bare glyph announcing
+# nothing. Tests that only fail on certain data are tests that hide things.
+from app import app, db          # noqa: E402
+import models as m               # noqa: E402
+
+with app.app_context():
+    _was_unread = [n.id for n in
+                   m.Notification.query.filter_by(is_read=False).all()]
+    if _was_unread:
+        m.Notification.query.filter(
+            m.Notification.id.in_(_was_unread)).update(
+                {'is_read': True}, synchronize_session=False)
+        db.session.commit()
+
 # main.py hardcodes port 5000, and a test that fights a dev server for a
 # port is a test that fails for the wrong reason. Start our own.
 server = subprocess.Popen(
@@ -101,6 +121,12 @@ try:
 finally:
     server.terminate()
     server.wait(timeout=10)
+    if _was_unread:
+        with app.app_context():
+            m.Notification.query.filter(
+                m.Notification.id.in_(_was_unread)).update(
+                    {'is_read': False}, synchronize_session=False)
+            db.session.commit()
 
 print('\n%d controls across %d screens show no word and carry no name'
       % (len(naked), len(PATHS) + len(extra)))

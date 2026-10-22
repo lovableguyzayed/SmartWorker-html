@@ -84,7 +84,14 @@
         </div>
         <div class="flex items-center space-x-3">
             {% if current_user.is_admin %}
-            <a href="{{ url_for('notifications') }}" class="relative icon-btn bg-white/10 backdrop-blur-sm">
+            {# The bell carried no name of its own. With unread mail the badge
+               supplies a number, which reads as "3" and passes for text; with
+               nothing unread it is a bare glyph announcing nothing at all.
+               Every other icon button in the application is labelled, and
+               this one only looked labelled because the demo data happened to
+               have unread notifications in it. #}
+            <a href="{{ url_for('notifications') }}" class="relative icon-btn bg-white/10 backdrop-blur-sm"
+               aria-label="{{ _('Notifications') }}">
                 <i class="fa-solid fa-bell text-lg"></i>
                 {% if unread_notifications %}
                 <span class="absolute -top-1 -right-1 bg-red-700 text-white text-[0.6rem] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
