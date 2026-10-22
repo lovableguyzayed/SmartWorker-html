@@ -70,10 +70,13 @@
                     </div>
                 </div>
                 
-                <div class="flex-1">
-                    <div class="flex items-center justify-between mb-1">
-                        <h2 class="text-lg font-semibold text-gray-800">{{ worker.full_name }}</h2>
-                        <span class="bg-accent/10 text-accent px-2 py-1 rounded-lg text-xs font-medium">{{ worker.employee_type }}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        {# The name wraps and the badge keeps its size: on a
+                           320px screen a long name was pushing the badge
+                           past the edge of the card. #}
+                        <h2 class="text-lg font-semibold text-gray-800 min-w-0 break-words">{{ worker.full_name }}</h2>
+                        <span class="bg-accent/10 text-accent px-2 py-1 rounded-lg text-xs font-medium shrink-0">{{ worker.employee_type }}</span>
                     </div>
                     <div class="text-sm text-gray-600 mb-2">{{ worker.position }} • {{ worker.department }}</div>
                     <div class="flex items-center justify-between">

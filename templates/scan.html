@@ -260,8 +260,10 @@
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <h2 class="text-sm font-semibold text-gray-800 mb-3"><i class="fa-solid fa-keyboard mr-2 text-accent"></i>{{ _('Enter Employee ID') }}</h2>
         <form data-act="lookupManual" class="flex gap-2">
+            {# min-w-0, or the input keeps its ~20-character intrinsic
+               width and pushes the search button off a 320px screen. #}
             <input type="text" id="manual-id" placeholder="e.g. CO001" autocomplete="off" autocapitalize="characters"
-                   class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent uppercase">
+                   class="flex-1 min-w-0 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent uppercase">
             <button aria-label="{{ _('Search') }}" type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors" style="min-height:2.75rem">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>

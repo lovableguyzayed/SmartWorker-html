@@ -270,7 +270,11 @@
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <form method="GET" id="attendance-filter-form">
         <div class="flex items-center space-x-3">
-            <div class="flex-1">
+            {# min-w-0: a flex item will not shrink below its content's
+               intrinsic width without it, and a date input's intrinsic
+               width is wider than what is left beside the two arrows on a
+               320px phone. #}
+            <div class="flex-1 min-w-0">
                 <label class="block text-xs text-white/90 mb-1">{{ _('Select Date') }}</label>
                 <div class="relative">
                     <i class="fa-solid fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-white/90"></i>
