@@ -466,7 +466,7 @@ function applyLanguage(lang) {
 // changes effectively instant, like a native Android activity switch.
 const NativeShell = {
     loadedAssets: new Set(),
-    skeletonTimer: null,
+    progressTimer: null,
     navigating: false,
 
     // The one piece of the document that survives a screen change.
@@ -598,7 +598,7 @@ const NativeShell = {
         if (opts.push !== false) this.saveScroll();
         this.back = opts.push === false;
         document.dispatchEvent(new Event('page:before-swap'));
-        this.scheduleSkeleton();
+        this.showProgress();
         try {
             const res = await fetch(href, {
                 method: opts.method || 'GET',
@@ -611,7 +611,7 @@ const NativeShell = {
             this.render(html, res.url || href, opts.push !== false);
         } catch (err) {
             // No network and no cache — do a real navigation as last resort
-            this.cancelSkeleton();
+            this.hideProgress();
             this.navigating = false;
             if ((opts.method || 'GET') === 'GET') location.href = href;
             return;
@@ -620,7 +620,7 @@ const NativeShell = {
     },
 
     render(html, url, push) {
-        this.cancelSkeleton();
+        this.hideProgress();
         const doc = new DOMParser().parseFromString(html, 'text/html');
 
         // Merge page-specific head assets (print styles, jsPDF, QR library…)
@@ -769,48 +769,34 @@ const NativeShell = {
         return s;
     },
 
-    /* Two stages of "it is coming", and the screen you are on stays up.
+    /* "It is coming" — and the screen you are on never goes away.
      *
-     * Screens were measured swapping in 106–287ms against a 150ms skeleton,
-     * so an ordinary tap covered a perfectly readable screen in grey
-     * shimmer for a tenth of a second and then showed the next one. That
-     * flash of placeholder IS the feeling of a page loading; a native app
-     * holds the screen you are on until the next one is ready.
+     * There used to be a skeleton behind this: a full-screen grey shimmer
+     * after 150ms. Screens were measured swapping in 106–287ms, so an
+     * ordinary tap covered a perfectly readable screen in placeholder for a
+     * tenth of a second and then showed the next one. That flash IS the
+     * feeling of a page loading.
      *
-     * So: a hairline at the top almost at once, because a tap with no
-     * acknowledgement feels broken, and the full skeleton only after
-     * 450ms — by then the wait is long enough that a blank frame reads as
-     * progress rather than a stutter.
+     * It is gone entirely rather than merely delayed. Whatever the wait,
+     * the honest thing to show is the screen the reader is already on —
+     * which is what a native app does, and a slow screen is exactly when
+     * replacing real content with grey bars helps least. All that is left
+     * is a hairline at the top, after 110ms so an instant swap stays
+     * silent, because a tap with no acknowledgement at all feels broken.
      */
     PROGRESS_AFTER: 110,
-    SKELETON_AFTER: 450,
 
-    scheduleSkeleton() {
+    showProgress() {
         this.progressTimer = setTimeout(() => {
             if (document.getElementById('nav-progress')) return;
             const bar = document.createElement('div');
             bar.id = 'nav-progress';
             document.body.appendChild(bar);
         }, this.PROGRESS_AFTER);
-
-        this.skeletonTimer = setTimeout(() => {
-            if (document.getElementById('skeleton-overlay')) return;
-            const el = document.createElement('div');
-            el.id = 'skeleton-overlay';
-            el.innerHTML = '<div class="sk-bar sk-header"></div>' +
-                           '<div class="sk-bar sk-card"></div>' +
-                           '<div class="sk-bar sk-card"></div>' +
-                           '<div class="sk-bar sk-line"></div>' +
-                           '<div class="sk-bar sk-line short"></div>';
-            document.body.appendChild(el);
-        }, this.SKELETON_AFTER);
     },
 
-    cancelSkeleton() {
-        clearTimeout(this.skeletonTimer);
+    hideProgress() {
         clearTimeout(this.progressTimer);
-        const el = document.getElementById('skeleton-overlay');
-        if (el) el.remove();
         const bar = document.getElementById('nav-progress');
         if (bar) bar.remove();
     },

@@ -81,31 +81,9 @@ input, textarea, [contenteditable="true"] {
     #nav-progress { animation: none; transform: scaleX(0.3); }
 }
 
-/* ── Skeleton shimmer (only for screens that really are slow) ── */
-@keyframes skShimmer {
-    from { background-position: -200% 0; }
-    to   { background-position: 200% 0; }
-}
-#skeleton-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 45;
-    background: #f9fafb;
-    max-width: 24rem;
-    margin: 0 auto;
-    padding: 1rem;
-}
-#skeleton-overlay .sk-bar {
-    border-radius: 1rem;
-    background: linear-gradient(90deg, #eef1f5 25%, #e2e8f0 50%, #eef1f5 75%);
-    background-size: 200% 100%;
-    animation: skShimmer 1.1s linear infinite;
-    margin-bottom: 0.9rem;
-}
-#skeleton-overlay .sk-header { height: 7.5rem; border-radius: 0 0 1.5rem 1.5rem; margin: -1rem -1rem 1rem; }
-#skeleton-overlay .sk-card   { height: 5.5rem; }
-#skeleton-overlay .sk-line   { height: 1.1rem; }
-#skeleton-overlay .sk-line.short { width: 60%; }
+/* The skeleton shimmer that used to live here is gone. However long the
+   wait, the screen the reader is already on is the honest thing to show,
+   and the hairline above says the tap was heard. */
 
 /* ── Nav tap feedback: instant highlight ── */
 .app-nav-item:active,

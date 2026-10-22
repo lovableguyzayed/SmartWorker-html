@@ -10,10 +10,11 @@ people read without noticing they are reading it:
     scrolled again after a glance at one row is the clearest tell of all;
   * screens arrive from the side they came from, so the direction says
     whether you went somewhere or came back;
-  * an ordinary tap never blanks a readable screen. Swaps were measured at
+  * a tap never takes a readable screen away. Swaps were measured at
     106-287ms against a 150ms skeleton, so almost every tap covered the
-    screen in shimmer for a tenth of a second. The hairline gives feedback
-    without taking the screen away, and the skeleton waits for a real wait.
+    screen in shimmer for a tenth of a second. There is no skeleton any
+    more at any delay — a hairline says the tap was heard, and the screen
+    you are on stays up until the next one is ready.
 
 Keeping the bar alive is only an improvement if its highlight still moves,
 so that is checked hardest: a persistent bar lighting the wrong tab would
@@ -156,24 +157,46 @@ try:
         check('and nothing is left behind afterwards', pg.evaluate(
             "() => !!document.getElementById('nav-progress')"), False)
 
-        print('\n--- a genuinely slow screen does get the skeleton ---')
+        print('\n--- a slow screen keeps the one you are on ---')
+        # A real wait is exactly when replacing readable content with grey
+        # bars helps least, so there is nothing to replace it with any more:
+        # the hairline, and the screen you were already reading.
         pg.route('**/closures', lambda route: (time.sleep(0.9), route.continue_()))
         pg.goto(B + '/dashboard', wait_until='domcontentloaded')
         pg.wait_for_timeout(1000)
         pg.evaluate("""() => {
-            window.__slow = 0;
+            window.__slow = { bar: 0, overlay: 0 };
             new MutationObserver((recs) => {
                 recs.forEach(r => [...r.addedNodes].forEach(n => {
-                    if (n.id === 'skeleton-overlay') window.__slow++;
+                    if (n.id === 'nav-progress') window.__slow.bar++;
+                    if (n.id === 'skeleton-overlay') window.__slow.overlay++;
                 }));
             }).observe(document.body, { childList: true });
         }""")
-        pg.evaluate("() => NativeShell.visit('/closures')")
+        # Sampled by a timer inside the page, not from here: the route
+        # handler above sleeps on the Python side, which blocks this client,
+        # so a wait_for_timeout here would run after the screen had already
+        # arrived and would report on the wrong moment.
+        pg.evaluate("""() => {
+            window.__mid = null;
+            setTimeout(() => { window.__mid = {
+                hairline: !!document.getElementById('nav-progress'),
+                old_screen: !!document.querySelector('nav.app-bottom-nav'),
+                grey: !!document.getElementById('skeleton-overlay'),
+            }; }, 350);
+            NativeShell.visit('/closures');
+        }""")
         pg.wait_for_timeout(2200)
-        check('the skeleton still covers a real wait',
-              pg.evaluate("() => window.__slow") > 0, True)
-        check('and is gone once the screen arrives', pg.evaluate(
-            "() => !!document.getElementById('skeleton-overlay')"), False)
+        mid = pg.evaluate("() => window.__mid")
+        check('a moment mid-wait was actually captured', bool(mid), True)
+        check('the screen you were on is still up', mid and mid['old_screen'], True)
+        check('the hairline says the tap was heard', mid and mid['hairline'], True)
+        check('and nothing grey is over it', mid and mid['grey'], False)
+        slow = pg.evaluate("() => window.__slow")
+        check('no overlay at any point in the wait', slow['overlay'], 0)
+        check('it did arrive', pg.evaluate("() => location.pathname"), '/closures')
+        check('and the hairline is gone', pg.evaluate(
+            "() => !!document.getElementById('nav-progress')"), False)
 
         print('\n--- and nothing threw ---')
         check('page errors', errs, [])
