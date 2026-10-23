@@ -49,7 +49,7 @@ UNMARKED_TODAY = ('USC006', 'USC009')
 DAY_IN, DAY_OUT = time(8, 0), time(20, 0)
 NIGHT_IN, NIGHT_OUT = time(20, 0), time(8, 0)
 
-MONTHLY_SALARY = 22000.0
+MONTHLY_SALARY = 23000.0
 LEAVES_PER_MONTH = 2
 
 # A stone crusher's actual roll: every pay type the app supports, so the
