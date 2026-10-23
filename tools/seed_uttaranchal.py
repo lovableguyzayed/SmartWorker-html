@@ -155,7 +155,7 @@ def build():
     # the joining month" — a leave day that month simply is not a paid day.
     db.session.add(m.SalaryPolicy(
         account_id=acct.id, worker_id=None,
-        salary_basis='fixed', basis_days=30, rounding='nearest',
+        salary_basis='fixed', basis_days=26, rounding='nearest',
         joining_mode='attendance', paid_leave_enabled=True,
         monthly_leave_allowance=LEAVES_PER_MONTH, leave_carry_forward=False,
         absence_deduction_enabled=True,
