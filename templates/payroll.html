@@ -141,6 +141,8 @@
 
                 {% if row.status == 'paid' %}
                 <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">{{ _('Paid') }}</span>
+                {% elif row.status == 'partial' %}
+                <span class="bg-blue-100 text-blue-900 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">{{ _('Part Paid') }}</span>
                 {% elif row.status == 'unsaved' %}
                 <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">{{ _('Not Saved') }}</span>
                 {% else %}
@@ -169,23 +171,40 @@
                 <div>
                     <div class="text-xs text-gray-500">{{ _('Net Payable') }}</div>
                     <div class="text-lg font-bold text-accent">{{ row.net_pay|money }}</div>
+                    {% if row.status == 'partial' %}
+                    {# The whole point of part settlement: an employer who
+                       has paid ₹10,000 of a ₹23,000 month can see both
+                       figures instead of choosing which one to lie about. #}
+                    <div class="text-xs text-blue-800 font-medium mt-0.5">
+                        {{ row.settled|money }} {{ _('paid') }} ·
+                        {{ row.still_owed|money }} {{ _('still owed') }}
+                    </div>
+                    {% endif %}
                 </div>
 
                 {% if row.record_id %}
-                <form method="POST" action="{{ url_for('payroll_toggle_paid', record_id=row.record_id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    {% if row.status == 'paid' %}
-                    <button type="submit"
-                            class="tap-target px-4 py-2 bg-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-300 transition-colors">
-                        <i class="fa-solid fa-rotate-left mr-1"></i>{{ _('Mark Pending') }}
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" data-act="openSettleModal"
+                            data-act-args='[{{ row.record_id }}, {{ (row.worker.full_name)|tojson }}, {{ row.net_pay }}, {{ row.settled }}]'
+                            class="tap-target px-3 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium"
+                            aria-label="{{ _('Record a part payment for') }} {{ row.worker.full_name }}">
+                        <i class="fa-solid fa-indian-rupee-sign"></i>
                     </button>
-                    {% else %}
-                    <button type="submit"
-                            class="tap-target px-4 py-2 bg-green-700 text-white rounded-xl text-sm font-medium hover:bg-green-800 transition-colors">
-                        <i class="fa-solid fa-check mr-1"></i>{{ _('Mark Paid') }}
-                    </button>
-                    {% endif %}
-                </form>
+                    <form method="POST" action="{{ url_for('payroll_toggle_paid', record_id=row.record_id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% if row.status == 'paid' %}
+                        <button type="submit"
+                                class="tap-target px-4 py-2 bg-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-300 transition-colors">
+                            <i class="fa-solid fa-rotate-left mr-1"></i>{{ _('Mark Pending') }}
+                        </button>
+                        {% else %}
+                        <button type="submit"
+                                class="tap-target px-4 py-2 bg-green-700 text-white rounded-xl text-sm font-medium hover:bg-green-800 transition-colors">
+                            <i class="fa-solid fa-check mr-1"></i>{{ _('Mark Paid') }}
+                        </button>
+                        {% endif %}
+                    </form>
+                </div>
                 {% else %}
                 <span class="text-xs text-gray-500 italic">{{ _('Generate to enable') }}</span>
                 {% endif %}
@@ -241,4 +260,57 @@
     {% endwith %}
     {% endif %}
 </main>
+
+{# Part settlement. The amount asked for is the running total paid for the
+   month, not what is being added now: that is the figure an employer can
+   check against the net on the card behind this dialog, and it means
+   correcting a mistake is retyping one number instead of working out a
+   difference. #}
+<div id="settle-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
+            <div class="mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">{{ _('Record a payment') }}</h2>
+                <p class="text-gray-600 text-sm" id="settle-who"></p>
+            </div>
+            <form method="POST" id="settle-form" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="block text-sm font-medium text-gray-700 mb-1" for="settle-amount">
+                    {{ _('Total paid for this month (₹)') }}
+                </label>
+                <input type="number" name="paid_amount" id="settle-amount" step="0.01" min="0"
+                       required class="w-full p-3 border border-lightGray rounded-xl">
+                <p class="text-xs text-gray-500 mt-2" id="settle-hint"></p>
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium">{{ _('Save') }}</button>
+                    <button type="button" data-act="closeSettleModal"
+                            class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium">{{ _('Cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+var SETTLE_URL = {{ url_for('payroll_settle', record_id=0)|tojson }};
+
+function openSettleModal(recordId, name, net, settled) {
+    var form = document.getElementById('settle-form');
+    // The route is built once with a placeholder id and the real one swapped
+    // in, so the URL is never assembled by hand here.
+    form.setAttribute('action', SETTLE_URL.replace('/0/', '/' + recordId + '/'));
+    document.getElementById('settle-who').textContent = name;
+    document.getElementById('settle-amount').value = settled || '';
+    document.getElementById('settle-amount').setAttribute('max', String(net));
+    document.getElementById('settle-hint').textContent =
+        'The month is worth ₹' + Number(net).toLocaleString('en-IN') +
+        '. Enter the full amount to settle it, less to leave the rest owing, ' +
+        'or 0 to reopen it.';
+    document.getElementById('settle-modal').classList.remove('hidden');
+}
+
+function closeSettleModal() {
+    document.getElementById('settle-modal').classList.add('hidden');
+}
+</script>
 {% endblock %}

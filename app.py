@@ -265,6 +265,20 @@ SCHEMA_PATCHES = {
         ('breakdown_json', "TEXT"),
         ('policy_json', "TEXT"),
         ('finalized_at', "DATETIME"),
+        # How much of the month has actually been handed over. Left NULL on
+        # existing rows on purpose: PayrollRecord.settled_amount reads a NULL
+        # here together with status='paid' as "the whole net was paid", so
+        # months settled before the upgrade do not reopen as unpaid.
+        ('paid_amount', "FLOAT"),
+    ],
+    'worker_transactions': [
+        ('payment_mode', "VARCHAR(20)"),
+        ('reference_no', "VARCHAR(60)"),
+        ('acknowledged_at', "DATETIME"),
+        ('acknowledged_by', "INTEGER"),
+    ],
+    'company_settings': [
+        ('dues_allocation', "VARCHAR(20) DEFAULT 'month'"),
     ],
 }
 

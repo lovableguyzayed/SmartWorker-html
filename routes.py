@@ -31,6 +31,7 @@ from models import (
     WorkerModification, LeaveAdjustment, WorkerTransaction, Notification,
     SalaryPolicy, SalaryPolicyAudit,
     TRANSACTION_EARNING_TYPES, TRANSACTION_DEDUCTION_TYPES,
+    TRANSACTION_SETTLEMENT_TYPES, PAYMENT_MODES,
 )
 
 # Initialize Flask-Login
@@ -663,6 +664,11 @@ def load_user(user_id):
 WORKER_ENDPOINTS = frozenset({
     'worker_home',          # their own attendance and pay
     'worker_payslip',       # their own payslip
+    'worker_account',       # their own running account, and what is owed
+    # Confirming they received a payment. The only write a plain worker
+    # login may make, and it can only ever add their agreement to a row
+    # somebody else wrote — see may_acknowledge.
+    'transactions_acknowledge',
     'worker_logout_note',   # the "what can I do here" page
     'logout',
     'set_language',
@@ -686,6 +692,7 @@ SUPERVISOR_ENDPOINTS = frozenset({
     'api_worker_lookup',
     'api_mark_attendance',
     'api_worker_transaction',
+    'api_transaction_ack',
 })
 
 
@@ -1349,10 +1356,11 @@ def _ledger_month(worker, year, month, records):
     return gross, deductions, summary['estimated_pay']
 
 
-def worker_ledger(worker, upto=None):
+def worker_ledger(worker, upto=None, allocation=None):
     """The running account for one worker. See ledger.py for the rules."""
     return ledger.build(worker, upto=upto or today_ist(),
-                        compute_month=_ledger_month)
+                        compute_month=_ledger_month,
+                        allocation=allocation or _dues_allocation())
 
 
 @app.route('/worker/<int:worker_id>/account')
@@ -1366,12 +1374,151 @@ def worker_account(worker_id):
     to answer from the monthly screens alone.
     """
     worker = tenant_get_or_404(Worker, worker_id)
-    if not worker_visible_to_user(worker, current_user):
+    # Their own account, checked here rather than in worker_visible_to_user.
+    # A worker login is scoped through supervisor_team_ids, which excludes
+    # the person themselves on purpose — that is what stops a mukadam
+    # marking their own attendance — so a labourer asking for their own
+    # statement would otherwise be refused their own page. Widening the
+    # shared helper would also have widened the attendance screens.
+    own = bool(current_user.is_worker and current_user.worker_id
+               and current_user.worker_id == worker.id)
+    if not own and not worker_visible_to_user(worker, current_user):
         flash('Please contact the Administrator to make changes.', 'restricted')
         return redirect(url_for('workers'))
     statement = worker_ledger(worker)
     return render_template('worker_account.html', worker=worker,
-                           statement=statement, today=today_ist())
+                           statement=statement, today=today_ist(),
+                           type_labels=TRANSACTION_TYPE_LABELS,
+                           mode_labels=PAYMENT_MODE_LABELS,
+                           allocation_labels=ALLOCATION_LABELS,
+                           ack_of=_ack_describer(),
+                           may_ack=lambda t: may_acknowledge(current_user, t),
+                           month_names=MONTH_NAMES)
+
+
+#: Building one statement means a payroll calculation per month per worker,
+#: so the cost is per worker-month and not per worker. Measured on this
+#: machine: 10ms per worker over a three-month history, so 300 workers three
+#: months in is about 3 seconds, and the same 300 two years in would be far
+#: worse. Capped, oldest-joined first, with the screen saying plainly when
+#: it has stopped counting — better than a page that quietly truncates.
+#: If this becomes the slow screen, the fix is to stop recomputing settled
+#: months rather than to raise the cap.
+DUES_WORKER_CAP = 300
+
+
+def _company_dues(upto=None, allocation=None):
+    """Every active worker's arrears, worst first.
+
+    The running account already existed and was reachable from exactly one
+    place: one worker's own page. An owner with forty people had to open
+    forty screens to learn what the payroll liability was, which means
+    nobody did, which means the number nobody knew was the most important
+    one in the business.
+    """
+    upto = upto or today_ist()
+    allocation = allocation or _dues_allocation()
+    workers = (Worker.query.filter_by(status='active')
+               .order_by(Worker.join_date, Worker.id)
+               .limit(DUES_WORKER_CAP + 1).all())
+    capped = len(workers) > DUES_WORKER_CAP
+    workers = workers[:DUES_WORKER_CAP]
+
+    rows = []
+    for worker in workers:
+        statement = worker_ledger(worker, upto=upto, allocation=allocation)
+        rows.append({
+            'worker': worker,
+            'worker_id': worker.worker_id,
+            'full_name': worker.full_name,
+            'department': worker.department or '',
+            'phone': worker.phone or '',
+            'earned': statement['earned'],
+            'drawn': statement['drawn'],
+            'settled': statement['settled'],
+            'outstanding': statement['outstanding'],
+            'open_months': statement['open_months'],
+            'oldest_open': statement['oldest_open'] or '',
+            # Where to send it, if anywhere. An amount owed with no way to
+            # pay it is the pair of facts an owner needs together.
+            'has_payment_details': worker.has_payment_details,
+        })
+
+    # Worst first: the question is who to pay next, and that is whoever is
+    # owed most and has been waiting longest.
+    rows.sort(key=lambda r: (-r['outstanding'], -r['open_months'],
+                             r['full_name'] or ''))
+    owed = [r for r in rows if r['outstanding'] > ledger.EPSILON]
+    return {
+        'rows': rows,
+        'owed': owed,
+        'total_outstanding': round(sum(r['outstanding'] for r in rows), 2),
+        'total_earned': round(sum(r['earned'] for r in rows), 2),
+        'total_drawn': round(sum(r['drawn'] for r in rows), 2),
+        'total_settled': round(sum(r['settled'] for r in rows), 2),
+        'owed_count': len(owed),
+        'worker_count': len(rows),
+        'no_details': sum(1 for r in owed if not r['has_payment_details']),
+        'allocation': allocation,
+        'capped': capped,
+        'cap': DUES_WORKER_CAP,
+    }
+
+
+@app.route('/dues')
+@admin_required
+def dues():
+    """What the company owes its workers, on one screen."""
+    summary = _company_dues()
+    return render_template('dues.html', summary=summary, today=today_ist(),
+                           allocation_labels=ALLOCATION_LABELS)
+
+
+DUES_COLUMNS = [
+    ('Worker ID', 'worker_id', None, 12),
+    ('Full Name', 'full_name', None, 26),
+    ('Department', 'department', None, 16),
+    ('Phone', 'phone', None, 14),
+    ('Earned', 'earned', 'money', 14),
+    ('Advances Taken', 'drawn', 'money', 15),
+    ('Wages Paid', 'settled', 'money', 14),
+    ('Still Owed', 'outstanding', 'money', 14),
+    ('Months Open', 'open_months', 'int', 12),
+    ('Oldest Unpaid', 'oldest_open', None, 16),
+    ('Payment Details', 'payment_details_text', None, 16),
+]
+
+
+@app.route('/dues/export.xlsx')
+@admin_required
+def dues_export_xlsx():
+    """The arrears sheet, for the person who signs the cheques."""
+    summary = _company_dues()
+    rows = []
+    for row in summary['rows']:
+        rows.append(dict(row,
+                         payment_details_text=('On file'
+                                               if row['has_payment_details']
+                                               else 'Missing')))
+    totals = {
+        'full_name': 'TOTAL — %d worker(s)' % summary['worker_count'],
+        'earned': summary['total_earned'],
+        'drawn': summary['total_drawn'],
+        'settled': summary['total_settled'],
+        'outstanding': summary['total_outstanding'],
+        'oldest_open': '%d owed' % summary['owed_count'],
+    }
+    wb = excel.new_workbook()
+    ws = wb.create_sheet('Dues')
+    excel.write_sheet(
+        ws, DUES_COLUMNS, rows,
+        title='Wages Still Owed — as at %s' % today_ist().strftime('%d %b %Y'),
+        subtitle='Generated %s · %s'
+                 % (now_ist().strftime('%d %b %Y, %I:%M %p'),
+                    ALLOCATION_LABELS[summary['allocation']]['sheet']),
+        company=_company_name(), totals=totals)
+    return _xlsx_response(
+        wb, 'wages_owed_%s.xlsx' % today_ist().strftime('%Y_%m_%d'))
 
 
 @app.route('/worker/<int:worker_id>')
@@ -1774,7 +1921,15 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
     # Transactions (advances, loans, bonuses, recoveries, ...) for this period
     period_transactions = get_period_transactions(worker, period_start, period_end)
     transaction_earnings = sum(t.amount for t in period_transactions if t.is_earning)
-    transaction_deductions = sum(t.amount for t in period_transactions if not t.is_earning)
+    # Deductions only, asked explicitly rather than as "not an earning".
+    # Wages handed over are money out and still not a deduction: they settle
+    # what the month was worth, they do not reduce it. Counted here, October
+    # would compute as ₹3,000 instead of ₹23,000 and the running account
+    # would then subtract the same ₹20,000 a second time.
+    transaction_deductions = sum(t.amount for t in period_transactions
+                                 if t.is_deduction)
+    transaction_settlements = sum(t.amount for t in period_transactions
+                                  if t.is_settlement)
     if transaction_earnings > 0:
         policy_notes.append('Bonus/extra payment transactions added to pay.')
     if transaction_deductions > 0:
@@ -1799,6 +1954,10 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         'delay_breakdown': delay_breakdown,
         'transaction_earnings': round(transaction_earnings, 2),
         'transaction_deductions': round(transaction_deductions, 2),
+        # Wages already handed over inside this month. Shown on the payslip
+        # below the net figure — it does not change what the month was worth,
+        # it says how much of it has arrived.
+        'transaction_settlements': round(transaction_settlements, 2),
         'transactions': period_transactions,
         'leave_balance': leave_balance,
         'salary_breakdown': salary_breakdown,
@@ -2883,8 +3042,10 @@ def _build_payroll_rows(month, year):
     total_gross = 0.0
     total_deductions = 0.0
     total_net = 0.0
+    total_settled = 0.0
     paid_count = 0
     pending_count = 0
+    partial_count = 0
 
     for worker in workers:
         records = records_by_worker.get(worker.id, [])
@@ -2902,11 +3063,16 @@ def _build_payroll_rows(month, year):
         existing_record = saved_by_worker.get(worker.id)
 
         if existing_record:
-            record_status = existing_record.status
+            # Worked out from the money rather than read from the column, so
+            # a month that was half settled cannot show a Pending badge over
+            # a figure saying ₹10,000 was paid.
+            record_status = existing_record.payment_state
             record_id = existing_record.id
+            record_settled = existing_record.settled_amount
         else:
             record_status = 'unsaved'
             record_id = None
+            record_settled = 0.0
 
         # A finalised month shows what was actually paid, not what today's
         # rules would produce. Without this, changing a salary policy
@@ -2926,10 +3092,13 @@ def _build_payroll_rows(month, year):
         total_gross += gross_pay
         total_deductions += deductions
         total_net += net_pay
+        total_settled += record_settled
         if record_status == 'paid':
             paid_count += 1
         else:
             pending_count += 1
+            if record_status == 'partial':
+                partial_count += 1
 
         rows.append({
             'worker': worker,
@@ -2941,14 +3110,19 @@ def _build_payroll_rows(month, year):
             'net_pay': net_pay,
             'status': record_status,
             'record_id': record_id,
+            'settled': record_settled,
+            'still_owed': round(max(net_pay - record_settled, 0.0), 2),
         })
 
     return rows, {
         'total_gross': round(total_gross, 2),
         'total_deductions': round(total_deductions, 2),
         'total_net': round(total_net, 2),
+        'total_settled': round(total_settled, 2),
+        'total_unpaid': round(max(total_net - total_settled, 0.0), 2),
         'paid_count': paid_count,
         'pending_count': pending_count,
+        'partial_count': partial_count,
         'worker_count': len(rows),
     }, start_date
 
@@ -3048,7 +3222,11 @@ def payroll_save():
         # A month that has been paid is history. It used to be recalculated
         # and overwritten on every save, so editing a salary rule silently
         # restated what someone had already been paid. Leave it alone.
-        if existing and existing.status == 'paid':
+        #
+        # Part-paid counts. Once any money has gone out against a month,
+        # recalculating it could put the net below what was handed over, and
+        # the month would read as overpaid because a rule changed.
+        if existing and existing.settled_amount > 0:
             frozen += 1
             continue
 
@@ -3087,7 +3265,8 @@ def payroll_save():
     db.session.commit()
     message = f'Payroll generated for {saved} worker(s) — {MONTH_NAMES[month - 1]} {year}.'
     if frozen:
-        message += (f' {frozen} already-paid record(s) were left untouched.')
+        message += (f' {frozen} record(s) already had money paid against them '
+                    f'and were left untouched.')
     flash(message, 'success')
     return redirect(url_for('payroll', month=month, year=year))
 
@@ -3095,19 +3274,79 @@ def payroll_save():
 @app.route('/payroll/<int:record_id>/toggle_paid', methods=['POST'])
 @admin_required
 def payroll_toggle_paid(record_id):
+    """Settle the whole month, or reopen it.
+
+    The one-tap case, kept as it was: most months are paid in full in one
+    go. Paying part of a month goes through /payroll/<id>/settle.
+    """
     record = tenant_get_or_404(PayrollRecord, record_id)
-    record.status = 'pending' if record.status == 'paid' else 'paid'
+    closing = record.payment_state == 'paid'
+    if closing:
+        record.paid_amount = 0.0
+        record.status = 'pending'
+    else:
+        record.paid_amount = round(float(record.net_pay or 0), 2)
+        record.status = 'paid'
     # Stamp the moment it became history. Re-opening a record clears the stamp
     # so the next save is free to recalculate it.
-    record.finalized_at = now_ist() if record.status == 'paid' else None
+    record.finalized_at = None if closing else now_ist()
     db.session.commit()
-    label = 'Paid' if record.status == 'paid' else 'Pending'
+    label = 'Pending' if closing else 'Paid'
     flash(
         f'{record.worker.full_name} marked as {label} — '
         f'{MONTH_NAMES[record.month - 1]} {record.year}.',
         'success',
     )
     return redirect(url_for('payroll', month=record.month, year=record.year))
+
+
+@app.route('/payroll/<int:record_id>/settle', methods=['POST'])
+@admin_required
+def payroll_settle(record_id):
+    """Record part of a month's wages as handed over.
+
+    status used to hold the whole answer and it has two values, so ₹10,000
+    against a ₹23,000 September had nowhere to go — the month was either
+    closed or untouched, and an employer paying in instalments, which is the
+    normal thing on a crusher, had to lie in one direction or the other.
+
+    The amount is cumulative: it is what has been paid for this month in
+    total, not what is being added now, because that is the figure an
+    employer can check against the month's net on the same screen.
+    """
+    record = tenant_get_or_404(PayrollRecord, record_id)
+    target = url_for('payroll', month=record.month, year=record.year)
+    due = round(float(record.net_pay or 0), 2)
+    amount = round(parse_float(request.form.get('paid_amount'), -1.0), 2)
+
+    if amount < 0:
+        flash('Enter how much has been paid for this month.', 'error')
+        return redirect(target)
+    if amount > due + 0.005:
+        flash(f'That is more than the month is worth ({money.money(due)}). '
+              f'Record the extra as an advance instead.', 'error')
+        return redirect(target)
+
+    record.paid_amount = amount
+    record.status = record.payment_state
+    # Only a month settled in full is history and frozen against
+    # recalculation; a part-paid month is still open.
+    record.finalized_at = now_ist() if record.status == 'paid' else None
+    db.session.commit()
+
+    # Three separate sentences rather than one with a clause plugged into it:
+    # translate_flash matches on shape, and a message whose middle can be any
+    # of three things has no shape to match.
+    who = (f'{record.worker.full_name}, '
+           f'{MONTH_NAMES[record.month - 1]} {record.year}')
+    if record.status == 'paid':
+        flash(f'{who}: settled in full.', 'success')
+    elif record.status == 'partial':
+        flash(f'{who}: {money.money(amount)} paid, '
+              f'{money.money(round(due - amount, 2))} still owed.', 'success')
+    else:
+        flash(f'{who}: reopened, nothing recorded as paid.', 'success')
+    return redirect(target)
 
 
 @app.route('/payroll/slip/<int:worker_id>')
@@ -3162,11 +3401,19 @@ def _worker_slip_context(worker, month, year):
         # answers how much but never what for — and "what was that ₹20,000"
         # is the question a worker brings to the office.
         txn_labels=TRANSACTION_TYPE_LABELS,
+        txn_mode_labels=PAYMENT_MODE_LABELS,
         txn_who=_transaction_recorders(pay_summary.get('transactions') or []),
+        # Three totals, not two. "Taken this month" means advances, which a
+        # worker owes back out of the month; wages paid are that month's own
+        # money arriving and belong on their own line, or the slip tells
+        # somebody they drew ₹20,000 in advances they never drew.
         txn_taken=sum(t.amount for t in (pay_summary.get('transactions') or [])
-                      if not t.is_earning),
+                      if t.is_deduction),
         txn_added=sum(t.amount for t in (pay_summary.get('transactions') or [])
                       if t.is_earning),
+        txn_settled=sum(t.amount for t in (pay_summary.get('transactions') or [])
+                        if t.is_settlement),
+        txn_ack=_ack_describer(),
         timedelta=timedelta, date=ISTDate,
     )
 
@@ -3355,6 +3602,7 @@ def supervisor_team():
         team=team, on_date=on_date, today=today, existing=existing,
         can_record_transactions=current_user.can_record_transactions,
         txn_types=TRANSACTION_TYPE_LABELS,
+        payment_modes=PAYMENT_MODE_LABELS,
     )
 
 
@@ -3451,12 +3699,18 @@ def supervisor_transaction():
         flash('Transaction amount must be greater than zero.', 'error')
         return redirect(back)
 
+    mode, reference, mode_errors = _payment_mode_and_reference(request.form)
+    for problem in mode_errors:
+        flash(problem, 'error')
+        return redirect(back)
+
     worker = tenant_get_or_404(Worker, worker_id)
     label = TRANSACTION_TYPE_LABELS[txn_type]
     db.session.add(WorkerTransaction(
         worker_id=worker.id, txn_type=txn_type, amount=amount, date=on_date,
         description=(request.form.get('description') or '').strip() or label,
         created_by=current_user.id, account_id=worker.account_id,
+        payment_mode=mode, reference_no=reference,
     ))
     db.session.commit()
     flash(f'{label} of ₹{amount:,.2f} added for {worker.full_name}.', 'success')
@@ -3952,7 +4206,37 @@ def settings():
                            monthly_worker_count=monthly_worker_count,
                            salary_labels=salary.LABELS,
                            policy_audit=policy_audit,
+                           dues_allocation=_dues_allocation(),
+                           allocation_labels=ALLOCATION_LABELS,
                            date=ISTDate)
+
+
+@app.route('/settings/dues_allocation', methods=['POST'])
+@admin_required
+def settings_dues_allocation():
+    """Choose where money handed over lands in a running account.
+
+    Its own form rather than a field on the company details, because it is
+    the one setting here that restates figures already on screen: changing
+    it moves arrears between months for every worker at once. Nothing is
+    rewritten in the database — the statement is built from this on each
+    read — so switching back shows exactly what it showed before.
+    """
+    mode = (request.form.get('dues_allocation') or '').strip()
+    if mode not in ledger.ALLOCATION_MODES:
+        flash('Choose how payments should be counted.', 'error')
+        return redirect(url_for('settings'))
+
+    company = CompanySetting.query.first()
+    if not company:
+        company = CompanySetting()
+        db.session.add(company)
+    company.dues_allocation = mode
+    db.session.commit()
+    name = ALLOCATION_LABELS[mode]['name']
+    flash('Payments are now counted %s%s.' % (name[0].lower(), name[1:]),
+          'success')
+    return redirect(url_for('settings'))
 
 @app.route('/settings/company', methods=['POST'])
 @admin_required
@@ -4243,7 +4527,75 @@ TRANSACTION_TYPE_LABELS = {
     'extra_payment': 'Extra Payment',
     'incentive': 'Incentive',
     'refreshment': 'Refreshment Allowance',
+    # Wages themselves being paid, which had to be entered as an advance
+    # before this existed — correct to the rupee and the wrong word on the
+    # payslip a worker is handed.
+    'wage_payment': 'Wages Paid',
 }
+
+PAYMENT_MODE_LABELS = {
+    'cash': 'Cash',
+    'upi': 'UPI',
+    'bank': 'Bank Transfer',
+    'cheque': 'Cheque',
+}
+
+#: A UTR is 12 or 16 characters, a cheque number 6, an NEFT reference
+#: longer. Nothing is validated beyond length and shape: an employer typing
+#: what the bank told them should not be argued with.
+REFERENCE_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9/\-]{2,59}$')
+
+
+def _payment_mode_and_reference(form):
+    """Read how the money moved, and what it can be matched against.
+
+    Returns (mode, reference, errors). Both are optional: a crusher paying
+    cash at the gate has neither to give, and refusing the entry over a
+    missing reference would simply stop the payment being recorded at all.
+    A mode the form did not offer is dropped rather than stored.
+    """
+    mode = (form.get('payment_mode') or '').strip().lower() or None
+    reference = (form.get('reference_no') or '').strip() or None
+    errors = []
+    if mode and mode not in PAYMENT_MODES:
+        mode = None
+    if reference and not REFERENCE_RE.match(reference):
+        errors.append('A reference should be 3 to 60 letters, digits, '
+                      '- or / — the UTR or cheque number from the bank.')
+        reference = None
+    return mode, reference, errors
+
+
+#: The two house rules in words, because "oldest_first" means nothing to
+#: somebody choosing between them. `sheet` is the line an exported workbook
+#: carries, so a printed statement says which rule produced it.
+ALLOCATION_LABELS = {
+    'month': {
+        'name': 'Against the month it was paid in',
+        'help': 'An amount handed over in October counts against October. '
+                'Suits a business that settles one month at a time.',
+        'sheet': 'Payments counted against the month they were made in',
+    },
+    'oldest_first': {
+        'name': 'Against the oldest unpaid month first',
+        'help': 'An amount handed over in October clears August first, then '
+                'September. Suits a business that pays off arrears as cash '
+                'allows.',
+        'sheet': 'Payments counted against the oldest unpaid month first',
+    },
+}
+
+
+def _dues_allocation():
+    """The company's house rule for where money handed over lands.
+
+    One row per workspace, and a workspace that has never opened the
+    settings screen has no row at all — hence the default rather than a
+    failure. See ledger.ALLOCATION_MODES.
+    """
+    setting = CompanySetting.query.first()
+    mode = (setting.dues_allocation if setting else None) or 'month'
+    return mode if mode in ledger.ALLOCATION_MODES else 'month'
 
 @app.route('/transactions')
 @admin_required
@@ -4268,8 +4620,13 @@ def transactions():
         query = query.filter(WorkerTransaction.worker_id == worker_filter)
     txns = query.order_by(WorkerTransaction.date.desc(), WorkerTransaction.id.desc()).all()
 
-    total_earnings = sum(t.amount for t in txns if t.status == 'active' and t.is_earning)
-    total_deductions = sum(t.amount for t in txns if t.status == 'active' and not t.is_earning)
+    live = [t for t in txns if t.status == 'active']
+    total_earnings = sum(t.amount for t in live if t.is_earning)
+    total_deductions = sum(t.amount for t in live if t.is_deduction)
+    # Wages settled in the month, kept apart from advances: both are cash
+    # leaving the office, and lumping them together hides how much of the
+    # month's own wage bill has actually been paid.
+    total_settlements = sum(t.amount for t in live if t.is_settlement)
 
     workers = Worker.query.filter_by(status='active').order_by(Worker.full_name).all()
     years = list(range(2024, today.year + 2))
@@ -4289,9 +4646,12 @@ def transactions():
                            worker_filter=worker_filter,
                            total_earnings=round(total_earnings, 2),
                            total_deductions=round(total_deductions, 2),
+                           total_settlements=round(total_settlements, 2),
                            type_labels=TRANSACTION_TYPE_LABELS,
                            earning_types=TRANSACTION_EARNING_TYPES,
                            deduction_types=TRANSACTION_DEDUCTION_TYPES,
+                           settlement_types=TRANSACTION_SETTLEMENT_TYPES,
+                           payment_modes=PAYMENT_MODE_LABELS,
                            today=today)
 
 @app.route('/transactions/save', methods=['POST'])
@@ -4317,6 +4677,11 @@ def transactions_save():
     except (TypeError, ValueError):
         txn_date = today_ist()
 
+    mode, reference, mode_errors = _payment_mode_and_reference(request.form)
+    for problem in mode_errors:
+        flash(problem, 'error')
+        return redirect(redirect_to)
+
     if txn_id:
         txn = tenant_get_or_404(WorkerTransaction, txn_id)
     else:
@@ -4329,6 +4694,8 @@ def transactions_save():
     txn.amount = amount
     txn.date = txn_date
     txn.description = description
+    txn.payment_mode = mode
+    txn.reference_no = reference
     db.session.commit()
 
     label = TRANSACTION_TYPE_LABELS[txn_type]
@@ -4344,6 +4711,80 @@ def transactions_cancel(txn_id):
     state = 'cancelled' if txn.status == 'cancelled' else 'restored'
     flash(f'Transaction {state}. Payroll updates automatically.', 'success')
     return redirect(safe_redirect_target(request.form.get('redirect_to'), url_for('transactions')))
+
+def _ack_describer():
+    """A function naming who confirmed a payment, for a batch of rows.
+
+    Two different claims share one column and they are worth very different
+    amounts. A worker confirming on their own login is the worker's word. An
+    administrator ticking "handed over in person" is the employer's word
+    twice, which is still worth recording — most labourers on a crusher have
+    no login — but must never be shown as though the worker had agreed.
+    One query for the batch rather than one per row.
+    """
+    def describe(txn):
+        if not txn.acknowledged_at:
+            return None
+        user = User.query.get(txn.acknowledged_by) if txn.acknowledged_by else None
+        if user and user.worker_id == txn.worker_id:
+            return {'by_worker': True, 'name': user.full_name or user.username}
+        return {'by_worker': False,
+                'name': (user.full_name or user.username) if user else None}
+    return describe
+
+
+def may_acknowledge(user, txn):
+    """Who may confirm that this money was received.
+
+    The worker themselves, which is the whole point of the column, or
+    somebody who could have recorded the payment in the first place — they
+    are standing at the gate with the worker in front of them, and the
+    statement they are making is marked as theirs, not the worker's.
+    """
+    if not txn:
+        return False
+    if user.is_worker and user.worker_id and user.worker_id == txn.worker_id:
+        return True
+    return may_record_transaction_for(user, txn.worker)
+
+
+@app.route('/transactions/<int:txn_id>/acknowledge', methods=['POST'])
+@login_required
+def transactions_acknowledge(txn_id):
+    """Record that the money reached the worker.
+
+    Only forward: an acknowledgement that can be withdrawn by whoever wrote
+    the row is not an acknowledgement. A payment entered in error is
+    cancelled, which is administrative and leaves the row visible.
+    """
+    txn = tenant_get_or_404(WorkerTransaction, txn_id)
+    if not may_acknowledge(current_user, txn):
+        flash('Please contact the Administrator to make changes.', 'restricted')
+        return redirect(safe_redirect_target(
+            request.form.get('redirect_to'), url_for('dashboard')))
+
+    target = safe_redirect_target(
+        request.form.get('redirect_to'),
+        url_for('worker_account', worker_id=txn.worker_id))
+
+    if txn.status == 'cancelled':
+        flash('That entry was cancelled, so there is nothing to confirm.',
+              'error')
+        return redirect(target)
+    if txn.acknowledged_at:
+        flash('That payment was already confirmed.', 'info')
+        return redirect(target)
+
+    txn.acknowledged_at = now_ist()
+    txn.acknowledged_by = current_user.id
+    db.session.commit()
+
+    own = current_user.worker_id == txn.worker_id
+    flash('Receipt confirmed.' if own
+          else f'Marked as handed over to {txn.worker.full_name} in person.',
+          'success')
+    return redirect(target)
+
 
 @app.route('/transactions/<int:txn_id>/delete', methods=['POST'])
 @admin_required
@@ -4772,6 +5213,8 @@ def scan():
         'scan.html', today=today, stats=_scan_stats(today),
         deduction_types=TRANSACTION_DEDUCTION_TYPES,
         earning_types=TRANSACTION_EARNING_TYPES,
+        settlement_types=TRANSACTION_SETTLEMENT_TYPES,
+        payment_modes=PAYMENT_MODE_LABELS,
         type_labels=TRANSACTION_TYPE_LABELS)
 
 @app.route('/api/worker_lookup')
@@ -5358,16 +5801,21 @@ def api_worker_transaction():
     if on_date > today_ist():
         messages.append({'category': 'error', 'text': 'That date is in the future.'})
 
+    mode, reference, mode_errors = _payment_mode_and_reference(request.form)
+    messages.extend({'category': 'error', 'text': p} for p in mode_errors)
+
     if messages:
         return jsonify({'success': False, 'messages': messages}), 400
 
     label = TRANSACTION_TYPE_LABELS[txn_type]
     note = (request.form.get('description') or '').strip() or label
-    db.session.add(WorkerTransaction(
+    txn = WorkerTransaction(
         worker_id=worker.id, txn_type=txn_type, amount=amount, date=on_date,
         description=note, created_by=current_user.id,
         account_id=worker.account_id,
-    ))
+        payment_mode=mode, reference_no=reference,
+    )
+    db.session.add(txn)
 
     # Money booked by somebody who is not an administrator should be visible
     # to one without their having to go looking, the same way attendance
@@ -5386,13 +5834,47 @@ def api_worker_transaction():
                       'text': f'{label} {money.money(amount)} recorded for '
                               f'{worker.full_name}.'}],
         'transaction': {
+            'id': txn.id,
             'type': txn_type,
             'label': label,
             'amount': amount,
             'amount_text': money.money(amount),
             'date': on_date.isoformat(),
+            'payment_mode': mode,
+            'mode_label': PAYMENT_MODE_LABELS.get(mode or '', ''),
+            'reference_no': reference,
+            # The scanner offers the worker standing in front of it the
+            # chance to confirm on the spot, which is the only moment both
+            # people are present.
+            'needs_ack': txn_type in TRANSACTION_SETTLEMENT_TYPES
+            or txn_type in TRANSACTION_DEDUCTION_TYPES,
         },
     })
+
+
+@app.route('/api/transaction_ack/<int:txn_id>', methods=['POST'])
+@login_required
+def api_transaction_ack(txn_id):
+    """Confirm a payment from the scanner, without navigating.
+
+    Same reason the rest of the scanner answers in JSON: a page load costs
+    about a second of black preview and there is a queue at the gate. The
+    moment to take a confirmation is while both people are still standing
+    there, so it has to cost nothing.
+    """
+    txn = tenant_get(WorkerTransaction, txn_id)
+    if not txn or not may_acknowledge(current_user, txn):
+        return jsonify({'success': False,
+                        'message': 'Please contact the Administrator to '
+                                   'make changes.'}), 403
+    if txn.status == 'cancelled':
+        return jsonify({'success': False,
+                        'message': 'That entry was cancelled.'}), 400
+    if not txn.acknowledged_at:
+        txn.acknowledged_at = now_ist()
+        txn.acknowledged_by = current_user.id
+        db.session.commit()
+    return jsonify({'success': True, 'id': txn.id})
 
 
 @app.route('/api/mark_attendance', methods=['POST'])

@@ -98,6 +98,22 @@
                            placeholder="{{ _('Amount') }}"
                            class="tap-target p-3 border border-lightGray rounded-xl text-sm">
                 </div>
+                {# How the money moved, and the UTR or cheque number it can
+                   be matched against later. Both optional — a mukadam
+                   handing over cash at the gate has neither to give. #}
+                <div class="grid grid-cols-2 gap-2">
+                    <select name="payment_mode"
+                            aria-label="{{ _('Paid by') }}"
+                            class="tap-target p-3 border border-lightGray rounded-xl text-sm">
+                        {% for value, label in payment_modes.items() %}
+                        <option value="{{ value }}" {{ 'selected' if value == 'cash' }}>{{ _(label) }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="reference_no" maxlength="60"
+                           placeholder="{{ _('UTR / cheque no.') }}"
+                           aria-label="{{ _('Reference') }}"
+                           class="tap-target p-3 border border-lightGray rounded-xl text-sm">
+                </div>
                 <input type="text" name="description" maxlength="200"
                        placeholder="{{ _('Notes') }}"
                        class="tap-target w-full p-3 border border-lightGray rounded-xl text-sm">

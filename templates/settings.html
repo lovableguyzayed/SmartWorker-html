@@ -369,6 +369,40 @@
 
     <!-- ══════════ Salary Calculation Policy ══════════ -->
     <section id="section-salary" class="settings-section hidden space-y-4">
+        {# Where money handed over lands in a running account. Its own form
+           rather than a field on the company details, because it is the one
+           setting here that restates figures already on screen: changing it
+           moves arrears between months for every worker at once. Nothing is
+           rewritten — the statement is built from this on each read — so
+           switching back shows exactly what it showed before. #}
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('How payments are counted') }}</h2>
+            <p class="text-xs text-gray-500 mb-4">
+                {{ _('When a worker is owed several months and is given an amount, this decides which month it clears. It changes nothing about what anyone is owed in total — only which month shows the arrears.') }}
+            </p>
+            <form method="POST" action="{{ url_for('settings_dues_allocation') }}" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% for mode, label in allocation_labels.items() %}
+                <label class="flex items-start gap-3 p-3 border-2 rounded-2xl cursor-pointer
+                              {{ 'border-accent bg-blue-50' if dues_allocation == mode else 'border-gray-200' }}">
+                    <input type="radio" name="dues_allocation" value="{{ mode }}" class="mt-1"
+                           {{ 'checked' if dues_allocation == mode }}>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium text-gray-800">{{ _(label.name) }}</span>
+                        <span class="block text-xs text-gray-500 leading-relaxed mt-0.5">{{ _(label.help) }}</span>
+                    </span>
+                </label>
+                {% endfor %}
+                <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium">
+                    {{ _('Save') }}
+                </button>
+            </form>
+            <a href="{{ url_for('dues') }}"
+               class="tap-target mt-3 flex items-center justify-center gap-2 text-sm text-accent font-medium">
+                <i class="fa-solid fa-hand-holding-dollar"></i>{{ _('See what is owed') }}
+            </a>
+        </div>
+
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
             <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Salary Calculation Policy') }}</h2>
             <p class="text-xs text-gray-500 mb-1">

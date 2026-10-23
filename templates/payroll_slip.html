@@ -494,8 +494,26 @@
                                 {% if txn.description and txn.description != txn_labels.get(txn.txn_type) %}
                                 <div class="txn-note text-[0.65rem] text-gray-600 leading-snug break-words">{{ txn.description }}</div>
                                 {% endif %}
+                                {# How the money moved, and the UTR or cheque
+                                   number it can be matched against. A slip
+                                   that says only "₹20,000" cannot be checked
+                                   against a bank statement. #}
+                                {% if txn.payment_mode or txn.reference_no %}
+                                <div class="txn-note text-[0.65rem] text-gray-600 leading-snug break-words">
+                                    {% if txn.payment_mode %}{{ _(txn_mode_labels.get(txn.payment_mode, '')) }}{% endif %}
+                                    {% if txn.reference_no %}· {{ _('Ref') }} {{ txn.reference_no }}{% endif %}
+                                </div>
+                                {% endif %}
                                 {% if txn_who.get(txn.id) %}
                                 <div class="txn-who text-[0.6rem] text-gray-400">{{ _('Recorded by') }} {{ txn_who[txn.id] }}</div>
+                                {% endif %}
+                                {% set ack = txn_ack(txn) %}
+                                {% if ack and ack.by_worker %}
+                                <div class="txn-who text-[0.6rem] text-green-700">{{ _('Confirmed received by the worker') }}</div>
+                                {% elif ack %}
+                                <div class="txn-who text-[0.6rem] text-gray-400">
+                                    {{ _('Handed over in person') }}{% if ack.name %} · {{ ack.name }}{% endif %}
+                                </div>
                                 {% endif %}
                             </div>
                             <span class="amount text-xs font-semibold ml-2 shrink-0 {{ 'text-green-700' if txn.is_earning else 'text-red-700' }}">
@@ -507,7 +525,7 @@
                     {# What the list adds up to, split by direction: a column
                        of pluses and minuses is not an answer to "how much did
                        I take this month". #}
-                    {% if txn_taken or txn_added %}
+                    {% if txn_taken or txn_added or txn_settled %}
                     <div class="px-3 py-2 bg-gray-100/70 border-t border-gray-200 space-y-1" data-pdf-split>
                         {% if txn_taken %}
                         <div class="flex items-center justify-between">
@@ -519,6 +537,15 @@
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-semibold text-gray-700">{{ _('Total added this month') }}</span>
                             <span class="amount text-xs font-bold text-green-700">+ {{ txn_added|money2 }}</span>
+                        </div>
+                        {% endif %}
+                        {% if txn_settled %}
+                        {# Kept off the deductions above on purpose: this is
+                           the month's own wages arriving, not money owed
+                           back out of them. #}
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-gray-700">{{ _('Wages paid this month') }}</span>
+                            <span class="amount text-xs font-bold text-blue-800">{{ txn_settled|money2 }}</span>
                         </div>
                         {% endif %}
                     </div>

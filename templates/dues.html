@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Wages Owed') }} - SmartWorker{% endblock %}
+
+{# What the company owes its workers, on one screen.
+
+   The running account already existed and was reachable from exactly one
+   place: one worker's own page. An owner with forty people had to open
+   forty screens to learn the payroll liability, so nobody did — and the
+   number nobody knew was the most important one in the business. #}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4 min-w-0">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}"
+               class="icon-btn bg-white/10 backdrop-blur-sm shrink-0">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div class="min-w-0">
+                <h1 class="text-xl font-semibold truncate">{{ _('Wages Owed') }}</h1>
+                <div class="text-sm opacity-90">
+                    {{ _('As at') }} {{ today|ldate('%d %b %Y') }}
+                </div>
+            </div>
+        </div>
+        <a href="{{ url_for('dues_export_xlsx') }}"
+           class="icon-btn bg-white/10 backdrop-blur-sm shrink-0"
+           aria-label="{{ _('Download as Excel') }}">
+            <i class="fa-solid fa-file-excel text-lg"></i>
+        </a>
+    </div>
+
+    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+        <div class="text-xs uppercase tracking-wide opacity-80">
+            {{ _('Total still owed') }}
+        </div>
+        <div class="text-3xl font-bold mt-1">{{ summary.total_outstanding|money }}</div>
+        <div class="text-xs opacity-90 mt-2">
+            {{ summary.owed_count }} {{ _('of') }} {{ summary.worker_count }}
+            {{ _('workers waiting') }}
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-8 space-y-4">
+    <section class="grid grid-cols-3 gap-3">
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-3">
+            <div class="text-lg font-bold text-gray-800">{{ summary.total_earned|money0 }}</div>
+            <div class="text-xs text-gray-500">{{ _('Earned') }}</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-3">
+            <div class="text-lg font-bold text-red-700">{{ summary.total_drawn|money0 }}</div>
+            <div class="text-xs text-gray-500">{{ _('Advances') }}</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-3">
+            <div class="text-lg font-bold text-green-700">{{ summary.total_settled|money0 }}</div>
+            <div class="text-xs text-gray-500">{{ _('Wages paid') }}</div>
+        </div>
+    </section>
+
+    {% if summary.no_details %}
+    {# An amount owed with no way to send it. The two facts are only useful
+       together, and the fix is on a screen the owner has to be sent to. #}
+    <section class="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex gap-3">
+        <i class="fa-solid fa-triangle-exclamation text-amber-700 mt-0.5"></i>
+        <p class="text-sm text-amber-900 leading-relaxed">
+            {{ summary.no_details }}
+            {{ _('of the workers owed money have no bank account or UPI id on file.') }}
+        </p>
+    </section>
+    {% endif %}
+
+    {% if summary.capped %}
+    <section class="bg-gray-50 border border-gray-200 rounded-2xl p-3">
+        <p class="text-sm text-gray-700 leading-relaxed">
+            {{ _('Showing the first') }} {{ summary.cap }}
+            {{ _('workers by joining date. The totals below cover only those.') }}
+        </p>
+    </section>
+    {% endif %}
+
+    {% if not summary.owed %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 text-center">
+        <i class="fa-solid fa-circle-check text-3xl text-green-600 mb-3"></i>
+        <p class="text-sm text-gray-600">{{ _('Nothing is owed. Every month is settled.') }}</p>
+    </section>
+    {% endif %}
+
+    {% for row in summary.owed %}
+    <article class="bg-white rounded-2xl shadow border border-gray-100 p-4">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <a href="{{ url_for('worker_account', worker_id=row.worker.id) }}"
+                   class="font-semibold text-gray-800 truncate block">{{ row.full_name }}</a>
+                <div class="text-xs text-gray-500 truncate">
+                    {{ row.worker_id }}{% if row.department %} · {{ row.department }}{% endif %}
+                </div>
+            </div>
+            <div class="text-right shrink-0">
+                <div class="text-lg font-bold text-amber-800">{{ row.outstanding|money }}</div>
+                {% if row.oldest_open %}
+                <div class="text-xs text-gray-500">
+                    {{ _('since') }}
+                    {{ _(row.oldest_open.split(' ')[0]) }} {{ row.oldest_open.split(' ')[1] }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <dl class="mt-3 pt-3 border-t border-gray-100 grid grid-cols-3 gap-2 text-xs">
+            <div>
+                <dt class="text-gray-500">{{ _('Earned') }}</dt>
+                <dd class="font-medium text-gray-800">{{ row.earned|money0 }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">{{ _('Advances') }}</dt>
+                <dd class="font-medium text-red-700">{{ row.drawn|money0 }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">{{ _('Wages paid') }}</dt>
+                <dd class="font-medium text-green-700">{{ row.settled|money0 }}</dd>
+            </div>
+        </dl>
+
+        <div class="mt-3 flex items-center justify-between gap-2">
+            <span class="text-xs {{ 'text-gray-500' if row.has_payment_details else 'text-amber-800' }}">
+                {% if row.has_payment_details %}
+                <i class="fa-solid fa-building-columns mr-1"></i>{{ _('Payment details on file') }}
+                {% else %}
+                <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ _('No bank or UPI on file') }}
+                {% endif %}
+            </span>
+            <a href="{{ url_for('worker_account', worker_id=row.worker.id) }}"
+               class="tap-target text-sm text-accent font-medium shrink-0">
+                {{ _('Open account') }}<i class="fa-solid fa-chevron-right ml-1 text-xs"></i>
+            </a>
+        </div>
+    </article>
+    {% endfor %}
+
+    <p class="text-xs text-gray-500 px-1 leading-relaxed">
+        <i class="fa-solid fa-circle-info mr-1"></i>
+        {{ _(allocation_labels[summary.allocation].help) }}
+        <a href="{{ url_for('settings') }}" class="text-accent underline">{{ _('Change') }}</a>
+    </p>
+</main>
+{% endblock %}

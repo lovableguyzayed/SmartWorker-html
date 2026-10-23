@@ -94,6 +94,16 @@
         <i class="fa-solid fa-file-invoice"></i>{{ _('Payslip') }}
     </a>
 
+    {# "How much is still mine" — the question a payslip cannot answer once a
+       month has closed unpaid, and the one a labourer actually asks. This is
+       also where they confirm having received a payment. #}
+    {% if worker %}
+    <a href="{{ url_for('worker_account', worker_id=worker.id) }}"
+       class="tap-target w-full flex items-center justify-center gap-2 bg-amber-700 text-white p-4 rounded-2xl font-semibold">
+        <i class="fa-solid fa-hand-holding-dollar"></i>{{ _('My Account') }}
+    </a>
+    {% endif %}
+
     <a href="{{ url_for('logout') }}"
        class="tap-target w-full flex items-center justify-center p-4 rounded-2xl border-2 border-gray-200 text-gray-600 font-medium">
         {{ _('Sign Out') }}

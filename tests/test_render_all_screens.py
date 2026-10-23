@@ -16,12 +16,13 @@ app.config['WTF_CSRF_ENABLED'] = False
 
 PATHS = ['/dashboard', '/workers', '/attendance', '/payroll', '/transactions',
          '/closures', '/assignments', '/profile', '/settings', '/scan',
-         '/notifications', '/payroll/preview', '/add_worker']
+         '/notifications', '/payroll/preview', '/add_worker', '/dues']
 
 with app.app_context():
     w = m.Worker.query.order_by(m.Worker.id).first()
     PATHS += ['/worker/%d' % w.id, '/worker_attendance/%d' % w.id,
               '/worker/%d/report' % w.id, '/payroll/slip/%d' % w.id,
+              '/worker/%d/account' % w.id,
               '/edit_worker/%d' % w.id, '/id_card/%d' % w.id]
 
 bad = []

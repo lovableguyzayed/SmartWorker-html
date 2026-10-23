@@ -218,6 +218,13 @@
                 <i class="fa-solid fa-calendar-xmark mr-2"></i>
                 {{ _('Closures') }}
             </a>
+            {# What the company owes, which had no screen at all: the running
+               account was reachable only one worker at a time, so the total
+               was a number nobody could look up. #}
+            <a href="{{ url_for('dues') }}" class="col-span-2 flex items-center justify-center p-4 bg-amber-700 text-white rounded-2xl hover:shadow-lg transition-all">
+                <i class="fa-solid fa-hand-holding-dollar mr-2"></i>
+                {{ _('Wages Owed') }}
+            </a>
         </div>
     </section>
     {% endif %}

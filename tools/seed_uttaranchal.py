@@ -15,7 +15,14 @@ What it builds:
   * ten more workers, one of every pay type and employment type the app
     supports, so each screen has something real to show
   * attendance from the joining date to yesterday, a closure day, a night
-    shift changeover, and one advance payment
+    shift changeover, and money of each kind: an advance, a bonus, wages
+    paid in cash, and wages paid by UPI with the UTR against them
+
+Payments are left counted against the month they were made in, which is
+what the app has always done. Settings → How payments are counted switches
+to clearing the oldest unpaid month first, and the running account restates
+itself; nothing in the database changes either way, so it is safe to flip
+during a demo and flip back.
 """
 import argparse
 import os
@@ -262,24 +269,38 @@ def build():
             db.session.add(rec)
 
     # --- the ₹20,000 handed over on 22 October --------------------------
+    # Wages, not an advance. Nothing had been paid since joining in August,
+    # so this is the first of the wages arriving — an advance would be money
+    # taken before it was earned, and it would also come off October's net
+    # and make the month read as ₹3,000.
     db.session.add(m.WorkerTransaction(
-        account_id=acct.id, worker_id=me.id, txn_type='advance',
+        account_id=acct.id, worker_id=me.id, txn_type='wage_payment',
         amount=PAID_AMOUNT, date=PAID_ON,
-        description='Advance paid in cash (night shift)',
+        description='Wages paid in cash (night shift)',
+        payment_mode='cash',
         status='active', created_by=admin.id))
-    # A couple more so the transactions screen is not a single row.
+    # A couple more so the transactions screen is not a single row, and so
+    # each kind has one example: an advance, a bonus, and wages paid by UPI
+    # with the UTR against it.
     db.session.add(m.WorkerTransaction(
         account_id=acct.id,
         worker_id=next(w.id for w in workers if w.worker_id == 'USC004'),
         txn_type='advance', amount=3000.0, date=date(YEAR, 10, 10),
-        description='Advance against wages', status='active',
-        created_by=admin.id))
+        description='Advance against wages', payment_mode='cash',
+        status='active', created_by=admin.id))
     db.session.add(m.WorkerTransaction(
         account_id=acct.id,
         worker_id=next(w.id for w in workers if w.worker_id == 'USC002'),
         txn_type='bonus', amount=2500.0, date=date(YEAR, 10, 15),
         description='Target bonus — October despatch', status='active',
         created_by=admin.id))
+    db.session.add(m.WorkerTransaction(
+        account_id=acct.id,
+        worker_id=next(w.id for w in workers if w.worker_id == 'USC003'),
+        txn_type='wage_payment', amount=9000.0, date=date(YEAR, 10, 5),
+        description='September wages, part payment',
+        payment_mode='upi', reference_no='UTR410239887651',
+        status='active', created_by=admin.id))
 
     db.session.commit()
     return acct, admin, me, workers

@@ -161,8 +161,20 @@
     background: #fff;
 }
 .pay-field:focus { outline: 2px solid #4338ca; outline-offset: -1px; }
+/* The mode/reference row sits under the type/amount row. */
+.pay-grid + .pay-grid { margin-top: 0.6rem; }
 .pay-note { margin-top: 0.6rem; }
 .pay-save { width: 100%; margin-top: 0.7rem; }
+/* The confirmation step. Set apart from the Record button above it, because
+   the question it asks is addressed to the worker, not to the operator. */
+.pay-ack-text {
+    margin: 0.85rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #d1d5db;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: #374151;
+}
 .scan-back {
     display: inline-flex; align-items: center; gap: 0.4rem;
     min-height: 2.75rem; padding: 0 0.85rem; margin-top: 0.75rem;
@@ -314,6 +326,14 @@
             </h3>
             <div class="pay-grid">
                 <select id="pay-type" class="pay-field" aria-label="{{ _('Type') }}">
+                    {# Settling wages first, because at the gate that is the
+                       commonest reason money changes hands. It used to have
+                       to be entered as an advance. #}
+                    <optgroup label="{{ _('Settles wages owed') }}">
+                        {% for t in settlement_types %}
+                        <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
+                        {% endfor %}
+                    </optgroup>
                     <optgroup label="{{ _('Deducted from pay') }}">
                         {% for t in deduction_types %}
                         <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
@@ -329,10 +349,34 @@
                        step="0.01" min="0.01" placeholder="{{ _('Amount (₹)') }}"
                        aria-label="{{ _('Amount (₹)') }}">
             </div>
+            {# Cash is the default because at a crusher gate it is nearly
+               always cash, and a field that has to be set every time gets
+               set wrongly. #}
+            <div class="pay-grid">
+                <select id="pay-mode" class="pay-field" aria-label="{{ _('Paid by') }}">
+                    {% for value, label in payment_modes.items() %}
+                    <option value="{{ value }}" {{ 'selected' if value == 'cash' }}>{{ _(label) }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" id="pay-reference" class="pay-field" maxlength="60"
+                       placeholder="{{ _('UTR / cheque no.') }}"
+                       aria-label="{{ _('Reference') }}">
+            </div>
             <input type="text" id="pay-note" class="pay-field pay-note"
                    placeholder="{{ _('Note (optional)') }}" aria-label="{{ _('Note (optional)') }}">
             <button type="button" class="res-btn res-btn-indigo pay-save"
                     id="btn-pay" data-act="recordPayment">{{ _('Record payment') }}</button>
+
+            {# The one moment both people are present. A confirmation taken
+               later is chased by phone and mostly never taken at all, and
+               an unconfirmed payment is the employer's word alone. #}
+            <div id="pay-ack" class="hidden">
+                <p class="pay-ack-text" id="pay-ack-text"></p>
+                <button type="button" class="res-btn res-btn-green pay-save"
+                        id="btn-pay-ack" data-act="acknowledgePayment">
+                    <i class="fa-solid fa-user-check"></i>{{ _('Worker confirms receipt') }}
+                </button>
+            </div>
         </div>
 
         {# Admins only: worker_profile is not a screen a worker login may
@@ -378,7 +422,11 @@ var SCAN_TEXT = {
     check_out: {{ _('Check out')|tojson }},
     shift_closed: {{ _('Shift closed')|tojson }},
     site: {{ _('Site: %s')|tojson }},
-    project: {{ _('Project: %s')|tojson }}
+    project: {{ _('Project: %s')|tojson }},
+    ack_prompt: {{ _('%t of %a recorded. Hand the phone over — does the worker confirm receiving it?')|tojson }},
+    ack_done: {{ _('Receipt confirmed by the worker.')|tojson }},
+    ack_failed: {{ _('Could not confirm that payment.')|tojson }},
+    ack_offline: {{ _('No connection — the confirmation was not saved.')|tojson }}
 };
 // Status comes back from the API as the stored English value, the same way
 // the attendance day view receives it.
@@ -611,7 +659,60 @@ function applyPayment(w) {
     if (!box) return;
     document.getElementById('pay-amount').value = '';
     document.getElementById('pay-note').value = '';
+    // A reference belongs to one payment and must never be carried onto the
+    // next worker's; the mode is left as it was, because a site paying by
+    // UPI pays the whole queue by UPI.
+    document.getElementById('pay-reference').value = '';
+    hidePaymentAck();
     box.classList.toggle('hidden', !w.can_pay);
+}
+
+// The payment just recorded, waiting on the worker's confirmation. Held in
+// one variable rather than on the button, so leaving the card or scanning
+// the next person cannot confirm the wrong payment.
+var pendingAckId = null;
+
+function hidePaymentAck() {
+    pendingAckId = null;
+    var box = document.getElementById('pay-ack');
+    if (box) box.classList.add('hidden');
+}
+
+function showPaymentAck(txn) {
+    pendingAckId = txn.id;
+    var box = document.getElementById('pay-ack');
+    if (!box) return;
+    document.getElementById('pay-ack-text').textContent =
+        SCAN_TEXT.ack_prompt
+            .replace('%a', txn.amount_text)
+            .replace('%t', txn.label);
+    box.classList.remove('hidden');
+}
+
+// Taken at the gate, with both people present. A confirmation chased later
+// by phone is mostly never taken at all.
+async function acknowledgePayment() {
+    if (!pendingAckId) return;
+    var btn = document.getElementById('btn-pay-ack');
+    var fd = new FormData();
+    fd.append('csrf_token', SCAN_CSRF);
+    btn.disabled = true;
+    try {
+        var res = await fetch('/api/transaction_ack/' + pendingAckId, {
+            method: 'POST', body: fd, credentials: 'same-origin'
+        });
+        var data = await res.json().catch(function () { return null; });
+        if (data && data.success) {
+            toast(SCAN_TEXT.ack_done, 'success');
+            hidePaymentAck();
+        } else {
+            toast((data && data.message) || SCAN_TEXT.ack_failed, 'error');
+        }
+    } catch (err) {
+        toast(SCAN_TEXT.ack_offline, 'error');
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 // Renders today's line and drives every button's enabled state / label.
@@ -695,6 +796,8 @@ async function recordPayment() {
     var typeEl = document.getElementById('pay-type');
     var amountEl = document.getElementById('pay-amount');
     var noteEl = document.getElementById('pay-note');
+    var modeEl = document.getElementById('pay-mode');
+    var referenceEl = document.getElementById('pay-reference');
     var btn = document.getElementById('btn-pay');
 
     var amount = parseFloat(amountEl.value);
@@ -711,6 +814,8 @@ async function recordPayment() {
     fd.append('amount', amount);
     fd.append('date', SCAN_TODAY);
     fd.append('description', noteEl.value.trim());
+    fd.append('payment_mode', modeEl.value);
+    fd.append('reference_no', referenceEl.value.trim());
 
     btn.disabled = true;
     try {
@@ -730,6 +835,13 @@ async function recordPayment() {
             // the same kind.
             amountEl.value = '';
             noteEl.value = '';
+            referenceEl.value = '';
+            if (data.transaction && data.transaction.needs_ack
+                    && data.transaction.id) {
+                showPaymentAck(data.transaction);
+            } else {
+                hidePaymentAck();
+            }
         }
     } catch (err) {
         toast({{ _('No connection — the payment was not recorded.')|tojson }}, 'error');

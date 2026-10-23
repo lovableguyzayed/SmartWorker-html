@@ -9,7 +9,11 @@
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 pt-6 rounded-b-3xl shadow-xl">
     <div class="flex items-center gap-3">
-        <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
+        {# worker_profile is not a screen a worker login may open, so for
+           them Back has to lead to their own home instead of a page that
+           would bounce them there anyway. #}
+        <a href="{{ url_for('worker_home') if current_user.is_worker
+                   else url_for('worker_profile', worker_id=worker.id) }}"
            class="tap-target w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shrink-0"
            aria-label="{{ _('Back') }}">
             <i class="fa-solid fa-arrow-left"></i>
@@ -28,6 +32,18 @@
             · {{ _('Taken') }} {{ statement.drawn|money }}
             · {{ _('Settled') }} {{ statement.settled|money }}
         </div>
+        {% if statement.oldest_open %}
+        {# How far back the arrears go, which is the first thing asked once
+           the total is known. #}
+        <div class="text-xs opacity-90 mt-2 pt-2 border-t border-white/20">
+            <i class="fa-solid fa-clock-rotate-left mr-1"></i>
+            {{ _('Unpaid since') }}
+            {{ _(statement.oldest_open.split(' ')[0]) }} {{ statement.oldest_open.split(' ')[1] }}
+            {% if statement.open_months > 1 %}
+            · {{ statement.open_months }} {{ _('months open') }}
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 </header>
 
@@ -50,9 +66,20 @@
             <span class="shrink-0 text-xs font-medium px-2 py-1 rounded-lg bg-green-100 text-green-800">
                 {{ _('Settled') }}
             </span>
-            {% else %}
+            {% elif row.settled or row.drawn %}
+            {# Something was paid and something is still owed. Calling this
+               "Not paid" told a worker who had been given half their wages
+               that they had been given nothing. #}
+            <span class="shrink-0 text-xs font-medium px-2 py-1 rounded-lg bg-blue-100 text-blue-900">
+                {{ _('Part paid') }}
+            </span>
+            {% elif row.earned %}
             <span class="shrink-0 text-xs font-medium px-2 py-1 rounded-lg bg-amber-100 text-amber-900">
                 {{ _('Not paid') }}
+            </span>
+            {% else %}
+            <span class="shrink-0 text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-600">
+                {{ _('No work') }}
             </span>
             {% endif %}
         </div>
@@ -73,16 +100,6 @@
                 <dt class="text-gray-600">{{ _('Taken during the month') }}</dt>
                 <dd class="font-medium text-red-700">− {{ row.drawn|money }}</dd>
             </div>
-            {# Each draw by name and date: "where did my money go" is the
-               second question after "how much is left". #}
-            {% for t in row.draws %}
-            <div class="flex items-center justify-between gap-2 pl-4 text-xs text-gray-500">
-                <dt class="min-w-0 truncate">
-                    {{ t.date|ldate('%d %b') }} · {{ _(t.description or '') }}
-                </dt>
-                <dd class="shrink-0">− {{ t.amount|money }}</dd>
-            </div>
-            {% endfor %}
             {% endif %}
             {% if row.settled %}
             <div class="flex items-center justify-between gap-2">
@@ -90,6 +107,77 @@
                 <dd class="font-medium text-red-700">− {{ row.settled|money }}</dd>
             </div>
             {% endif %}
+            {% if row.from_payroll %}
+            <div class="flex items-center justify-between gap-2 pl-4 text-xs text-gray-500">
+                <dt class="min-w-0 truncate">{{ _('Settled on the payroll screen') }}</dt>
+                <dd class="shrink-0">− {{ row.from_payroll|money }}</dd>
+            </div>
+            {% endif %}
+
+            {# Every amount by name, date and how it was handed over. "Where
+               did my money go" is the second question after "how much is
+               left", and under oldest-dues-first the answer has to say that
+               an amount paid in October was used to clear this month. #}
+            {% for d in row.draws %}
+            <div class="pl-4 text-xs text-gray-500 border-l-2 border-gray-100">
+                <div class="flex items-center justify-between gap-2">
+                    <dt class="min-w-0">
+                        <span class="font-medium text-gray-700">
+                            {{ _(type_labels.get(d.txn.txn_type, d.txn.txn_type)) }}
+                        </span>
+                        · {{ d.txn.date|ldate('%d %b') }}
+                        {% if d.txn.payment_mode %}
+                        · {{ _(mode_labels.get(d.txn.payment_mode, '')) }}
+                        {% endif %}
+                    </dt>
+                    <dd class="shrink-0">− {{ d.applied|money }}</dd>
+                </div>
+                {% if d.carried %}
+                <div class="text-[11px] text-amber-800 mt-0.5">
+                    <i class="fa-solid fa-arrow-turn-up fa-rotate-90 mr-1"></i>
+                    {{ _('Paid in') }}
+                    {{ _(month_names[d.month[1] - 1]) }} {{ d.month[0] }},
+                    {{ _('counted against this month') }}
+                    {% if d.applied != d.txn.amount %}
+                    ({{ _('part of') }} {{ d.txn.amount|money }})
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if d.txn.reference_no %}
+                <div class="text-[11px] text-gray-400 mt-0.5 break-all">
+                    {{ _('Ref') }} {{ d.txn.reference_no }}
+                </div>
+                {% endif %}
+                {# Whose word this entry is. An employer's record that a
+                   worker has not agreed to is worth saying out loud. #}
+                {% set ack = ack_of(d.txn) %}
+                {% if ack and ack.by_worker %}
+                <div class="text-[11px] text-green-700 mt-0.5">
+                    <i class="fa-solid fa-circle-check mr-1"></i>{{ _('Confirmed received') }}
+                </div>
+                {% elif ack %}
+                <div class="text-[11px] text-gray-500 mt-0.5">
+                    <i class="fa-solid fa-user-check mr-1"></i>{{ _('Handed over in person') }}
+                    {% if ack.name %}· {{ ack.name }}{% endif %}
+                </div>
+                {% elif may_ack(d.txn) %}
+                <form method="POST" class="mt-1"
+                      action="{{ url_for('transactions_acknowledge', txn_id=d.txn.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="redirect_to"
+                           value="{{ url_for('worker_account', worker_id=worker.id) }}">
+                    <button type="submit"
+                            class="tap-target text-[11px] font-medium text-accent underline">
+                        {{ _('Confirm I received this') }}
+                    </button>
+                </form>
+                {% else %}
+                <div class="text-[11px] text-amber-700 mt-0.5">
+                    <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ _('Not yet confirmed') }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
         </dl>
 
         <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
@@ -105,5 +193,15 @@
         </a>
     </section>
     {% endfor %}
+
+    {% if statement.rows %}
+    {# Which house rule produced these figures. The same money gives
+       different month-by-month answers under the two rules, so a statement
+       that does not say which one it used cannot be checked. #}
+    <p class="text-xs text-gray-500 px-1 leading-relaxed">
+        <i class="fa-solid fa-circle-info mr-1"></i>
+        {{ _(allocation_labels[statement.allocation].help) }}
+    </p>
+    {% endif %}
 </main>
 {% endblock %}

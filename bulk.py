@@ -21,7 +21,7 @@ from flask import jsonify, request
 from flask_login import current_user, login_required
 
 from app import app, db
-from timeutil import today_ist
+from timeutil import now_ist, today_ist
 from models import (AttendanceRecord, ClosureDay, Department, LeaveAdjustment,
                     Notification, PayrollRecord, Project, ProjectAssignment,
                     Site, User, WorkTask, Worker, WorkerModification,
@@ -320,11 +320,15 @@ def _bulk_payroll(action):
                 net_pay=row['net_pay'],
             )
             if record:
+                # Re-generating must not silently un-pay a record money has
+                # already gone out against — a part-paid month included, or
+                # a rule change could put its net below what was handed over
+                # and the month would read as overpaid.
+                if record.settled_amount > 0:
+                    continue
                 for key, value in fields.items():
                     setattr(record, key, value)
-                # Re-generating must not silently un-pay a settled record.
-                if record.status != 'paid':
-                    record.status = 'pending'
+                record.status = 'pending'
             else:
                 db.session.add(PayrollRecord(worker_id=worker.id, month=month,
                                              year=year, status='pending', **fields))
@@ -341,7 +345,14 @@ def _bulk_payroll(action):
             return _reply([_msg('Those workers have no saved payroll for this month — '
                                 'generate it first.', 'error')], success=False)
         for row in rows:
+            # The money has to move with the status. Setting one without the
+            # other leaves a row whose badge says Pending above a figure
+            # saying ₹11,500 was paid, and the running account believes the
+            # figure.
+            row.paid_amount = (round(float(row.net_pay or 0), 2)
+                               if action == 'paid' else 0.0)
             row.status = action
+            row.finalized_at = now_ist() if action == 'paid' else None
         db.session.commit()
         label = 'paid' if action == 'paid' else 'pending'
         return _reply([_msg(f'Marked {len(rows)} {_plural(len(rows), "record")} {label}.')])

@@ -143,6 +143,18 @@ class CompanySetting(db.Model):
     gst_number = db.Column(db.String(50), nullable=True)
     registration_number = db.Column(db.String(50), nullable=True)
     logo = db.Column(db.Text, nullable=True)  # static path or data URI
+
+    #: Where money handed over lands in a worker's running account.
+    #:
+    #:   'month'        against the month it is dated in
+    #:   'oldest_first' against the oldest month still owed, spilling forward
+    #:
+    #: Both are real house rules and they give different answers. A crusher
+    #: that owes August and pays ₹20,000 in October is usually clearing
+    #: August; a contractor paying a month at a time is not. Defaults to
+    #: 'month', which is what the app did before the choice existed.
+    dues_allocation = db.Column(db.String(20), default='month')
+
     updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
 class Site(db.Model):
@@ -267,6 +279,18 @@ class LeaveAdjustment(db.Model):
 
 TRANSACTION_EARNING_TYPES = ('bonus', 'extra_payment', 'incentive', 'refreshment')
 TRANSACTION_DEDUCTION_TYPES = ('advance', 'loan', 'cash_advance', 'recovery', 'deduction')
+#: Wages handed over. A third kind, because it is neither of the other two.
+#: An advance is money taken before it is earned, so the month it belongs to
+#: is short by that much and the payslip rightly deducts it. Wages paid are
+#: the month's own money arriving, which does not change what the month was
+#: worth — it changes what is still owed. Settling a month used to have to be
+#: entered as an "advance", which came out right to the rupee and printed the
+#: wrong word on the payslip.
+TRANSACTION_SETTLEMENT_TYPES = ('wage_payment',)
+
+#: How the money was handed over. Empty on every row written before this
+#: existed, so nothing may assume it is set.
+PAYMENT_MODES = ('cash', 'upi', 'bank', 'cheque')
 
 class WorkerTransaction(db.Model):
     __tablename__ = 'worker_transactions'
@@ -275,7 +299,8 @@ class WorkerTransaction(db.Model):
     account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     txn_type = db.Column(db.String(30), nullable=False)
-    # advance, loan, cash_advance, recovery, deduction, bonus, extra_payment, incentive, refreshment
+    # advance, loan, cash_advance, recovery, deduction, bonus, extra_payment,
+    # incentive, refreshment, wage_payment
     amount = db.Column(db.Float, nullable=False)
     date = db.Column(db.Date, nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -284,11 +309,41 @@ class WorkerTransaction(db.Model):
     created_at = db.Column(db.DateTime, default=now_ist)
     updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
+    #: cash / upi / bank / cheque, and the UTR or cheque number. The app knew
+    #: to the rupee what had been handed over and nothing about how, so a row
+    #: could not be matched against a bank statement.
+    payment_mode = db.Column(db.String(20), nullable=True)
+    reference_no = db.Column(db.String(60), nullable=True)
+
+    #: The worker's own confirmation that the money reached them. Until this
+    #: is stamped the row is one person's word; the employer wrote it and the
+    #: worker has not agreed to it.
+    acknowledged_at = db.Column(db.DateTime, nullable=True)
+    acknowledged_by = db.Column(db.Integer, nullable=True)
+
     worker = db.relationship('Worker', backref='transactions')
 
     @property
     def is_earning(self):
         return self.txn_type in TRANSACTION_EARNING_TYPES
+
+    @property
+    def is_deduction(self):
+        """Money taken against wages not yet paid.
+
+        Not the same as "not an earning": a wage payment is money out and
+        still not a deduction, and anything summing deductions has to ask
+        this rather than negate is_earning.
+        """
+        return self.txn_type in TRANSACTION_DEDUCTION_TYPES
+
+    @property
+    def is_settlement(self):
+        return self.txn_type in TRANSACTION_SETTLEMENT_TYPES
+
+    @property
+    def is_acknowledged(self):
+        return self.acknowledged_at is not None
 
 class Notification(db.Model):
     __tablename__ = 'notifications'
@@ -512,8 +567,17 @@ class PayrollRecord(db.Model):
     gross_pay = db.Column(db.Float, nullable=False)
     deductions = db.Column(db.Float, default=0)
     net_pay = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, paid
+    status = db.Column(db.String(20), default='pending')  # pending, partial, paid
     created_at = db.Column(db.DateTime, default=now_ist)
+
+    #: How much of this month has actually been handed over. Status used to be
+    #: the only answer and it has two values, so a month was either settled in
+    #: full or not at all — there was nowhere to say that ₹10,000 of a ₹23,000
+    #: September had been paid, which on a site is the normal case.
+    #:
+    #: NULL on every row written before this column existed. Read it through
+    #: settled_amount, never directly.
+    paid_amount = db.Column(db.Float, nullable=True)
 
     #: Frozen copy of the salary breakdown and the policy that produced it,
     #: written when the row is finalised. Payroll used to be recomputed live
@@ -525,6 +589,35 @@ class PayrollRecord(db.Model):
     finalized_at = db.Column(db.DateTime, nullable=True)
 
     worker = db.relationship('Worker', backref='payroll_records')
+
+    @property
+    def settled_amount(self):
+        """What has been handed over for this month, in rupees.
+
+        A row from before paid_amount existed carries the answer only in its
+        status, so a legacy 'paid' month means its whole net_pay was handed
+        over. Without this fallback, every month settled before the upgrade
+        would reopen as unpaid and the outstanding total would jump.
+        """
+        if self.paid_amount is not None:
+            return round(float(self.paid_amount), 2)
+        return round(float(self.net_pay or 0), 2) if self.status == 'paid' else 0.0
+
+    @property
+    def payment_state(self):
+        """'paid', 'partial' or 'pending', worked out from the money.
+
+        Derived rather than stored so the badge cannot disagree with the
+        figures beside it. The half-rupee tolerance is there because net_pay
+        is a float: 23000.0 settled against 22999.999999 should read Paid.
+        """
+        settled = self.settled_amount
+        due = round(float(self.net_pay or 0), 2)
+        if settled <= 0.005:
+            return 'pending'
+        if settled + 0.005 >= due:
+            return 'paid'
+        return 'partial'
 
 
 class SalaryPolicy(db.Model):

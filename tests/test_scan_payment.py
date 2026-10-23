@@ -128,10 +128,25 @@ try:
             [...document.querySelectorAll('.res-actions button')].length > 0"""),
             True)
         check('payment is offered under it', hidden('#result-pay'), False)
-        # Both directions, because an advance and a bonus move pay opposite
-        # ways and a single flat list invites picking the wrong one.
-        check('the two directions are separated', pg.evaluate("""() =>
-            document.querySelectorAll('#pay-type optgroup').length"""), 2)
+        # Three groups, because money moves three different ways here and a
+        # single flat list invites picking the wrong one. An advance comes
+        # off the month's pay, a bonus is added to it, and wages paid change
+        # neither — they settle what is already owed. The third was the
+        # whole reason the wage_payment type was added: before it, settling
+        # wages had to be entered as an advance, which came off the month as
+        # well and made October read as ₹3,000 instead of ₹23,000.
+        check('the three directions are separated', pg.evaluate("""() =>
+            document.querySelectorAll('#pay-type optgroup').length"""), 3)
+        check('and settling wages is the first offered', pg.evaluate("""() =>
+            document.querySelector('#pay-type option').value"""),
+            'wage_payment')
+        # How the money moved, and what it can be matched against in a bank
+        # statement. Cash is preselected because at a crusher gate it nearly
+        # always is, and a field that must be set every time gets set wrongly.
+        check('how it was paid is asked for', pg.evaluate("""() =>
+            document.getElementById('pay-mode').value"""), 'cash')
+        check('and a reference can be given', pg.evaluate("""() =>
+            !!document.getElementById('pay-reference')"""), True)
         check('every type is selectable', pg.evaluate("""() =>
             document.querySelectorAll('#pay-type option').length > 4"""), True)
 

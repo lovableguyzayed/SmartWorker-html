@@ -296,6 +296,81 @@ TRANSLATIONS = {
         'Extra Payment': 'अतिरिक्त भुगतान',
         'Incentive': 'प्रोत्साहन राशि',
         'Refreshment Allowance': 'नाश्ते का भत्ता',
+        # Wages themselves being paid, as against an advance on them. The
+        # distinction is the whole point of the type, so the Hindi has to
+        # carry it too: पेशगी is money taken early, this is the मज़दूरी.
+        'Wages Paid': 'मज़दूरी दी गई',
+        # 'Deducted from pay' and 'Added to pay', the other two optgroups,
+        # are already in this table further down.
+        'Settles wages owed': 'बाक़ी मज़दूरी चुकाता है',
+        # PAYMENT_MODE_LABELS in routes.py
+        'Cash': 'नक़द',
+        'UPI': 'UPI',
+        'Bank Transfer': 'बैंक ट्रांसफ़र',
+        'Cheque': 'चेक',
+        'Paid by': 'कैसे दिया',
+        'Reference': 'संदर्भ',
+        'Ref': 'संदर्भ',
+        'UTR / cheque no.': 'UTR / चेक नं.',
+        'Not recorded': 'दर्ज नहीं',
+        'Advances': 'पेशगी',
+        'Wages Paid This Month': 'इस महीने दी गई मज़दूरी',
+        'Wages paid this month': 'इस महीने दी गई मज़दूरी',
+        'Wages paid': 'दी गई मज़दूरी',
+        "Wages Paid does not change the month's net — it records money handed over against what is owed.":
+            'मज़दूरी दी गई से महीने की रक़म नहीं बदलती — यह सिर्फ़ दर्ज करता है कि '
+            'बाक़ी के बदले कितना पैसा दिया गया।',
+        # Part settlement — payroll screen and the running account
+        'Part Paid': 'आधा दिया',
+        'Part paid': 'आधा दिया',
+        'No work': 'काम नहीं',
+        'Record a payment': 'भुगतान दर्ज करें',
+        'Record a part payment for': 'इनके लिए आंशिक भुगतान दर्ज करें',
+        'Total paid for this month (₹)': 'इस महीने का कुल दिया गया (₹)',
+        'still owed': 'अभी बाक़ी',
+        # The running account and the company-wide dues screen
+        'Wages Owed': 'बाक़ी मज़दूरी',
+        'Total still owed': 'कुल बाक़ी',
+        'workers waiting': 'मज़दूरों का बाक़ी है',
+        'Unpaid since': 'इस महीने से बाक़ी',
+        'months open': 'महीने बाक़ी',
+        'since': 'से',
+        'Open account': 'खाता खोलें',
+        'Payment details on file': 'भुगतान की जानकारी दर्ज है',
+        'No bank or UPI on file': 'बैंक या UPI दर्ज नहीं',
+        'of the workers owed money have no bank account or UPI id on file.':
+            'मज़दूरों का पैसा बाक़ी है लेकिन उनका बैंक खाता या UPI दर्ज नहीं है।',
+        'Nothing is owed. Every month is settled.':
+            'कुछ बाक़ी नहीं। हर महीना चुकता है।',
+        'Showing the first': 'पहले',
+        'workers by joining date. The totals below cover only those.':
+            'मज़दूर दिखाए जा रहे हैं (भर्ती की तारीख़ से)। नीचे का जोड़ इन्हीं का है।',
+        'Settled on the payroll screen': 'तनख़्वाह स्क्रीन से चुकाया गया',
+        'Paid in': 'दिया गया',
+        'counted against this month': 'इस महीने के बाक़ी में गिना गया',
+        'part of': 'इसमें से',
+        'See what is owed': 'देखें क्या बाक़ी है',
+        'How payments are counted': 'भुगतान कैसे गिना जाए',
+        'When a worker is owed several months and is given an amount, this decides which month it clears. It changes nothing about what anyone is owed in total — only which month shows the arrears.':
+            'जब किसी मज़दूर के कई महीने बाक़ी हों और उसे कोई रक़म दी जाए, तो यह तय '
+            'करता है कि वह किस महीने का हिसाब चुकाएगी। किसी का कुल बाक़ी इससे नहीं '
+            'बदलता — सिर्फ़ यह बदलता है कि बाक़ी किस महीने पर दिखे।',
+        'Against the month it was paid in': 'जिस महीने में दिया, उसी महीने में',
+        'An amount handed over in October counts against October. Suits a business that settles one month at a time.':
+            'अक्टूबर में दी गई रक़म अक्टूबर के हिसाब में जाएगी। उस कारोबार के लिए ठीक '
+            'है जो एक-एक महीना चुकाता है।',
+        'Against the oldest unpaid month first': 'सबसे पुराने बाक़ी महीने में पहले',
+        'An amount handed over in October clears August first, then September. Suits a business that pays off arrears as cash allows.':
+            'अक्टूबर में दी गई रक़म पहले अगस्त का हिसाब चुकाएगी, फिर सितम्बर का। उस '
+            'कारोबार के लिए ठीक है जो पैसा आने पर पुराना बाक़ी चुकाता है।',
+        # Confirming money was received
+        'Confirm I received this': 'पुष्टि करें कि यह मुझे मिला',
+        'Confirmed received': 'मिलने की पुष्टि हुई',
+        'Confirmed received by the worker': 'मज़दूर ने मिलने की पुष्टि की',
+        'Handed over in person': 'सामने दिया गया',
+        'Not yet confirmed': 'अभी पुष्टि नहीं हुई',
+        'Worker confirms receipt': 'मज़दूर मिलने की पुष्टि करता है',
+        'My Account': 'मेरा खाता',
         # Stored enum values shown with .title() in templates
         'Holiday': 'त्योहार/छुट्टी',
         'Weather': 'मौसम',
@@ -1421,6 +1496,19 @@ FLASH_MESSAGES = {
         'Transaction amount must be greater than zero.':
             'लेन-देन की रक़म शून्य से ज़्यादा होनी चाहिए।',
         'Transaction deleted permanently.': 'लेन-देन हमेशा के लिए हटा दिया गया।',
+        # Confirming a payment, and part-settling a month
+        'Receipt confirmed.': 'मिलने की पुष्टि दर्ज हो गई।',
+        'That payment was already confirmed.':
+            'उस भुगतान की पुष्टि पहले ही हो चुकी है।',
+        'That entry was cancelled, so there is nothing to confirm.':
+            'वह लेन-देन रद्द कर दिया गया था, पुष्टि करने के लिए कुछ नहीं है।',
+        'Enter how much has been paid for this month.':
+            'इस महीने का कितना दिया गया है, वह लिखें।',
+        'A reference should be 3 to 60 letters, digits, - or / — the UTR or cheque number from the bank.':
+            'संदर्भ 3 से 60 अक्षर, अंक, - या / का होना चाहिए — बैंक से मिला UTR '
+            'या चेक नंबर।',
+        'Choose how payments should be counted.':
+            'चुनें कि भुगतान कैसे गिना जाए।',
         'A check-out needs a check-in time as well.':
             'जाने का समय दर्ज करने के लिए आने का समय भी चाहिए।',
         'Check-out must be later than check-in.':
@@ -1544,6 +1632,25 @@ _FLASH_PATTERNS_SOURCE = {
          r'\1 की मज़दूरी अभी तय नहीं है, इसलिए नियत होने तक वेतन में ₹0 दिखेगा।'),
         (r'^(.+?) now follows the company salary policy\.$',
          r'\1 अब कंपनी के तनख़्वाह नियम पर है।'),
+        # Part-settling a month. Three shapes rather than one with a clause
+        # plugged in, because a message whose middle can be any of three
+        # things has no shape to match on.
+        (r'^(.+?): settled in full\.$', r'\1: पूरा चुकता हो गया।'),
+        # Loose captures for the amounts: these have to match a real message
+        # ("₹10,000 paid") and the placeholder shape the flash test feeds in.
+        (r'^(.+?): (.+?) paid, (.+?) still owed\.$',
+         r'\1: \2 दिया गया, \3 अभी बाक़ी।'),
+        (r'^(.+?): reopened, nothing recorded as paid\.$',
+         r'\1: फिर से खोल दिया गया, कुछ भी दिया हुआ दर्ज नहीं।'),
+        (r'^That is more than the month is worth \((.+?)\)\. '
+         r'Record the extra as an advance instead\.$',
+         r'यह महीने की रक़म (\1) से ज़्यादा है। बाक़ी को पेशगी के रूप में दर्ज करें।'),
+        # Confirming in person, which is the employer's word and not the
+        # worker's — the Hindi keeps that distinction.
+        (r'^Marked as handed over to (.+?) in person\.$',
+         r'\1 को सामने दिया गया, यह दर्ज हो गया।'),
+        (r'^Payments are now counted (.+?)\.$',
+         r'भुगतान अब \1 गिना जाएगा।'),
     ],
 }
 
