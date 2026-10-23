@@ -130,13 +130,23 @@ try:
         pg.fill('#ep-quick-id', before['code'])
         pg.click('#ep-quick-btn')
         pg.wait_for_timeout(2600)
+        # A check-in after the shift start plus grace is Late, not Present,
+        # and correctly so — this worker starts at 09:00, so pinning the
+        # word 'Present' made the test pass only before 09:10 IST and call
+        # the app broken for the rest of the day. What is under test is
+        # that the report follows the editor without a reload and that the
+        # server agrees, so that is what is asserted; the status only has
+        # to be one a check-in can legitimately produce.
+        CHECKED_IN = ('Present', 'Late')
+        live = pg.evaluate(READ, WHO)['badge']
         check('after: the report followed, with no reload',
-              pg.evaluate(READ, WHO)['badge'], 'Present')
+              live in CHECKED_IN, True)
+        check('and it is no longer unmarked', live != 'Not marked', True)
 
         pg.reload(wait_until='domcontentloaded')
         pg.wait_for_timeout(2600)
         check('and the server agrees after a reload',
-              pg.evaluate(READ, WHO)['badge'], 'Present')
+              pg.evaluate(READ, WHO)['badge'], live)
         br.close()
 finally:
     server.terminate()
