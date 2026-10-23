@@ -117,7 +117,16 @@ def build():
     db.session.add(m.CompanySetting(
         account_id=acct.id, name=COMPANY,
         address='Kotdwar Road, Haridwar, Uttarakhand',
-        phone=ADMIN_PHONE, email=ADMIN_EMAIL))
+        phone=ADMIN_PHONE, email=ADMIN_EMAIL,
+        # Oldest dues first, because that is how this business actually
+        # pays: nothing had been settled since August, and the ₹20,000
+        # handed over on 22 October is the first of those wages arriving,
+        # not an advance on October. Counted against October it would leave
+        # August untouched and October nearly clear, which is wrong twice.
+        # The column's own default stays 'month' for every other database,
+        # so nobody's existing figures move; this is one account's house
+        # rule, and Settings flips it in a tap.
+        dues_allocation='oldest_first'))
 
     for name in DEPARTMENTS:
         db.session.add(m.Department(account_id=acct.id, name=name,

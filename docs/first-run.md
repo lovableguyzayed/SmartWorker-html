@@ -57,20 +57,27 @@ backup if anything on there matters.
 
 ## The figures to expect
 
-Javed's running account, under either house rule:
+The account is set up to clear the **oldest unpaid month first**, because
+nothing had been settled since August and the ₹20,000 handed over on
+22 October is the first of those wages arriving, not an advance on October.
+Javed's running account therefore reads:
 
 | Month | Earned | Wages paid | Still owed |
 | --- | --- | --- | --- |
-| August 2026 | ₹22,125 | — | ₹22,125 |
-| September 2026 | ₹23,000 | — | ₹45,125 |
-| October 2026 | ₹23,000 | ₹20,000 | **₹48,125** |
+| August 2026 | ₹22,125 | ₹20,000 | ₹2,125 |
+| September 2026 | ₹23,000 | — | ₹25,125 |
+| October 2026 | ₹23,000 | — | **₹48,125** |
 
 August is 25 working days of a ₹23,000/26 month. Switching **Settings →
-How payments are counted** to *oldest unpaid month first* moves the
-₹20,000 onto August — it then reads ₹2,125 outstanding and October carries
-the whole ₹23,000. The total is ₹48,125 either way: the setting decides
+How payments are counted** to *the month it was paid in* moves the ₹20,000
+onto October — August then shows its whole ₹22,125 and October reads
+₹3,000 for the month. The total is ₹48,125 either way: the setting decides
 which month shows the arrears, never how much there is. Nothing in the
 database changes, so it is safe to switch during a demo and switch back.
+
+The column's own default is `month`, which is what the app did before the
+choice existed, so no other database's figures move. Only this account is
+set deliberately.
 
 ## If you would rather not have the route at all
 

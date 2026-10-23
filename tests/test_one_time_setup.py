@@ -141,8 +141,9 @@ with app.app_context():
     out['accounts'] = m.Account.query.count()
     out['workers'] = m.Worker.query.count()
     out['attendance'] = m.AttendanceRecord.query.count()
-    out['company'] = (m.CompanySetting.query.first().name
-                      if m.CompanySetting.query.first() else None)
+    setting = m.CompanySetting.query.first()
+    out['company'] = setting.name if setting else None
+    out['allocation'] = setting.dues_allocation if setting else None
     admin = m.User.query.filter_by(role='admin').first()
     out['admin'] = admin.username if admin else None
     # The money that prompted all of this: wages paid, not an advance.
@@ -180,6 +181,11 @@ with tempfile.TemporaryDirectory() as tmp:
         check('the wages paid are recorded as wages',
               got['wage_payments'], [9000.0, 20000.0])
         check('with how the money moved', got['modes'], ['cash', 'upi'])
+        # This business had settled nothing since August, so money handed
+        # over clears the oldest month. The column default stays 'month'
+        # everywhere else; this account is set deliberately.
+        check('and payments clear the oldest month first',
+              got['allocation'], 'oldest_first')
 
 check('this database is where it started', counts(), BEFORE)
 
