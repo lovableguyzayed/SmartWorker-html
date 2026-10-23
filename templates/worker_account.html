@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ worker.full_name }} — {{ _('Account') }}{% endblock %}
+
+{# The running account, which the monthly screens cannot show. A month that
+   closed without being paid has to still be visible months later, and every
+   amount drawn since has to count against it. The figure at the top is the
+   one a worker asks for by name. #}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 pt-6 rounded-b-3xl shadow-xl">
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
+           class="tap-target w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shrink-0"
+           aria-label="{{ _('Back') }}">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="min-w-0">
+            <h1 class="text-xl font-semibold truncate">{{ _('Account') }}</h1>
+            <div class="text-sm opacity-90 truncate">{{ worker.full_name }} · {{ worker.worker_id }}</div>
+        </div>
+    </div>
+
+    <div class="mt-4 bg-white/15 border border-white/25 rounded-2xl p-4">
+        <div class="text-xs uppercase tracking-wide opacity-80">{{ _('Still owed') }}</div>
+        <div class="text-3xl font-bold mt-1">{{ statement.outstanding|money }}</div>
+        <div class="text-xs opacity-90 mt-2">
+            {{ _('Earned') }} {{ statement.earned|money }}
+            · {{ _('Taken') }} {{ statement.drawn|money }}
+            · {{ _('Settled') }} {{ statement.settled|money }}
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-8 space-y-4">
+    {% if not statement.rows %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 text-center">
+        <p class="text-sm text-gray-500">
+            {{ _('Nothing to show yet — this worker has no completed month.') }}
+        </p>
+    </section>
+    {% endif %}
+
+    {% for row in statement.rows %}
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+            <h2 class="text-base font-semibold text-gray-800 min-w-0 truncate">
+                {{ _(row.label.split(' ')[0]) }} {{ row.year }}
+            </h2>
+            {% if row.paid %}
+            <span class="shrink-0 text-xs font-medium px-2 py-1 rounded-lg bg-green-100 text-green-800">
+                {{ _('Settled') }}
+            </span>
+            {% else %}
+            <span class="shrink-0 text-xs font-medium px-2 py-1 rounded-lg bg-amber-100 text-amber-900">
+                {{ _('Not paid') }}
+            </span>
+            {% endif %}
+        </div>
+
+        <dl class="text-sm space-y-2">
+            {% if not loop.first %}
+            <div class="flex items-center justify-between gap-2 text-gray-500">
+                <dt>{{ _('Brought forward') }}</dt>
+                <dd>{{ row.opening|money }}</dd>
+            </div>
+            {% endif %}
+            <div class="flex items-center justify-between gap-2">
+                <dt class="text-gray-600">{{ _('Earned') }}</dt>
+                <dd class="font-medium text-gray-800">+ {{ row.earned|money }}</dd>
+            </div>
+            {% if row.drawn %}
+            <div class="flex items-center justify-between gap-2">
+                <dt class="text-gray-600">{{ _('Taken during the month') }}</dt>
+                <dd class="font-medium text-red-700">− {{ row.drawn|money }}</dd>
+            </div>
+            {# Each draw by name and date: "where did my money go" is the
+               second question after "how much is left". #}
+            {% for t in row.draws %}
+            <div class="flex items-center justify-between gap-2 pl-4 text-xs text-gray-500">
+                <dt class="min-w-0 truncate">
+                    {{ t.date|ldate('%d %b') }} · {{ _(t.description or '') }}
+                </dt>
+                <dd class="shrink-0">− {{ t.amount|money }}</dd>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% if row.settled %}
+            <div class="flex items-center justify-between gap-2">
+                <dt class="text-gray-600">{{ _('Wages paid out') }}</dt>
+                <dd class="font-medium text-red-700">− {{ row.settled|money }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+
+        <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+            <span class="text-sm font-semibold text-gray-800">{{ _('Carried forward') }}</span>
+            <span class="text-base font-bold {{ 'text-amber-800' if row.closing else 'text-green-700' }}">
+                {{ row.closing|money }}
+            </span>
+        </div>
+
+        <a href="{{ url_for('payroll_slip', worker_id=worker.id, month=row.month, year=row.year) }}"
+           class="tap-target mt-3 flex items-center justify-center gap-2 text-sm text-accent font-medium">
+            <i class="fa-solid fa-file-invoice"></i>{{ _('Open payslip') }}
+        </a>
+    </section>
+    {% endfor %}
+</main>
+{% endblock %}

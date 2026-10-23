@@ -24,6 +24,7 @@ import salary
 import i18n
 import money
 import excel
+import ledger
 from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
@@ -1330,6 +1331,48 @@ def workers():
                          has_prev=page > 1,
                          shown_from=start + 1 if workers_list else 0,
                          shown_to=start + len(workers_list))
+
+def _ledger_month(worker, year, month, records):
+    """One month's figures for the ledger, from the payroll code itself.
+
+    Deliberately the same calculate_pay_summary the payroll screen uses:
+    a statement that did its own arithmetic could disagree with the payslip
+    it is summarising, and the worker would be right to trust neither.
+    """
+    start = date(year, month, 1)
+    end = date(year, month, _cal.monthrange(year, month)[1])
+    summary = calculate_pay_summary(worker, records, start, end)
+    gross = round(summary['base_pay'] + summary['overtime_pay']
+                  + summary['transaction_earnings'], 2)
+    deductions = round(summary['deductions']
+                       + summary['transaction_deductions'], 2)
+    return gross, deductions, summary['estimated_pay']
+
+
+def worker_ledger(worker, upto=None):
+    """The running account for one worker. See ledger.py for the rules."""
+    return ledger.build(worker, upto=upto or today_ist(),
+                        compute_month=_ledger_month)
+
+
+@app.route('/worker/<int:worker_id>/account')
+@login_required
+def worker_account(worker_id):
+    """What this worker has earned, drawn and is still owed.
+
+    Separate from the payslip on purpose. A payslip answers "what was this
+    month worth"; this answers "how much is still mine", which is the
+    question asked at the gate and the one an unpaid month makes impossible
+    to answer from the monthly screens alone.
+    """
+    worker = tenant_get_or_404(Worker, worker_id)
+    if not worker_visible_to_user(worker, current_user):
+        flash('Please contact the Administrator to make changes.', 'restricted')
+        return redirect(url_for('workers'))
+    statement = worker_ledger(worker)
+    return render_template('worker_account.html', worker=worker,
+                           statement=statement, today=today_ist())
+
 
 @app.route('/worker/<int:worker_id>')
 @login_required

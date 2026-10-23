@@ -607,6 +607,22 @@ TRANSLATIONS = {
         'Looking up %s…': '%s देख रहे हैं…',
         'No matching worker.': 'इस आईडी का कोई मज़दूर नहीं मिला।',
         'Enter or scan an employee ID.': 'मज़दूर की आईडी डालें या स्कैन करें।',
+        # The running account: what a worker has earned, what they have
+        # drawn, and what is still theirs.
+        'Still owed': 'अभी बाक़ी है',
+        'Taken': 'लिया',
+        'Settled': 'चुका दिया',
+        'Not paid': 'अभी नहीं दिया',
+        'Brought forward': 'पिछला बाक़ी',
+        'Carried forward': 'आगे बाक़ी',
+        'Taken during the month': 'इस महीने लिया',
+        'Wages paid out': 'मज़दूरी दी गई',
+        'Open payslip': 'पर्ची खोलें',
+        'Account & dues': 'हिसाब और बाक़ी',
+        'Earned, taken and still owed, month by month':
+            'हर महीने का कमाया, लिया और बाक़ी',
+        'Nothing to show yet — this worker has no completed month.':
+            'अभी कुछ नहीं है — इस मज़दूर का कोई पूरा महीना नहीं हुआ।',
         # Whether uploaded photos will still be there tomorrow.
         'Uploaded photos are not being kept':
             'अपलोड की गई तस्वीरें सेव नहीं हो रही हैं',
