@@ -1,15 +1,33 @@
 name: Build Android APK
 
 # Builds the Cordova Android APK on GitHub's runners (which can reach the
-# Android SDK servers). Run it manually from the Actions tab, then download
-# the APK from the run's "Artifacts" section.
+# Android SDK servers). Download the APK from the run's "Artifacts" section.
 #
 # Optional input `app_url`: your deployed server URL (e.g.
 # https://smartworker-xyz.onrender.com). The APK is a thin shell that loads
 # this URL, so set it to your live backend before building a shippable APK.
-# If left blank, the placeholder in config.xml is used (fine for a test build).
+# If left blank, the URL committed in config.xml and www/index.html is used.
+#
+# This used to run only when somebody pressed the button, and between
+# August and October nobody did — a gap nothing reported, because a build
+# that never starts cannot fail. It now runs on its own whenever something
+# that is actually inside the APK changes.
+#
+# The paths filter is the point of it. The APK is a shell around a remote
+# URL: templates, routes and the whole Flask app reach the phone from the
+# server, not from the package, so a push that touches them produces a
+# byte-identical APK. Only these files change what gets installed.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'www/**'
+      - 'config.xml'
+      - 'res/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
     inputs:
       app_url:
@@ -58,6 +76,9 @@ jobs:
         run: npm install -g cordova@12
 
       - name: Point the app at the deployed URL (if provided)
+        # On a push there are no inputs at all, so this reads as empty and
+        # the step is skipped — an automatic build uses the URL committed in
+        # the two files, which is the only URL it could know about.
         if: ${{ github.event.inputs.app_url != '' }}
         run: |
           URL="${{ github.event.inputs.app_url }}"
