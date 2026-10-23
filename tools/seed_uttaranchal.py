@@ -287,6 +287,8 @@ def build():
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument('--force', action='store_true',
+                    help='seed even a database that holds the test fixture')
     ap.add_argument('--apply', action='store_true',
                     help='actually delete and rebuild; without it, nothing '
                          'is written')
@@ -300,6 +302,18 @@ def main():
               '%d attendance row(s)'
               % (m.Account.query.count(), m.User.query.count(),
                  m.Worker.query.count(), m.AttendanceRecord.query.count()))
+        # The test suite signs in as demo@acme.test and expects the seed
+        # roster. Wiping that out of the development database makes every
+        # browser test fail on the login screen, which looks exactly like
+        # the application breaking and is not. Learned the hard way.
+        fixture = m.User.query.filter_by(username='demo').first()
+        if fixture and not args.force:
+            print('\nThis database holds the demo fixture the test suite '
+                  'runs against.\nSeeding it would make all 32 suites fail '
+                  'on the login screen.\n\nThis script is meant for the '
+                  'live database. If you really mean this one,\nback it up '
+                  'first and pass --force as well.')
+            return
         if not args.apply:
             print('\nThis would DELETE all of the above and rebuild the '
                   'database as\n%s with %d workers.'
