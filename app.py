@@ -199,6 +199,10 @@ def healthz():
         'commit': GIT_COMMIT,
         'branch': GIT_BRANCH,
         'started': STARTED_AT.strftime('%Y-%m-%d %H:%M:%S IST'),
+        # Columns that could not be added at startup. Reading a list built
+        # during boot, not asking the database — the probe still does no
+        # work. Empty is the normal answer and the one to expect.
+        'schema_warnings': SCHEMA_PATCH_FAILURES,
     }, 200
 
 # configure the database
@@ -374,7 +378,48 @@ def _relax_password_not_null():
         logging.info("password_hash NOT NULL relax skipped: %s", e)
 
 
+#: Patch failures, kept so /healthz can report them. A migration that did
+#: not apply leaves a feature broken in a way no screen explains, and a
+#: line in a log nobody reads is not telling anyone.
+SCHEMA_PATCH_FAILURES = []
+
+#: The DDL above is written in SQLite's spelling, which is what development
+#: runs on. Postgres, which is what production runs on, disagrees on two
+#: points, and both are silent until a column is genuinely missing on a
+#: table that already exists — so they survive every fresh database (where
+#: create_all builds the columns correctly from the models and no patch
+#: runs at all) and only fire on the live one.
+#:
+#:   DATETIME   Postgres has no such type. It is TIMESTAMP, and the error
+#:              is `type "datetime" does not exist`.
+#:   DEFAULT 0  A Postgres boolean will not take an integer default:
+#:              `column is of type boolean but default expression is of
+#:              type integer`.
+#:
+#: SQLAlchemy already knows this — DateTime() compiles to DATETIME on
+#: SQLite and TIMESTAMP WITHOUT TIME ZONE on Postgres — but these patches
+#: are hand-written strings and so get none of that.
+_POSTGRES_DDL = (
+    ('DATETIME', 'TIMESTAMP'),
+    ('BOOLEAN NOT NULL DEFAULT 0', 'BOOLEAN NOT NULL DEFAULT FALSE'),
+    ('BOOLEAN NOT NULL DEFAULT 1', 'BOOLEAN NOT NULL DEFAULT TRUE'),
+    ('BOOLEAN DEFAULT 0', 'BOOLEAN DEFAULT FALSE'),
+    ('BOOLEAN DEFAULT 1', 'BOOLEAN DEFAULT TRUE'),
+)
+
+
+def _portable_ddl(ddl, is_postgres):
+    """One column's DDL in the dialect that will actually receive it."""
+    if not is_postgres:
+        return ddl
+    for sqlite_spelling, postgres_spelling in _POSTGRES_DDL:
+        if ddl.upper().startswith(sqlite_spelling):
+            return postgres_spelling + ddl[len(sqlite_spelling):]
+    return ddl
+
+
 def _apply_schema_patches(inspector):
+    is_postgres = db.engine.url.drivername.startswith('postgresql')
     for table, patches in SCHEMA_PATCHES.items():
         if table not in inspector.get_table_names():
             continue
@@ -382,9 +427,22 @@ def _apply_schema_patches(inspector):
         for column, ddl in patches:
             if column in existing_columns:
                 continue
-            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
-            db.session.commit()
-            logging.info("Added %s column to %s", column, table)
+            statement = "ALTER TABLE %s ADD COLUMN %s %s" % (
+                table, column, _portable_ddl(ddl, is_postgres))
+            # One patch that cannot apply must not take the whole service
+            # down with it. Before this, a single bad ALTER raised straight
+            # out of startup, the worker died, and the platform reported a
+            # failed deploy — losing every screen to protect one column.
+            # The failure is recorded instead, and /healthz says so.
+            try:
+                db.session.execute(text(statement))
+                db.session.commit()
+                logging.info("Added %s column to %s", column, table)
+            except Exception as exc:
+                db.session.rollback()
+                SCHEMA_PATCH_FAILURES.append('%s.%s' % (table, column))
+                logging.error("Schema patch failed, continuing without it: "
+                              "%s — %s", statement, exc)
 
 def _drop_closure_date_unique_constraint(inspector):
     """Legacy SQLite databases created closure_days.date with UNIQUE, which
