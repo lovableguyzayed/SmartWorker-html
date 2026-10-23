@@ -610,6 +610,10 @@ TRANSLATIONS = {
         # The running account: what a worker has earned, what they have
         # drawn, and what is still theirs.
         'Still owed': 'अभी बाक़ी है',
+        # The itemised money on a payslip.
+        'Recorded by': 'दर्ज किया',
+        'Total taken this month': 'इस महीने कुल लिया',
+        'Total added this month': 'इस महीने कुल जुड़ा',
         'Taken': 'लिया',
         'Settled': 'चुका दिया',
         'Not paid': 'अभी नहीं दिया',

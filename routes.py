@@ -3121,42 +3121,13 @@ def payroll_slip(worker_id):
     except (TypeError, ValueError):
         month, year = today.month, today.year
 
-    _, days_in_month = _cal.monthrange(year, month)
-    start_date = date(year, month, 1)
-    end_date = date(year, month, days_in_month)
-
-    records = AttendanceRecord.query.filter(
-        AttendanceRecord.worker_id == worker.id,
-        AttendanceRecord.date >= start_date,
-        AttendanceRecord.date <= end_date,
-    ).order_by(AttendanceRecord.date).all()
-
-    calendar_data = {r.date.day: r for r in records}
-    att_summary = calculate_attendance_summary(records)
-    pay_summary = calculate_pay_summary(worker, records, start_date, end_date)
-
-    payroll_record = PayrollRecord.query.filter_by(
-        worker_id=worker.id, month=month, year=year
-    ).first()
-
-    return render_template(
-        'payroll_slip.html',
-        worker=worker,
-        month=month,
-        year=year,
-        month_name=MONTH_NAMES[month - 1],
-        start_date=start_date,
-        end_date=end_date,
-        days_in_month=days_in_month,
-        calendar_data=calendar_data,
-        att_summary=att_summary,
-        pay_summary=pay_summary,
-        salary_basis_label=salary.LABELS['salary_basis'].get(
-            (pay_summary.get('salary_breakdown') or {}).get('salary_basis', 'fixed'), 'Fixed days'),
-        payroll_record=payroll_record,
-        timedelta=timedelta,
-        date=ISTDate,
-    )
+    # One context builder for both payslips. This route used to assemble
+    # its own copy of the same dictionary, and the two drifted the moment
+    # anything was added to one of them — which is exactly how the itemised
+    # transaction block reached the worker's payslip and 500'd the
+    # administrator's.
+    return render_template('payroll_slip.html',
+                           **_worker_slip_context(worker, month, year))
 
 
 # ============================================================
@@ -3186,8 +3157,33 @@ def _worker_slip_context(worker, month, year):
             'Fixed days'),
         payroll_record=PayrollRecord.query.filter_by(
             worker_id=worker.id, month=month, year=year).first(),
+        # The money taken and added during the month, itemised. The slip
+        # used to show a single "transaction deductions" figure, which
+        # answers how much but never what for — and "what was that ₹20,000"
+        # is the question a worker brings to the office.
+        txn_labels=TRANSACTION_TYPE_LABELS,
+        txn_who=_transaction_recorders(pay_summary.get('transactions') or []),
+        txn_taken=sum(t.amount for t in (pay_summary.get('transactions') or [])
+                      if not t.is_earning),
+        txn_added=sum(t.amount for t in (pay_summary.get('transactions') or [])
+                      if t.is_earning),
         timedelta=timedelta, date=ISTDate,
     )
+
+
+def _transaction_recorders(transactions):
+    """Who entered each transaction, by transaction id.
+
+    A payment is a claim about cash changing hands, so the slip says who
+    made the claim. Looked up in one query rather than per row: a month of
+    daily advances would otherwise be a month of queries.
+    """
+    ids = {t.created_by for t in transactions if t.created_by}
+    if not ids:
+        return {}
+    names = {u.id: (u.full_name or u.username)
+             for u in User.query.filter(User.id.in_(ids)).all()}
+    return {t.id: names.get(t.created_by) for t in transactions}
 
 
 def _requested_month(default_date):
