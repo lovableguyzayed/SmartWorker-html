@@ -221,6 +221,58 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB upload limit
 
+
+def _check_database_driver(url):
+    """Say which driver is missing, before SQLAlchemy says it in forty lines.
+
+    A URL does not name a driver unless it is written postgresql+something.
+    Plain postgresql:// takes whatever SQLAlchemy's default is, and that
+    default changed in 2.1 from psycopg2 to psycopg — so a service that had
+    run for months died on a redeploy with
+
+        File ".../sqlalchemy/dialects/postgresql/psycopg.py", in import_dbapi
+            import psycopg
+        ModuleNotFoundError: No module named 'psycopg'
+
+    at the bottom of two full stack traces, with nothing in them saying
+    "the driver is not installed" or naming the one to install. This logs
+    that sentence and then gets out of the way: the real error still
+    follows, because swallowing it would be worse than the traceback.
+    """
+    try:
+        from sqlalchemy.engine.url import make_url
+        dialect = make_url(url).get_dialect()
+    except Exception:
+        return                      # not our business to validate the URL
+
+    # The dialect's own loader, not __import__(dialect.driver). The driver
+    # name is SQLAlchemy's label for it and is not always an importable
+    # module: SQLite's is "pysqlite" while the module is the standard
+    # library's sqlite3, so importing the name raised here and this guard
+    # announced a missing driver on every development run. Crying wolf in
+    # the logs is worse than the silence it replaced.
+    loader = getattr(dialect, 'import_dbapi', None) or getattr(
+        dialect, 'dbapi', None)
+    if loader is None:
+        return
+    try:
+        loader()
+    except ImportError:
+        logging.error(
+            "The database driver %r is not installed. %s resolves to it, "
+            "and requirements.txt must list it — psycopg[binary] for "
+            "'psycopg', psycopg2-binary for 'psycopg2'. Note that a plain "
+            "postgresql:// URL picks the driver by SQLAlchemy's version, "
+            "not by anything written here.",
+            getattr(dialect, 'driver', '?'), url.split('://')[0] + '://')
+    except Exception:
+        # Anything else is not this function's question to answer, and
+        # db.init_app is three lines away and will raise it properly.
+        return
+
+
+_check_database_driver(_db_url)
+
 # initialize the app with the extensions
 db.init_app(app)
 csrf.init_app(app)
