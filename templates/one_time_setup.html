@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>One-time setup</title>
+<!--
+  Deliberately not extending base.html. That template draws the navigation,
+  the service worker registration and the signed-in shell, none of which
+  belong on a page reached without an account and whose whole job is to be
+  read once, carefully, before something irreversible. Styles are inline for
+  the same reason: this page has to render correctly on a phone that has
+  never loaded the app, with nothing cached.
+-->
+<style>
+  :root {
+    --ink: #1f2937; --muted: #6b7280; --line: #e5e7eb;
+    --bg: #f8fafc; --card: #ffffff;
+    --warn-bg: #fef2f2; --warn-line: #fecaca; --warn-ink: #991b1b;
+    --ok-bg: #f0fdf4; --ok-line: #bbf7d0; --ok-ink: #166534;
+    --accent: #1e40af;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--bg);
+  }
+  main { max-width: 34rem; margin: 0 auto; }
+  h1 { font-size: 1.3rem; margin: 0.4rem 0 0.2rem; }
+  p { margin: 0.6rem 0; }
+  .sub { color: var(--muted); font-size: 0.86rem; margin-top: 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 16px; margin: 14px 0;
+  }
+  .warn {
+    background: var(--warn-bg); border-color: var(--warn-line);
+    color: var(--warn-ink);
+  }
+  .ok { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-ink); }
+  h2 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em;
+       color: var(--muted); margin: 0 0 0.6rem; }
+  .warn h2, .ok h2 { color: inherit; opacity: 0.75; }
+  dl { margin: 0; }
+  .row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 5px 0; border-bottom: 1px solid var(--line);
+  }
+  .row:last-child { border-bottom: 0; }
+  .warn .row { border-bottom-color: var(--warn-line); }
+  dt { color: inherit; }
+  dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+  ul { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+  li { margin: 0.25rem 0; }
+  label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
+  input[type=text] {
+    width: 100%; min-height: 2.9rem; padding: 0 0.8rem;
+    border: 1px solid #d1d5db; border-radius: 10px;
+    font-size: 1rem; font-family: inherit; color: var(--ink);
+    background: #fff;
+  }
+  input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  code {
+    background: #f1f5f9; border-radius: 5px; padding: 0.1rem 0.35rem;
+    font-size: 0.9em;
+  }
+  button {
+    width: 100%; min-height: 2.9rem; margin-top: 0.9rem;
+    border: 0; border-radius: 10px;
+    background: #b91c1c; color: #fff;
+    font: 700 1rem inherit; font-family: inherit;
+  }
+  .err {
+    background: var(--warn-bg); border: 1px solid var(--warn-line);
+    color: var(--warn-ink); border-radius: 10px;
+    padding: 10px 12px; margin: 0 0 12px; font-size: 0.9rem;
+  }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+
+{% if done %}
+  <h1>Setup complete</h1>
+  <p class="sub">{{ company }} is now the only company on this database.</p>
+
+  <div class="card ok">
+    <h2>What is in there now</h2>
+    <dl>
+      <div class="row"><dt>Workers</dt><dd>{{ counts.workers }}</dd></div>
+      <div class="row"><dt>Attendance rows</dt><dd>{{ counts.attendance }}</dd></div>
+      <div class="row"><dt>Money entries</dt><dd>{{ counts.transactions }}</dd></div>
+      <div class="row"><dt>Logins</dt><dd>{{ counts.users }}</dd></div>
+    </dl>
+  </div>
+
+  <div class="card warn">
+    <h2>Do this now</h2>
+    <p>Remove <code>SETUP_TOKEN</code> from the environment and redeploy.
+       While it is set, anyone holding this link can wipe the database
+       again.</p>
+  </div>
+
+  <div class="card">
+    <h2>Signing in</h2>
+    <p>Administrator: <code>{{ admin_user }}</code><br>
+       The password is the mobile number you gave for this account.</p>
+    <p><a href="{{ url_for('login') }}">Go to the login screen</a></p>
+  </div>
+{% else %}
+  <h1>One-time setup</h1>
+  <p class="sub">This page exists only while <code>SETUP_TOKEN</code> is set
+     in the environment.</p>
+
+  {% if error %}<p class="err">{{ error }}</p>{% endif %}
+
+  <div class="card warn">
+    <h2>This deletes everything first</h2>
+    <dl>
+      <div class="row"><dt>Companies</dt><dd>{{ counts.accounts }}</dd></div>
+      <div class="row"><dt>Logins</dt><dd>{{ counts.users }}</dd></div>
+      <div class="row"><dt>Workers</dt><dd>{{ counts.workers }}</dd></div>
+      <div class="row"><dt>Attendance rows</dt><dd>{{ counts.attendance }}</dd></div>
+      <div class="row"><dt>Money entries</dt><dd>{{ counts.transactions }}</dd></div>
+    </dl>
+    <p style="margin-bottom:0">Every one of those is removed. There is no
+       undo. If any of it matters, take a backup of the database before
+       going on.</p>
+  </div>
+
+  <div class="card">
+    <h2>And builds this instead</h2>
+    <ul>
+      <li><b>{{ company }}</b>, with <code>{{ admin_user }}</code> as the
+          administrator</li>
+      <li>That administrator also on the payroll as a monthly-salaried
+          employee</li>
+      <li>{{ crew }} workers in all — one of every pay type and employment
+          type the app handles, so each screen has something real on it</li>
+      <li>Attendance from the joining date to today, a closure day, a
+          changeover to night shift, and money of each kind: an advance, a
+          bonus, wages paid in cash, and wages paid by UPI with the UTR
+          against them</li>
+    </ul>
+  </div>
+
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="card">
+      <label for="confirm">Type <code>{{ confirm_phrase }}</code> to confirm</label>
+      <input type="text" id="confirm" name="confirm" autocomplete="off"
+             autocapitalize="characters" spellcheck="false" required
+             placeholder="{{ confirm_phrase }}">
+      <button type="submit">Delete everything and set up {{ company }}</button>
+    </div>
+  </form>
+{% endif %}
+
+</main>
+</body>
+</html>

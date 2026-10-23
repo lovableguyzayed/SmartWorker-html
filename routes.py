@@ -9,7 +9,7 @@ import re
 import calendar as _cal
 from datetime import datetime, date, timedelta
 from functools import wraps
-from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g, get_flashed_messages, has_app_context
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response, g, get_flashed_messages, has_app_context, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload, joinedload
@@ -6553,3 +6553,111 @@ def set_language(lang):
         session.permanent = True
     return redirect(safe_redirect_target(request.form.get('redirect_to'),
                                          url_for('profile')))
+
+
+# ============================================================
+# One-time setup from a phone
+# ============================================================
+
+#: The whole route is invisible unless this is set in the environment, and
+#: it has to be long enough that guessing it is not a strategy. Setting it
+#: is a deliberate act by whoever owns the deployment; unsetting it again
+#: afterwards takes the route away.
+SETUP_TOKEN_MIN = 16
+
+#: Typed by hand before anything is deleted. A button alone is one mis-tap
+#: away from wiping a live company.
+SETUP_CONFIRM = 'WIPE AND SETUP'
+
+
+def _setup_token():
+    token = (os.environ.get('SETUP_TOKEN') or '').strip()
+    return token if len(token) >= SETUP_TOKEN_MIN else None
+
+
+def _setup_guard(token):
+    """404 unless SETUP_TOKEN is set and this is it.
+
+    404 and not 403 for a wrong token as well as a missing one: a route that
+    answers differently to a wrong guess tells an attacker it exists and is
+    worth guessing at. hmac.compare_digest because a plain == leaks the
+    length of the matching prefix through timing.
+    """
+    import hmac
+    expected = _setup_token()
+    if not expected or not hmac.compare_digest(str(token), expected):
+        return False
+    return True
+
+
+def _setup_counts():
+    return {
+        'accounts': Account.query.count(),
+        'users': User.query.count(),
+        'workers': Worker.query.count(),
+        'attendance': AttendanceRecord.query.count(),
+        'transactions': WorkerTransaction.query.count(),
+    }
+
+
+@app.route('/__setup/<token>', methods=['GET', 'POST'])
+def one_time_setup(token):
+    """Build Uttaranchal Stone Crusher on this database, once, from a phone.
+
+    The seeding script needs a shell and a connection string, and the whole
+    point of a hosted app is that its owner has neither. So the same code
+    is reachable over HTTP, behind a token that only exists while somebody
+    has deliberately put it in the environment.
+
+    It DELETES every account, user, worker and record first. That is what it
+    is for — the company has to come out clean — and it is why there are
+    four separate things standing in front of it: the environment variable,
+    the token, a typed confirmation, and a POST.
+
+    Not login-required, because it exists precisely when there is no account
+    to log into yet. The token is the credential.
+    """
+    if not _setup_guard(token):
+        abort(404)
+
+    # Imported here and nowhere else: a function that can empty the database
+    # should not be sitting in the process on the chance it is wanted.
+    import importlib
+    seeder = importlib.import_module('tools.seed_uttaranchal')
+
+    before = _setup_counts()
+    if request.method == 'GET':
+        return render_template('one_time_setup.html', counts=before,
+                               company=seeder.COMPANY,
+                               admin_user=seeder.ADMIN_USER,
+                               crew=len(seeder.CREW) + 1,
+                               confirm_phrase=SETUP_CONFIRM, done=None)
+
+    if (request.form.get('confirm') or '').strip() != SETUP_CONFIRM:
+        return render_template(
+            'one_time_setup.html', counts=before, company=seeder.COMPANY,
+            admin_user=seeder.ADMIN_USER, crew=len(seeder.CREW) + 1,
+            confirm_phrase=SETUP_CONFIRM, done=None,
+            error='Type %s exactly to confirm. Nothing has been deleted.'
+                  % SETUP_CONFIRM), 400
+
+    app.logger.warning('One-time setup running: wiping %s account(s), '
+                       '%s worker(s), %s attendance row(s)',
+                       before['accounts'], before['workers'],
+                       before['attendance'])
+    seeder.wipe()
+    seeder.build()
+    db.session.commit()
+    app.logger.warning('One-time setup complete. Remove SETUP_TOKEN now.')
+
+    # Any browser session from before belongs to a user who no longer
+    # exists, and leaving it would show a logged-in shell over an empty
+    # database.
+    logout_user()
+    session.clear()
+
+    return render_template('one_time_setup.html', counts=_setup_counts(),
+                           company=seeder.COMPANY,
+                           admin_user=seeder.ADMIN_USER,
+                           crew=len(seeder.CREW) + 1,
+                           confirm_phrase=SETUP_CONFIRM, done=True)
