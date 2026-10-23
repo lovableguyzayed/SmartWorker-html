@@ -3,9 +3,32 @@ flask>=3.1.1
 flask-sqlalchemy>=3.1.1
 flask-wtf>=1.2.0
 gunicorn>=23.0.0
+
+# Both Postgres drivers, on purpose.
+#
+# SQLAlchemy 2.1 changed what a plain postgresql:// URL means. Under 2.0 it
+# loaded psycopg2; under 2.1 it loads psycopg (v3). Nothing in this app said
+# which driver it wanted, and sqlalchemy was pinned only as >=2.0.41 — so a
+# fresh pip install on the host picked up 2.1, postgresql:// quietly changed
+# meaning, and production died on
+#
+#     ModuleNotFoundError: No module named 'psycopg'
+#
+# with no commit of ours anywhere near it. Local development never saw it:
+# development is SQLite and loads neither driver.
+#
+# psycopg (v3) is what the current default resolves to. psycopg2-binary
+# stays because a URL may still name it — postgresql+psycopg2:// — and a
+# connection string somebody pasted months ago should not stop working
+# because we tidied a requirements file.
+psycopg[binary]>=3.2
 psycopg2-binary>=2.9.10
+
 flask-login>=0.6.3
-sqlalchemy>=2.0.41
+# Upper bound deliberately. The break above was a minor release changing a
+# default under a running service; <3 means the next one has to be let in
+# on purpose rather than on a redeploy nobody connected to it.
+sqlalchemy>=2.0.41,<3
 werkzeug>=3.1.3
 qrcode>=8.2
 pillow>=11.2.1
