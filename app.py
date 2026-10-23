@@ -11,6 +11,10 @@ from sqlalchemy import inspect, text
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# Safe to import here: timeutil pulls in nothing but the standard library,
+# so it cannot form a cycle with app or models.
+from timeutil import now_ist
+
 # Configure logging. DEBUG floods Render's (limited) log retention and risks
 # writing request data into logs, so it is opt-in via FLASK_DEBUG rather than
 # the default it used to be.
@@ -166,11 +170,36 @@ def _security_headers(response):
     return response
 
 
+#: Which commit is actually running. Render sets these on every deploy;
+#: read once at import so the probe stays free of work.
+#:
+#: Worth having because without it nobody can answer "is the new code live?".
+#: An APK that showed the old app could mean the phone was serving pages from
+#: its cache or that the server had never deployed, and there was no way to
+#: tell the two apart — so the first thing anyone did was guess. A commit in
+#: the probe turns that into one tap.
+#:
+#: Both are a public repository's commit and branch, so there is nothing here
+#: to keep back, and nothing from the environment is echoed beyond these two.
+GIT_COMMIT = (os.environ.get('RENDER_GIT_COMMIT') or '')[:7] or 'unknown'
+GIT_BRANCH = os.environ.get('RENDER_GIT_BRANCH') or 'unknown'
+STARTED_AT = now_ist()
+
+
 @app.route('/healthz')
 def healthz():
     """Cheap liveness probe for Render — no DB work, no redirect, so a slow
-    query can never make the platform think the service is down."""
-    return {'status': 'ok'}, 200
+    query can never make the platform think the service is down.
+
+    It also says which commit answered, which is the only way to tell a
+    stale page on a phone from a deploy that never happened.
+    """
+    return {
+        'status': 'ok',
+        'commit': GIT_COMMIT,
+        'branch': GIT_BRANCH,
+        'started': STARTED_AT.strftime('%Y-%m-%d %H:%M:%S IST'),
+    }, 200
 
 # configure the database
 _db_url = os.environ.get("DATABASE_URL", "sqlite:///smartworker.db")
