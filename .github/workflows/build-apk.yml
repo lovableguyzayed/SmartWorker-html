@@ -38,11 +38,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Every successful build has taken under three minutes. Without a limit
-    # a hung step runs for GitHub's default six hours, and a job that is
-    # still running serves no logs at all — so the one thing needed to
-    # diagnose it only arrives once it has stopped. 25 minutes is eight
-    # times the normal run and still fails while somebody is watching.
+    # Every successful build has taken under three minutes. GitHub's default
+    # is six hours, and a job that is still running serves no logs at all —
+    # so if one ever does wedge, the one thing needed to diagnose it only
+    # arrives once it has stopped. 25 minutes is eight times a normal run
+    # and still fails while somebody is watching.
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -111,12 +111,10 @@ jobs:
         # android@12 (AGP 8.0) has the aapt2 that compiles appcompat cleanly;
         # the Gradle 8.7 step above makes its bootstrap work on this runner.
         #
-        # --verbose because this is where the build stalled once the two
-        # earlier faults were cleared: 25 minutes in this step against a
-        # three-minute whole-job normal, and silent, so there was nothing to
-        # read. The step downloads cordova-android and then bootstraps a
-        # Gradle wrapper, and without verbose output there is no way to tell
-        # which of those is waiting.
+        # --verbose because this step was once thought to be hanging and was
+        # not: it downloads cordova-android and then bootstraps a Gradle
+        # wrapper, and with no output of its own there was nothing to read
+        # while it worked. It takes about 40 seconds.
         run: cordova platform add android@12 --no-telemetry --verbose
 
       - name: Build debug APK
