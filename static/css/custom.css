@@ -931,3 +931,52 @@ body.ms-active nav.app-bottom-nav { display: none; }
 .worker-action-quiet:hover  { background: #e5e7eb; }
 .worker-action-primary { background: #0062cc; color: #fff; }
 .worker-action-primary:hover { background: #001f3f; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Tablets: let the app use the screen it is given
+   ══════════════════════════════════════════════════════════════════════
+
+   base.html wraps every screen in #mobile-app with Tailwind's max-w-sm,
+   which is 24rem — 384px — and centres it. On a phone that is the whole
+   screen and exactly right. On a tablet the app stays 384px wide whatever
+   the screen is, so it becomes a phone-shaped strip down the middle:
+   measured at 47% of an 820px portrait tablet and 30% of a 1280px
+   landscape one, with 448px of empty grey either side.
+
+   Everything below the breakpoint is untouched, so nothing about the phone
+   layout changes — which is the whole point of putting this in a
+   min-width query rather than editing the template.
+
+   This widens the column and stops there. It does not re-lay-out anything:
+   the two-column grids stay two columns, with roomier cards. A real tablet
+   layout — lists three or four across, a side rail instead of the bottom
+   bar, forms two fields to a row — is a different and much larger job,
+   and it needs a decision per screen rather than one rule here.
+
+   44rem (704px) rather than as wide as the screen: a line of text past
+   about 75 characters is measurably harder to read, and with the grids
+   still two across, a 1200px card is a worse card. 704px roughly doubles
+   the usable width and keeps both honest.
+
+   768px is Tailwind's own `md` breakpoint, which is also where tablets
+   begin in portrait — below it is a phone or a small tablet in portrait,
+   where the phone layout is still the right one. */
+@media (min-width: 768px) {
+    /* An id beats Tailwind's single class, so no !important is needed and
+       the utility keeps working everywhere else it is used. */
+    #mobile-app {
+        max-width: 44rem;
+    }
+
+    /* The bottom bar is a separate element, also capped at max-w-sm and
+       centred with its own transform. Left alone it would sit 384px wide
+       under a 704px screen, visibly narrower than the content above it.
+       custom.css is linked after the Tailwind build, so a single class is
+       enough to win on source order. */
+    .app-bottom-nav {
+        max-width: 44rem;
+    }
+
+    /* The toast keeps its own max-w-sm: a notice is read in one glance and
+       a 704px-wide one is worse, not better. */
+}
