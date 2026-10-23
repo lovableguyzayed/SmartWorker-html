@@ -55,6 +55,15 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default is 'tools platform-tools', and 'tools' is a
+          # package Google withdrew from the SDK repository. On the current
+          # runner image sdkmanager answers "Failed to find package 'tools'"
+          # and exits 1, so the whole job dies 20 seconds in, before Cordova
+          # is even installed. Asking for platform-tools alone is enough —
+          # everything else this build needs is installed by name in the
+          # step below.
+          packages: 'platform-tools'
 
       - name: Install Android build packages
         # cordova-android 12 targets SDK 33 and requires build-tools 33.0.2
