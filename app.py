@@ -124,8 +124,12 @@ _CSP = "; ".join([
     # and the day view computes a few widths at runtime. Injected CSS can
     # restyle a page; it cannot execute, which is a different order of risk,
     # and removing it would be a separate piece of work.
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
+    # Google's two hosts were here only for Inter, which is now served
+    # from this origin. Dropping them means a stylesheet or a font from
+    # anywhere but this app is refused outright, rather than refused
+    # everywhere except the two places that happened to be needed.
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     # data: for the QR codes the app draws into <img>; blob: for the canvas
     # the PDF exporter rasterises before handing it to jsPDF.
     "img-src 'self' data: blob: https:",

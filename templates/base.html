@@ -27,11 +27,16 @@
     <!-- Google Fonts (progressive enhancement; system font fallback offline).
          Loaded asynchronously so a slow/unreachable fonts host can never
          block rendering or delay the window load event at app startup. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
-          media="print" data-swap-media>
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"></noscript>
+    <!-- Inter, served from this origin. It used to come from Google
+         Fonts, which cost a DNS lookup, a TLS handshake, a stylesheet and
+         then the font itself from a second host — 1.8s on Fast 3G and
+         5.7s on Slow 3G, by far the longest thing left in a cold start,
+         and all of it before a single glyph arrived. One file now, latin
+         only, variable across every weight the app uses.
+         Devanagari is unaffected: Inter has never covered it, and Hindi
+         has always fallen through to the system faces named below. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{{ url_for('static', filename='vendor/inter/inter-latin-var.woff2') }}">
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
@@ -58,6 +63,17 @@
     {% block head %}{% endblock %}
     
     <style>
+        /* One variable file for 400-800, which is every weight this app
+           asks for. font-display: swap so text is readable immediately in
+           a system face and reflows once Inter lands — on a site office's
+           connection that difference is the whole point. */
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 100 900;
+            font-display: swap;
+            src: url("{{ url_for('static', filename='vendor/inter/inter-latin-var.woff2') }}") format('woff2');
+        }
         body {
             /* Inter has no Devanagari, so Hindi text falls through to the next
                family. Naming the Android/desktop Devanagari fonts explicitly
