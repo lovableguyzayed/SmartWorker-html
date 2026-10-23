@@ -38,6 +38,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Needed to publish the release at the end. The default token is
+    # read-only on a push, and `gh release create` fails without this.
+    permissions:
+      contents: write
     # Every successful build has taken under three minutes. GitHub's default
     # is six hours, and a job that is still running serves no logs at all —
     # so if one ever does wedge, the one thing needed to diagnose it only
@@ -133,3 +137,42 @@ jobs:
           name: SmartWorker-debug-apk
           path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
+
+      - name: Publish the APK at one permanent link
+        # An artifact is the wrong way to hand somebody an app. GitHub only
+        # serves one to a signed-in user, always inside a .zip, and only for
+        # 90 days — so installing it on a phone means signing in to GitHub,
+        # downloading a zip, finding a file manager to unpack it, and then
+        # finding the apk inside. A release asset is a single tap, needs no
+        # account, and never expires.
+        #
+        # One rolling release rather than one per build: the tag is deleted
+        # and remade each time, so the link below is always the current APK
+        # and the releases page never fills up with history nobody wants.
+        #
+        #   https://github.com/<owner>/<repo>/releases/latest/download/SmartWorker.apk
+        #
+        # This is a debug build, signed with Android's debug key. It is for
+        # putting the app on a phone to try, not for the Play Store — that
+        # needs a release build signed with a key of your own.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp "${{ steps.apk.outputs.path }}" SmartWorker.apk
+          # || true because the first ever run has no release to delete, and
+          # a missing one must not fail the build.
+          gh release delete apk-latest --yes --cleanup-tag || true
+          gh release create apk-latest SmartWorker.apk \
+            --title "SmartWorker APK — latest" \
+            --notes "Debug build of $(git rev-parse --short HEAD), $(date -u +'%d %b %Y %H:%M UTC').
+
+          Tap **SmartWorker.apk** below to install. Android will ask for
+          permission to install from an unknown source — that is expected
+          for an app that does not come from the Play Store.
+
+          The app loads its data from the deployed server, so this file
+          only needs replacing when the shell itself changes (the app URL,
+          the icon, a Cordova plugin). Everything else reaches the phone
+          from the server as soon as it is deployed."
+          echo "Published: $(gh release view apk-latest --json url --jq .url)"
