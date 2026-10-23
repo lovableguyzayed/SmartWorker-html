@@ -137,6 +137,15 @@ _CSP = "; ".join([
     # data: for the QR codes the app draws into <img>; blob: for the canvas
     # the PDF exporter rasterises before handing it to jsPDF.
     "img-src 'self' data: blob: https:",
+    # The QR scanner's camera preview. Without this directive media-src
+    # falls back to default-src, which is 'self', and a camera stream is
+    # neither: an Android WebView renders it into the <video> through a
+    # blob: URL, so the policy refused it and the scanner showed a black
+    # rectangle with no error. Desktop Chrome attaches the same stream as
+    # srcObject, which CSP does not govern at all — which is exactly why
+    # it worked in every browser it was tested in and failed in the APK.
+    # mediastream: is listed for the WebViews that use that scheme instead.
+    "media-src 'self' blob: mediastream:",
     "connect-src 'self'",
     "worker-src 'self' blob:",
     "object-src 'none'",
