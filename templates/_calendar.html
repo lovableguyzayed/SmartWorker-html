@@ -14,8 +14,10 @@
                           must stay static)
     cal_today             today's date in IST, for the "today" outline (optional)
 #}
-<div class="cal-grid" {% if cal_interactive %}role="grid" aria-label="Attendance calendar"{% endif %}>
-    {% for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+<div class="cal-grid" {% if cal_interactive %}role="grid" aria-label="{{ _('Attendance Calendar') }}"{% endif %}>
+    {# weekdays_short is Monday-first (date.weekday() order); this grid is
+       Sunday-first, so Sunday is moved to the front. #}
+    {% for d in [weekdays_short[6]] + weekdays_short[:6] %}
     <div class="cal-cell header" {% if cal_interactive %}role="columnheader"{% endif %}>{{ d }}</div>
     {% endfor %}
 
@@ -38,7 +40,7 @@
              tabindex="{{ '0' if is_selected else '-1' }}"
              data-date="{{ cur.isoformat() }}"
              aria-selected="{{ 'true' if is_selected else 'false' }}"
-             aria-label="{{ cur.strftime('%d %B %Y') }}, {{ status if status else 'not marked' }}{% if clo %}, closure: {{ clo.reason }}{% endif %}"
+             aria-label="{{ cur|ldate('%d %B %Y') }}, {{ _(status|capitalize) if status else _('Not marked') }}{% if clo %}, {{ _('Closure Day') }}: {{ clo.reason }}{% endif %}"
              {% elif cal_interactive %}
              role="gridcell" aria-hidden="true"
              {% endif %}>

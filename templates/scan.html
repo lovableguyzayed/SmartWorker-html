@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}QR Scanner - SmartWorker{% endblock %}
+{% block title %}{{ _('QR Scanner') }} - SmartWorker{% endblock %}
 
 {% block head %}
 <script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
@@ -95,7 +95,7 @@
 .res-avatar {
     width: 3.6rem; height: 3.6rem; flex-shrink: 0;
     border-radius: 1rem;
-    background: linear-gradient(135deg, #001F3F 0%, #007BFF 100%);
+    background: linear-gradient(135deg, #001F3F 0%, #0062CC 100%);
     color: #fff; font-size: 1.5rem; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
@@ -127,6 +127,62 @@
 .res-btn-amber { background: #eab308; }
 .res-btn-red   { background: #ef4444; }
 .res-btn-blue  { background: #3b82f6; }
+/* indigo-700: white on it reads 7.9:1, and it is distinct from the four
+   attendance colours so money never looks like another status. */
+.res-btn-indigo { background: #4338ca; }
+
+/* Payment ---------------------------------------------------------------
+   A second act on the same card, so it has to be separated from the
+   attendance buttons by more than a gap — a rule and a heading, or a tired
+   thumb books an advance when it meant to mark someone present. */
+.pay-divider {
+    height: 1px; background: #e5e7eb;
+    margin: 1rem -1rem 0.85rem;
+}
+.pay-title {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: #4b5563; margin: 0 0 0.6rem;
+}
+.pay-grid {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 0.6rem;
+}
+.pay-field {
+    min-height: 2.75rem;            /* same tap floor as every other control */
+    width: 100%;
+    padding: 0 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    color: #1f2937;
+    background: #fff;
+}
+.pay-field:focus { outline: 2px solid #4338ca; outline-offset: -1px; }
+/* The mode/reference row sits under the type/amount row. */
+.pay-grid + .pay-grid { margin-top: 0.6rem; }
+.pay-note { margin-top: 0.6rem; }
+.pay-save { width: 100%; margin-top: 0.7rem; }
+/* The confirmation step. Set apart from the Record button above it, because
+   the question it asks is addressed to the worker, not to the operator. */
+.pay-ack-text {
+    margin: 0.85rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #d1d5db;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: #374151;
+}
+.scan-back {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    min-height: 2.75rem; padding: 0 0.85rem; margin-top: 0.75rem;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff; font-size: 0.85rem; font-weight: 600;
+}
 .res-profile {
     display: flex; align-items: center; justify-content: center; gap: 0.4rem;
     min-height: 2.75rem; margin-top: 0.6rem;
@@ -158,26 +214,35 @@
 
 {% block content %}
 <header class="scan-header bg-gradient-to-br from-primary via-blue-900 to-accent text-white rounded-b-3xl shadow-xl">
-    <div class="scan-title">SmartWorker</div>
-    <div class="scan-sub">Scan a worker's ID card to mark attendance</div>
+    <h1 class="scan-title">SmartWorker</h1>
+    <div class="scan-sub">{{ _('Scan a worker\'s ID card to mark attendance') }}</div>
+
+    {# A mukadam gets no bottom navigation — none of its tabs are screens a
+       worker login may open — so this screen has to carry its own way back,
+       or the scanner is somewhere you can arrive and not leave. #}
+    {% if current_user.is_worker %}
+    <a href="{{ url_for('supervisor_team') }}" class="scan-back">
+        <i class="fa-solid fa-arrow-left"></i>{{ _('My Team') }}
+    </a>
+    {% endif %}
 
     <!-- Live counts for today, refreshed in place after every mark -->
     <div class="scan-stats">
         <div class="scan-stat">
             <div class="scan-stat-num" id="stat-present">{{ stats.present }}</div>
-            <div class="scan-stat-label">Present</div>
+            <div class="scan-stat-label">{{ _('Present') }}</div>
         </div>
         <div class="scan-stat">
             <div class="scan-stat-num" id="stat-late">{{ stats.late }}</div>
-            <div class="scan-stat-label">Late</div>
+            <div class="scan-stat-label">{{ _('Late') }}</div>
         </div>
         <div class="scan-stat">
             <div class="scan-stat-num" id="stat-absent">{{ stats.absent }}</div>
-            <div class="scan-stat-label">Absent</div>
+            <div class="scan-stat-label">{{ _('Absent') }}</div>
         </div>
         <div class="scan-stat">
             <div class="scan-stat-num" id="stat-open">{{ stats.open }}</div>
-            <div class="scan-stat-label">Open</div>
+            <div class="scan-stat-label">{{ _('Open') }}</div>
         </div>
     </div>
 </header>
@@ -190,26 +255,28 @@
             <div class="cam-overlay" id="cam-overlay">
                 <div class="cam-frame"><div class="cam-line"></div></div>
             </div>
-            <div class="cam-idle" id="cam-idle">Starting camera…</div>
+            <div class="cam-idle" id="cam-idle">{{ _('Starting camera…') }}</div>
         </div>
-        <div class="scan-help" id="scanner-status">Point the camera at the QR code on the ID card.</div>
+        <div class="scan-help" id="scanner-status">{{ _('Point the camera at the QR code on the ID card.') }}</div>
         <div class="cam-controls">
-            <button type="button" class="cam-btn" id="cam-flip" onclick="flipCamera()">
-                <i class="fa-solid fa-camera-rotate"></i>Flip camera
+            <button type="button" class="cam-btn" id="cam-flip" data-act="flipCamera">
+                <i class="fa-solid fa-camera-rotate"></i>{{ _('Flip camera') }}
             </button>
-            <button type="button" class="cam-btn" id="cam-pause" onclick="togglePause()">
-                <i class="fa-solid fa-pause"></i><span id="cam-pause-label">Pause</span>
+            <button type="button" class="cam-btn" id="cam-pause" data-act="togglePause">
+                <i class="fa-solid fa-pause"></i><span id="cam-pause-label">{{ _('Pause') }}</span>
             </button>
         </div>
     </section>
 
     <!-- Manual entry fallback (kept: the only way in when a camera is blocked) -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-sm font-semibold text-gray-800 mb-3"><i class="fa-solid fa-keyboard mr-2 text-accent"></i>Enter Employee ID</h3>
-        <form onsubmit="return lookupManual(event)" class="flex gap-2">
+        <h2 class="text-sm font-semibold text-gray-800 mb-3"><i class="fa-solid fa-keyboard mr-2 text-accent"></i>{{ _('Enter Employee ID') }}</h2>
+        <form data-act="lookupManual" class="flex gap-2">
+            {# min-w-0, or the input keeps its ~20-character intrinsic
+               width and pushes the search button off a 320px screen. #}
             <input type="text" id="manual-id" placeholder="e.g. CO001" autocomplete="off" autocapitalize="characters"
-                   class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent uppercase">
-            <button type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors" style="min-height:2.75rem">
+                   class="flex-1 min-w-0 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent uppercase">
+            <button aria-label="{{ _('Search') }}" type="submit" class="px-5 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors" style="min-height:2.75rem">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
         </form>
@@ -230,25 +297,102 @@
         <div id="result-closure" class="hidden text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-3" style="margin-top:0.6rem"></div>
 
         <div class="res-actions">
-            <button type="button" class="res-btn res-btn-green" id="btn-primary" onclick="markPrimary()">
-                <span id="btn-primary-label">Check in</span>
+            <button type="button" class="res-btn res-btn-green" id="btn-primary" data-act="markPrimary">
+                <span id="btn-primary-label">{{ _('Check in') }}</span>
             </button>
-            <button type="button" class="res-btn res-btn-amber" id="btn-late" onclick="markAttendance('late')">Late</button>
+            <button type="button" class="res-btn res-btn-amber" id="btn-late" data-act="markAttendance" data-act-args='["late"]'>{{ _('Late') }}</button>
             {% if current_user.is_admin %}
-            <button type="button" class="res-btn res-btn-red" id="btn-absent" onclick="markAttendance('absent')">Absent</button>
-            <button type="button" class="res-btn res-btn-blue" id="btn-leave" onclick="markAttendance('leave')">Leave</button>
+            <button type="button" class="res-btn res-btn-red" id="btn-absent" data-act="markAttendance" data-act-args='["absent"]'>{{ _('Absent') }}</button>
+            <button type="button" class="res-btn res-btn-blue" id="btn-leave" data-act="markAttendance" data-act-args='["leave"]'>{{ _('Leave') }}</button>
             {% endif %}
         </div>
 
+        {# Money, under a divider and under its own heading.
+
+           Deliberately not a chooser in front of the attendance buttons.
+           The answer at a gate at seven in the morning is "attendance"
+           forty times in a row, and a question costs a tap on every one of
+           them. The buttons above stay one press away; this waits below
+           for the day somebody also needs an advance.
+
+           Shown only when the server says this user may book money for
+           this particular worker — a mukadam may for their own list and
+           nobody else's, so it can differ between two scans. The endpoint
+           checks again; this only decides what to draw. #}
+        <div id="result-pay" class="hidden">
+            <div class="pay-divider"></div>
+            <h3 class="pay-title">
+                <i class="fa-solid fa-indian-rupee-sign"></i>{{ _('Payment') }}
+            </h3>
+            <div class="pay-grid">
+                <select id="pay-type" class="pay-field" aria-label="{{ _('Type') }}">
+                    {# Settling wages first, because at the gate that is the
+                       commonest reason money changes hands. It used to have
+                       to be entered as an advance. #}
+                    <optgroup label="{{ _('Settles wages owed') }}">
+                        {% for t in settlement_types %}
+                        <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="{{ _('Deducted from pay') }}">
+                        {% for t in deduction_types %}
+                        <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="{{ _('Added to pay') }}">
+                        {% for t in earning_types %}
+                        <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+                <input type="number" id="pay-amount" class="pay-field" inputmode="decimal"
+                       step="0.01" min="0.01" placeholder="{{ _('Amount (₹)') }}"
+                       aria-label="{{ _('Amount (₹)') }}">
+            </div>
+            {# Cash is the default because at a crusher gate it is nearly
+               always cash, and a field that has to be set every time gets
+               set wrongly. #}
+            <div class="pay-grid">
+                <select id="pay-mode" class="pay-field" aria-label="{{ _('Paid by') }}">
+                    {% for value, label in payment_modes.items() %}
+                    <option value="{{ value }}" {{ 'selected' if value == 'cash' }}>{{ _(label) }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" id="pay-reference" class="pay-field" maxlength="60"
+                       placeholder="{{ _('UTR / cheque no.') }}"
+                       aria-label="{{ _('Reference') }}">
+            </div>
+            <input type="text" id="pay-note" class="pay-field pay-note"
+                   placeholder="{{ _('Note (optional)') }}" aria-label="{{ _('Note (optional)') }}">
+            <button type="button" class="res-btn res-btn-indigo pay-save"
+                    id="btn-pay" data-act="recordPayment">{{ _('Record payment') }}</button>
+
+            {# The one moment both people are present. A confirmation taken
+               later is chased by phone and mostly never taken at all, and
+               an unconfirmed payment is the employer's word alone. #}
+            <div id="pay-ack" class="hidden">
+                <p class="pay-ack-text" id="pay-ack-text"></p>
+                <button type="button" class="res-btn res-btn-green pay-save"
+                        id="btn-pay-ack" data-act="acknowledgePayment">
+                    <i class="fa-solid fa-user-check"></i>{{ _('Worker confirms receipt') }}
+                </button>
+            </div>
+        </div>
+
+        {# Admins only: worker_profile is not a screen a worker login may
+           open, so for a mukadam this link would be a button that throws
+           them back to their own page. #}
+        {% if current_user.is_admin %}
         <a href="#" id="result-profile-link" class="res-profile">
-            <i class="fa-solid fa-user"></i>Open full profile
+            <i class="fa-solid fa-user"></i>{{ _('Open full profile') }}
         </a>
+        {% endif %}
     </section>
 </main>
 
 <div id="scan-toasts"></div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // var, NOT let/const: this script re-executes on every SPA navigation into
 // /scan, and a top-level `let` re-declaration throws a SyntaxError that kills
 // the entire script (scanner dead from the second visit onward). `var` may be
@@ -263,6 +407,36 @@ var currentClosure = null;
 var currentVia = 'qr';
 var SCAN_TODAY = "{{ today.isoformat() }}";
 var SCAN_CSRF = "{{ csrf_token() }}";
+
+// The card's own words. This script paints the line under the name and the
+// label on the green button, so nothing here reaches a template filter —
+// without this the card stayed in English on an otherwise Hindi screen.
+var SCAN_TEXT = {
+    today_is: {{ _('Today: %s')|tojson }},
+    checked_in: {{ _('in %s')|tojson }},
+    checked_out: {{ _('out %s')|tojson }},
+    shift_open: {{ _('shift open')|tojson }},
+    not_marked: {{ _('Not marked today yet')|tojson }},
+    closure: {{ _('Closure day: %s — attendance is locked.')|tojson }},
+    check_in: {{ _('Check in')|tojson }},
+    check_out: {{ _('Check out')|tojson }},
+    shift_closed: {{ _('Shift closed')|tojson }},
+    site: {{ _('Site: %s')|tojson }},
+    project: {{ _('Project: %s')|tojson }},
+    ack_prompt: {{ _('%t of %a recorded. Hand the phone over — does the worker confirm receiving it?')|tojson }},
+    ack_done: {{ _('Receipt confirmed by the worker.')|tojson }},
+    ack_failed: {{ _('Could not confirm that payment.')|tojson }},
+    ack_offline: {{ _('No connection — the confirmation was not saved.')|tojson }}
+};
+// Status comes back from the API as the stored English value, the same way
+// the attendance day view receives it.
+var SCAN_STATUS_LABEL = {
+    present: {{ _('Present')|tojson }},
+    absent:  {{ _('Absent')|tojson }},
+    late:    {{ _('Late')|tojson }},
+    leave:   {{ _('Leave')|tojson }},
+    half_day: {{ _('Half Day')|tojson }}
+};
 
 function escapeHtml(str) {
     var div = document.createElement('div');
@@ -327,12 +501,13 @@ function ensureLibraryLoaded() {
 
 async function startScanner() {
     if (scannerRunning) return;               // already live — don't double-start
-    setIdle('Starting camera…');
+    setIdle({{ _('Starting camera…')|tojson }});
     try {
         await ensureLibraryLoaded();
     } catch (e) {
-        setIdle('Scanner unavailable');
-        setStatus("Couldn't load the scanner. Check your connection, or enter the Employee ID below.");
+        setIdle({{ _('Scanner unavailable')|tojson }});
+        setStatus({{ _("Couldn't load the scanner. Check your connection, "
+                       "or enter the Employee ID below.")|tojson }});
         return;
     }
     try {
@@ -346,12 +521,12 @@ async function startScanner() {
         scannerRunning = true;
         scannerPaused = false;
         setIdle('');
-        setStatus('Point the camera at the QR code on the ID card.');
+        setStatus({{ _('Point the camera at the QR code on the ID card.')|tojson }});
         setPauseLabel();
     } catch (err) {
         scannerRunning = false;
-        setIdle('Camera unavailable');
-        setStatus('Camera unavailable (' + escapeHtml(err && err.message ? err.message : err) +
+        setIdle({{ _('Camera unavailable')|tojson }});
+        setStatus({{ _('Camera unavailable')|tojson }} + ' (' + escapeHtml(err && err.message ? err.message : err) +
                   '). Allow camera access in Settings, or enter the Employee ID below.');
     }
 }
@@ -379,8 +554,8 @@ async function togglePause() {
         await stopScannerInternal();
         html5Qrcode = null;
         scannerPaused = true;
-        setIdle('Scanner paused');
-        setStatus('Scanner paused — tap Resume to scan again.');
+        setIdle({{ _('Scanner paused')|tojson }});
+        setStatus({{ _('Scanner paused — tap Resume to scan again.')|tojson }});
     } else {
         scannerPaused = false;
         await startScanner();
@@ -393,7 +568,8 @@ function setPauseLabel() {
     var btn = document.getElementById('cam-pause');
     if (!label || !btn) return;
     var paused = !scannerRunning;
-    label.textContent = paused ? 'Resume' : 'Pause';
+    label.textContent = paused ? {{ _('Resume')|tojson }}
+                               : {{ _('Pause')|tojson }};
     var icon = btn.querySelector('i');
     if (icon) icon.className = paused ? 'fa-solid fa-play' : 'fa-solid fa-pause';
 }
@@ -406,7 +582,8 @@ function onScanSuccess(decodedText) {
     lookupWorker(decodedText, 'qr');
 }
 
-function lookupManual(e) {
+// (form, event) — see the dispatcher's calling convention in actions.js.
+function lookupManual(form, e) {
     e.preventDefault();
     var code = document.getElementById('manual-id').value.trim();
     if (code) lookupWorker(code, 'worker_id');
@@ -414,30 +591,33 @@ function lookupManual(e) {
 }
 
 async function lookupWorker(code, via) {
-    setStatus('Looking up ' + code + '…');
+    // A placeholder and not concatenation: Hindi puts the ID first.
+    setStatus({{ _('Looking up %s…')|tojson }}.replace('%s', code));
     currentVia = via;
     var res;
     try {
         res = await fetch('/api/worker_lookup?code=' + encodeURIComponent(code), { credentials: 'same-origin' });
     } catch (err) {
-        setStatus('No connection — check your internet and try again, or mark attendance from the Attendance screen.');
+        setStatus({{ _('No connection — check your internet and try again, '
+                       'or mark attendance from the Attendance screen.')|tojson }});
         return;
     }
     var data;
     try {
         data = await res.json();
     } catch (err) {
-        setStatus('The server returned an unexpected response. Please try again.');
+        setStatus({{ _('The server returned an unexpected response. '
+                       'Please try again.')|tojson }});
         return;
     }
     if (!data.success) {
-        setStatus(data.message || 'No matching worker.');
+        setStatus(data.message || {{ _('No matching worker.')|tojson }});
         document.getElementById('result-card').classList.add('hidden');
         currentWorker = null;
         return;
     }
     renderResult(data);
-    setStatus('Point the camera at the QR code on the ID card.');
+    setStatus({{ _('Point the camera at the QR code on the ID card.')|tojson }});
 }
 
 function renderResult(data) {
@@ -455,29 +635,97 @@ function renderResult(data) {
 
     var site = document.getElementById('result-site');
     var where = [];
-    if (w.site) where.push('Site: ' + w.site);
-    if (w.project) where.push('Project: ' + w.project);
+    if (w.site) where.push(SCAN_TEXT.site.replace('%s', w.site));
+    if (w.project) where.push(SCAN_TEXT.project.replace('%s', w.project));
     site.textContent = where.join(' · ');
     site.style.display = where.length ? '' : 'none';
 
-    document.getElementById('result-profile-link').href = w.profile_url;
+    // Absent for a mukadam — see the note on the link in the markup.
+    var profileLink = document.getElementById('result-profile-link');
+    if (profileLink) profileLink.href = w.profile_url;
 
     applyAttendance(data.attendance);
+    applyPayment(w);
     var card = document.getElementById('result-card');
     card.classList.remove('hidden');
     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// The payment section appears only for a worker this user may book money
+// for. Cleared between workers, so an amount typed for one person can never
+// be sent against the next one scanned.
+function applyPayment(w) {
+    var box = document.getElementById('result-pay');
+    if (!box) return;
+    document.getElementById('pay-amount').value = '';
+    document.getElementById('pay-note').value = '';
+    // A reference belongs to one payment and must never be carried onto the
+    // next worker's; the mode is left as it was, because a site paying by
+    // UPI pays the whole queue by UPI.
+    document.getElementById('pay-reference').value = '';
+    hidePaymentAck();
+    box.classList.toggle('hidden', !w.can_pay);
+}
+
+// The payment just recorded, waiting on the worker's confirmation. Held in
+// one variable rather than on the button, so leaving the card or scanning
+// the next person cannot confirm the wrong payment.
+var pendingAckId = null;
+
+function hidePaymentAck() {
+    pendingAckId = null;
+    var box = document.getElementById('pay-ack');
+    if (box) box.classList.add('hidden');
+}
+
+function showPaymentAck(txn) {
+    pendingAckId = txn.id;
+    var box = document.getElementById('pay-ack');
+    if (!box) return;
+    document.getElementById('pay-ack-text').textContent =
+        SCAN_TEXT.ack_prompt
+            .replace('%a', txn.amount_text)
+            .replace('%t', txn.label);
+    box.classList.remove('hidden');
+}
+
+// Taken at the gate, with both people present. A confirmation chased later
+// by phone is mostly never taken at all.
+async function acknowledgePayment() {
+    if (!pendingAckId) return;
+    var btn = document.getElementById('btn-pay-ack');
+    var fd = new FormData();
+    fd.append('csrf_token', SCAN_CSRF);
+    btn.disabled = true;
+    try {
+        var res = await fetch('/api/transaction_ack/' + pendingAckId, {
+            method: 'POST', body: fd, credentials: 'same-origin'
+        });
+        var data = await res.json().catch(function () { return null; });
+        if (data && data.success) {
+            toast(SCAN_TEXT.ack_done, 'success');
+            hidePaymentAck();
+        } else {
+            toast((data && data.message) || SCAN_TEXT.ack_failed, 'error');
+        }
+    } catch (err) {
+        toast(SCAN_TEXT.ack_offline, 'error');
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 // Renders today's line and drives every button's enabled state / label.
 function applyAttendance(a) {
     var parts = [];
     if (a.status) {
-        parts.push('Today: ' + a.status);
-        if (a.check_in) parts.push('in ' + a.check_in);
-        if (a.check_out) parts.push('out ' + a.check_out);
-        else if (a.shift_open) parts.push('shift open');
+        parts.push(SCAN_TEXT.today_is.replace(
+            '%s', SCAN_STATUS_LABEL[a.status] || a.status));
+        if (a.check_in) parts.push(SCAN_TEXT.checked_in.replace('%s', a.check_in));
+        if (a.check_out) parts.push(SCAN_TEXT.checked_out.replace('%s', a.check_out));
+        else if (a.shift_open) parts.push(SCAN_TEXT.shift_open);
     } else {
-        parts.push('Not marked today yet');
+        parts.push(SCAN_TEXT.not_marked);
     }
     document.getElementById('result-today').textContent = parts.join(' · ');
 
@@ -490,7 +738,8 @@ function applyAttendance(a) {
 
     var locked = !!(currentClosure && currentClosure.locked);
     if (locked) {
-        closureBox.textContent = 'Closure day: ' + currentClosure.reason + ' — attendance is locked.';
+        closureBox.textContent = SCAN_TEXT.closure.replace(
+            '%s', currentClosure.reason);
         closureBox.classList.remove('hidden');
     } else {
         closureBox.classList.add('hidden');
@@ -498,16 +747,16 @@ function applyAttendance(a) {
 
     // Green button: check in → check out → done.
     if (a.can_check_in) {
-        primaryLabel.textContent = 'Check in';
+        primaryLabel.textContent = SCAN_TEXT.check_in;
         primary.dataset.status = 'present';
         primary.disabled = locked;
     } else if (a.can_check_out) {
-        primaryLabel.textContent = 'Check out';
+        primaryLabel.textContent = SCAN_TEXT.check_out;
         // Re-posting the active status is what closes the shift server-side.
         primary.dataset.status = a.status;
         primary.disabled = locked;
     } else {
-        primaryLabel.textContent = 'Shift closed';
+        primaryLabel.textContent = SCAN_TEXT.shift_closed;
         primary.dataset.status = '';
         primary.disabled = true;
     }
@@ -539,6 +788,68 @@ function markPrimary() {
     if (status) markAttendance(status);
 }
 
+// Books an advance or a payment against the worker on the card. Posts JSON
+// for the same reason attendance does: a navigation would tear down the
+// camera, and there is a queue behind this person.
+async function recordPayment() {
+    if (!currentWorker) return;
+    var typeEl = document.getElementById('pay-type');
+    var amountEl = document.getElementById('pay-amount');
+    var noteEl = document.getElementById('pay-note');
+    var modeEl = document.getElementById('pay-mode');
+    var referenceEl = document.getElementById('pay-reference');
+    var btn = document.getElementById('btn-pay');
+
+    var amount = parseFloat(amountEl.value);
+    if (!(amount > 0)) {
+        toast({{ _('Amount must be greater than zero.')|tojson }}, 'error');
+        amountEl.focus();
+        return;
+    }
+
+    var fd = new FormData();
+    fd.append('csrf_token', SCAN_CSRF);
+    fd.append('worker_id', currentWorker.id);
+    fd.append('txn_type', typeEl.value);
+    fd.append('amount', amount);
+    fd.append('date', SCAN_TODAY);
+    fd.append('description', noteEl.value.trim());
+    fd.append('payment_mode', modeEl.value);
+    fd.append('reference_no', referenceEl.value.trim());
+
+    btn.disabled = true;
+    try {
+        var res = await fetch('/api/worker_transaction', {
+            method: 'POST', body: fd, credentials: 'same-origin'
+        });
+        var data = await res.json().catch(function () { return null; });
+        if (!data) {
+            toast({{ _('Could not record the payment. Please try again.')|tojson }}
+                  + ' (' + res.status + ')', 'error');
+            return;
+        }
+        (data.messages || []).forEach(function (m) { toast(m.text, m.category); });
+        if (data.success) {
+            // Cleared so a second press cannot book the same money twice,
+            // and the type is left alone because the next one is usually
+            // the same kind.
+            amountEl.value = '';
+            noteEl.value = '';
+            referenceEl.value = '';
+            if (data.transaction && data.transaction.needs_ack
+                    && data.transaction.id) {
+                showPaymentAck(data.transaction);
+            } else {
+                hidePaymentAck();
+            }
+        }
+    } catch (err) {
+        toast({{ _('No connection — the payment was not recorded.')|tojson }}, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 // Marks via JSON so the camera keeps running — a page navigation would tear
 // down the stream and cost a second of black preview on every worker.
 async function markAttendance(status) {
@@ -556,7 +867,8 @@ async function markAttendance(status) {
             method: 'POST', body: fd, credentials: 'same-origin'
         });
         if (!res.ok) {
-            toast('Could not save attendance (' + res.status + '). Please try again.', 'error');
+            toast({{ _('Could not save attendance. Please try again.')|tojson }}
+                  + ' (' + res.status + ')', 'error');
             return;
         }
         var data = await res.json();
@@ -565,13 +877,14 @@ async function markAttendance(status) {
         if (data.messages && data.messages.length) {
             data.messages.forEach(function (m) { toast(m.text, m.category); });
         } else {
-            toast(data.success ? 'Attendance updated.' : 'Could not update attendance.',
+            toast(data.success ? {{ _('Attendance updated.')|tojson }}
+                               : {{ _('Could not update attendance.')|tojson }},
                   data.success ? 'success' : 'error');
         }
         // Let the same card be re-scanned immediately after a state change.
         lastScan = { code: null, at: 0 };
     } catch (err) {
-        toast('No connection — attendance was not saved.', 'error');
+        toast({{ _('No connection — attendance was not saved.')|tojson }}, 'error');
     } finally {
         setActionsDisabled(false);
         // Re-apply real state (setActionsDisabled(false) enables everything).

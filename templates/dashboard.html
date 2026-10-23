@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - SmartWorker{% endblock %}
+{% block title %}{{ _('Dashboard') }} - SmartWorker{% endblock %}
 
 {% block head %}
 <style>
@@ -9,10 +9,14 @@
    everything layout- and size-critical for this section is defined here. */
 .att-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 3.3rem 3.3rem 3.7rem;
-    column-gap: 0.5rem;
+    /* The time columns were 3.3rem but the times themselves render at 43px,
+       so the slack went to waste while the name column had 89px for names
+       that need over 200px. Tightened the times and the side padding and
+       gave every spare pixel to the name. */
+    grid-template-columns: minmax(0, 1fr) 2.95rem 2.95rem 3.7rem;
+    column-gap: 0.4rem;
     align-items: center;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.75rem;
 }
 .att-headrow {
     padding-top: 0.35rem;
@@ -26,10 +30,19 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #9ca3af;
+    color: #6b7280;
 }
-.att-name { font-size: 0.8rem; font-weight: 500; color: #1f2937; line-height: 1.25; }
-.att-id   { font-size: 0.7rem; color: #9ca3af; line-height: 1.2; }
+/* 0.75rem rather than 0.8rem: at 0.8rem "Lakshmi Narayanan" did not fit the
+   113px name column on one line, so every long name spilled to a third line
+   and got clipped. The drop is small enough to stay comfortably readable and
+   large enough that the longest names in the data now fit two lines. */
+.att-name { font-size: 0.75rem; font-weight: 500; color: #1f2937; line-height: 1.3; }
+.att-id   { font-size: 0.7rem; color: #6b7280; line-height: 1.2; }
+/* The whole row opens a profile, and a 2rem avatar beside a one-line name
+   comes to 32px — under the tap floor, but only for workers whose name does
+   not wrap, which is why it hid behind the test data for so long. The row
+   already has the width; this gives it the height. */
+.att-worker-link { min-height: 2.75rem; }
 .att-avatar {
     width: 2rem; height: 2rem; border-radius: 9999px;
     object-fit: cover; object-position: center;
@@ -44,8 +57,8 @@
     font-size: 0.72rem; font-weight: 600;
     font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-.att-ampm { font-size: 0.7rem; font-weight: 400; color: #9ca3af; margin-left: 1px; }
-.att-empty { font-size: 0.72rem; color: #d1d5db; }
+.att-ampm { font-size: 0.7rem; font-weight: 400; color: #6b7280; margin-left: 1px; }
+.att-empty { font-size: 0.72rem; color: #6b7280; }
 .att-live {
     display: inline-flex; align-items: center; gap: 0.25rem;
     font-size: 0.7rem; font-weight: 500; color: #3b82f6; white-space: nowrap;
@@ -70,21 +83,28 @@
         <div class="flex items-center space-x-4">
             <img loading="lazy" decoding="async" src="{{ url_for('static', filename='images/logo.png') }}" alt="SmartWorker" class="w-10 h-10 rounded-lg object-contain">
             <div>
-                <div class="text-xl font-semibold">SmartWorker</div>
-                <div class="text-sm opacity-90">Dashboard Overview</div>
+                <h1 class="text-xl font-semibold">SmartWorker</h1>
+                <div class="text-sm opacity-90">{{ _('Dashboard Overview') }}</div>
             </div>
         </div>
         <div class="flex items-center space-x-3">
             {% if current_user.is_admin %}
-            <a href="{{ url_for('notifications') }}" class="relative icon-btn bg-white/10 backdrop-blur-sm">
+            {# The bell carried no name of its own. With unread mail the badge
+               supplies a number, which reads as "3" and passes for text; with
+               nothing unread it is a bare glyph announcing nothing at all.
+               Every other icon button in the application is labelled, and
+               this one only looked labelled because the demo data happened to
+               have unread notifications in it. #}
+            <a href="{{ url_for('notifications') }}" class="relative icon-btn bg-white/10 backdrop-blur-sm"
+               aria-label="{{ _('Notifications') }}">
                 <i class="fa-solid fa-bell text-lg"></i>
                 {% if unread_notifications %}
-                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[0.6rem] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
+                <span class="absolute -top-1 -right-1 bg-red-700 text-white text-[0.6rem] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
                 {% endif %}
             </a>
             {% endif %}
             <!-- Profile picture beside the bell — real avatar or default icon -->
-            <a href="{{ url_for('profile') }}" class="icon-btn overflow-hidden border border-white/25 bg-white/10 backdrop-blur-sm" title="Profile">
+            <a href="{{ url_for('profile') }}" class="icon-btn overflow-hidden border border-white/25 bg-white/10 backdrop-blur-sm" title="{{ _('Profile') }}">
                 {% if current_user.profile_image %}
                 <img src="{{ current_user.profile_image }}" alt="{{ current_user.full_name }}" class="w-full h-full object-cover">
                 {% else %}
@@ -96,8 +116,8 @@
     
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <div class="text-center">
-            <div class="text-2xl font-bold mb-1">Welcome back{% if current_user.is_authenticated %}, {{ current_user.full_name.split()[0] }}{% endif %}!</div>
-            <div class="text-sm opacity-90" id="current-date"></div>
+            <div class="text-2xl font-bold mb-1">{{ _('Welcome back') }}{% if current_user.is_authenticated %}, {{ current_user.full_name.split()[0] }}{% endif %}!</div>
+            <div class="text-sm opacity-90" id="current-date">{{ today|ldate('%A, %B %d, %Y') }}</div>
         </div>
     </div>
 </header>
@@ -105,11 +125,11 @@
 <main class="p-4 pb-8 space-y-6">
     <!-- Quick Stats -->
     <section class="grid grid-cols-2 gap-4">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-2xl shadow-lg">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ total_workers }}</div>
-                    <div class="text-sm opacity-90">Total Workers</div>
+                    <div class="text-sm opacity-90">{{ _('Total Workers') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-users text-xl"></i>
@@ -117,11 +137,11 @@
             </div>
         </div>
         
-        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-green-700 to-green-800 text-white p-4 rounded-2xl shadow-lg">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ present_today }}</div>
-                    <div class="text-sm opacity-90">Present Today</div>
+                    <div class="text-sm opacity-90">{{ _('Present Today') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-check-circle text-xl"></i>
@@ -129,11 +149,11 @@
             </div>
         </div>
         
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-purple-600 to-purple-700 text-white p-4 rounded-2xl shadow-lg">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ attendance_percentage }}%</div>
-                    <div class="text-sm opacity-90">Attendance Rate</div>
+                    <div class="text-sm opacity-90">{{ _('Attendance Rate') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-chart-pie text-xl"></i>
@@ -141,11 +161,11 @@
             </div>
         </div>
         
-        <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-orange-700 to-orange-800 text-white p-4 rounded-2xl shadow-lg">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ (total_workers - present_today) }}</div>
-                    <div class="text-sm opacity-90">Absent Today</div>
+                    <div class="text-sm opacity-90">{{ _('Absent Today') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-user-slash text-xl"></i>
@@ -163,72 +183,67 @@
                     <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
                 </div>
                 <div>
-                    <div class="text-lg font-semibold">Payroll</div>
-                    <div class="text-sm opacity-90">Calculate &amp; track monthly wages</div>
+                    <div class="text-lg font-semibold">{{ _('Payroll') }}</div>
+                    <div class="text-sm opacity-90">{{ _('Calculate & track monthly wages') }}</div>
                 </div>
             </div>
-            <i class="fa-solid fa-chevron-right opacity-80"></i>
+            <i class="fa-solid fa-chevron-right opacity-90"></i>
         </div>
     </a>
     {% endif %}
 
-    <!-- Quick Actions -->
+    {# Quick Actions carries what the bar below cannot reach, and nothing else.
+       Mark Attendance, QR Scanner and Transactions were all one tap away in
+       the bar already — three of the six tiles were a second route to a place
+       the person could already see. These four have no other way in. An
+       attendance-role user has no screens outside the bar at all, so for them
+       the section is not rendered rather than filled with duplicates. #}
+    {% if current_user.is_admin %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h2>
         <div class="grid grid-cols-2 gap-3">
-            {% if current_user.is_admin %}
             <a href="{{ url_for('add_worker') }}" class="flex items-center justify-center p-4 bg-accent text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-user-plus mr-2"></i>
-                Add Worker
+                {{ _('Add Worker') }}
             </a>
-            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500 text-white rounded-2xl hover:shadow-lg transition-all">
-                <i class="fa-solid fa-calendar-check mr-2"></i>
-                Mark Attendance
-            </a>
-            <a href="{{ url_for('scan') }}" class="flex items-center justify-center p-4 bg-indigo-500 text-white rounded-2xl hover:shadow-lg transition-all">
-                <i class="fa-solid fa-qrcode mr-2"></i>
-                QR Scanner
-            </a>
-            <a href="{{ url_for('transactions') }}" class="flex items-center justify-center p-4 bg-teal-500 text-white rounded-2xl hover:shadow-lg transition-all">
+            <a href="{{ url_for('transactions') }}" class="flex items-center justify-center p-4 bg-teal-700 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-money-bill-transfer mr-2"></i>
-                Transactions
+                {{ _('Transactions') }}
             </a>
-            <a href="{{ url_for('assignments') }}" class="flex items-center justify-center p-4 bg-purple-500 text-white rounded-2xl hover:shadow-lg transition-all">
+            <a href="{{ url_for('assignments') }}" class="flex items-center justify-center p-4 bg-purple-700 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-diagram-project mr-2"></i>
-                Assignments
+                {{ _('Assignments') }}
             </a>
-            <a href="{{ url_for('closures') }}" class="flex items-center justify-center p-4 bg-orange-500 text-white rounded-2xl hover:shadow-lg transition-all">
+            <a href="{{ url_for('closures') }}" class="flex items-center justify-center p-4 bg-orange-700 text-white rounded-2xl hover:shadow-lg transition-all">
                 <i class="fa-solid fa-calendar-xmark mr-2"></i>
-                Closures
+                {{ _('Closures') }}
             </a>
-            {% else %}
-            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500 text-white rounded-2xl hover:shadow-lg transition-all">
-                <i class="fa-solid fa-calendar-check mr-2"></i>
-                Mark Attendance
+            {# What the company owes, which had no screen at all: the running
+               account was reachable only one worker at a time, so the total
+               was a number nobody could look up. #}
+            <a href="{{ url_for('dues') }}" class="col-span-2 flex items-center justify-center p-4 bg-amber-700 text-white rounded-2xl hover:shadow-lg transition-all">
+                <i class="fa-solid fa-hand-holding-dollar mr-2"></i>
+                {{ _('Wages Owed') }}
             </a>
-            <a href="{{ url_for('scan') }}" class="flex items-center justify-center p-4 bg-indigo-500 text-white rounded-2xl hover:shadow-lg transition-all">
-                <i class="fa-solid fa-qrcode mr-2"></i>
-                QR Scanner
-            </a>
-            {% endif %}
         </div>
     </section>
+    {% endif %}
 
     <!-- Today's Attendance — fixed-grid ledger: columns always align, fits the
          phone width exactly (no horizontal scrolling), one compact type scale. -->
     {% if recent_attendance %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
-            <h3 class="text-base font-semibold text-gray-800">Today's Attendance</h3>
-            <a href="{{ url_for('attendance') }}" class="text-accent hover:text-primary text-xs font-semibold uppercase tracking-wide">View All</a>
+            <h2 class="text-base font-semibold text-gray-800">{{ _('Today\'s Attendance') }}</h2>
+            <a href="{{ url_for('attendance') }}" class="tap-target inline-flex items-center text-accent hover:text-primary text-xs font-semibold uppercase tracking-wide">{{ _('View All') }}</a>
         </div>
 
         <!-- Column headers -->
         <div class="att-row att-headrow">
-            <span class="att-h">Worker</span>
-            <span class="att-h" style="text-align:center">In</span>
-            <span class="att-h" style="text-align:center">Out</span>
-            <span class="att-h" style="text-align:right">Status</span>
+            <span class="att-h">{{ _('Worker') }}</span>
+            <span class="att-h" style="text-align:center">{{ _('In') }}</span>
+            <span class="att-h" style="text-align:center">{{ _('Out') }}</span>
+            <span class="att-h" style="text-align:right">{{ _('Status') }}</span>
         </div>
 
         <div class="divide-y divide-gray-100">
@@ -236,7 +251,7 @@
             <div class="att-row hover:bg-gray-50 transition-colors">
                 <!-- Worker: photo + name open the full profile -->
                 <a href="{{ url_for('worker_profile', worker_id=worker.id) }}"
-                   class="flex items-center space-x-2 min-w-0" title="Open {{ worker.full_name }}'s profile">
+                   class="att-worker-link flex items-center space-x-2 min-w-0" title="Open {{ worker.full_name }}'s profile">
                     {% if worker.profile_image %}
                     <img loading="lazy" decoding="async" src="{{ worker.profile_image }}"
                          alt="{{ worker.full_name }}" class="att-avatar">
@@ -246,7 +261,7 @@
                     </span>
                     {% endif %}
                     <span class="min-w-0">
-                        <span class="att-name block truncate">{{ worker.full_name }}</span>
+                        <span class="att-name block name-wrap">{{ worker.full_name }}</span>
                         <span class="att-id block truncate">{{ worker.worker_id }}</span>
                     </span>
                 </a>
@@ -265,7 +280,7 @@
                     {% if attendance.check_out_time %}
                     <span class="att-time" style="color:#374151">{{ attendance.check_out_time.strftime('%I:%M').lstrip('0') }}<span class="att-ampm">{{ attendance.check_out_time.strftime('%p').lower() }}</span></span>
                     {% elif attendance.check_in_time %}
-                    <span class="att-live"><span class="att-live-dot"></span>shift</span>
+                    <span class="att-live"><span class="att-live-dot"></span>{{ _('shift') }}</span>
                     {% else %}
                     <span class="att-empty">&ndash;</span>
                     {% endif %}
@@ -273,12 +288,12 @@
 
                 <!-- Status: colored dot + label, quieter than a pill, always aligned -->
                 {% set status_style = {
-                    'present': ('#22c55e', '#15803d', 'Present'),
-                    'absent':  ('#ef4444', '#dc2626', 'Absent'),
-                    'late':    ('#f59e0b', '#d97706', 'Late'),
-                    'leave':   ('#3b82f6', '#2563eb', 'Leave'),
+                    'present': ('#22c55e', '#15803d', _('Present')),
+                    'absent':  ('#ef4444', '#dc2626', _('Absent')),
+                    'late':    ('#f59e0b', '#d97706', _('Late')),
+                    'leave':   ('#3b82f6', '#2563eb', _('Leave')),
                 } %}
-                {% set dot, color, label = status_style.get(attendance.status, ('#9ca3af', '#6b7280', attendance.status|title)) %}
+                {% set dot, color, label = status_style.get(attendance.status, ('#9ca3af', '#6b7280', _(attendance.status|capitalize))) %}
                 <span class="att-status" style="color: {{ color }}">
                     <span class="att-dot" style="background: {{ dot }}"></span>{{ label }}
                 </span>
@@ -291,23 +306,23 @@
     <!-- Upcoming Closures -->
     {% if upcoming_closures %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Upcoming Closures</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Upcoming Closures') }}</h2>
         <div class="space-y-3">
             {% for closure in upcoming_closures %}
             <div class="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-200">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                        <i class="fa-solid fa-calendar-times text-red-600"></i>
+                        <i class="fa-solid fa-calendar-times text-red-700"></i>
                     </div>
                     <div>
                         <div class="font-medium text-gray-800">{{ closure.reason }}</div>
-                        <div class="text-sm text-gray-600">{{ closure.date.strftime('%B %d, %Y') }}</div>
-                        <div class="text-xs {{ 'text-green-600' if closure.allow_attendance else 'text-red-600' }}">
+                        <div class="text-sm text-gray-600">{{ closure.date|ldate('%B %d, %Y') }}</div>
+                        <div class="text-xs {{ 'text-green-700' if closure.allow_attendance else 'text-red-700' }}">
                             {{ 'Attendance allowed if present' if closure.allow_attendance else 'Attendance locked for this date' }}
                         </div>
                     </div>
                 </div>
-                <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">{{ closure.type.title() }}</div>
+                <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">{{ _(closure.type|capitalize) }}</div>
             </div>
             {% endfor %}
         </div>
@@ -315,15 +330,4 @@
     {% endif %}
 </main>
 
-<script>
-// Set current date
-document.addEventListener('DOMContentLoaded', function() {
-    const dateElement = document.getElementById('current-date');
-    if (dateElement) {
-        const today = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateElement.textContent = today.toLocaleDateString('en-US', options);
-    }
-});
-</script>
 {% endblock %}

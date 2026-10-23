@@ -6,17 +6,22 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{% if worker %}{{ url_for('worker_profile', worker_id=worker.id) }}{% else %}{{ url_for('workers') }}{% endif %}" 
+            <a aria-label="{{ _('Back') }}" href="{% if worker %}{{ url_for('worker_profile', worker_id=worker.id) }}{% else %}{{ url_for('workers') }}{% endif %}" 
                class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">{% if worker %}Edit Worker{% else %}Add Worker{% endif %}</div>
-                <div class="text-sm opacity-90">Update Profile Information</div>
+                <h1 class="text-xl font-semibold">{% if worker %}{{ _('Edit Worker') }}{% else %}{{ _('Add Worker') }}{% endif %}</h1>
+                {# The title switched between add and edit; the line under it
+                   did not, so the Add screen said "Update Profile
+                   Information" about a worker who did not exist yet. Both
+                   strings also go through _() now — they were two of the
+                   few left in English on a Hindi screen. #}
+                <div class="text-sm opacity-90">{% if worker %}{{ _('Update Profile Information') }}{% else %}{{ _('Enter the new worker’s details') }}{% endif %}</div>
             </div>
         </div>
-        <button type="submit" form="worker-form" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/30">
-            Save
+        <button type="submit" form="worker-form" class="tap-target bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/30">
+            {{ _('Save') }}
         </button>
     </div>
     
@@ -29,35 +34,51 @@
                         {{ worker.full_name[0] if worker and worker.full_name else 'N' }}
                     </div>
                 {% else %}
-                    <img loading="lazy" decoding="async" id="worker-photo-preview" src="" alt="Worker Photo" class="hidden w-20 h-20 shrink-0 rounded-2xl object-cover object-center border-4 border-white/20">
+                    {# No src until a photo is chosen: src="" is not an empty
+                       image, it resolves to the page's own URL and makes the
+                       browser re-request the whole document. The JS below
+                       sets src when the user picks a file. #}
+                    <img loading="lazy" decoding="async" id="worker-photo-preview" alt="{{ _('Worker Photo') }}" class="hidden w-20 h-20 shrink-0 rounded-2xl object-cover object-center border-4 border-white/20">
                     <div id="worker-photo-fallback" class="w-20 h-20 shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white font-bold text-2xl border-4 border-white/20">
                         {{ worker.full_name[0] if worker and worker.full_name else 'N' }}
                     </div>
                 {% endif %}
-                <button type="button" id="worker-photo-trigger" class="absolute -bottom-1 -right-1 w-8 h-8 bg-accent rounded-full border-2 border-white flex items-center justify-center">
+                <button aria-label="{{ _('Change photo') }}" type="button" id="worker-photo-trigger" class="tap-target absolute -bottom-1 -right-1 w-8 h-8 bg-accent rounded-full border-2 border-white flex items-center justify-center">
                     <i class="fa-solid fa-camera text-xs text-white"></i>
                 </button>
             </div>
+            {# On Edit this card shows a real worker and earns its space. On
+               Add it used to show "New Worker", "Position • Department",
+               "ID: Auto-Generated" and a QR square for a worker who does
+               not exist — placeholders styled exactly like data, with
+               "Auto-Generated" said twice, in 210px of screen. The Add
+               screen now carries the photo button and one line saying what
+               happens on save. #}
+            {% if worker %}
             <div class="flex-1">
-                <div class="text-xl font-bold mb-1">{{ worker.full_name if worker else 'New Worker' }}</div>
-                <div class="text-sm opacity-90 mb-2">{{ worker.position if worker else 'Position' }} • {{ worker.department if worker else 'Department' }}</div>
+                <div class="text-xl font-bold mb-1">{{ worker.full_name }}</div>
+                <div class="text-sm opacity-90 mb-2">{{ worker.position }} • {{ worker.department }}</div>
                 <div class="flex items-center justify-between">
-                    <div class="text-sm opacity-90">ID: {{ worker.worker_id if worker else 'Auto-Generated' }}</div>
+                    <div class="text-sm opacity-90">{{ _('Employee ID') }}: {{ worker.worker_id }}</div>
                     <div class="flex flex-col items-center">
                         <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30 mb-1">
                             <i class="fa-solid fa-qrcode text-white text-2xl"></i>
                         </div>
-                        <div class="text-xs opacity-75 text-center">Auto-Generated</div>
+                        <div class="text-xs text-center">{{ _('QR Code') }}</div>
                     </div>
                 </div>
-                <div id="worker-photo-hint" class="text-xs opacity-80 mt-2">
-                    {% if worker and worker.profile_image %}
-                        Tap camera to replace profile photo
-                    {% else %}
-                        Tap camera to add profile photo
-                    {% endif %}
+                <div id="worker-photo-hint" class="text-xs opacity-90 mt-2">
+                    {{ _('Tap the camera to replace the photo') }}
                 </div>
             </div>
+            {% else %}
+            <div class="flex-1">
+                <div class="text-base font-semibold mb-1">{{ _('Worker Photo') }}</div>
+                <div id="worker-photo-hint" class="text-xs opacity-90 leading-snug">
+                    {{ _('Tap the camera to add one. The employee ID and QR code are made when you save.') }}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </header>
@@ -68,72 +89,123 @@
         <input id="worker-photo-input" type="file" name="profile_image" accept=".jpg,.jpeg,.png,.gif,.webp,image/*" class="hidden">
         <!-- Basic Details -->
         <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Details</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Basic Details') }}</h2>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Full Name') }}</label>
                     <input type="text" name="full_name" value="{{ worker.full_name if worker else '' }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Phone Number') }}</label>
                     <input type="tel" name="phone" value="{{ worker.phone if worker else '' }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Email (Optional)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Email (Optional)') }}</label>
                     <input type="email" name="email" value="{{ worker.email if worker else '' }}"
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Address') }}</label>
                     <textarea name="address" rows="3"
                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent h-20 resize-none">{{ worker.address if worker else '' }}</textarea>
                 </div>
             </div>
         </section>
 
-        <!-- Work Details -->
+        <!-- How this worker gets paid -->
         <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Work Details</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Payment Details') }}</h2>
+            <p class="text-xs text-gray-500 mb-4">{{ _('Where the money goes. Every field is optional — fill in what you have.') }}</p>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Position/Role</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Account Holder Name') }}</label>
+                    <input type="text" name="bank_account_name" maxlength="120"
+                           value="{{ worker.bank_account_name or '' if worker else '' }}"
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Bank Account Number') }}</label>
+                        <input type="text" name="bank_account_number" inputmode="numeric" maxlength="18"
+                               value="{{ worker.bank_account_number or '' if worker else '' }}"
+                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('IFSC') }}</label>
+                        <input type="text" name="bank_ifsc" maxlength="11" placeholder="HDFC0001234"
+                               style="text-transform: uppercase"
+                               value="{{ worker.bank_ifsc or '' if worker else '' }}"
+                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('UPI ID') }}</label>
+                    <input type="text" name="upi_id" maxlength="100" placeholder="name@bank"
+                           value="{{ worker.upi_id or '' if worker else '' }}"
+                           class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Aadhaar Number') }}</label>
+                        <input type="text" name="aadhaar_number" inputmode="numeric" maxlength="12"
+                               value="{{ worker.aadhaar_number or '' if worker else '' }}"
+                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                        <p class="text-[0.65rem] text-gray-500 mt-1">{{ _('Shown masked, and never printed on a payslip.') }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('PAN') }}</label>
+                        <input type="text" name="pan_number" maxlength="10" placeholder="ABCDE1234F"
+                               style="text-transform: uppercase"
+                               value="{{ worker.pan_number or '' if worker else '' }}"
+                               class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Work Details -->
+        <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Work Details') }}</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Position/Role') }}</label>
                     <input type="text" name="position" value="{{ worker.position if worker else '' }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Department') }}</label>
                     <select name="department" required class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                        <option value="">Select Department</option>
-                        <option value="Construction" {{ 'selected' if worker and worker.department == 'Construction' }}>Construction</option>
-                        <option value="Administration" {{ 'selected' if worker and worker.department == 'Administration' }}>Administration</option>
-                        <option value="Security" {{ 'selected' if worker and worker.department == 'Security' }}>Security</option>
-                        <option value="Maintenance" {{ 'selected' if worker and worker.department == 'Maintenance' }}>Maintenance</option>
-                        <option value="Cleaning" {{ 'selected' if worker and worker.department == 'Cleaning' }}>Cleaning</option>
-                        <option value="Other" {{ 'selected' if worker and worker.department == 'Other' }}>Other</option>
+                        <option value="">{{ _('Select Department') }}</option>
+                        <option value="Construction" {{ 'selected' if worker and worker.department == 'Construction' }}>{{ _('Construction') }}</option>
+                        <option value="Administration" {{ 'selected' if worker and worker.department == 'Administration' }}>{{ _('Administration') }}</option>
+                        <option value="Security" {{ 'selected' if worker and worker.department == 'Security' }}>{{ _('Security') }}</option>
+                        <option value="Maintenance" {{ 'selected' if worker and worker.department == 'Maintenance' }}>{{ _('Maintenance') }}</option>
+                        <option value="Cleaning" {{ 'selected' if worker and worker.department == 'Cleaning' }}>{{ _('Cleaning') }}</option>
+                        <option value="Other" {{ 'selected' if worker and worker.department == 'Other' }}>{{ _('Other') }}</option>
                     </select>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Join Date</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Join Date') }}</label>
                     <input type="date" name="join_date" value="{{ worker.join_date if worker else '' }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Employee Type</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Employee Type') }}</label>
                     <select name="employee_type" required class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                        <option value="">Select Type</option>
-                        <option value="Full Time" {{ 'selected' if worker and worker.employee_type == 'Full Time' }}>Full Time</option>
-                        <option value="Part Time" {{ 'selected' if worker and worker.employee_type == 'Part Time' }}>Part Time</option>
-                        <option value="Contract" {{ 'selected' if worker and worker.employee_type == 'Contract' }}>Contract</option>
-                        <option value="Temporary" {{ 'selected' if worker and worker.employee_type == 'Temporary' }}>Temporary</option>
-                        <option value="Daily Wage" {{ 'selected' if worker and worker.employee_type == 'Daily Wage' }}>Daily Wage</option>
+                        <option value="">{{ _('Select Type') }}</option>
+                        <option value="Full Time" {{ 'selected' if worker and worker.employee_type == 'Full Time' }}>{{ _('Full Time') }}</option>
+                        <option value="Part Time" {{ 'selected' if worker and worker.employee_type == 'Part Time' }}>{{ _('Part Time') }}</option>
+                        <option value="Contract" {{ 'selected' if worker and worker.employee_type == 'Contract' }}>{{ _('Contract') }}</option>
+                        <option value="Temporary" {{ 'selected' if worker and worker.employee_type == 'Temporary' }}>{{ _('Temporary') }}</option>
+                        <option value="Daily Wage" {{ 'selected' if worker and worker.employee_type == 'Daily Wage' }}>{{ _('Daily Wage') }}</option>
                     </select>
                 </div>
             </div>
@@ -141,24 +213,24 @@
 
         <!-- Payment Settings -->
         <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Settings</h3>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Payment Settings') }}</h2>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Pay Type</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Pay Type') }}</label>
                     <select id="pay-type-select" name="pay_type" required class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                        <option value="">Select Pay Type</option>
-                        <option value="daily" {{ 'selected' if worker and worker.pay_type == 'daily' }}>Daily Wage</option>
-                        <option value="monthly" {{ 'selected' if worker and worker.pay_type == 'monthly' }}>Monthly Salary</option>
-                        <option value="hourly" {{ 'selected' if worker and worker.pay_type == 'hourly' }}>Hourly Rate</option>
-                        <option value="project" {{ 'selected' if worker and worker.pay_type == 'project' }}>Project Based</option>
+                        <option value="">{{ _('Select Pay Type') }}</option>
+                        <option value="daily" {{ 'selected' if worker and worker.pay_type == 'daily' }}>{{ _('Daily Wage') }}</option>
+                        <option value="monthly" {{ 'selected' if worker and worker.pay_type == 'monthly' }}>{{ _('Monthly Salary') }}</option>
+                        <option value="hourly" {{ 'selected' if worker and worker.pay_type == 'hourly' }}>{{ _('Hourly Rate') }}</option>
+                        <option value="project" {{ 'selected' if worker and worker.pay_type == 'project' }}>{{ _('Project Based') }}</option>
                     </select>
                 </div>
                 
                 <div id="rate-container">
                     <div id="daily-rate" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Daily Rate</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Daily Rate') }}</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                             <input type="number" name="daily_rate" value="{{ worker.daily_rate if worker else '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
@@ -166,29 +238,29 @@
                     
                     <div id="monthly-rate" class="hidden space-y-3">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Monthly Salary</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Monthly Salary') }}</label>
                             <div class="relative">
-                                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                 <input type="number" name="monthly_salary" value="{{ worker.monthly_salary if worker else '' }}" step="0.01"
                                        class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Monthly Working Days</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Monthly Working Days') }}</label>
                                 <input type="number" name="monthly_working_days"
                                        value="{{ worker.monthly_working_days if worker and worker.monthly_working_days is not none else 26 }}"
                                        min="1" max="31"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                <div class="text-xs text-gray-500 mt-1">Used to derive daily rate</div>
+                                <div class="text-xs text-gray-500 mt-1">{{ _('Used to derive daily rate') }}</div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Standard Hours / Day</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Standard Hours / Day') }}</label>
                                 <input type="number" name="standard_working_hours"
                                        value="{{ worker.standard_working_hours if worker and worker.standard_working_hours is not none else 8 }}"
                                        min="1" max="24"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                <div class="text-xs text-gray-500 mt-1">Used to derive hourly rate</div>
+                                <div class="text-xs text-gray-500 mt-1">{{ _('Used to derive hourly rate') }}</div>
                             </div>
                         </div>
 
@@ -196,8 +268,8 @@
                         <div class="bg-orange-50 rounded-2xl p-4 border border-orange-200">
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center space-x-2">
-                                    <i class="fa-solid fa-calendar-xmark text-orange-600"></i>
-                                    <h4 class="text-md font-semibold text-gray-800">Closure Day Payment</h4>
+                                    <i class="fa-solid fa-calendar-xmark text-orange-700"></i>
+                                    <h3 class="text-md font-semibold text-gray-800">{{ _('Closure Day Payment') }}</h3>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="closure_extra_pay_enabled" id="closure-extra-pay-toggle"
@@ -206,18 +278,18 @@
                                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                                 </label>
                             </div>
-                            <p class="text-xs text-gray-500 mb-3">Enable extra pay when a worker is present on a closure/holiday day</p>
+                            <p class="text-xs text-gray-500 mb-3">{{ _('Enable extra pay when a worker is present on a closure/holiday day') }}</p>
                             <div id="closure-extra-fields" class="space-y-3 hidden">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Closure Day Calculation Basis</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Closure Day Calculation Basis') }}</label>
                                     <div class="space-y-2">
                                         <label class="flex items-start space-x-3 p-3 bg-white rounded-xl border border-orange-200 cursor-pointer">
                                             <input type="radio" name="closure_calculation_method" value="daily_percent"
                                                    {% if not worker or not worker.closure_calculation_method or worker.closure_calculation_method == 'daily_percent' %}checked{% endif %}
                                                    class="mt-0.5 text-orange-500 focus:ring-orange-400">
                                             <div>
-                                                <div class="text-sm font-medium text-gray-800">Fixed % on Daily Rate</div>
-                                                <div class="text-xs text-gray-500">Flat bonus on top of full-day salary</div>
+                                                <div class="text-sm font-medium text-gray-800">{{ _('Fixed % on Daily Rate') }}</div>
+                                                <div class="text-xs text-gray-500">{{ _('Flat bonus on top of full-day salary') }}</div>
                                             </div>
                                         </label>
                                         <label class="flex items-start space-x-3 p-3 bg-white rounded-xl border border-orange-200 cursor-pointer">
@@ -225,8 +297,8 @@
                                                    {% if worker and worker.closure_calculation_method == 'hourly_percent' %}checked{% endif %}
                                                    class="mt-0.5 text-orange-500 focus:ring-orange-400">
                                             <div>
-                                                <div class="text-sm font-medium text-gray-800">Actual Hours Worked + %</div>
-                                                <div class="text-xs text-gray-500">Hours logged × hourly rate × (1 + %)</div>
+                                                <div class="text-sm font-medium text-gray-800">{{ _('Actual Hours Worked + %') }}</div>
+                                                <div class="text-xs text-gray-500">{{ _('Hours logged × hourly rate × (1 + %)') }}</div>
                                             </div>
                                         </label>
                                         <label class="flex items-start space-x-3 p-3 bg-white rounded-xl border border-orange-200 cursor-pointer">
@@ -234,24 +306,23 @@
                                                    {% if worker and worker.closure_calculation_method == 'minute_percent' %}checked{% endif %}
                                                    class="mt-0.5 text-orange-500 focus:ring-orange-400">
                                             <div>
-                                                <div class="text-sm font-medium text-gray-800">Actual Minutes Worked + %</div>
-                                                <div class="text-xs text-gray-500">Minutes logged × minute rate × (1 + %)</div>
+                                                <div class="text-sm font-medium text-gray-800">{{ _('Actual Minutes Worked + %') }}</div>
+                                                <div class="text-xs text-gray-500">{{ _('Minutes logged × minute rate × (1 + %)') }}</div>
                                             </div>
                                         </label>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Additional Percentage (%)</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Additional Percentage (%)') }}</label>
                                     <input type="number" name="closure_extra_percentage"
                                            value="{{ worker.closure_extra_percentage if worker and worker.closure_extra_percentage is not none else 0 }}"
-                                           min="0" max="500" step="0.01" placeholder="e.g. 10 for 10%"
+                                           min="0" max="500" step="0.01" placeholder="{{ _('e.g. 10 for 10%') }}"
                                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                    <div class="text-xs text-gray-500 mt-1">Applies to all three methods above</div>
+                                    <div class="text-xs text-gray-500 mt-1">{{ _('Applies to all three methods above') }}</div>
                                 </div>
                                 <div class="bg-white rounded-xl p-3 border border-orange-100">
                                     <div class="text-xs font-medium text-orange-700 mb-1">
-                                        <i class="fa-solid fa-circle-info mr-1"></i>Half-Day on Closure Day
-                                    </div>
+                                        <i class="fa-solid fa-circle-info mr-1"></i>{{ _('Half-Day on Closure Day') }}</div>
                                     <div class="text-xs text-gray-500">
                                         For "Fixed %" method, the bonus applies to the half-day base amount. For "Hours/Minutes" methods, only actual time logged is used.
                                     </div>
@@ -261,54 +332,54 @@
                     </div>
                     
                     <div id="hourly-rate" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Hourly Rate</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Hourly Rate') }}</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                             <input type="number" name="hourly_rate" value="{{ worker.hourly_rate if worker else '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
                     </div>
 
                     <div id="project-rate" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Project Amount</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Project Amount') }}</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                             <input type="number" name="project_rate" value="{{ worker.project_rate if worker else '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
-                        <div class="text-xs text-gray-600 mt-1">Fixed amount for the project cycle.</div>
+                        <div class="text-xs text-gray-600 mt-1">{{ _('Fixed amount for the project cycle.') }}</div>
                     </div>
                 </div>
 
                 <!-- Leave Settings (for salaried employees) -->
                 <div id="leave-settings" class="hidden">
                     <div class="bg-green-50 rounded-2xl p-4 border border-green-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                            <i class="fa-solid fa-calendar-days text-green-600 mr-2"></i>
-                            Leave Policy
-                        </h4>
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                            <i class="fa-solid fa-calendar-days text-green-700 mr-2"></i>
+                            {{ _('Leave Policy') }}
+                        </h3>
                         
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Allowed Leaves per Month</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Allowed Leaves per Month') }}</label>
                                 <input type="number" name="allowed_leaves" value="{{ worker.allowed_leaves_per_month if worker else '2' }}" min="0" max="31"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                <div class="text-xs text-gray-600 mt-1">Number of leaves without salary deduction</div>
+                                <div class="text-xs text-gray-600 mt-1">{{ _('Number of leaves without salary deduction') }}</div>
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Leave Deduction per Day</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Leave Deduction per Day') }}</label>
                                 <div class="relative">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="leave_deduction" value="{{ worker.leave_deduction_per_day if worker else '500' }}" step="0.01"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
-                                <div class="text-xs text-gray-600 mt-1">Amount deducted for each extra leave day</div>
+                                <div class="text-xs text-gray-600 mt-1">{{ _('Amount deducted for each extra leave day') }}</div>
                             </div>
                             
                             <div class="bg-white rounded-xl p-3 border border-green-300">
                                 <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm font-medium text-gray-700">Apply Leave Policy</span>
+                                    <span class="text-sm font-medium text-gray-700">{{ _('Apply Leave Policy') }}</span>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" name="leave_policy_enabled" {% if not worker or worker.leave_policy_enabled %}checked{% endif %} class="sr-only peer">
                                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
@@ -325,18 +396,18 @@
                 <div id="daily-policy-settings" class="space-y-4 hidden">
                     <!-- Working Hours -->
                     <div class="bg-blue-50 rounded-2xl p-4 border border-blue-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
                             <i class="fa-solid fa-clock text-blue-600 mr-2"></i>
-                            Working Hours
-                        </h4>
+                            {{ _('Working Hours') }}
+                        </h3>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Start Time') }}</label>
                                 <input type="time" name="start_time" value="{{ worker.start_time.strftime('%H:%M') if worker and worker.start_time else '09:00' }}"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('End Time') }}</label>
                                 <input type="time" name="end_time" value="{{ worker.end_time.strftime('%H:%M') if worker and worker.end_time else '18:00' }}"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                             </div>
@@ -345,36 +416,36 @@
 
                     <!-- Absence Policy -->
                     <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                            <i class="fa-solid fa-user-slash text-red-600 mr-2"></i>
-                            Absence Policy
-                        </h4>
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                            <i class="fa-solid fa-user-slash text-red-700 mr-2"></i>
+                            {{ _('Absence Policy') }}
+                        </h3>
                         <div class="space-y-3">
                             <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-red-200">
-                                <span class="text-sm font-medium text-gray-700">No Work, No Pay</span>
+                                <span class="text-sm font-medium text-gray-700">{{ _('No Work, No Pay') }}</span>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="no_work_no_pay" {% if not worker or worker.no_work_no_pay %}checked{% endif %} class="sr-only peer">
                                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
                                 </label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Half Day Rate</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Half Day Rate') }}</label>
                                 <div class="relative">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="half_day_rate"
                                            value="{{ worker.half_day_rate if worker and worker.half_day_rate is not none else '' }}"
-                                           step="0.01" min="0" placeholder="Half day payment amount"
+                                           step="0.01" min="0" placeholder="{{ _('Half day payment amount') }}"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
-                                <div class="text-xs text-gray-600 mt-1">Used when worked time is up to 50% of shift hours.</div>
+                                <div class="text-xs text-gray-600 mt-1">{{ _('Used when worked time is up to 50% of shift hours.') }}</div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Half Day Grace Window (Minutes)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Half Day Grace Window (Minutes)') }}</label>
                                 <input type="number" name="half_day_grace_minutes"
                                        value="{{ worker.half_day_grace_minutes if worker and worker.half_day_grace_minutes else 20 }}"
                                        min="15" max="25" step="1"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                <div class="text-xs text-gray-600 mt-1">Half-day rate remains active for this many minutes after half-shift time.</div>
+                                <div class="text-xs text-gray-600 mt-1">{{ _('Half-day rate remains active for this many minutes after half-shift time.') }}</div>
                             </div>
                         </div>
                     </div>
@@ -382,21 +453,21 @@
                     <!-- Overtime Settings (Daily) -->
                     <div class="bg-green-50 rounded-2xl p-4 border border-green-200">
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm font-medium text-gray-700">Apply Overtime</span>
+                            <span class="text-sm font-medium text-gray-700">{{ _('Apply Overtime') }}</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input id="overtime-enabled-toggle" type="checkbox" name="overtime_enabled" {% if not worker or worker.overtime_enabled %}checked{% endif %} class="sr-only peer">
                                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
                             </label>
                         </div>
                         <div id="overtime-settings-fields" class="space-y-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Overtime Rate</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Overtime Rate') }}</label>
                             <div class="flex space-x-2">
                                 <select name="overtime_type" class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                    <option value="hour" {{ 'selected' if worker and worker.overtime_type == 'hour' }}>Per Hour</option>
-                                    <option value="minute" {{ 'selected' if worker and worker.overtime_type == 'minute' }}>Per Minute</option>
+                                    <option value="hour" {{ 'selected' if worker and worker.overtime_type == 'hour' }}>{{ _('Per Hour') }}</option>
+                                    <option value="minute" {{ 'selected' if worker and worker.overtime_type == 'minute' }}>{{ _('Per Minute') }}</option>
                                 </select>
                                 <div class="relative flex-1">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="overtime_rate" value="{{ worker.overtime_rate if worker and worker.overtime_rate is not none else '100' }}" step="0.01" min="0"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
@@ -407,22 +478,22 @@
                     <!-- Late Policy Settings (Daily) -->
                     <div class="bg-yellow-50 rounded-2xl p-4 border border-yellow-200">
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm font-medium text-gray-700">Apply Late Fine</span>
+                            <span class="text-sm font-medium text-gray-700">{{ _('Apply Late Fine') }}</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input id="late-policy-toggle" type="checkbox" name="late_policy_enabled" {% if worker and worker.late_policy_enabled %}checked{% endif %} class="sr-only peer">
                                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
                             </label>
                         </div>
                         <div id="late-policy-fields" class="space-y-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Late Fine Rate</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Late Fine Rate') }}</label>
                             <div class="flex space-x-2">
                                 <select name="late_deduction_type" class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                    <option value="hour" {{ 'selected' if worker and worker.late_deduction_type == 'hour' else '' }}>Per Hour</option>
-                                    <option value="minute" {{ 'selected' if worker and worker.late_deduction_type == 'minute' else '' }}>Per Minute</option>
-                                    <option value="day" {{ 'selected' if worker and worker.late_deduction_type == 'day' else '' }}>Per Day</option>
+                                    <option value="hour" {{ 'selected' if worker and worker.late_deduction_type == 'hour' else '' }}>{{ _('Per Hour') }}</option>
+                                    <option value="minute" {{ 'selected' if worker and worker.late_deduction_type == 'minute' else '' }}>{{ _('Per Minute') }}</option>
+                                    <option value="day" {{ 'selected' if worker and worker.late_deduction_type == 'day' else '' }}>{{ _('Per Day') }}</option>
                                 </select>
                                 <div class="relative flex-1">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="late_deduction"
                                            value="{{ worker.late_deduction_per_day if worker and worker.late_deduction_per_day is not none else '25' }}"
                                            step="0.01" min="0"
@@ -437,18 +508,18 @@
                 <div id="monthly-policy-settings" class="space-y-4 hidden">
                     <!-- Working Hours -->
                     <div class="bg-blue-50 rounded-2xl p-4 border border-blue-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
                             <i class="fa-solid fa-clock text-blue-600 mr-2"></i>
-                            Working Hours
-                        </h4>
+                            {{ _('Working Hours') }}
+                        </h3>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Start Time') }}</label>
                                 <input type="time" name="start_time" value="{{ worker.start_time.strftime('%H:%M') if worker and worker.start_time else '09:00' }}"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('End Time') }}</label>
                                 <input type="time" name="end_time" value="{{ worker.end_time.strftime('%H:%M') if worker and worker.end_time else '18:00' }}"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                             </div>
@@ -457,36 +528,36 @@
 
                     <!-- Absence Policy (Monthly) -->
                     <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
-                        <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                            <i class="fa-solid fa-user-slash text-red-600 mr-2"></i>
-                            Absence Policy
-                        </h4>
+                        <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                            <i class="fa-solid fa-user-slash text-red-700 mr-2"></i>
+                            {{ _('Absence Policy') }}
+                        </h3>
                         <div class="space-y-3">
                             <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-red-200">
-                                <span class="text-sm font-medium text-gray-700">No Work, No Pay</span>
+                                <span class="text-sm font-medium text-gray-700">{{ _('No Work, No Pay') }}</span>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="no_work_no_pay" {% if not worker or worker.no_work_no_pay %}checked{% endif %} class="sr-only peer">
                                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
                                 </label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Half Day Rate</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Half Day Rate') }}</label>
                                 <div class="relative">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="half_day_rate"
                                            value="{{ worker.half_day_rate if worker and worker.half_day_rate is not none else '' }}"
-                                           step="0.01" min="0" placeholder="Half day payment amount"
+                                           step="0.01" min="0" placeholder="{{ _('Half day payment amount') }}"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
-                                <div class="text-xs text-gray-600 mt-1">Used when worked time is up to 50% of shift hours.</div>
+                                <div class="text-xs text-gray-600 mt-1">{{ _('Used when worked time is up to 50% of shift hours.') }}</div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Half Day Grace Window (Minutes)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Half Day Grace Window (Minutes)') }}</label>
                                 <input type="number" name="half_day_grace_minutes"
                                        value="{{ worker.half_day_grace_minutes if worker and worker.half_day_grace_minutes else 20 }}"
                                        min="15" max="25" step="1"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                <div class="text-xs text-gray-600 mt-1">Half-day rate remains active for this many minutes after half-shift time.</div>
+                                <div class="text-xs text-gray-600 mt-1">{{ _('Half-day rate remains active for this many minutes after half-shift time.') }}</div>
                             </div>
                         </div>
                     </div>
@@ -494,21 +565,21 @@
                     <!-- Overtime Settings (Monthly) -->
                     <div class="bg-green-50 rounded-2xl p-4 border border-green-200">
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm font-medium text-gray-700">Apply Overtime</span>
+                            <span class="text-sm font-medium text-gray-700">{{ _('Apply Overtime') }}</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input id="monthly-overtime-toggle" type="checkbox" name="overtime_enabled" {% if not worker or worker.overtime_enabled %}checked{% endif %} class="sr-only peer">
                                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
                             </label>
                         </div>
                         <div id="monthly-overtime-fields" class="space-y-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Overtime Rate</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Overtime Rate') }}</label>
                             <div class="flex space-x-2">
                                 <select name="overtime_type" class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                    <option value="hour" {{ 'selected' if worker and worker.overtime_type == 'hour' }}>Per Hour</option>
-                                    <option value="minute" {{ 'selected' if worker and worker.overtime_type == 'minute' }}>Per Minute</option>
+                                    <option value="hour" {{ 'selected' if worker and worker.overtime_type == 'hour' }}>{{ _('Per Hour') }}</option>
+                                    <option value="minute" {{ 'selected' if worker and worker.overtime_type == 'minute' }}>{{ _('Per Minute') }}</option>
                                 </select>
                                 <div class="relative flex-1">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="overtime_rate" value="{{ worker.overtime_rate if worker and worker.overtime_rate is not none else '100' }}" step="0.01" min="0"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
@@ -519,22 +590,22 @@
                     <!-- Late Fine Settings (Monthly) -->
                     <div class="bg-yellow-50 rounded-2xl p-4 border border-yellow-200">
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm font-medium text-gray-700">Apply Late Fine</span>
+                            <span class="text-sm font-medium text-gray-700">{{ _('Apply Late Fine') }}</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input id="monthly-late-toggle" type="checkbox" name="late_policy_enabled" {% if worker and worker.late_policy_enabled %}checked{% endif %} class="sr-only peer">
                                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
                             </label>
                         </div>
                         <div id="monthly-late-fields" class="space-y-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Late Fine Rate</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Late Fine Rate') }}</label>
                             <div class="flex space-x-2">
                                 <select name="late_deduction_type" class="flex-1 p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                    <option value="hour" {{ 'selected' if worker and worker.late_deduction_type == 'hour' else '' }}>Per Hour</option>
-                                    <option value="minute" {{ 'selected' if worker and worker.late_deduction_type == 'minute' else '' }}>Per Minute</option>
-                                    <option value="day" {{ 'selected' if worker and worker.late_deduction_type == 'day' else '' }}>Per Day</option>
+                                    <option value="hour" {{ 'selected' if worker and worker.late_deduction_type == 'hour' else '' }}>{{ _('Per Hour') }}</option>
+                                    <option value="minute" {{ 'selected' if worker and worker.late_deduction_type == 'minute' else '' }}>{{ _('Per Minute') }}</option>
+                                    <option value="day" {{ 'selected' if worker and worker.late_deduction_type == 'day' else '' }}>{{ _('Per Day') }}</option>
                                 </select>
                                 <div class="relative flex-1">
-                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
                                     <input type="number" name="late_deduction"
                                            value="{{ worker.late_deduction_per_day if worker and worker.late_deduction_per_day is not none else '25' }}"
                                            step="0.01" min="0"
@@ -549,7 +620,7 @@
     </form>
 </main>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const payTypeSelect = document.getElementById('pay-type-select');
     const dailyRate = document.getElementById('daily-rate');
@@ -671,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
             photoPreview.classList.remove('hidden');
             photoFallback.classList.add('hidden');
             if (photoHint) {
-                photoHint.textContent = 'Selected: ' + file.name;
+                photoHint.textContent = {{ _('Selected')|tojson }} + ': ' + file.name;
             }
         });
     }

@@ -1,8 +1,9 @@
 import os
 import secrets
 import string
+import hashlib
 import logging
-from flask import Flask
+from flask import Flask, g, request
 from flask_compress import Compress
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
@@ -34,6 +35,54 @@ app.secret_key = _secret
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+
+# ------------------------------------------------------------------
+# Cache-busted static URLs.
+#
+# The service worker serves /static/ cache-first. Because every asset
+# URL was a fixed path, a phone that installed the app in July kept
+# serving July's custom.css for months: the calendar's grid rules were
+# added in August and simply never reached the device, so the month grid
+# rendered as a single column of plain <div>s. Stamping each URL with a
+# hash of the file's contents means a changed file is a changed URL, so
+# cache-first can only ever return the matching version.
+# ------------------------------------------------------------------
+_static_versions = {}
+
+
+def _static_version(filename):
+    """Short content hash for a file under static/, computed once per process.
+
+    Hashing the bytes rather than the mtime means a redeploy that does not
+    change a file keeps its URL, so phones re-download only what actually
+    changed. Each file is read at most once per worker process.
+    """
+    if filename in _static_versions:
+        return _static_versions[filename]
+    version = None
+    try:
+        path = os.path.join(app.static_folder, filename)
+        digest = hashlib.sha1()
+        with open(path, 'rb') as handle:
+            for chunk in iter(lambda: handle.read(65536), b''):
+                digest.update(chunk)
+        version = digest.hexdigest()[:10]
+    except OSError:
+        # A missing file is the caller's problem, not this helper's — fall
+        # through with no version rather than breaking the page.
+        version = None
+    _static_versions[filename] = version
+    return version
+
+
+@app.url_defaults
+def _stamp_static_url(endpoint, values):
+    if endpoint != 'static' or 'filename' not in values or 'v' in values:
+        return
+    version = _static_version(values['filename'])
+    if version:
+        values['v'] = version
+
 # Session cookie hardening. Secure is on only when the app is actually served
 # over TLS, so local http development keeps working; Render terminates TLS and
 # ProxyFix above makes request.is_secure reflect that.
@@ -44,12 +93,76 @@ app.config.update(
 )
 
 
+@app.before_request
+def _csp_nonce():
+    """A fresh nonce per request, for this page's own inline <script> blocks.
+
+    The policy below allows no inline script except what carries this value,
+    and it is unguessable and never reused, so markup an attacker manages to
+    inject cannot carry a nonce that matches.
+    """
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+@app.context_processor
+def _expose_csp_nonce():
+    return {'csp_nonce': getattr(g, 'csp_nonce', '')}
+
+
+# The policy, assembled once. Every library the app uses is vendored under
+# /static — Tailwind, Font Awesome, jsPDF, html2canvas — so the only outside
+# origin is Google Fonts.
+_CSP = "; ".join([
+    "default-src 'self'",
+    # No 'unsafe-inline' here, which is the whole point: an injected <script>
+    # or an onclick= an attacker gets into the page does not run. The app's
+    # own inline blocks are allowed by nonce; its event handlers are
+    # delegated from static/js/actions.js instead of written as attributes.
+    "script-src 'self' 'nonce-{nonce}'",
+    # Styles keep 'unsafe-inline'. Tailwind's utilities arrive as a
+    # stylesheet, but the app also sets style="" in a couple of dozen places
+    # and the day view computes a few widths at runtime. Injected CSS can
+    # restyle a page; it cannot execute, which is a different order of risk,
+    # and removing it would be a separate piece of work.
+    # Google's two hosts were here only for Inter, which is now served
+    # from this origin. Dropping them means a stylesheet or a font from
+    # anywhere but this app is refused outright, rather than refused
+    # everywhere except the two places that happened to be needed.
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    # data: for the QR codes the app draws into <img>; blob: for the canvas
+    # the PDF exporter rasterises before handing it to jsPDF.
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self'",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+])
+
+
 @app.after_request
 def _security_headers(response):
-    """Baseline headers. The app had none of these."""
+    """The app had none of these. Three were added first; the policy, the
+    permissions and HSTS came later, once the interface had been moved off
+    inline event handlers and could live without 'unsafe-inline'."""
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
     response.headers.setdefault('Referrer-Policy', 'same-origin')
+    response.headers.setdefault(
+        'Content-Security-Policy',
+        _CSP.format(nonce=getattr(g, 'csp_nonce', '')))
+    # Nothing in the application uses a camera beyond the QR scanner, which is
+    # same-origin, and nothing uses the rest at all.
+    response.headers.setdefault(
+        'Permissions-Policy',
+        'camera=(self), microphone=(), geolocation=(), payment=(), usb=()')
+    # Only where TLS is actually terminated — announcing HSTS over plain http
+    # on a laptop would lock the developer out of their own dev server.
+    if request.is_secure:
+        response.headers.setdefault(
+            'Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     return response
 
 
@@ -98,6 +211,12 @@ SCHEMA_PATCHES = {
         ('created_by', "INTEGER"),
         ('status', "VARCHAR(20) DEFAULT 'active'"),
         ('profile_image', "TEXT"),
+        # A worker's own login points at the Worker record it may see.
+        ('worker_id', "INTEGER"),
+        # Supervisor powers, granted one at a time and off by default.
+        ('assigned_worker_ids', "TEXT"),
+        ('can_mark_attendance', "BOOLEAN NOT NULL DEFAULT 0"),
+        ('can_record_transactions', "BOOLEAN NOT NULL DEFAULT 0"),
     ],
     'closure_days': [
         ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),
@@ -119,6 +238,14 @@ SCHEMA_PATCHES = {
         ('closure_extra_pay_enabled', "BOOLEAN NOT NULL DEFAULT 0"),
         ('closure_calculation_method', "VARCHAR(20) DEFAULT 'daily_percent'"),
         ('closure_extra_percentage', "FLOAT DEFAULT 0.0"),
+        # How a worker actually gets paid. The app worked out what each
+        # person was owed to the rupee and then had nowhere to send it.
+        ('bank_account_name', "VARCHAR(120)"),
+        ('bank_account_number', "VARCHAR(34)"),
+        ('bank_ifsc', "VARCHAR(11)"),
+        ('upi_id', "VARCHAR(100)"),
+        ('aadhaar_number', "VARCHAR(12)"),
+        ('pan_number', "VARCHAR(10)"),
     ],
     'attendance_records': [
         ('late_minutes', "INTEGER DEFAULT 0"),
@@ -131,6 +258,28 @@ SCHEMA_PATCHES = {
     'leave_adjustments': [
         ('effective_date', "DATE"),
     ],
+    # Finalised payroll keeps a frozen copy of how it was calculated, so a
+    # later change to salary policy cannot rewrite a month that was already
+    # paid. Added after release, hence the patch rather than a fresh table.
+    'payroll_records': [
+        ('breakdown_json', "TEXT"),
+        ('policy_json', "TEXT"),
+        ('finalized_at', "DATETIME"),
+        # How much of the month has actually been handed over. Left NULL on
+        # existing rows on purpose: PayrollRecord.settled_amount reads a NULL
+        # here together with status='paid' as "the whole net was paid", so
+        # months settled before the upgrade do not reopen as unpaid.
+        ('paid_amount', "FLOAT"),
+    ],
+    'worker_transactions': [
+        ('payment_mode', "VARCHAR(20)"),
+        ('reference_no', "VARCHAR(60)"),
+        ('acknowledged_at', "DATETIME"),
+        ('acknowledged_by', "INTEGER"),
+    ],
+    'company_settings': [
+        ('dues_allocation', "VARCHAR(20) DEFAULT 'month'"),
+    ],
 }
 
 # Multi-tenant migration: every business table gains an account_id, and the
@@ -141,7 +290,7 @@ _TENANT_TABLES = [
     'company_settings', 'sites', 'departments', 'projects', 'work_tasks',
     'project_assignments', 'worker_modifications', 'leave_adjustments',
     'worker_transactions', 'notifications', 'workers', 'attendance_records',
-    'closure_days', 'payroll_records',
+    'closure_days', 'payroll_records', 'salary_policies', 'salary_policy_audits',
 ]
 for _t in _TENANT_TABLES:
     SCHEMA_PATCHES.setdefault(_t, []).append(('account_id', "INTEGER"))

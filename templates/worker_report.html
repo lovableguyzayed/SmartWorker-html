@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ worker.full_name }} — Profile Report{% endblock %}
+{% block title %}{{ worker.full_name }} — {{ _('Profile Report') }}{% endblock %}
 
 {% block head %}
 <style>
@@ -9,10 +9,22 @@
     body, #mobile-app { background: white !important; max-width: 100% !important; }
     .report-page { box-shadow: none !important; border: none !important; margin: 0 !important; }
     @page { margin: 12mm; }
-    /* Keep logical blocks together across page breaks. The report is built
-       from divs — it contains no <section> tags — so target those. */
-    .report-body > div { break-inside: avoid; page-break-inside: avoid; }
+    /* Keep logical blocks together across page breaks — but only the ones
+       that are small enough for that to mean anything.
+
+       This used to read `.report-body > div`, which made every section
+       atomic. The Salary Calculation section is 222mm, 83% of a sheet: a
+       block that large can only ever begin at the top of a page, so it
+       shoved everything after it down and left 28mm unused on the sheet
+       before — which is how a report that fits on two sheets printed a
+       third one holding a heading and a line of small print.
+
+       What actually has to stay whole is a table row and a two-column
+       grid. A long section may flow; its heading still cannot be the last
+       thing on a page (.report-section-title below), so it arrives with
+       its table rather than ahead of it. */
     .report-table tr { break-inside: avoid; page-break-inside: avoid; }
+    .report-body .grid { break-inside: avoid; page-break-inside: avoid; }
     /* A section title must never be the last thing on a page. */
     .report-section-title { break-after: avoid; page-break-after: avoid; }
     .report-page { orphans: 3; widows: 3; }
@@ -21,6 +33,44 @@
        it does repeat a <thead> when a table spans pages. So the whole report
        lives in a one-cell table whose header carries the identity strip. */
     .print-running-header { display: flex !important; }
+
+    /* ---- why the report printed a third sheet --------------------------
+       Measured: 544mm of content, and two sheets hold 534mm once the
+       running header above is repeated on each — 10mm over, which spilled
+       the signature line onto a sheet that was then 81% empty.
+
+       Nine section gaps of 24px are set for a screen you scroll. On a
+       printed sheet they cost 19mm between them, so taking them to 16px
+       returns twice the overflow and still separates the sections
+       plainly. Type size and table padding are untouched — this document
+       goes to a worker and to an inspector. */
+    .report-body .mb-6 { margin-bottom: 16px; }
+
+    /* The report is mostly table rows — about thirty of them. 5px of
+       padding above and below each is set for a finger-sized screen row;
+       on paper a row only has to be readable, and the two millimetres per
+       row add up to more than the sheet this document was overflowing
+       by. Type size is untouched.
+
+       Scoped through .report-body deliberately: the screen rule that sets
+       this padding is declared further down this same stylesheet, so an
+       equally specific print rule up here would lose on source order and
+       silently do nothing. */
+    .report-body .report-table td { padding-top: 3px; padding-bottom: 3px; }
+    .report-body .report-table th { padding-top: 4px; padding-bottom: 4px; }
+
+    /* With the above, every line of the report fits on two sheets — and
+       Chrome still printed a third, completely blank one.
+
+       The content ended at 501mm; the page box ran to 537mm. The extra
+       36mm is the app shell: #mobile-app carries min-h-screen so a short
+       screen still fills the phone, and main carries pb-8 to clear the
+       bottom navigation. Neither means anything on paper, and empty space
+       still counts towards the page box — so 36mm of nothing nobody can
+       see was enough to start a sheet. */
+    #mobile-app { min-height: 0 !important; }
+    main { padding-bottom: 0 !important; }
+    .report-body > div:last-child { margin-bottom: 0 !important; }
 }
 .print-frame { width: 100%; border-collapse: collapse; }
 .print-frame > thead > tr > th { padding: 0 0 6px; text-align: left; font-weight: 400; }
@@ -33,8 +83,15 @@
 }
 .report-section-title {
     font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: #007BFF; font-weight: 700; border-bottom: 2px solid #007BFF;
+    color: #0062CC; font-weight: 700; border-bottom: 2px solid #0062CC;
     padding-bottom: 4px; margin-bottom: 10px;
+}
+/* A heading inside a section — quieter than the section rule above, and it
+   must not be split from the lines it introduces. */
+.report-subtitle {
+    font-size: 0.65rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: #64748b; font-weight: 700; margin-bottom: 4px;
+    break-after: avoid; page-break-after: avoid;
 }
 /* Fixed layout + wrapping so long names/notes/addresses never spill past
    the page edge — they wrap inside their column instead. */
@@ -58,16 +115,16 @@
 <div class="no-print bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl mb-4">
     <div class="flex items-center justify-between">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Profile Report</div>
+                <h1 class="text-xl font-semibold">{{ _('Profile Report') }}</h1>
                 <div class="text-sm opacity-90">{{ worker.full_name }}</div>
             </div>
         </div>
-        <button onclick="window.print()" class="px-4 py-2 bg-white text-primary rounded-xl font-semibold text-sm">
-            <i class="fa-solid fa-file-pdf mr-1"></i>Save PDF
+        <button data-act="print" class="px-4 py-2 bg-white text-primary rounded-xl font-semibold text-sm">
+            <i class="fa-solid fa-file-pdf mr-1"></i>{{ _('Save PDF') }}
         </button>
     </div>
 </div>
@@ -79,8 +136,8 @@
             <!-- Hidden on screen; a repeating <thead> is the one mechanism
                  Chrome reliably paints on every printed sheet. -->
             <div class="print-running-header">
-                <span><strong>{{ worker.full_name }}</strong> · ID {{ worker.worker_id }}</span>
-                <span>Profile Report</span>
+                <span><strong>{{ worker.full_name }}</strong> · {{ _('Worker ID') }} {{ worker.worker_id }}</span>
+                <span>{{ _('Profile Report') }}</span>
             </div>
         </th></tr>
     </thead>
@@ -102,8 +159,8 @@
             </div>
         </div>
         <div class="text-right">
-            <div class="text-[0.6rem] uppercase tracking-widest text-gray-400 font-bold">Employee Report</div>
-            <div class="text-[0.65rem] text-gray-500">{{ today.strftime('%d %B %Y') }}</div>
+            <div class="text-[0.6rem] uppercase tracking-widest text-gray-500 font-bold">{{ _('Employee Report') }}</div>
+            <div class="text-[0.65rem] text-gray-500">{{ today|ldate('%d %B %Y') }}</div>
         </div>
     </div>
 
@@ -122,7 +179,7 @@
             <div class="flex flex-wrap gap-2 mt-1.5">
                 <span class="text-[0.65rem] bg-primary text-white px-2 py-0.5 rounded-full font-semibold">{{ worker.worker_id }}</span>
                 <span class="text-[0.65rem] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">{{ worker.employee_type }}</span>
-                <span class="text-[0.65rem] px-2 py-0.5 rounded-full font-semibold {{ 'bg-green-100 text-green-700' if worker.status == 'active' else 'bg-red-100 text-red-700' }}">{{ worker.status.title() }}</span>
+                <span class="text-[0.65rem] px-2 py-0.5 rounded-full font-semibold {{ 'bg-green-100 text-green-700' if worker.status == 'active' else 'bg-red-100 text-red-700' }}">{{ _(worker.status|capitalize) }}</span>
             </div>
         </div>
         {% if worker.qr_code %}
@@ -132,23 +189,23 @@
 
     <!-- Personal & employment details -->
     <div class="mb-6">
-        <div class="report-section-title">Personal &amp; Employment Details</div>
+        <div class="report-section-title">{{ _('Personal & Employment Details') }}</div>
         <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-            <div class="flex justify-between"><span class="text-gray-500">Phone</span><span class="font-medium">{{ worker.phone }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-500">Email</span><span class="font-medium">{{ worker.email or '—' }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-500">Joined</span><span class="font-medium">{{ worker.join_date.strftime('%d %b %Y') }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-500">Pay Type</span><span class="font-medium capitalize">{{ worker.pay_type }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Phone') }}</span><span class="font-medium">{{ worker.phone }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Email') }}</span><span class="font-medium">{{ worker.email or '—' }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Joined') }}</span><span class="font-medium">{{ worker.join_date|ldate('%d %b %Y') }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Pay Type') }}</span><span class="font-medium capitalize">{{ _(worker.pay_type|capitalize) }}</span></div>
             {% if worker.pay_type == 'daily' %}
-            <div class="flex justify-between"><span class="text-gray-500">Daily Rate</span><span class="font-medium">₹{{ "%.2f"|format(worker.daily_rate or 0) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Daily Rate') }}</span><span class="font-medium">{{ (worker.daily_rate or 0)|money2 }}</span></div>
             {% elif worker.pay_type == 'monthly' %}
-            <div class="flex justify-between"><span class="text-gray-500">Monthly Salary</span><span class="font-medium">₹{{ "%.2f"|format(worker.monthly_salary or 0) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Monthly Salary') }}</span><span class="font-medium">{{ (worker.monthly_salary or 0)|money2 }}</span></div>
             {% elif worker.pay_type == 'hourly' %}
-            <div class="flex justify-between"><span class="text-gray-500">Hourly Rate</span><span class="font-medium">₹{{ "%.2f"|format(worker.hourly_rate or 0) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Hourly Rate') }}</span><span class="font-medium">{{ (worker.hourly_rate or 0)|money2 }}</span></div>
             {% else %}
-            <div class="flex justify-between"><span class="text-gray-500">Project Rate</span><span class="font-medium">₹{{ "%.2f"|format(worker.project_rate or 0) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ _('Project Rate') }}</span><span class="font-medium">{{ (worker.project_rate or 0)|money2 }}</span></div>
             {% endif %}
             {% if worker.address %}
-            <div class="col-span-2 flex justify-between"><span class="text-gray-500">Address</span><span class="font-medium text-right">{{ worker.address }}</span></div>
+            <div class="col-span-2 flex justify-between"><span class="text-gray-500">{{ _('Address') }}</span><span class="font-medium text-right">{{ worker.address }}</span></div>
             {% endif %}
         </div>
     </div>
@@ -156,65 +213,65 @@
     <!-- Current assignment + Leave -->
     <div class="grid grid-cols-2 gap-4 mb-6">
         <div>
-            <div class="report-section-title">Current Assignment</div>
+            <div class="report-section-title">{{ _('Current Assignment') }}</div>
             {% set assignment = worker.current_assignment %}
             {% if assignment %}
             <div class="text-xs space-y-1">
-                {% if assignment.project %}<div class="flex justify-between"><span class="text-gray-500">Project</span><span class="font-medium">{{ assignment.project.name }}</span></div>{% endif %}
-                {% if assignment.site %}<div class="flex justify-between"><span class="text-gray-500">Site</span><span class="font-medium">{{ assignment.site.name }}</span></div>{% endif %}
-                {% if assignment.task %}<div class="flex justify-between"><span class="text-gray-500">Task</span><span class="font-medium">{{ assignment.task.name }}</span></div>{% endif %}
-                <div class="flex justify-between"><span class="text-gray-500">Since</span><span class="font-medium">{{ assignment.start_date.strftime('%d %b %Y') }}</span></div>
+                {% if assignment.project %}<div class="flex justify-between"><span class="text-gray-500">{{ _('Project') }}</span><span class="font-medium">{{ assignment.project.name }}</span></div>{% endif %}
+                {% if assignment.site %}<div class="flex justify-between"><span class="text-gray-500">{{ _('Site') }}</span><span class="font-medium">{{ assignment.site.name }}</span></div>{% endif %}
+                {% if assignment.task %}<div class="flex justify-between"><span class="text-gray-500">{{ _('Task') }}</span><span class="font-medium">{{ assignment.task.name }}</span></div>{% endif %}
+                <div class="flex justify-between"><span class="text-gray-500">{{ _('Since') }}</span><span class="font-medium">{{ assignment.start_date|ldate('%d %b %Y') }}</span></div>
             </div>
             {% else %}
-            <div class="text-xs text-gray-400">Not currently assigned.</div>
+            <div class="text-xs text-gray-500">{{ _('Not currently assigned.') }}</div>
             {% endif %}
         </div>
         <div>
-            <div class="report-section-title">Leave Balance</div>
+            <div class="report-section-title">{{ _('Leave Balance') }}</div>
             {% if leave_balance %}
             <div class="text-xs space-y-1">
-                <div class="flex justify-between"><span class="text-gray-500">Monthly Quota</span><span class="font-medium">{{ leave_balance.monthly_quota }} day(s)</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Accrued (since joining)</span><span class="font-medium">{{ leave_balance.accrued_total }}</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Manual Adjustments</span><span class="font-medium">{{ leave_balance.manual_adjustment }}</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Used This Month</span><span class="font-medium">{{ leave_balance.used_this_month }}</span></div>
-                <div class="flex justify-between border-t pt-1"><span class="text-gray-700 font-semibold">Available Balance</span><span class="font-bold text-primary">{{ leave_balance.balance_after }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">{{ _('Monthly Quota') }}</span><span class="font-medium">{{ leave_balance.monthly_quota }} {{ _('day(s)') }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">{{ _('Accrued (since joining)') }}</span><span class="font-medium">{{ leave_balance.accrued_total }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">{{ _('Manual Adjustments') }}</span><span class="font-medium">{{ leave_balance.manual_adjustment }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">{{ _('Used This Month') }}</span><span class="font-medium">{{ leave_balance.used_this_month }}</span></div>
+                <div class="flex justify-between border-t pt-1"><span class="text-gray-700 font-semibold">{{ _('Available Balance') }}</span><span class="font-bold text-primary">{{ leave_balance.balance_after }}</span></div>
             </div>
             {% else %}
-            <div class="text-xs text-gray-400">Leave policy not applicable.</div>
+            <div class="text-xs text-gray-500">{{ _('Leave policy not applicable.') }}</div>
             {% endif %}
         </div>
     </div>
 
     <!-- Project & site history -->
     <div class="mb-6">
-        <div class="report-section-title">Project &amp; Site History</div>
+        <div class="report-section-title">{{ _('Project & Site History') }}</div>
         {% if worker.assignments %}
         <table class="report-table">
-            <thead><tr><th>Project / Site</th><th>Task</th><th>From</th><th>To</th><th>Days</th><th>Status</th></tr></thead>
+            <thead><tr><th>{{ _('Project / Site') }}</th><th>{{ _('Task') }}</th><th>{{ _('From') }}</th><th>{{ _('To') }}</th><th>{{ _('Days') }}</th><th>{{ _('Status') }}</th></tr></thead>
             <tbody>
                 {% for a in worker.assignments %}
                 <tr>
                     <td>{{ a.project.name if a.project else '' }}{% if a.project and a.site %} / {% endif %}{{ a.site.name if a.site else '' }}</td>
                     <td>{{ a.task.name if a.task else '—' }}</td>
-                    <td>{{ a.start_date.strftime('%d %b %y') }}</td>
-                    <td>{{ a.end_date.strftime('%d %b %y') if a.end_date else 'Ongoing' }}</td>
+                    <td>{{ a.start_date|ldate('%d %b %y') }}</td>
+                    <td>{{ a.end_date|ldate('%d %b %y') if a.end_date else _('Ongoing') }}</td>
                     <td>{{ a.worked_days() }}</td>
-                    <td class="capitalize">{{ a.status }}</td>
+                    <td class="capitalize">{{ _(a.status|capitalize) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <div class="text-xs text-gray-400">No project or site assignments recorded.</div>
+        <div class="text-xs text-gray-500">{{ _('No project or site assignments recorded.') }}</div>
         {% endif %}
     </div>
 
     <!-- Promotions & modifications -->
     <div class="mb-6">
-        <div class="report-section-title">Promotions &amp; Modification History</div>
+        <div class="report-section-title">{{ _('Promotions & Modification History') }}</div>
         {% if worker.modifications %}
         <table class="report-table">
-            <thead><tr><th>Date</th><th>Type</th><th>Change</th><th>Details</th></tr></thead>
+            <thead><tr><th>{{ _('Date') }}</th><th>{{ _('Type') }}</th><th>{{ _('Change') }}</th><th>{{ _('Details') }}</th></tr></thead>
             <tbody>
                 {% for m in worker.modifications %}
                 <tr>
@@ -227,50 +284,94 @@
             </tbody>
         </table>
         {% else %}
-        <div class="text-xs text-gray-400">No modifications recorded since joining.</div>
+        <div class="text-xs text-gray-500">{{ _('No modifications recorded since joining.') }}</div>
         {% endif %}
     </div>
 
     <!-- Attendance & pay summary, last 6 months -->
     <div class="mb-6">
-        <div class="report-section-title">Attendance &amp; Pay — Last 6 Months</div>
+        <div class="report-section-title">{{ _('Attendance & Pay — Last 6 Months') }}</div>
         {% if monthly_history %}
         <table class="report-table">
-            <thead><tr><th>Month</th><th class="num">P</th><th class="num">L</th><th class="num">A</th><th class="num">Lv</th><th class="num">OT (min)</th><th class="num">Net Pay</th></tr></thead>
+            <thead><tr><th>{{ _('Month') }}</th><th class="num">P</th><th class="num">L</th><th class="num">A</th><th class="num">Lv</th><th class="num">{{ _('OT') }} ({{ _('min') }})</th><th class="num">{{ _('Net Pay') }}</th></tr></thead>
             <tbody>
                 {% for row in monthly_history %}
                 <tr>
-                    <td>{{ row.label }}</td>
+                    <td>{{ row.label|lmonth }}</td>
                     <td class="num">{{ row.att.present_days }}</td>
                     <td class="num">{{ row.att.late_days }}</td>
                     <td class="num">{{ row.att.absent_days }}</td>
                     <td class="num">{{ row.att.leave_days }}</td>
                     <td class="num">{{ row.pay.overtime_minutes }}</td>
-                    <td class="num font-semibold">₹{{ "%.2f"|format(row.pay.estimated_pay) }}</td>
+                    <td class="num font-semibold">{{ row.pay.estimated_pay|money2 }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <div class="text-[0.6rem] text-gray-400 mt-1">P = Present, L = Late, A = Absent, Lv = Leave. Net pay includes overtime, transactions and deductions.</div>
+        <div class="text-[0.6rem] text-gray-500 mt-1">{{ _('P = Present, L = Late, A = Absent, Lv = Leave. Net pay includes overtime, transactions and deductions.') }}</div>
         {% else %}
-        <div class="text-xs text-gray-400">No attendance history yet.</div>
+        <div class="text-xs text-gray-500">{{ _('No attendance history yet.') }}</div>
         {% endif %}
     </div>
+
+    <!-- Salary calculation (fixed monthly salary only) -->
+    {% if salary_breakdown %}
+    {% set sb = salary_breakdown %}
+    <div class="mb-6">
+        <div class="report-section-title">{{ _('Salary Calculation') }} &mdash; {{ _(month_names[today.month - 1]) }} {{ today.year }}</div>
+        <table class="report-table">
+            <tbody>
+                <tr><td>{{ _('Monthly fixed salary') }}</td><td class="num font-semibold">{{ sb.monthly_salary|money2 }}</td></tr>
+                <tr><td>{{ _('Calculation basis') }}</td><td class="num">{{ _(salary_basis_label) }} ({{ sb.basis_days }} {{ _('days') }})</td></tr>
+                <tr><td>{{ _('Daily salary (exact)') }}</td><td class="num">₹{{ "%.4f"|format(sb.daily_rate_exact) }}</td></tr>
+                <tr><td>{{ _('Daily salary (rounded)') }}</td><td class="num font-semibold">{{ sb.daily_rate|money2 }}</td></tr>
+                <tr><td>{{ _('Total calendar days') }}</td><td class="num">{{ sb.total_calendar_days }}</td></tr>
+                <tr><td>{{ _('Eligible salary days') }}</td><td class="num">{{ sb.eligible_days }}</td></tr>
+                <tr><td>{{ _('Present days') }}</td><td class="num">{{ sb.present_days + sb.late_days }}</td></tr>
+                <tr><td>{{ _('Absent days') }}</td><td class="num">{{ sb.absent_days }}</td></tr>
+                <tr><td>{{ _('Paid leave allowance') }}</td><td class="num">{{ "%g"|format(sb.leave_allowance) }}</td></tr>
+                <tr><td>{{ _('Paid leave used') }}</td><td class="num">{{ "%g"|format(sb.paid_leave_used) }}</td></tr>
+                <tr><td>{{ _('Unpaid leave') }}</td><td class="num">{{ "%g"|format(sb.unpaid_leave_days) }}</td></tr>
+                <tr><td>{{ _('Total deduction days') }}</td><td class="num">{{ "%g"|format(sb.deduction_days) }}</td></tr>
+                <tr><td>{{ _('Deduction rate') }}</td><td class="num">{{ sb.deduction_rate|money2 }} {{ _('/ day') }}</td></tr>
+                <tr><td>{{ _('Total salary deduction') }}</td><td class="num">&minus; {{ sb.deduction_amount|money2 }}</td></tr>
+                <tr><td>{{ _('Gross eligible salary') }}</td><td class="num">{{ sb.gross_eligible_salary|money2 }}</td></tr>
+                <tr><td class="font-semibold">{{ _('Final net payable salary') }}</td><td class="num font-semibold">{{ sb.net_payable|money2 }}</td></tr>
+            </tbody>
+        </table>
+
+        <div class="report-subtitle mt-3">{{ _('How this was calculated') }}</div>
+        {% for line in sb.explanation %}
+        <div class="text-[0.62rem] text-gray-500 leading-relaxed">&bull; {{ line|lnote }}</div>
+        {% endfor %}
+
+        {% if salary_policy_rows %}
+        <div class="report-subtitle mt-3">{{ _('Policy in force') }}</div>
+        <table class="report-table">
+            <tbody>
+                {% for label, value in salary_policy_rows %}
+                <tr><td>{{ _(label) }}</td><td class="num">{{ value|lpolicy }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <!-- Saved payroll history -->
     {% if payroll_history %}
     <div class="mb-6">
-        <div class="report-section-title">Saved Payroll Records</div>
+        <div class="report-section-title">{{ _('Saved Payroll Records') }}</div>
         <table class="report-table">
-            <thead><tr><th>Period</th><th class="num">Days</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Net</th><th>Status</th></tr></thead>
+            <thead><tr><th>{{ _('Period') }}</th><th class="num">{{ _('Days') }}</th><th class="num">{{ _('Gross') }}</th><th class="num">{{ _('Deductions') }}</th><th class="num">{{ _('Net') }}</th><th>{{ _('Status') }}</th></tr></thead>
             <tbody>
                 {% for p in payroll_history %}
                 <tr>
-                    <td>{{ month_names[p.month - 1][:3] }} {{ p.year }}</td>
+                    <td>{{ _(month_names[p.month - 1])[:4] }} {{ p.year }}</td>
                     <td class="num">{{ p.present_days }}/{{ p.total_days }}</td>
-                    <td class="num">₹{{ "%.2f"|format(p.gross_pay) }}</td>
-                    <td class="num">₹{{ "%.2f"|format(p.deductions) }}</td>
-                    <td class="num font-semibold">₹{{ "%.2f"|format(p.net_pay) }}</td>
+                    <td class="num">{{ p.gross_pay|money2 }}</td>
+                    <td class="num">{{ p.deductions|money2 }}</td>
+                    <td class="num font-semibold">{{ p.net_pay|money2 }}</td>
                     <td class="capitalize">{{ p.status }}</td>
                 </tr>
                 {% endfor %}
@@ -281,32 +382,32 @@
 
     <!-- Transactions -->
     <div class="mb-6">
-        <div class="report-section-title">Transaction History</div>
+        <div class="report-section-title">{{ _('Transaction History') }}</div>
         {% if all_transactions %}
         <table class="report-table">
-            <thead><tr><th>Date</th><th>Type</th><th>Notes</th><th class="num">Amount</th></tr></thead>
+            <thead><tr><th>{{ _('Date') }}</th><th>{{ _('Type') }}</th><th>{{ _('Notes') }}</th><th class="num">{{ _('Amount') }}</th></tr></thead>
             <tbody>
                 {% for t in all_transactions %}
                 <tr class="{{ 'line-through opacity-50' if t.status == 'cancelled' else '' }}">
-                    <td>{{ t.date.strftime('%d %b %y') }}</td>
-                    <td>{{ type_labels.get(t.txn_type, t.txn_type) }}</td>
+                    <td>{{ t.date|ldate('%d %b %y') }}</td>
+                    <td>{{ _(type_labels.get(t.txn_type, t.txn_type)) }}</td>
                     <td>{{ t.description or '—' }}</td>
-                    <td class="num font-semibold {{ 'text-green-600' if t.is_earning else 'text-red-600' }}">
-                        {{ '+' if t.is_earning else '−' }}₹{{ "%.2f"|format(t.amount) }}
+                    <td class="num font-semibold {{ 'text-green-700' if t.is_earning else 'text-red-700' }}">
+                        {{ '+' if t.is_earning else '−' }}{{ t.amount|money2 }}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <div class="text-xs text-gray-400">No transactions recorded.</div>
+        <div class="text-xs text-gray-500">{{ _('No transactions recorded.') }}</div>
         {% endif %}
     </div>
 
     <!-- Footer -->
-    <div class="border-t border-gray-200 pt-3 flex items-center justify-between text-[0.6rem] text-gray-400">
-        <span>Generated by {{ company.name if company else 'SmartWorker' }} — Worker Management System</span>
-        <span>{{ today.strftime('%d %b %Y') }}</span>
+    <div class="border-t border-gray-200 pt-3 flex items-center justify-between text-[0.6rem] text-gray-500">
+        <span>{{ _('Generated by') }} {{ company.name if company else 'SmartWorker' }} — {{ _('Worker Management System') }}</span>
+        <span>{{ today|ldate('%d %b %Y') }}</span>
     </div>
     </td></tr></tbody>
 </table>

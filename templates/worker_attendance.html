@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ worker.full_name }} Attendance - SmartWorker{% endblock %}
+{% block title %}{{ worker.full_name }} {{ _('Attendance') }} - SmartWorker{% endblock %}
 
 {% block head %}
 {# Calendar styles are shared: see static/css/custom.css and
@@ -11,16 +11,16 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Attendance Calendar</div>
+                <h1 class="text-xl font-semibold">{{ _('Attendance Calendar') }}</h1>
                 <div class="text-sm opacity-90">{{ worker.full_name }}</div>
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <button onclick="showStatsModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <button aria-label="{{ _('Statistics') }}" data-act="showStatsModal" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-chart-bar text-lg"></i>
             </button>
         </div>
@@ -54,16 +54,16 @@
     <!-- Month Navigation -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">
-                {{ start_date.strftime('%B %Y') }}
-            </h3>
+            <h2 class="text-lg font-semibold text-gray-800">
+                {{ start_date|ldate('%B %Y') }}
+            </h2>
             <div class="flex items-center space-x-2">
-                <a href="{{ url_for('worker_attendance', worker_id=worker.id, month=start_date.month-1 if start_date.month > 1 else 12, year=start_date.year if start_date.month > 1 else start_date.year-1) }}" 
-                   class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
+                <a aria-label="{{ _('Previous month') }}" href="{{ url_for('worker_attendance', worker_id=worker.id, month=start_date.month-1 if start_date.month > 1 else 12, year=start_date.year if start_date.month > 1 else start_date.year-1) }}"
+                   class="tap-target w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
                     <i class="fa-solid fa-chevron-left text-sm text-gray-600"></i>
                 </a>
-                <a href="{{ url_for('worker_attendance', worker_id=worker.id, month=start_date.month+1 if start_date.month < 12 else 1, year=start_date.year if start_date.month < 12 else start_date.year+1) }}" 
-                   class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
+                <a aria-label="{{ _('Next month') }}" href="{{ url_for('worker_attendance', worker_id=worker.id, month=start_date.month+1 if start_date.month < 12 else 1, year=start_date.year if start_date.month < 12 else start_date.year+1) }}" 
+                   class="tap-target w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
                     <i class="fa-solid fa-chevron-right text-sm text-gray-600"></i>
                 </a>
             </div>
@@ -81,30 +81,30 @@
         <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-4 text-xs">
             <div class="flex items-center space-x-1">
                 <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span class="text-gray-600">Present</span>
+                <span class="text-gray-600">{{ _('Present') }}</span>
             </div>
             <div class="flex items-center space-x-1">
                 <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span class="text-gray-600">Absent</span>
+                <span class="text-gray-600">{{ _('Absent') }}</span>
             </div>
             <div class="flex items-center space-x-1">
                 <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span class="text-gray-600">Late</span>
+                <span class="text-gray-600">{{ _('Late') }}</span>
             </div>
             <div class="flex items-center space-x-1">
                 <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span class="text-gray-600">Leave</span>
+                <span class="text-gray-600">{{ _('Leave') }}</span>
             </div>
             <div class="flex items-center space-x-1">
                 <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span class="text-gray-600">Closure Day</span>
+                <span class="text-gray-600">{{ _('Closure Day') }}</span>
             </div>
         </div>
     </section>
 
     <!-- Monthly Summary -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Monthly Summary</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Monthly Summary') }}</h2>
         
         {% set present_days = attendance_summary.present_days %}
         {% set absent_days = attendance_summary.absent_days %}
@@ -114,27 +114,27 @@
         
         <div class="grid grid-cols-2 gap-4">
             <div class="text-center p-4 bg-green-50 rounded-2xl border border-green-200">
-                <div class="text-2xl font-bold text-green-600">{{ present_days }}</div>
-                <div class="text-sm text-gray-600">Present Days</div>
+                <div class="text-2xl font-bold text-green-700">{{ present_days }}</div>
+                <div class="text-sm text-gray-600">{{ _('Present Days') }}</div>
             </div>
             <div class="text-center p-4 bg-red-50 rounded-2xl border border-red-200">
-                <div class="text-2xl font-bold text-red-600">{{ absent_days }}</div>
-                <div class="text-sm text-gray-600">Absent Days</div>
+                <div class="text-2xl font-bold text-red-700">{{ absent_days }}</div>
+                <div class="text-sm text-gray-600">{{ _('Absent Days') }}</div>
             </div>
             <div class="text-center p-4 bg-yellow-50 rounded-2xl border border-yellow-200">
-                <div class="text-2xl font-bold text-yellow-600">{{ late_days }}</div>
-                <div class="text-sm text-gray-600">Late Days</div>
+                <div class="text-2xl font-bold text-yellow-700">{{ late_days }}</div>
+                <div class="text-sm text-gray-600">{{ _('Late Days') }}</div>
             </div>
             <div class="text-center p-4 bg-blue-50 rounded-2xl border border-blue-200">
                 <div class="text-2xl font-bold text-blue-600">{{ leave_days }}</div>
-                <div class="text-sm text-gray-600">Leave Days</div>
+                <div class="text-sm text-gray-600">{{ _('Leave Days') }}</div>
             </div>
         </div>
         
         {% if total_marked_days > 0 %}
         <div class="mt-4 p-3 bg-gray-50 rounded-xl">
             <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Attendance Rate</span>
+                <span class="text-sm text-gray-600">{{ _('Attendance Rate') }}</span>
                 <span class="font-semibold text-gray-800">{{ "%.1f"|format((present_days + late_days) / total_marked_days * 100) }}%</span>
             </div>
         </div>
@@ -144,7 +144,7 @@
     <!-- Recent Records -->
     {% if calendar_data %}
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Records</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Recent Records') }}</h2>
         <div class="space-y-3">
             {% for day, record in calendar_data.items() %}
                 {% if loop.index <= 10 %}
@@ -153,20 +153,20 @@
                     <div class="flex items-center space-x-3">
                         <div class="w-10 h-10 {% if record.status == 'present' %}bg-green-100{% elif record.status == 'absent' %}bg-red-100{% elif record.status == 'late' %}bg-yellow-100{% else %}bg-blue-100{% endif %} rounded-xl flex items-center justify-center">
                             {% if record.status == 'present' %}
-                                <i class="fa-solid fa-check text-green-600"></i>
+                                <i class="fa-solid fa-check text-green-700"></i>
                             {% elif record.status == 'absent' %}
-                                <i class="fa-solid fa-times text-red-600"></i>
+                                <i class="fa-solid fa-times text-red-700"></i>
                             {% elif record.status == 'late' %}
-                                <i class="fa-solid fa-clock text-yellow-600"></i>
+                                <i class="fa-solid fa-clock text-yellow-700"></i>
                             {% else %}
                                 <i class="fa-solid fa-calendar-days text-blue-600"></i>
                             {% endif %}
                         </div>
                         <div>
-                            <div class="font-medium text-gray-800">{{ record.date.strftime('%d %B %Y') }}</div>
+                            <div class="font-medium text-gray-800">{{ record.date|ldate('%d %B %Y') }}</div>
                             {% if rec_closure %}
-                                <div class="text-xs text-orange-600 font-medium">
-                                    <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ rec_closure.reason }} ({{ rec_closure.type.title() }})
+                                <div class="text-xs text-orange-700 font-medium">
+                                    <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ rec_closure.reason }} ({{ _(rec_closure.type|capitalize) }})
                                 </div>
                             {% endif %}
                             {% if record.check_in_time %}
@@ -179,7 +179,7 @@
                     </div>
                     <div class="flex flex-col items-end gap-1">
                         <div class="{% if record.status == 'present' %}bg-green-100 text-green-800{% elif record.status == 'absent' %}bg-red-100 text-red-800{% elif record.status == 'late' %}bg-yellow-100 text-yellow-800{% else %}bg-blue-100 text-blue-800{% endif %} px-3 py-1 rounded-full text-xs font-medium">
-                            {{ record.status.title() }}
+                            {{ _(record.status|capitalize) }}
                         </div>
                         {% if rec_closure %}
                             <div class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">
@@ -198,11 +198,11 @@
     <section class="bg-white rounded-3xl shadow-lg border border-orange-200 p-4">
         <div class="flex items-center space-x-3 mb-4">
             <div class="w-10 h-10 bg-orange-100 rounded-2xl flex items-center justify-center">
-                <i class="fa-solid fa-calendar-xmark text-orange-600"></i>
+                <i class="fa-solid fa-calendar-xmark text-orange-700"></i>
             </div>
             <div>
-                <h3 class="text-lg font-semibold text-gray-800">Closure Days Attended</h3>
-                <p class="text-sm text-gray-500">Days worked during closure — bonus earned</p>
+                <h2 class="text-lg font-semibold text-gray-800">{{ _('Closure Days Attended') }}</h2>
+                <p class="text-sm text-gray-500">{{ _('Days worked during closure — bonus earned') }}</p>
             </div>
         </div>
 
@@ -214,21 +214,21 @@
                         <span class="text-sm font-bold text-orange-700">{{ entry.date.strftime('%d') }}</span>
                     </div>
                     <div>
-                        <div class="font-medium text-gray-800">{{ entry.date.strftime('%d %B %Y') }}</div>
+                        <div class="font-medium text-gray-800">{{ entry.date|ldate('%d %B %Y') }}</div>
                         <div class="text-sm text-orange-700">{{ entry.reason }}</div>
                     </div>
                 </div>
                 <div class="text-right">
-                    <div class="font-bold text-orange-600">+₹{{ "%.2f"|format(entry.amount) }}</div>
-                    <div class="text-xs text-gray-500">Closure Bonus</div>
+                    <div class="font-bold text-orange-700">+{{ entry.amount|money }}</div>
+                    <div class="text-xs text-gray-500">{{ _('Closure Bonus') }}</div>
                 </div>
             </div>
             {% endfor %}
         </div>
 
         <div class="mt-4 pt-3 border-t border-orange-200 flex justify-between items-center">
-            <span class="text-sm font-medium text-gray-700">Total Closure Bonus</span>
-            <span class="text-lg font-bold text-orange-600">+₹{{ "%.2f"|format(pay_summary.closure_extra_pay) }}</span>
+            <span class="text-sm font-medium text-gray-700">{{ _('Total Closure Bonus') }}</span>
+            <span class="text-lg font-bold text-orange-700">+{{ pay_summary.closure_extra_pay|money }}</span>
         </div>
     </section>
     {% endif %}
@@ -239,142 +239,142 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">Detailed Statistics</h3>
-                <p class="text-gray-600">{{ start_date.strftime('%B %Y') }}</p>
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('Detailed Statistics') }}</h2>
+                <p class="text-gray-600">{{ start_date|ldate('%B %Y') }}</p>
             </div>
             
             <div class="space-y-4 mb-6">
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Total Working Days</span>
+                    <span class="text-gray-600">{{ _('Total Working Days') }}</span>
                     <span class="font-semibold text-gray-800">{{ end_date.day }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Days Marked</span>
+                    <span class="text-gray-600">{{ _('Days Marked') }}</span>
                     <span class="font-semibold text-gray-800">{{ total_marked_days }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Present + Late</span>
-                    <span class="font-semibold text-green-600">{{ present_days + late_days }}</span>
+                    <span class="text-gray-600">{{ _('Present + Late') }}</span>
+                    <span class="font-semibold text-green-700">{{ present_days + late_days }}</span>
                 </div>
                 {% if worker.pay_type == 'daily' %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Paid Days</span>
+                    <span class="text-gray-600">{{ _('Paid Days') }}</span>
                     <span class="font-semibold text-gray-800">{{ pay_summary.paid_days }}</span>
                 </div>
                 {% if pay_summary.full_day_days > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Full Days</span>
+                    <span class="text-gray-600">{{ _('Full Days') }}</span>
                     <span class="font-semibold text-gray-800">{{ pay_summary.full_day_days }}</span>
                 </div>
                 {% endif %}
                 {% if pay_summary.half_day_days > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Half Days</span>
-                    <span class="font-semibold text-orange-600">{{ pay_summary.half_day_days }}</span>
+                    <span class="text-gray-600">{{ _('Half Days') }}</span>
+                    <span class="font-semibold text-orange-700">{{ pay_summary.half_day_days }}</span>
                 </div>
                 {% endif %}
                 {% if pay_summary.prorated_days > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Pro-Rata Days</span>
+                    <span class="text-gray-600">{{ _('Pro-Rata Days') }}</span>
                     <span class="font-semibold text-indigo-600">{{ pay_summary.prorated_days }}</span>
                 </div>
                 {% endif %}
                 {% if pay_summary.paid_absent_days > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Paid Absent Days</span>
+                    <span class="text-gray-600">{{ _('Paid Absent Days') }}</span>
                     <span class="font-semibold text-blue-600">{{ pay_summary.paid_absent_days }}</span>
                 </div>
                 {% endif %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Half-Day Grace</span>
+                    <span class="text-gray-600">{{ _('Half-Day Grace') }}</span>
                     <span class="font-semibold text-gray-800">{{ pay_summary.half_day_grace_minutes }} min</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Base Wage</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                    <span class="text-gray-600">{{ _('Base Wage') }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.base_pay|money0 }}</span>
                 </div>
                 {% elif worker.pay_type == 'monthly' %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Monthly Salary</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                    <span class="text-gray-600">{{ _('Monthly Salary') }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.base_pay|money0 }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Leave Days</span>
+                    <span class="text-gray-600">{{ _('Leave Days') }}</span>
                     <span class="font-semibold text-gray-800">{{ pay_summary.leave_days }}</span>
                 </div>
                 {% if pay_summary.extra_leave_days > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Extra Leave Days</span>
-                    <span class="font-semibold text-red-600">{{ pay_summary.extra_leave_days }}</span>
+                    <span class="text-gray-600">{{ _('Extra Leave Days') }}</span>
+                    <span class="font-semibold text-red-700">{{ pay_summary.extra_leave_days }}</span>
                 </div>
                 {% endif %}
                 {% elif worker.pay_type == 'hourly' %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Worked Hours</span>
+                    <span class="text-gray-600">{{ _('Worked Hours') }}</span>
                     <span class="font-semibold text-gray-800">{{ "%.2f"|format(pay_summary.worked_minutes / 60) }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Hourly Wage</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                    <span class="text-gray-600">{{ _('Hourly Wage') }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.base_pay|money0 }}</span>
                 </div>
                 {% elif worker.pay_type == 'project' %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Project Amount</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.base_pay) }}</span>
+                    <span class="text-gray-600">{{ _('Project Amount') }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.base_pay|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.closure_extra_pay is defined and pay_summary.closure_extra_pay > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Closure Bonus</span>
-                    <span class="font-semibold text-orange-600">+₹{{ "%.0f"|format(pay_summary.closure_extra_pay) }}</span>
+                    <span class="text-gray-600">{{ _('Closure Bonus') }}</span>
+                    <span class="font-semibold text-orange-700">+{{ pay_summary.closure_extra_pay|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.overtime_pay > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Overtime Pay</span>
-                    <span class="font-semibold text-green-600">+₹{{ "%.0f"|format(pay_summary.overtime_pay) }}</span>
+                    <span class="text-gray-600">{{ _('Overtime Pay') }}</span>
+                    <span class="font-semibold text-green-700">+{{ pay_summary.overtime_pay|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.leave_deductions > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Leave Policy Deductions</span>
-                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.leave_deductions) }}</span>
+                    <span class="text-gray-600">{{ _('Leave Policy Deductions') }}</span>
+                    <span class="font-semibold text-red-700">-{{ pay_summary.leave_deductions|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.late_deductions > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Late Policy Deductions</span>
-                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.late_deductions) }}</span>
+                    <span class="text-gray-600">{{ _('Late Policy Deductions') }}</span>
+                    <span class="font-semibold text-red-700">-{{ pay_summary.late_deductions|money0 }}</span>
                 </div>
                 {% endif %}
 
                 {% if pay_summary.deductions > 0 %}
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600">Total Deductions</span>
-                    <span class="font-semibold text-red-600">-₹{{ "%.0f"|format(pay_summary.deductions) }}</span>
+                    <span class="text-gray-600">{{ _('Total Deductions') }}</span>
+                    <span class="font-semibold text-red-700">-{{ pay_summary.deductions|money0 }}</span>
                 </div>
                 {% endif %}
 
                 <div class="flex justify-between items-center pt-2 border-t">
-                    <span class="text-gray-600">Estimated Net Pay</span>
-                    <span class="font-semibold text-primary">₹{{ "%.0f"|format(pay_summary.estimated_pay) }}</span>
+                    <span class="text-gray-600">{{ _('Estimated Net Pay') }}</span>
+                    <span class="font-semibold text-primary">{{ pay_summary.estimated_pay|money0 }}</span>
                 </div>
-                <div class="text-xs text-gray-500">{{ pay_summary.policy_note }}</div>
+                <div class="text-xs text-gray-500">{{ pay_summary.policy_note|lnotes }}</div>
             </div>
             
-            <button onclick="hideStatsModal()" 
+            <button data-act="hideStatsModal" 
                     class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
-                Close
+                {{ _('Close') }}
             </button>
         </div>
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function showStatsModal() {
     document.getElementById('stats-modal').classList.remove('hidden');
 }

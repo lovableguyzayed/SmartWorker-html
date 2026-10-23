@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Attendance - SmartWorker{% endblock %}
+{% block title %}{{ _('Attendance') }} - SmartWorker{% endblock %}
 
 {% block head %}
 <!-- Date picker styles -->
@@ -34,7 +34,7 @@
 
 .ep-section-label {
     font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em;
-    text-transform: uppercase; color: #9ca3af; margin-bottom: 0.6rem;
+    text-transform: uppercase; color: #6b7280; margin-bottom: 0.6rem;
 }
 .ep-field-label { font-size: 0.85rem; font-weight: 600; color: #1f2937; margin-bottom: 0.4rem; }
 
@@ -45,12 +45,12 @@
     border: 1px solid #e5e7eb; border-radius: 0.8rem;
     font-size: 1rem; color: #111827; text-transform: uppercase;
 }
-.ep-quick input::placeholder { color: #9ca3af; text-transform: none; }
-.ep-quick input:focus { outline: 2px solid #007BFF; outline-offset: -1px; }
+.ep-quick input::placeholder { color: #6b7280; text-transform: none; }
+.ep-quick input:focus { outline: 2px solid #0062CC; outline-offset: -1px; }
 .ep-quick button {
     min-height: 3rem; padding: 0 1.5rem;
     border: 0; border-radius: 0.8rem;
-    background: #007BFF; color: #fff;
+    background: #0062CC; color: #fff;
     font-size: 1rem; font-weight: 700;
 }
 .ep-quick button:disabled { opacity: 0.5; }
@@ -63,7 +63,7 @@
     font-size: 0.85rem; font-weight: 500;
 }
 .ep-bulk button:disabled { opacity: 0.45; }
-.ep-hint { font-size: 0.85rem; color: #9ca3af; margin-top: 0.7rem; line-height: 1.45; }
+.ep-hint { font-size: 0.85rem; color: #6b7280; margin-top: 0.7rem; line-height: 1.45; }
 
 .ep-stats { display: flex; gap: 0.4rem; margin-top: 0.9rem; }
 .ep-stat {
@@ -71,7 +71,7 @@
     border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
 }
 .ep-stat b { display: block; font-size: 1rem; font-variant-numeric: tabular-nums; color: #111827; }
-.ep-stat span { font-size: 0.7rem; color: #9ca3af; }
+.ep-stat span { font-size: 0.7rem; color: #6b7280; }
 
 /* Roster ---------------------------------------------------------------- */
 .ep-row {
@@ -82,23 +82,28 @@
 .ep-row:last-child { border-bottom: 0; }
 .ep-row-main { flex: 1; min-width: 0; }
 .ep-name {
-    display: block; font-size: 0.98rem; font-weight: 700; color: #111827; line-height: 1.3;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; font-size: 0.98rem; font-weight: 700; color: #111827;
+    line-height: 1.3;
+    /* two lines rather than one ellipsed line — see .name-wrap in custom.css */
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; overflow-wrap: anywhere;
 }
-.ep-meta { font-size: 0.8rem; color: #9ca3af; line-height: 1.4; margin-top: 0.1rem; }
-.ep-extra { font-size: 0.72rem; color: #b0b6c0; line-height: 1.4; }
+.ep-meta { font-size: 0.8rem; color: #6b7280; line-height: 1.4; margin-top: 0.1rem; }
+.ep-extra { font-size: 0.72rem; color: #6b7280; line-height: 1.4; }
 .ep-chip {
     display: inline-flex; align-items: center; gap: 0.2rem;
     font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.45rem;
     border-radius: 999px; margin-top: 0.25rem;
 }
-.ep-adjust { font-size: 0.72rem; font-weight: 600; color: #007BFF; margin-top: 0.2rem; display: inline-block; }
+.ep-adjust { font-size: 0.72rem; font-weight: 600; color: #0062CC; margin-top: 0.2rem; display: inline-block; }
 
 .ep-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
 .ep-pill {
-    /* 36px visual, but ::after grows the hit area to 44px so the row stays
-       compact enough for the name and status line without shrinking the
-       tap target below the accessible minimum. */
+    /* The ::after overlay below was meant to buy a 44px hit area from a 36px
+       button, but neighbouring pills are only 0.3rem apart, so the overlays
+       overlapped and each pill actually won 40-43px — measured by
+       hit-testing, not by box size. On a touch screen the button itself is
+       now 44px and the overlay only rounds off the gap. */
     position: relative;
     width: 2.25rem; height: 2.25rem;
     border: 0; border-radius: 0.65rem;
@@ -117,7 +122,7 @@
 .ep-pill-on.ep-pill-absent  { background: #ef4444; color: #fff; }
 .ep-pill-on.ep-pill-late    { background: #eab308; color: #fff; }
 .ep-pill-on.ep-pill-leave   { background: #3b82f6; color: #fff; }
-.ep-locked { font-size: 0.7rem; color: #9ca3af; background: #f3f4f6; padding: 0.35rem 0.6rem; border-radius: 0.6rem; }
+.ep-locked { font-size: 0.7rem; color: #6b7280; background: #f3f4f6; padding: 0.35rem 0.6rem; border-radius: 0.6rem; }
 
 /* Day detail panel ------------------------------------------------------ */
 .dv-navbtn {
@@ -125,10 +130,10 @@
     display: flex; align-items: center; justify-content: center;
     border-radius: 0.7rem; color: #4b5563; background: #f9fafb;
 }
-.dv-muted { font-size: 0.82rem; color: #9ca3af; }
+.dv-muted { font-size: 0.82rem; color: #6b7280; }
 .dv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; }
 .dv-date { font-size: 1.05rem; font-weight: 700; color: #111827; line-height: 1.25; }
-.dv-weekday { font-size: 0.8rem; color: #9ca3af; }
+.dv-weekday { font-size: 0.8rem; color: #6b7280; }
 .dv-chip {
     font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem;
     border-radius: 999px; white-space: nowrap;
@@ -147,46 +152,67 @@
     border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
 }
 .dv-count b { display: block; font-size: 0.95rem; font-variant-numeric: tabular-nums; color: #111827; }
-.dv-count span { font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.03em; }
+.dv-count span { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
 
 .dv-section-label {
     font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    color: #9ca3af; margin: 1rem 0 0.5rem;
+    color: #6b7280; margin: 1rem 0 0.5rem;
 }
 .dv-row { padding: 0.7rem 0; border-bottom: 1px solid #f1f3f5; }
 .dv-row:last-child { border-bottom: 0; }
 .dv-row-top { display: flex; align-items: flex-start; gap: 0.6rem; }
 .dv-name { font-size: 0.92rem; font-weight: 700; color: #111827; line-height: 1.3;
-           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dv-sub { font-size: 0.74rem; color: #9ca3af; line-height: 1.4; }
-.dv-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
-.dv-pill {
-    position: relative; width: 2.25rem; height: 2.25rem;
-    border: 0; border-radius: 0.65rem;
-    display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
+           /* two lines rather than one ellipsed line — see .name-wrap */
+           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+           overflow: hidden; overflow-wrap: anywhere; }
+.dv-sub { font-size: 0.74rem; color: #6b7280; line-height: 1.4; }
+/* The folded calendar. A summary is a real control, so it gets a real 44px
+   target and says what it will do; the chevron turns when it is open. */
+.cal-summary {
+    display: flex; align-items: center; gap: 0.5rem;
+    min-height: 2.75rem; padding: 0 0.25rem;
+    cursor: pointer; list-style: none;
+    font-size: 0.85rem; font-weight: 600; color: #1f2937;
 }
-.dv-pill::after { content: ''; position: absolute; inset: -0.25rem; }  /* 44px hit area */
-.dv-pill:disabled { opacity: 0.4; }
-.dv-pill-present { background: #dcfce7; color: #16a34a; }
-.dv-pill-absent  { background: #fee2e2; color: #dc2626; }
-.dv-pill-late    { background: #fef3c7; color: #b45309; }
-.dv-pill-leave   { background: #dbeafe; color: #2563eb; }
-.dv-pill-on.dv-pill-present { background: #22c55e; color: #fff; }
-.dv-pill-on.dv-pill-absent  { background: #ef4444; color: #fff; }
-.dv-pill-on.dv-pill-late    { background: #eab308; color: #fff; }
-.dv-pill-on.dv-pill-leave   { background: #3b82f6; color: #fff; }
+.cal-summary::-webkit-details-marker { display: none; }
+.cal-summary-label { display: flex; align-items: center; gap: 0.45rem; }
+.cal-summary-label i { color: #4b5563; }
+.cal-summary-month { margin-left: auto; font-weight: 500; color: #4b5563; }
+.cal-summary-chevron { color: #4b5563; transition: transform 0.15s ease; }
+#cal-fold[open] .cal-summary-chevron { transform: rotate(180deg); }
 
-.dv-times { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
-.dv-times input[type="time"] {
-    flex: 1; min-width: 0; min-height: 2.75rem; padding: 0 0.5rem;
-    border: 1px solid #e5e7eb; border-radius: 0.65rem; font-size: 0.8rem; color: #111827;
+/* The day view reports; it does not mark. Where four status buttons used to
+   sit on every row there is now one badge saying what happened, and the ink
+   on each is dark enough to read in sun. */
+.dv-state {
+    flex-shrink: 0; align-self: flex-start;
+    padding: 0.25rem 0.55rem; border-radius: 0.6rem;
+    font-size: 0.72rem; font-weight: 700; white-space: nowrap;
 }
-.dv-times button {
-    min-height: 2.75rem; padding: 0 0.8rem; border: 0; border-radius: 0.65rem;
-    background: #001F3F; color: #fff; font-size: 0.76rem; font-weight: 700;
-}
-.dv-times button:disabled { opacity: 0.45; }
+.dv-state-present { background: #dcfce7; color: #15803d; }
+.dv-state-absent  { background: #fee2e2; color: #b91c1c; }
+.dv-state-late    { background: #fef3c7; color: #b45309; }
+.dv-state-leave   { background: #dbeafe; color: #1d4ed8; }
+.dv-state-none    { background: #f3f4f6; color: #4b5563; }
 
+/* Real 44px targets on touch screens. The roster row still fits: four pills
+   at 44px plus the 0.3rem gaps come to 190px of a 390px screen, and the
+   worker name beside them already wraps to two lines. */
+@media (pointer: coarse) {
+    .ep-pill { width: 2.75rem; height: 2.75rem; }
+    .ep-pill::after { inset: 0; }
+    /* Padding, not line-height: a name that wraps to two lines would get
+       44px between the lines and fall apart. */
+    .ep-name, .dv-name { display: inline-block; min-height: 2.75rem; padding-block: 0.4rem; }
+    .ep-adjust { min-height: 2.75rem; padding-left: 0.75rem; padding-right: 0.75rem; }
+    .ep-tab { min-height: 2.75rem; display: inline-flex; align-items: center; }
+}
+
+
+/* .dv-times is gone with the inline check-in boxes. Times are adjusted from
+   the marking panel's "Adjust times", which was always the other way to do
+   it. .dv-actions stays: it still carries Add transaction and Add closure,
+   which are not attendance marking. */
 .dv-actions { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 0.5rem; margin-top: 0.6rem; }
 .dv-actions button {
     min-height: 2.75rem; padding: 0 0.3rem; border: 1px solid #e5e7eb;
@@ -197,7 +223,7 @@
 .dv-txn { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.45rem 0;
           border-bottom: 1px solid #f5f6f8; font-size: 0.78rem; }
 .dv-txn:last-child { border-bottom: 0; }
-.dv-empty { font-size: 0.82rem; color: #9ca3af; padding: 0.5rem 0; }
+.dv-empty { font-size: 0.82rem; color: #6b7280; padding: 0.5rem 0; }
 
 #ep-toasts {
     position: fixed; left: 50%; transform: translateX(-50%);
@@ -220,20 +246,20 @@
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Attendance</div>
-                <div class="text-sm opacity-90">Daily Attendance Management</div>
+                <h1 class="text-xl font-semibold">{{ _('Attendance') }}</h1>
+                <div class="text-sm opacity-90">{{ _('Daily Attendance Management') }}</div>
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <a href="{{ url_for('scan') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="QR Scanner">
+            <a href="{{ url_for('scan') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('QR Scanner') }}">
                 <i class="fa-solid fa-qrcode text-lg"></i>
             </a>
             {% if current_user.is_admin %}
-            <a href="{{ url_for('closures') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Closure days') }}" href="{{ url_for('closures') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-calendar-times text-lg"></i>
             </a>
             {% endif %}
@@ -244,22 +270,26 @@
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <form method="GET" id="attendance-filter-form">
         <div class="flex items-center space-x-3">
-            <div class="flex-1">
-                <label class="block text-xs text-white/70 mb-1">Select Date</label>
+            {# min-w-0: a flex item will not shrink below its content's
+               intrinsic width without it, and a date input's intrinsic
+               width is wider than what is left beside the two arrows on a
+               320px phone. #}
+            <div class="flex-1 min-w-0">
+                <label class="block text-xs text-white/90 mb-1">{{ _('Select Date') }}</label>
                 <div class="relative">
-                    <i class="fa-solid fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70"></i>
+                    <i class="fa-solid fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-white/90"></i>
                     <input type="date" name="date" value="{{ selected_date }}"
                            class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50"
-                           onchange="this.form.submit()">
+                           data-act="submit-form">
                 </div>
             </div>
             <div class="flex items-end space-x-2">
-                <a href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
-                   class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
+                <a aria-label="{{ _('Previous day') }}" href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
+                   class="tap-target w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
                     <i class="fa-solid fa-chevron-left text-white"></i>
                 </a>
-                <a href="{{ url_for('attendance', date=(selected_date + timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
-                   class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
+                <a aria-label="{{ _('Next day') }}" href="{{ url_for('attendance', date=(selected_date + timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
+                   class="tap-target w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
                     <i class="fa-solid fa-chevron-right text-white"></i>
                 </a>
             </div>
@@ -269,21 +299,21 @@
         <div class="mt-3 space-y-2">
             <div class="relative">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm"></i>
-                <input type="search" name="search" value="{{ search }}" placeholder="Search name or employee ID…"
+                <input type="search" name="search" value="{{ search }}" placeholder="{{ _('Search name or employee ID…') }}"
                        class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 text-sm focus:ring-2 focus:ring-white/50">
             </div>
             <div class="grid grid-cols-2 gap-2">
                 {% if sites %}
-                <select name="site" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                    <option value="0" class="text-gray-800">All sites</option>
+                <select name="site" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                    <option value="0" class="text-gray-800">{{ _('All sites') }}</option>
                     {% for site in sites %}
                     <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
                     {% endfor %}
                 </select>
                 {% endif %}
                 {% if current_user.is_admin and attendance_users %}
-                <select name="marked_by" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                    <option value="0" class="text-gray-800">All markers</option>
+                <select name="marked_by" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                    <option value="0" class="text-gray-800">{{ _('All markers') }}</option>
                     {% for auser in attendance_users %}
                     <option value="{{ auser.id }}" {{ 'selected' if auser.id == marker_filter }} class="text-gray-800">{{ auser.full_name }}</option>
                     {% endfor %}
@@ -294,20 +324,20 @@
         </form>
         
         <div class="mt-3 text-center">
-            <div class="text-sm text-white/90">{{ selected_date.strftime('%A, %B %d, %Y') }}</div>
+            <div class="text-sm text-white">{{ selected_date|ldate('%A, %B %d, %Y') }}</div>
             {% if closure %}
                 {% if closure.allow_attendance %}
                     <div class="bg-orange-500/20 border border-orange-400/30 rounded-lg px-3 py-2 mt-2">
                         <div class="text-sm text-orange-100">
                             <i class="fa-solid fa-exclamation-triangle mr-2"></i>
-                            {{ closure.reason }} - {{ closure.type.title() }} (Attendance allowed if present)
+                            {{ closure.reason }} - {{ _(closure.type|capitalize) }} (Attendance allowed if present)
                         </div>
                     </div>
                 {% else %}
                     <div class="bg-red-500/20 border border-red-400/30 rounded-lg px-3 py-2 mt-2">
                         <div class="text-sm text-red-200">
                             <i class="fa-solid fa-calendar-times mr-2"></i>
-                            {{ closure.reason }} - {{ closure.type.title() }} (Attendance locked)
+                            {{ closure.reason }} - {{ _(closure.type|capitalize) }} (Attendance locked)
                         </div>
                     </div>
                 {% endif %}
@@ -320,62 +350,96 @@
     <!-- Entry panel: the three most common data-entry jobs on one surface.
          Transaction and Worker open their full existing screens rather than
          reimplementing them in a tab. -->
-    <!-- Month calendar — click any date to open its detail below it -->
+    <!-- Month calendar — click any date to open its detail below it.
+         Folded away by default: it cost 600px above the roster, and marking
+         today never needs it. The date field and its day arrows in the header
+         already move between days; this is for looking back over a month. -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
-        <div class="flex items-center justify-between mb-2 px-1">
-            <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
-               class="dv-navbtn" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></a>
-            <div class="text-sm font-semibold text-gray-800">{{ selected_date.strftime('%B %Y') }}</div>
-            <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
-               class="dv-navbtn" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></a>
-        </div>
-        {% with cal_month_start = month_start,
-                cal_month = selected_date.month, cal_year = selected_date.year,
-                cal_data = calendar_data, cal_closures = closure_days,
-                cal_selected = selected_date, cal_today = today,
-                cal_interactive = true %}
-            {% include '_calendar.html' %}
-        {% endwith %}
+        <details id="cal-fold">
+            <summary class="cal-summary">
+                <span class="cal-summary-label">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    {{ _('Calendar') }}
+                </span>
+                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
+                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
+            </summary>
+            <div class="flex items-center justify-between mb-2 mt-3 px-1">
+                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
+                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
+                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
+            </div>
+            {% with cal_month_start = month_start,
+                    cal_month = selected_date.month, cal_year = selected_date.year,
+                    cal_data = calendar_data, cal_closures = closure_days,
+                    cal_selected = selected_date, cal_today = today,
+                    cal_interactive = true %}
+                {% include '_calendar.html' %}
+            {% endwith %}
+        </details>
     </section>
+    <script nonce="{{ csp_nonce }}">
+    /* The month arrows are links, so changing month reloads the page. Without
+       remembering the fold, the calendar would snap shut under the person
+       every time they stepped back a month. Runs here, during parse, so it
+       does not open with a visible jump.
+
+       Browser storage can throw outright in a private window or with site
+       data blocked, so a failure to remember must never stop the page. */
+    (function () {
+        var fold = document.getElementById('cal-fold');
+        if (!fold) return;
+        try {
+            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
+        } catch (e) { /* not remembered; the calendar simply starts folded */ }
+        fold.addEventListener('toggle', function () {
+            try {
+                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
+            } catch (e) { /* nothing to do: the fold still works for this visit */ }
+        });
+    })();
+    </script>
 
     <!-- Day detail — filled from /api/attendance/day/<date> -->
     <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
              tabindex="-1" aria-live="polite">
-        <div id="day-panel-body" class="p-4"><div class="dv-muted">Loading day…</div></div>
+        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Loading day…') }}</div></div>
     </section>
 
     <div class="ep-tabs">
-        <span class="ep-tab ep-tab-active">Attendance</span>
-        <a href="{{ url_for('transactions') }}" class="ep-tab">Transaction</a>
-        <a href="{{ url_for('add_worker') }}" class="ep-tab">Worker</a>
+        <span class="ep-tab ep-tab-active">{{ _('Attendance') }}</span>
+        <a href="{{ url_for('transactions') }}" class="ep-tab">{{ _('Transaction') }}</a>
+        <a href="{{ url_for('add_worker') }}" class="ep-tab">{{ _('Worker') }}</a>
     </div>
 
     {% if not closure or closure.allow_attendance %}
     <section class="mb-5">
-        <div class="ep-section-label" id="ep-date-label">Mark {{ 'today' if selected_date == today else selected_date.strftime('%d %b') }}</div>
-        <div class="ep-field-label">Scan or type employee ID</div>
-        <form class="ep-quick" onsubmit="return quickMark(event)">
+        <div class="ep-section-label" id="ep-date-label">{{ _('Mark') }} {{ _('today') if selected_date == today else selected_date|ldate('%d %b') }}</div>
+        <div class="ep-field-label">{{ _('Scan or type employee ID') }}</div>
+        <form class="ep-quick" data-act="quickMark">
             <input type="text" id="ep-quick-id" placeholder="CO001" autocomplete="off"
-                   autocapitalize="characters" inputmode="text" aria-label="Employee ID">
-            <button type="submit" id="ep-quick-btn">Mark</button>
+                   autocapitalize="characters" inputmode="text" aria-label="{{ _('Employee ID') }}">
+            <button type="submit" id="ep-quick-btn">{{ _('Mark') }}</button>
         </form>
 
         <div class="ep-bulk">
             {% if current_user.is_admin %}
-            <button type="button" onclick="bulkAction('present', this)">All present</button>
-            <button type="button" onclick="bulkAction('absent', this)">All absent</button>
+            <button type="button" data-act="bulkAction" data-act-args='["present"]'>{{ _('All present') }}</button>
+            <button type="button" data-act="bulkAction" data-act-args='["absent"]'>{{ _('All absent') }}</button>
             {% endif %}
-            <button type="button" onclick="bulkAction('close', this)"
-                    {% if not current_user.is_admin %}style="grid-column: span 3"{% endif %}>Close shifts</button>
+            <button type="button" data-act="bulkAction" data-act-args='["close"]'
+                    {% if not current_user.is_admin %}style="grid-column: span 3"{% endif %}>{{ _('Close shifts') }}</button>
         </div>
 
-        <div class="ep-hint">Tap the same status twice to check out and bank overtime.</div>
+        <div class="ep-hint">{{ _('Tap the same status twice to check out and bank overtime.') }}</div>
 
         <div class="ep-stats">
-            <div class="ep-stat"><b id="ep-stat-present">{{ stats.present }}</b><span>Present</span></div>
-            <div class="ep-stat"><b id="ep-stat-late">{{ stats.late }}</b><span>Late</span></div>
-            <div class="ep-stat"><b id="ep-stat-absent">{{ stats.absent }}</b><span>Absent</span></div>
-            <div class="ep-stat"><b id="ep-stat-open">{{ stats.open }}</b><span>Open</span></div>
+            <div class="ep-stat"><b id="ep-stat-present">{{ stats.present }}</b><span>{{ _('Present') }}</span></div>
+            <div class="ep-stat"><b id="ep-stat-late">{{ stats.late }}</b><span>{{ _('Late') }}</span></div>
+            <div class="ep-stat"><b id="ep-stat-absent">{{ stats.absent }}</b><span>{{ _('Absent') }}</span></div>
+            <div class="ep-stat"><b id="ep-stat-open">{{ stats.open }}</b><span>{{ _('Shift open') }}</span></div>
         </div>
     </section>
     {% endif %}
@@ -396,10 +460,10 @@
                 <div class="ep-meta" data-role="meta">{{ data.meta }}</div>
 
                 {% set extra = [] %}
-                {% if data.assignment and data.assignment.site %}{% set _ = extra.append(data.assignment.site.name ~ (' • ' ~ data.assignment.project.name if data.assignment.project else '')) %}{% endif %}
-                {% if data.attendance and data.attendance.status == 'leave' and data.attendance.leave_type %}{% set _ = extra.append(data.attendance.leave_type|capitalize ~ ' leave') %}{% endif %}
-                {% if current_user.is_admin and data.wage is not none and data.wage > 0 %}{% set _ = extra.append('₹' ~ '%.2f'|format(data.wage)) %}{% endif %}
-                {% if current_user.is_admin and data.overtime_pay and data.overtime_pay > 0 %}{% set _ = extra.append('OT ₹' ~ '%.2f'|format(data.overtime_pay)) %}{% endif %}
+                {% if data.assignment and data.assignment.site %}{% set _discard = extra.append(data.assignment.site.name ~ (' • ' ~ data.assignment.project.name if data.assignment.project else '')) %}{% endif %}
+                {% if data.attendance and data.attendance.status == 'leave' and data.attendance.leave_type %}{% set _discard = extra.append(_(data.attendance.leave_type|capitalize) ~ ' ' ~ _('Leave')) %}{% endif %}
+                {% if current_user.is_admin and data.wage is not none and data.wage > 0 %}{% set _discard = extra.append(data.wage|money) %}{% endif %}
+                {% if current_user.is_admin and data.overtime_pay and data.overtime_pay > 0 %}{% set _discard = extra.append('OT ' ~ data.overtime_pay|money) %}{% endif %}
                 {% if extra %}<div class="ep-extra">{{ extra|join(' · ') }}</div>{% endif %}
 
                 {% if data.closure %}
@@ -409,12 +473,12 @@
                 </span>
                 {% endif %}
                 {% if data.closure and data.closure.allow_attendance and data.attendance and data.attendance.status in ('present', 'late') and data.worker.closure_extra_pay_enabled %}
-                <span class="ep-chip" style="background:#ffedd5;color:#c2410c">Closure bonus</span>
+                <span class="ep-chip" style="background:#ffedd5;color:#c2410c">{{ _('Closure bonus') }}</span>
                 {% endif %}
 
                 {% if current_user.is_admin and data.attendance %}
                 <button type="button" class="ep-adjust"
-                        onclick='openAdjustModal({{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }})'>Adjust times</button>
+                        data-act="openAdjustModal" data-act-args='[{{ data.attendance.id }}, {{ data.worker.full_name|tojson }}, {{ data.attendance.status|tojson }}, "{{ data.attendance.check_in_time.strftime('%H:%M') if data.attendance.check_in_time else '' }}", "{{ data.attendance.check_out_time.strftime('%H:%M') if data.attendance.check_out_time else '' }}", {{ (data.attendance.leave_type or '')|tojson }}]'>{{ _('Adjust times') }}</button>
                 {% endif %}
             </div>
 
@@ -429,19 +493,41 @@
                     ('leave',   'leave',   'fa-house')] %}
                 <button type="button" data-status="{{ value }}"
                         class="ep-pill ep-pill-{{ cls }}{{ ' ep-pill-on' if current_status == value else '' }}"
-                        aria-label="Mark {{ value }}"
-                        onclick="markWorker({{ data.worker.id }}, '{{ value }}', this)">
+                        aria-label="{{ _('Mark') }} {{ value }}"
+                        data-act="markWorker" data-act-args='[{{ data.worker.id }}, "{{ value }}"]'>
                     <i class="fa-solid {{ icon }}"></i>
                 </button>
                 {% endfor %}
             </div>
             {% else %}
-            <span class="ep-locked">Locked</span>
+            <span class="ep-locked">{{ _('Locked') }}</span>
             {% endif %}
         </div>
         {% endfor %}
     </div>
-    <p class="ms-hint">Press and hold a worker to mark several at once.</p>
+    <p class="ms-hint">{{ _('Press and hold a worker to mark several at once.') }}</p>
+
+    {# Pager. The counters above and the bulk buttons both cover every worker
+       on this date, not just the ones on this page. #}
+    {% if has_prev or has_next %}
+    <nav class="flex items-center justify-between gap-3 mt-3" aria-label="{{ _('Attendance list pages') }}">
+        {% if has_prev %}
+        <a href="{{ url_for('attendance', page=page-1, date=selected_date.isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
+           class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
+            <i class="fa-solid fa-chevron-left mr-2"></i>{{ _('Previous') }}
+        </a>
+        {% else %}<span class="flex-1"></span>{% endif %}
+
+        <span class="text-xs text-gray-500 shrink-0">{{ shown_from }}&ndash;{{ shown_to }} of {{ total_rows }}</span>
+
+        {% if has_next %}
+        <a href="{{ url_for('attendance', page=page+1, date=selected_date.isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
+           class="flex-1 flex items-center justify-center p-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
+            {{ _('Next') }}<i class="fa-solid fa-chevron-right ml-2"></i>
+        </a>
+        {% else %}<span class="flex-1"></span>{% endif %}
+    </nav>
+    {% endif %}
 
     {# Attendance users may record attendance and close shifts; reclassifying
        someone as absent or on leave is an administrative decision, so those
@@ -450,15 +536,15 @@
             sel_endpoint = url_for('bulk_action', scope='attendance'),
             sel_params = {'date': selected_date.isoformat()},
             sel_actions = (
-                [{'id': 'present', 'label': 'Present', 'icon': 'fa-check', 'style': 'good'},
-                 {'id': 'late',    'label': 'Late',    'icon': 'fa-clock', 'style': 'warn'}]
-                + ([{'id': 'absent',   'label': 'Absent',   'icon': 'fa-xmark', 'style': 'danger',
-                     'confirm': 'Mark %n %s absent for this date?'},
-                    {'id': 'half_day', 'label': 'Half Day', 'icon': 'fa-adjust'},
-                    {'id': 'leave',    'label': 'Leave',    'icon': 'fa-house',
-                     'confirm': 'Mark %n %s on leave for this date?'}]
+                [{'id': 'present', 'label': _('Present'), 'icon': 'fa-check', 'style': 'good'},
+                 {'id': 'late',    'label': _('Late'),    'icon': 'fa-clock', 'style': 'warn'}]
+                + ([{'id': 'absent',   'label': _('Absent'),   'icon': 'fa-xmark', 'style': 'danger',
+                     'confirm': _('Mark %n %s absent for this date?')},
+                    {'id': 'half_day', 'label': _('Half Day'), 'icon': 'fa-adjust'},
+                    {'id': 'leave',    'label': _('Leave'),    'icon': 'fa-house',
+                     'confirm': _('Mark %n %s on leave for this date?')}]
                    if current_user.is_admin else [])
-                + [{'id': 'close', 'label': 'Check Out', 'icon': 'fa-right-from-bracket',
+                + [{'id': 'close', 'label': _('Check Out'), 'icon': 'fa-right-from-bracket',
                     'style': 'primary'}]
             ) %}
         {% include '_selection_bar.html' %}
@@ -466,13 +552,13 @@
     {% else %}
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fa-solid fa-calendar-check text-3xl text-gray-400"></i>
+            <i class="fa-solid fa-calendar-check text-3xl text-gray-500"></i>
         </div>
-        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Workers Found</h3>
-        <p class="text-gray-600 mb-6">Add workers to start marking attendance.</p>
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Workers Found') }}</h2>
+        <p class="text-gray-600 mb-6">{{ _('Add workers to start marking attendance.') }}</p>
         <a href="{{ url_for('add_worker') }}" 
            class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
-            <i class="fa-solid fa-plus mr-2"></i>Add First Worker
+            <i class="fa-solid fa-plus mr-2"></i>{{ _('Add First Worker') }}
         </a>
     </div>
     {% endif %}
@@ -484,50 +570,50 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800">Adjust Attendance</h3>
+                <h2 class="text-xl font-semibold text-gray-800">{{ _('Adjust Attendance') }}</h2>
                 <p class="text-gray-600 text-sm" id="adjust-worker-name"></p>
             </div>
             <form method="POST" id="adjust-form" class="space-y-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select name="status" id="adjust-status" class="w-full p-3 border border-lightGray rounded-xl" onchange="toggleAdjustFields()">
-                        <option value="present">Present</option>
-                        <option value="late">Late</option>
-                        <option value="absent">Absent</option>
-                        <option value="leave">Leave</option>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Status') }}</label>
+                    <select name="status" id="adjust-status" class="w-full p-3 border border-lightGray rounded-xl" data-act="toggleAdjustFields">
+                        <option value="present">{{ _('Present') }}</option>
+                        <option value="late">{{ _('Late') }}</option>
+                        <option value="absent">{{ _('Absent') }}</option>
+                        <option value="leave">{{ _('Leave') }}</option>
                     </select>
                 </div>
                 <div id="adjust-time-fields" class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Check-in') }}</label>
                         <input type="time" name="check_in_time" id="adjust-checkin" class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Check-out') }}</label>
                         <input type="time" name="check_out_time" id="adjust-checkout" class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                 </div>
                 <div id="adjust-leave-field" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Leave Type') }}</label>
                     <select name="leave_type" id="adjust-leave-type" class="w-full p-3 border border-lightGray rounded-xl">
-                        <option value="">Unspecified</option>
-                        <option value="casual">Casual</option>
-                        <option value="sick">Sick</option>
-                        <option value="paid">Paid</option>
-                        <option value="unpaid">Unpaid</option>
-                        <option value="other">Other</option>
+                        <option value="">{{ _('Unspecified') }}</option>
+                        <option value="casual">{{ _('Casual') }}</option>
+                        <option value="sick">{{ _('Sick') }}</option>
+                        <option value="paid">{{ _('Paid') }}</option>
+                        <option value="unpaid">{{ _('Unpaid') }}</option>
+                        <option value="other">{{ _('Other') }}</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Note <span class="text-gray-400">(optional)</span></label>
-                    <input type="text" name="notes" class="w-full p-3 border border-lightGray rounded-xl" placeholder="Reason for adjustment">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Note') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
+                    <input type="text" name="notes" class="w-full p-3 border border-lightGray rounded-xl" placeholder="{{ _('Reason for adjustment') }}">
                 </div>
-                <p class="text-xs text-gray-500">Late minutes and overtime are recalculated automatically from the worker's shift settings.</p>
+                <p class="text-xs text-gray-500">{{ _("Late minutes and overtime are recalculated automatically from the worker's shift settings.") }}</p>
                 <div class="flex space-x-3 pt-1">
-                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save</button>
-                    <button type="button" onclick="hideAdjustModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save') }}</button>
+                    <button type="button" data-act="hideAdjustModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -537,7 +623,7 @@
 
 <div id="ep-toasts"></div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // var, not let/const: this script re-executes on every SPA navigation back
 // into /attendance, and a top-level let re-declaration throws a SyntaxError
 // that would kill the whole screen.
@@ -592,6 +678,15 @@ function epApplyRows(rows) {
     (rows || []).forEach(epApplyRow);
 }
 
+// The day view above is a report now, not a second editor, so it has to
+// follow what the panel just did. Each of these responses already carries
+// the whole day — the server has always sent it — and only the date the
+// panel is writing to is refreshed, so selecting a past day in the calendar
+// and marking today cannot repaint the wrong one.
+function dvFollow(data) {
+    if (data && data.day && data.day.date === DV_SELECTED) dvRender(data.day);
+}
+
 function epSetBusy(el, busy) {
     if (el) el.disabled = busy;
 }
@@ -612,10 +707,17 @@ async function markWorker(workerId, status, btn) {
         var res = await fetch('/api/mark_attendance', {
             method: 'POST', body: body, credentials: 'same-origin'
         });
-        if (!res.ok) { epToast('Could not save (' + res.status + ').', 'error'); return; }
         var data = await res.json();
+        if (data.queued) {
+            // No signal: offline-sync.js has stored it and will upload it.
+            // Say so rather than showing a tick the server never agreed to.
+            epToast(data.message || 'Saved on this phone. Will upload when internet returns.', 'warning');
+            return;
+        }
+        if (!res.ok) { epToast('Could not save (' + res.status + ').', 'error'); return; }
         epApplyStats(data.stats);
         epApplyRow(data.row);
+        dvFollow(data);
         epShowMessages(data, data.success ? 'Attendance updated.' : 'Could not update attendance.');
     } catch (err) {
         epToast('No connection — attendance was not saved.', 'error');
@@ -626,7 +728,9 @@ async function markWorker(workerId, status, btn) {
 
 // Type an employee ID and mark without hunting for the row. First tap checks
 // in; a second tap on an open shift checks out, matching the roster pills.
-async function quickMark(event) {
+// The dispatcher in actions.js passes (…declared args, element, event), so
+// the event is the second parameter here rather than the first.
+async function quickMark(form, event) {
     event.preventDefault();
     var input = document.getElementById('ep-quick-id');
     var btn = document.getElementById('ep-quick-btn');
@@ -668,13 +772,14 @@ async function markWorkerById(workerId, status) {
     var data = await res.json();
     epApplyStats(data.stats);
     epApplyRow(data.row);
+    dvFollow(data);
     epShowMessages(data, data.success ? 'Attendance updated.' : 'Could not update attendance.');
 }
 
 // All present / All absent / Close shifts — one tap, no modal.
 async function bulkAction(action, btn) {
     if (action !== 'close' &&
-        !confirm('Mark every listed worker ' + action + ' for this date?')) return;
+        !confirm({{ _('Mark every listed worker as this status for this date?')|tojson }})) return;
     epSetBusy(btn, true);
     try {
         var body = new FormData();
@@ -688,10 +793,15 @@ async function bulkAction(action, btn) {
         var res = await fetch('/api/attendance/bulk', {
             method: 'POST', body: body, credentials: 'same-origin'
         });
-        if (!res.ok) { epToast('Could not apply (' + res.status + ').', 'error'); return; }
         var data = await res.json();
+        if (data.queued) {
+            epToast(data.message || 'Saved on this phone. Will upload when internet returns.', 'warning');
+            return;
+        }
+        if (!res.ok) { epToast('Could not apply (' + res.status + ').', 'error'); return; }
         epApplyStats(data.stats);
         epApplyRows(data.rows);
+        dvFollow(data);
         epShowMessages(data, 'Done.');
     } catch (err) {
         epToast('No connection — nothing was changed.', 'error');
@@ -706,12 +816,53 @@ async function bulkAction(action, btn) {
 // can never disagree.
 var DV_SELECTED = "{{ selected_date }}";
 var DV_IS_ADMIN = {{ 'true' if current_user.is_admin else 'false' }};
+// Status comes back from the API as the stored English value; the day view
+// builds its rows in JS, so it needs the labels handed to it.
+var DV_STATUS_LABEL = {
+    present: {{ _('Present')|tojson }},
+    absent:  {{ _('Absent')|tojson }},
+    late:    {{ _('Late')|tojson }},
+    leave:   {{ _('Leave')|tojson }},
+    half_day: {{ _('Half Day')|tojson }}
+};
+// The rest of the words this script paints. Handed over through |tojson and
+// not written into the markup strings below, because a translation holding
+// an apostrophe would close the JavaScript string it sits in — the table is
+// checked for quotes, but one table-level slip would take the screen down
+// and the day that happens is not the day to find this out.
+var DV_TEXT = {
+    today: {{ _('today')|tojson }},
+    // The five marked states are in DV_STATUS_LABEL above, keyed by the
+    // value the API returns; this is the one state that is not a mark.
+    unmarked: {{ _('Unmarked')|tojson }},
+    on_roll: {{ _('Workers on this date')|tojson }},
+    none_on_roll: {{ _('No workers were on the roll on this date.')|tojson }},
+    transactions: {{ _('Transactions on this date')|tojson }},
+    nothing: {{ _('Nothing recorded for this date.')|tojson }},
+    cancelled: {{ _('cancelled')|tojson }},
+    add_txn: {{ _('Add transaction')|tojson }},
+    add_closure: {{ _('Add closure')|tojson }},
+    close_detail: {{ _('Close day detail')|tojson }},
+    pick_a_date: {{ _('Select a date to see its detail.')|tojson }}
+};
 var dvDay = null;
 
 function dvEsc(s) {
     var d = document.createElement('div');
     d.textContent = s == null ? '' : s;
     return d.innerHTML;
+}
+
+/* The same rupee as the `money` filter, for the rows this script paints.
+   en-IN grouping is the lakh grouping — 1,95,438 — and paise are shown only
+   when there are any, so the day view reads like every other screen. */
+function dvMoney(amount) {
+    var n = Number(amount) || 0;
+    var paise = Math.abs(Math.round(n * 100) % 100) > 0;
+    return '₹' + Math.abs(n).toLocaleString('en-IN', {
+        minimumFractionDigits: paise ? 2 : 0,
+        maximumFractionDigits: 2
+    });
 }
 
 async function dvLoad(dateStr, opts) {
@@ -746,7 +897,8 @@ function dvSyncEntryPanel(data) {
     if (data.rows) epApplyRows(data.rows);
     var label = document.getElementById('ep-date-label');
     if (label) {
-        label.textContent = 'Mark ' + (data.day.is_today ? 'today' : data.day.date_label);
+        label.textContent = {{ _('Mark')|tojson }} + ' ' +
+            (data.day.is_today ? DV_TEXT.today : data.day.date_label);
     }
 }
 
@@ -771,15 +923,15 @@ function dvRender(day) {
     var h = '';
 
     h += '<div class="dv-head"><div><div class="dv-date">' + dvEsc(day.date_label) + '</div>' +
-         '<div class="dv-weekday">' + dvEsc(day.weekday) + (day.is_today ? ' · today' : '') + '</div></div>';
-    h += '<button type="button" class="dv-navbtn" aria-label="Close day detail" onclick="dvClose()">' +
+         '<div class="dv-weekday">' + dvEsc(day.weekday) + (day.is_today ? ' · ' + DV_TEXT.today : '') + '</div></div>';
+    h += '<button type="button" class="dv-navbtn" aria-label="' + DV_TEXT.close_detail + '" data-act="dvClose">' +
          '<i class="fa-solid fa-xmark"></i></button></div>';
 
     (day.closures || []).forEach(function (c) {
         h += '<div class="dv-banner ' + (c.allow_attendance ? 'dv-banner-warn' : 'dv-banner-block') + '">' +
              '<b>Closure — ' + dvEsc(c.reason) + '</b> (' + dvEsc(c.type) + ', ' + dvEsc(c.scope) + '). ' +
              (c.allow_attendance ? 'Attendance is still allowed.' : 'Attendance is locked for this date.') +
-             (DV_IS_ADMIN ? ' <button type="button" class="dv-adjust" style="color:#007BFF;font-weight:600" onclick="dvRemoveClosure(' + c.id + ')">Remove</button>' : '') +
+             (DV_IS_ADMIN ? ' <button type="button" class="dv-adjust" style="color:#0062CC;font-weight:600" data-act="dvRemoveClosure" data-act-args="[' + c.id + ']">Remove</button>' : '') +
              '</div>';
     });
     if (!editable && day.reason === 'future') {
@@ -791,85 +943,69 @@ function dvRender(day) {
 
     var c = day.counts;
     h += '<div class="dv-counts">' +
-         '<div class="dv-count"><b>' + c.present + '</b><span>Present</span></div>' +
-         '<div class="dv-count"><b>' + c.late + '</b><span>Late</span></div>' +
-         '<div class="dv-count"><b>' + c.absent + '</b><span>Absent</span></div>' +
-         '<div class="dv-count"><b>' + c.leave + '</b><span>Leave</span></div>' +
-         '<div class="dv-count"><b>' + c.not_marked + '</b><span>Unmarked</span></div></div>';
+         '<div class="dv-count"><b>' + c.present + '</b><span>' + DV_STATUS_LABEL.present + '</span></div>' +
+         '<div class="dv-count"><b>' + c.late + '</b><span>' + DV_STATUS_LABEL.late + '</span></div>' +
+         '<div class="dv-count"><b>' + c.absent + '</b><span>' + DV_STATUS_LABEL.absent + '</span></div>' +
+         '<div class="dv-count"><b>' + c.leave + '</b><span>' + DV_STATUS_LABEL.leave + '</span></div>' +
+         '<div class="dv-count"><b>' + c.not_marked + '</b><span>' + DV_TEXT.unmarked + '</span></div></div>';
 
-    // Bulk actions always name the date they apply to.
-    if (editable) {
-        h += '<div class="dv-actions">';
-        if (DV_IS_ADMIN) {
-            h += '<button type="button" onclick="dvBulk(\'present\', this)">All present</button>' +
-                 '<button type="button" onclick="dvBulk(\'absent\', this)">All absent</button>';
-        }
-        h += '<button type="button" onclick="dvBulk(\'close\', this)"' +
-             (DV_IS_ADMIN ? '' : ' style="grid-column: span 3"') + '>Close shifts</button></div>';
-        h += '<div class="dv-muted" style="margin-top:0.45rem">These apply to <b>' +
-             dvEsc(day.date_label) + '</b>.</div>';
-    }
+    // No bulk buttons here any more. "All present", "All absent" and "Close
+    // shifts" are on the marking panel below, which is where marking happens
+    // now — see the note on dvRender.
 
-    h += '<div class="dv-section-label">Workers</div>';
+    h += '<div class="dv-section-label">' + DV_TEXT.on_roll + '</div>';
     if (!day.rows.length) {
-        h += '<div class="dv-empty">No workers were on the roll on this date.</div>';
+        h += '<div class="dv-empty">' + DV_TEXT.none_on_roll + '</div>';
     }
     day.rows.forEach(function (r) {
-        var rowLocked = !editable || r.locked;
         h += '<div class="dv-row"><div class="dv-row-top"><div style="flex:1;min-width:0">' +
-             '<div class="dv-name">' + dvEsc(r.name) + '</div>' +
+             '<a class="dv-name" href="/worker/' + encodeURIComponent(r.id) + '">' +
+             dvEsc(r.name) + '</a>' +
              '<div class="dv-sub">' + dvEsc(r.worker_id) + ' · ' + dvEsc(r.department) +
-             (r.where ? ' · ' + dvEsc(r.where) : '') + '</div>' +
-             '<div class="dv-sub">';
+             (r.where ? ' · ' + dvEsc(r.where) : '') + '</div>';
         // Built from explicit fields rather than re-slicing the roster meta
-        // string, so nothing is reported twice.
+        // string, so nothing is reported twice. The status itself is not in
+        // here any more — the badge on the right carries it, and printing
+        // "Not marked" in both places said the same thing twice on every row.
         var bits = [];
-        if (!r.status) {
-            bits.push('not marked');
-        } else if (r.check_in) {
+        if (r.status && r.check_in) {
             bits.push(r.check_in + (r.check_out ? ' → ' + r.check_out : '') );
-            if (!r.check_out) bits.push('shift open');
-        } else {
-            bits.push(r.status);
+            if (!r.check_out) bits.push({{ _('shift open')|tojson }});
         }
         if (r.worked_minutes) bits.push(r.worked_minutes + 'm worked');
         if (r.overtime_minutes) bits.push('+' + r.overtime_minutes + 'm OT');
         if (r.late_minutes) bits.push(r.late_minutes + 'm late');
-        h += dvEsc(bits.join(' · '));
-        h += '</div></div><div class="dv-pills">';
-        [['present','fa-check'],['absent','fa-xmark'],['late','fa-clock'],['leave','fa-house']].forEach(function (p) {
-            h += '<button type="button" class="dv-pill dv-pill-' + p[0] + (r.status === p[0] ? ' dv-pill-on' : '') + '"' +
-                 (rowLocked ? ' disabled' : '') +
-                 ' aria-label="Mark ' + dvEsc(r.name) + ' ' + p[0] + '"' +
-                 ' onclick="dvMark(' + r.id + ',\'' + p[0] + '\', this)">' +
-                 '<i class="fa-solid ' + p[1] + '"></i></button>';
-        });
-        h += '</div></div>';
-        if (!rowLocked) {
-            h += '<div class="dv-times">' +
-                 '<input type="time" value="' + dvEsc(r.check_in_value) + '" aria-label="Check in for ' + dvEsc(r.name) + '" id="dv-in-' + r.id + '">' +
-                 '<input type="time" value="' + dvEsc(r.check_out_value) + '" aria-label="Check out for ' + dvEsc(r.name) + '" id="dv-out-' + r.id + '">' +
-                 '<button type="button" onclick="dvSaveTimes(' + r.id + ', this)">Save</button></div>';
+        if (bits.length) h += '<div class="dv-sub">' + dvEsc(bits.join(' · ')) + '</div>';
+        h += '</div>';                       // the name-and-meta column
+        // A badge instead of four buttons: this says what happened, it does
+        // not offer to change it.
+        if (r.status) {
+            h += '<span class="dv-state dv-state-' + r.status + '">' +
+                 dvEsc(DV_STATUS_LABEL[r.status] || r.status) + '</span>';
+        } else {
+            h += '<span class="dv-state dv-state-none">' +
+                 {{ _('Not marked')|tojson }} + '</span>';
         }
-        h += '</div>';
+        h += '</div>';                       // .dv-row-top
+        h += '</div>';                       // .dv-row
     });
 
-    h += '<div class="dv-section-label">Transactions on this date</div>';
+    h += '<div class="dv-section-label">' + DV_TEXT.transactions + '</div>';
     if (!day.transactions.length) {
-        h += '<div class="dv-empty">Nothing recorded for this date.</div>';
+        h += '<div class="dv-empty">' + DV_TEXT.nothing + '</div>';
     } else {
         day.transactions.forEach(function (t) {
             h += '<div class="dv-txn"><span>' + dvEsc(t.worker) + ' · ' + dvEsc(t.type) +
-                 (t.status === 'cancelled' ? ' (cancelled)' : '') + '</span>' +
+                 (t.status === 'cancelled' ? ' (' + DV_TEXT.cancelled + ')' : '') + '</span>' +
                  '<b style="color:' + (t.is_earning ? '#16a34a' : '#dc2626') + '">' +
-                 (t.is_earning ? '+' : '−') + '₹' + t.amount.toFixed(2) + '</b></div>';
+                 (t.is_earning ? '+' : '−') + dvMoney(t.amount) + '</b></div>';
         });
     }
 
     if (DV_IS_ADMIN && editable) {
         h += '<div class="dv-actions" style="grid-template-columns:1fr 1fr">' +
-             '<button type="button" onclick="dvAddTxn()">Add transaction</button>' +
-             '<button type="button" onclick="dvAddClosure()">Add closure</button></div>';
+             '<button type="button" data-act="dvAddTxn">' + DV_TEXT.add_txn + '</button>' +
+             '<button type="button" data-act="dvAddClosure">' + DV_TEXT.add_closure + '</button></div>';
     }
 
     document.getElementById('day-panel-body').innerHTML = h;
@@ -877,7 +1013,7 @@ function dvRender(day) {
 
 function dvClose() {
     var body = document.getElementById('day-panel-body');
-    if (body) body.innerHTML = '<div class="dv-muted">Select a date to see its detail.</div>';
+    if (body) body.innerHTML = '<div class="dv-muted">' + DV_TEXT.pick_a_date + '</div>';
 }
 
 function dvApply(data) {
@@ -906,29 +1042,11 @@ async function dvPost(url, fields, btn) {
     }
 }
 
-function dvMark(workerId, status, btn) {
-    dvPost('/api/mark_attendance',
-           { worker_id: workerId, status: status, marked_via: 'manual' }, btn);
-}
-
-function dvSaveTimes(workerId, btn) {
-    dvPost('/api/attendance/times', {
-        worker_id: workerId,
-        check_in: (document.getElementById('dv-in-' + workerId) || {}).value || '',
-        check_out: (document.getElementById('dv-out-' + workerId) || {}).value || ''
-    }, btn);
-}
-
-function dvBulk(action, btn) {
-    var label = dvDay ? dvDay.date_label : DV_SELECTED;
-    var verb = action === 'close' ? 'Close every open shift on'
-                                  : 'Mark every listed worker ' + action + ' on';
-    // Bulk overwrites existing records — always confirm, naming the date.
-    if (!confirm(verb + ' ' + label + '?')) return;
-    var fields = { action: action };
-    if (action !== 'close') { fields.bulk_action = 'true'; fields.status = action; }
-    dvPost('/api/attendance/bulk', fields, btn);
-}
+/* dvMark, dvSaveTimes and dvBulk were here. They marked attendance from the
+   day view, which also marked it from the panel below — the same twelve
+   workers, twice on one page, three thousand pixels apart. Marking now
+   happens in one place. The endpoints they called are untouched and still
+   serve the panel; only this second way in is gone. */
 
 function dvAddTxn() {
     if (!dvDay || !dvDay.rows.length) { epToast('No workers available on this date.', 'error'); return; }

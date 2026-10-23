@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Transactions - SmartWorker{% endblock %}
+{% block title %}{{ _('Transactions') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Transactions</div>
-                <div class="text-sm opacity-90">Advances, Loans, Bonuses &amp; Deductions</div>
+                <h1 class="text-xl font-semibold">{{ _('Transactions') }}</h1>
+                <div class="text-sm opacity-90">{{ _('Advances, Loans, Bonuses & Deductions') }}</div>
             </div>
         </div>
-        <button onclick="openTxnModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
+        <button aria-label="{{ _('Add a transaction') }}" data-act="openTxnModal" class="icon-btn bg-white/10 backdrop-blur-sm">
             <i class="fa-solid fa-plus text-lg"></i>
         </button>
     </div>
@@ -22,31 +22,38 @@
     <!-- Month / worker filter -->
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <form method="GET" class="grid grid-cols-3 gap-2">
-            <select name="month" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+            <select name="month" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                 {% for m, name in months %}
                 <option value="{{ m }}" {{ 'selected' if m == month }} class="text-gray-800">{{ name }}</option>
                 {% endfor %}
             </select>
-            <select name="year" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+            <select name="year" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
                 {% for y in years %}
                 <option value="{{ y }}" {{ 'selected' if y == year }} class="text-gray-800">{{ y }}</option>
                 {% endfor %}
             </select>
-            <select name="worker" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                <option value="0" class="text-gray-800">All workers</option>
+            <select name="worker" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                <option value="0" class="text-gray-800">{{ _('All workers') }}</option>
                 {% for w in workers %}
                 <option value="{{ w.id }}" {{ 'selected' if w.id == worker_filter }} class="text-gray-800">{{ w.full_name }}</option>
                 {% endfor %}
             </select>
         </form>
-        <div class="grid grid-cols-2 gap-3 mt-3">
+        {# Wages settled kept apart from advances. Both are cash leaving the
+           office, and one tile for the two of them hides how much of the
+           month's own wage bill has actually been paid. #}
+        <div class="grid grid-cols-3 gap-2 mt-3">
             <div class="bg-green-500/20 border border-green-400/30 rounded-xl p-3 text-center">
-                <div class="text-lg font-bold">₹{{ "%.2f"|format(total_earnings) }}</div>
-                <div class="text-xs opacity-90">Extra Payments</div>
+                <div class="text-base font-bold">{{ total_earnings|money0 }}</div>
+                <div class="text-xs opacity-90">{{ _('Extra Payments') }}</div>
             </div>
             <div class="bg-red-500/20 border border-red-400/30 rounded-xl p-3 text-center">
-                <div class="text-lg font-bold">₹{{ "%.2f"|format(total_deductions) }}</div>
-                <div class="text-xs opacity-90">Advances / Deductions</div>
+                <div class="text-base font-bold">{{ total_deductions|money0 }}</div>
+                <div class="text-xs opacity-90">{{ _('Advances') }}</div>
+            </div>
+            <div class="bg-blue-500/20 border border-blue-400/30 rounded-xl p-3 text-center">
+                <div class="text-base font-bold">{{ total_settlements|money0 }}</div>
+                <div class="text-xs opacity-90">{{ _('Wages Paid') }}</div>
             </div>
         </div>
     </div>
@@ -54,7 +61,8 @@
 
 <main class="p-4 pb-8">
     <div class="mb-4 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl p-3">
-        All transactions automatically update {{ month_name }} {{ year }} payroll — extra payments are added, advances and deductions are recovered from net pay.
+        {{ _('All transactions automatically update') }} {{ _(month_name) }} {{ year }} {{ _('payroll — extra payments are added, advances and deductions are recovered from net pay.') }}
+        {{ _('Wages Paid does not change the month\'s net — it records money handed over against what is owed.') }}
     </div>
 
     {% if transactions %}
@@ -65,42 +73,59 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3 flex-1 min-w-0">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
-                        {{ 'bg-green-100 text-green-600' if txn.is_earning else 'bg-red-100 text-red-600' }}">
+                        {{ 'bg-green-100 text-green-700' if txn.is_earning else 'bg-red-100 text-red-700' }}">
                         <i class="fa-solid {{ 'fa-arrow-down' if txn.is_earning else 'fa-arrow-up' }}"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="font-semibold text-gray-800 truncate">{{ txn.worker.full_name }}</div>
+                        <div class="font-semibold text-gray-800 name-wrap">{{ txn.worker.full_name }}</div>
                         <div class="text-xs text-gray-500">
-                            {{ type_labels.get(txn.txn_type, txn.txn_type) }} • {{ txn.date.strftime('%d %b %Y') }}
-                            {% if txn.status == 'cancelled' %} • <span class="text-red-500 font-medium">Cancelled</span>{% endif %}
+                            {{ _(type_labels.get(txn.txn_type, txn.txn_type)) }} • {{ txn.date|ldate('%d %b %Y') }}
+                            {% if txn.status == 'cancelled' %} • <span class="text-red-700 font-medium">{{ _('Cancelled') }}</span>{% endif %}
                         </div>
-                        {% if txn.description %}<div class="text-xs text-gray-400 truncate">{{ txn.description }}</div>{% endif %}
+                        {% if txn.description %}<div class="text-xs text-gray-500 truncate">{{ txn.description }}</div>{% endif %}
+                        {# How the money moved and what it can be matched
+                           against in a bank statement. #}
+                        {% if txn.payment_mode or txn.reference_no %}
+                        <div class="text-xs text-gray-400 truncate">
+                            {% if txn.payment_mode %}{{ _(payment_modes.get(txn.payment_mode, '')) }}{% endif %}
+                            {% if txn.reference_no %}· {{ txn.reference_no }}{% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
-                <div class="text-right ml-2">
-                    <div class="font-bold {{ 'text-green-600' if txn.is_earning else 'text-red-600' }}">
-                        {{ '+' if txn.is_earning else '−' }}₹{{ "%.2f"|format(txn.amount) }}
+                <div class="text-right ml-2 shrink-0">
+                    <div class="font-bold {{ 'text-green-700' if txn.is_earning else 'text-red-700' }}">
+                        {{ '+' if txn.is_earning else '−' }}{{ txn.amount|money }}
                     </div>
-                    <div class="flex items-center justify-end space-x-1 mt-1.5">
-                        <button onclick='editTxn({{ txn.id }}, {{ txn.worker_id }}, "{{ txn.txn_type }}", {{ txn.amount }}, "{{ txn.date.isoformat() }}", {{ (txn.description or "")|tojson }})'
-                                class="w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                </div>
+            </div>
+
+            {# Actions sit on their own row. Stacked under the amount they made
+               the right-hand column as wide as three 44px buttons, which left
+               the worker's name about 110px — the names here run past 260px.
+               On their own row the name gets the card's full width back and
+               the buttons keep a proper touch target. #}
+            <div class="flex items-center justify-end gap-3 mt-2 pt-2 border-t border-gray-100">
+                        {# Mode and reference travel with the rest. The form
+                           posts every field, so an edit that did not carry
+                           them back would silently blank them. #}
+                        <button aria-label="{{ _('Edit') }}" data-act="editTxn" data-act-args='[{{ txn.id }}, {{ txn.worker_id }}, "{{ txn.txn_type }}", {{ txn.amount }}, "{{ txn.date.isoformat() }}", {{ (txn.description or "")|tojson }}, {{ (txn.payment_mode or "")|tojson }}, {{ (txn.reference_no or "")|tojson }}]'
+                                class="tap-target w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
                         <form method="POST" action="{{ url_for('transactions_cancel', txn_id=txn.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                            <button class="w-7 h-7 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center" title="Cancel / Restore"><i class="fa-solid fa-ban text-xs"></i></button>
+                            <button class="tap-target w-7 h-7 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center" title="{{ _('Cancel / Restore') }}"><i class="fa-solid fa-ban text-xs"></i></button>
                         </form>
-                        <form method="POST" action="{{ url_for('transactions_delete', txn_id=txn.id) }}" onsubmit="return confirm('Delete this transaction permanently?')">
+                        <form method="POST" action="{{ url_for('transactions_delete', txn_id=txn.id) }}" data-confirm="Delete this transaction permanently?">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                            <button class="w-7 h-7 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button aria-label="{{ _('Delete') }}" class="tap-target w-7 h-7 bg-red-50 text-red-700 rounded-lg flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                         </form>
-                    </div>
-                </div>
             </div>
         </div>
         {% endfor %}
     </div>
-    <p class="ms-hint">Press and hold a transaction to select several at once.</p>
+    <p class="ms-hint">{{ _('Press and hold a transaction to select several at once.') }}</p>
 
     {% with sel_scope = 'transactions',
             sel_endpoint = url_for('bulk_action', scope='transactions'),
@@ -116,12 +141,12 @@
     {% else %}
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fa-solid fa-money-bill-transfer text-3xl text-gray-400"></i>
+            <i class="fa-solid fa-money-bill-transfer text-3xl text-gray-500"></i>
         </div>
-        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Transactions</h3>
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Transactions') }}</h2>
         <p class="text-gray-600 mb-6">Record advances, loans, bonuses and deductions for {{ month_name }} {{ year }}.</p>
-        <button onclick="openTxnModal()" class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
-            <i class="fa-solid fa-plus mr-2"></i>Add Transaction
+        <button data-act="openTxnModal" class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
+            <i class="fa-solid fa-plus mr-2"></i>{{ _('Add Transaction') }}
         </button>
     </div>
     {% endif %}
@@ -132,72 +157,109 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
             <div class="text-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800" id="txn-modal-title">Add Transaction</h3>
-                <p class="text-gray-600 text-sm">Payroll updates automatically</p>
+                <h2 class="text-xl font-semibold text-gray-800" id="txn-modal-title">{{ _('Add Transaction') }}</h2>
+                <p class="text-gray-600 text-sm">{{ _('Payroll updates automatically') }}</p>
             </div>
             <form method="POST" action="{{ url_for('transactions_save') }}" class="space-y-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" id="txn-id" value="">
                 <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Worker</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Worker') }}</label>
                     <select name="worker_id" id="txn-worker" required class="w-full p-3 border border-lightGray rounded-xl">
-                        <option value="">Select worker…</option>
+                        <option value="">{{ _('Select worker…') }}</option>
                         {% for w in workers %}
                         <option value="{{ w.id }}">{{ w.full_name }} ({{ w.worker_id }})</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Type') }}</label>
                     <select name="txn_type" id="txn-type" required class="w-full p-3 border border-lightGray rounded-xl">
-                        <optgroup label="Deducted from pay">
-                            {% for t in deduction_types %}
-                            <option value="{{ t }}">{{ type_labels[t] }}</option>
+                        {# Three groups, not two. Settling wages belongs in
+                           neither of the old ones: an advance is deducted
+                           from the month's pay, a bonus is added to it, and
+                           wages paid are the month's own money arriving —
+                           it leaves the net untouched and reduces what is
+                           still owed. Entered as an "advance" before this,
+                           it came out right and printed the wrong word on
+                           the worker's payslip. #}
+                        <optgroup label="{{ _('Settles wages owed') }}">
+                            {% for t in settlement_types %}
+                            <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
                             {% endfor %}
                         </optgroup>
-                        <optgroup label="Added to pay">
+                        <optgroup label="{{ _('Deducted from pay') }}">
+                            {% for t in deduction_types %}
+                            <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="{{ _('Added to pay') }}">
                             {% for t in earning_types %}
-                            <option value="{{ t }}">{{ type_labels[t] }}</option>
+                            <option value="{{ t }}">{{ _(type_labels[t]) }}</option>
                             {% endfor %}
                         </optgroup>
                     </select>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Amount (₹)') }}</label>
                         <input type="number" name="amount" id="txn-amount" step="0.01" min="0.01" required
                                class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Date') }}</label>
                         <input type="date" name="date" id="txn-date" value="{{ today.isoformat() }}" required
                                class="w-full p-3 border border-lightGray rounded-xl">
                     </div>
                 </div>
+                {# Both optional on purpose. A crusher paying cash at the gate
+                   has no reference to give, and refusing the entry over a
+                   missing one would stop the payment being recorded at all. #}
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1" for="txn-mode">{{ _('Paid by') }}</label>
+                        <select name="payment_mode" id="txn-mode" class="w-full p-3 border border-lightGray rounded-xl">
+                            <option value="">{{ _('Not recorded') }}</option>
+                            {% for value, label in payment_modes.items() %}
+                            <option value="{{ value }}">{{ _(label) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1" for="txn-reference">{{ _('Reference') }}</label>
+                        <input type="text" name="reference_no" id="txn-reference" maxlength="60"
+                               placeholder="{{ _('UTR / cheque no.') }}"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes <span class="text-gray-400">(optional)</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Notes') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
                     <textarea name="description" id="txn-description" rows="2" class="w-full p-3 border border-lightGray rounded-xl"></textarea>
                 </div>
                 <div class="flex space-x-3 pt-2">
-                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">Save</button>
-                    <button type="button" onclick="closeTxnModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">{{ _('Save') }}</button>
+                    <button type="button" data-act="closeTxnModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">{{ _('Cancel') }}</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function openTxnModal() {
     document.getElementById('txn-modal-title').textContent = 'Add Transaction';
     document.getElementById('txn-id').value = '';
+    // Left over from a previous edit otherwise, and a stale UTR on a new
+    // payment is worse than none.
+    document.getElementById('txn-mode').value = '';
+    document.getElementById('txn-reference').value = '';
     document.getElementById('txn-modal').classList.remove('hidden');
 }
 function closeTxnModal() {
     document.getElementById('txn-modal').classList.add('hidden');
 }
-function editTxn(id, workerId, type, amount, date, description) {
+function editTxn(id, workerId, type, amount, date, description, mode, reference) {
     document.getElementById('txn-modal-title').textContent = 'Edit Transaction';
     document.getElementById('txn-id').value = id;
     document.getElementById('txn-worker').value = workerId;
@@ -205,6 +267,8 @@ function editTxn(id, workerId, type, amount, date, description) {
     document.getElementById('txn-amount').value = amount;
     document.getElementById('txn-date').value = date;
     document.getElementById('txn-description').value = description;
+    document.getElementById('txn-mode').value = mode || '';
+    document.getElementById('txn-reference').value = reference || '';
     document.getElementById('txn-modal').classList.remove('hidden');
 }
 </script>

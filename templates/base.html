@@ -1,11 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{% block title %}SmartWorker{% endblock %}</title>
+    {# Two files on purpose. logo.png keeps the original framing, margin and
+       all, because the dashboard shows it inline. An app icon is cropped to
+       the launcher's own shape, so it is square and trimmed to the artwork —
+       a mark floating in padding comes out small on a home screen. #}
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/logo-192.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#007BFF">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -23,21 +27,59 @@
     <!-- Google Fonts (progressive enhancement; system font fallback offline).
          Loaded asynchronously so a slow/unreachable fonts host can never
          block rendering or delay the window load event at app startup. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
-          media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"></noscript>
+    <!-- Inter, served from this origin. It used to come from Google
+         Fonts, which cost a DNS lookup, a TLS handshake, a stylesheet and
+         then the font itself from a second host — 1.8s on Fast 3G and
+         5.7s on Slow 3G, by far the longest thing left in a cold start,
+         and all of it before a single glyph arrived. One file now, latin
+         only, variable across every weight the app uses.
+         Devanagari is unaffected: Inter has never covered it, and Hindi
+         has always fallen through to the system faces named below. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{{ url_for('static', filename='vendor/inter/inter-latin-var.woff2') }}">
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
-    
+
+    {# This document's nonce, kept where app.js can still find it.
+
+       The browser enforces the policy of the document that is open, and
+       that policy names the nonce minted for this one request. When the SPA
+       engine swaps the body for another screen's, it has to re-create that
+       screen's inline scripts carrying *this* nonce, not the one the fetched
+       page was served with — and by then every element that held this one
+       has been replaced. So it is read here, at parse time, from the
+       property (the attribute is blanked once the element is in the
+       document, so that injected markup cannot read a nonce off a
+       neighbour) and parked on window, which survives the swap.
+
+       Readable only to code that can already run JavaScript in the page,
+       which is to say code for which the policy has already failed. #}
+    <script nonce="{{ csp_nonce }}">
+        window.__swNonce = document.currentScript.nonce || '';
+    </script>
+
     <!-- Additional libraries for specific pages -->
     {% block head %}{% endblock %}
     
     <style>
+        /* One variable file for 400-800, which is every weight this app
+           asks for. font-display: swap so text is readable immediately in
+           a system face and reflows once Inter lands — on a site office's
+           connection that difference is the whole point. */
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 100 900;
+            font-display: swap;
+            src: url("{{ url_for('static', filename='vendor/inter/inter-latin-var.woff2') }}") format('woff2');
+        }
         body {
-            font-family: 'Inter', sans-serif !important;
+            /* Inter has no Devanagari, so Hindi text falls through to the next
+               family. Naming the Android/desktop Devanagari fonts explicitly
+               keeps that fallback a proper UI face instead of whatever the
+               generic sans-serif happens to be; no webfont is downloaded. */
+            font-family: 'Inter', 'Noto Sans Devanagari', 'Nirmala UI', sans-serif !important;
         }
 
         .app-bottom-nav {
@@ -51,6 +93,23 @@
            Nav total height: 5.1rem frame + 0.7rem padding + safe-area inset. */
         .has-bottom-nav {
             padding-bottom: calc(7rem + env(safe-area-inset-bottom)) !important;
+        }
+
+        /* Paper has no bottom navigation, so there is nothing to clear.
+           custom.css carries this same reset inside its own @media print,
+           and it could never win: both declarations are !important at
+           equal specificity, and that file is linked above this block, so
+           the rule right here is the last word on .has-bottom-nav. The
+           reset has to live beside the declaration it undoes.
+
+           Unreset, it adds 112px — about 30mm — of blank clearance to the
+           foot of every printed screen. On the worker report that was the
+           whole reason a document which ends on page two printed a third,
+           completely empty sheet. */
+        @media print {
+            .has-bottom-nav {
+                padding-bottom: 0 !important;
+            }
         }
 
         .app-bottom-nav-frame {
@@ -73,11 +132,17 @@
         }
 
         .app-nav-item {
-            width: 3.95rem;
+            /* Size to the label, not to an equal share. Six equal slots gave
+               every label 53px, which ellipsed "Attendance" (56px) and
+               "Transactions" (63px) into "Attenda…" and "Transact…". Letting
+               each take what it needs totals ~338px, inside the row, and the
+               shrink factor keeps the bar intact on narrower phones. */
+            flex: 0 1 auto;
+            min-width: 0;
             text-align: center;
             border-radius: 0.95rem;
-            padding: 0.35rem 0.15rem;
-            color: #94a3b8;
+            padding: 0.35rem 0.1rem;
+            color: #6b7280;
         }
 
         .app-nav-item:hover {
@@ -104,20 +169,38 @@
         }
 
         .app-nav-label {
-            font-size: 0.7rem;
+            font-size: 0.62rem;
             line-height: 1;
             letter-spacing: 0.01em;
             font-weight: 600;
+            /* a label that cannot fit its slot ellipses rather than wrapping
+               and making the bar taller than the frame */
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
+        /* The scanner keeps the centre of the bar, but it no longer wears the
+           filled navy on every screen. It used to, which meant that on the
+           dashboard the Home tab was lit AND the scanner looked filled in —
+           two things both saying "you are here". Tinted when it is not the
+           current screen, filled when it is. #0062cc on #e5f2ff reads
+           5.1:1. */
         .app-nav-fab {
+            flex: 0 0 3.7rem;
             width: 3.7rem;
             height: 4rem;
             border-radius: 1rem;
-            background: linear-gradient(145deg, #001f3f 0%, #007bff 100%);
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            color: #ffffff;
-            box-shadow: 0 8px 16px rgba(0, 31, 63, 0.22);
+            /* Neutral, not tinted. The active tab's chip is a blue tint, so a
+               tinted scanner would be the same signal again in a different
+               size. Grey keeps it prominent by shape alone and leaves blue
+               meaning one thing: this is where you are. #4b5563 on #f3f4f6
+               reads 7.2:1. */
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            color: #4b5563;
+            box-shadow: 0 2px 6px rgba(0, 31, 63, 0.08);
         }
 
         .app-nav-fab i {
@@ -138,6 +221,9 @@
         }
 
         .app-nav-fab-active {
+            background: linear-gradient(145deg, #001f3f 0%, #0062cc 100%);
+            border-color: rgba(255, 255, 255, 0.9);
+            color: #ffffff;
             box-shadow: 0 10px 20px rgba(0, 31, 63, 0.28);
         }
         
@@ -154,9 +240,12 @@
 <body class="bg-gray-50 font-sans">
     <!-- Offline Indicator Bar -->
     <div id="offline-indicator" class="hidden fixed top-0 left-0 right-0 z-50 bg-red-600 text-white text-center text-xs py-1.5 px-3 flex items-center justify-center gap-2">
-        <i class="fas fa-wifi-slash text-xs"></i>
-        <span id="offline-status-text">You are offline</span>
-        <span id="pending-sync-badge" class="hidden bg-white text-red-600 text-xs font-bold rounded-full px-1.5 py-0.5 ml-1"></span>
+        {# fa-wifi-slash is a Pro icon and is not in the free set, so this
+           bar has been showing its text beside an empty box. The plain
+           plug, which does exist, reads as "not connected" well enough. #}
+        <i class="fa-solid fa-plug-circle-xmark text-xs"></i>
+        <span id="offline-status-text">{{ _('You are offline') }}</span>
+        <span id="pending-sync-badge" class="hidden bg-white text-red-700 text-xs font-bold rounded-full px-1.5 py-0.5 ml-1"></span>
     </div>
 
     <!-- Flash Messages -->
@@ -166,19 +255,19 @@
                 {% for category, message in messages %}
                     {% if category != 'restricted' %}
                     {% if category == 'error' %}
-                        {% set bg = 'bg-red-500' %}{% set icon = 'fa-circle-xmark' %}
+                        {% set bg = 'bg-red-700' %}{% set icon = 'fa-circle-xmark' %}
                     {% elif category == 'warning' %}
-                        {% set bg = 'bg-amber-500' %}{% set icon = 'fa-triangle-exclamation' %}
+                        {% set bg = 'bg-amber-700' %}{% set icon = 'fa-triangle-exclamation' %}
                     {% elif category == 'success' %}
-                        {% set bg = 'bg-green-500' %}{% set icon = 'fa-circle-check' %}
+                        {% set bg = 'bg-green-700' %}{% set icon = 'fa-circle-check' %}
                     {% else %}
-                        {% set bg = 'bg-blue-500' %}{% set icon = 'fa-circle-info' %}
+                        {% set bg = 'bg-blue-700' %}{% set icon = 'fa-circle-info' %}
                     {% endif %}
                     <div class="alert {{ bg }} text-white px-4 py-3 rounded-xl shadow-xl max-w-sm border border-white/20">
                         <div class="flex items-start gap-3">
                             <i class="fa-solid {{ icon }} mt-0.5 shrink-0"></i>
-                            <span class="flex-1 text-sm leading-snug">{{ message }}</span>
-                            <button onclick="this.closest('.alert').remove()" class="text-white/70 hover:text-white shrink-0 ml-1">
+                            <span class="flex-1 text-sm leading-snug">{{ message|lflash }}</span>
+                            <button aria-label="{{ _('Close') }}" data-act="remove-closest" data-act-target=".alert" class="text-white/90 hover:text-white shrink-0 ml-1">
                                 <i class="fa-solid fa-times text-xs"></i>
                             </button>
                         </div>
@@ -189,8 +278,13 @@
         {% endif %}
     {% endwith %}
 
-    {% set main_screens = ['dashboard', 'workers', 'attendance', 'assignments', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip', 'transactions', 'settings', 'scan', 'notifications'] %}
-    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens %}has-bottom-nav{% endif %}">
+    {# Screens that carry the bottom nav. Worker detail screens are in the
+       list too: they are reached by tapping a worker from a list, and
+       dropping the nav there left the app feeling like it kept losing its
+       navigation. Only full-screen flows that must not be interrupted
+       (login, register, the splash) stay out. #}
+    {% set main_screens = ['dashboard', 'workers', 'attendance', 'assignments', 'closures', 'profile', 'payroll', 'payroll_save', 'payroll_toggle_paid', 'payroll_slip', 'payroll_preview', 'transactions', 'settings', 'scan', 'notifications', 'add_worker', 'worker_profile', 'edit_worker', 'worker_attendance', 'worker_report', 'id_card'] %}
+    <div id="mobile-app" class="max-w-sm mx-auto bg-gray-50 min-h-screen {% if current_user.is_authenticated and request.endpoint in main_screens and not current_user.is_worker %}has-bottom-nav{% endif %}">
         {% block content %}{% endblock %}
     </div>
 
@@ -199,50 +293,65 @@
       slide-in animation whose transform would otherwise become the containing
       block for position:fixed, making the nav scroll with the page.
     #}
-    {% if current_user.is_authenticated and request.endpoint in main_screens %}
+    {% if current_user.is_authenticated and request.endpoint in main_screens
+          and not current_user.is_worker %}
+    {# Six tabs for a dozen screens, so every screen lights the section it
+       belongs to rather than leaving the bar blank. Payroll has a tab of its
+       own now: it is the money screen, it was reachable only through a banner
+       on the dashboard, and while you were on it the bar told you that you
+       were on Transactions. Transactions sits under it, which is where it
+       belongs — both are money, and payroll is the one opened every day. #}
     {% set home_active = request.endpoint == 'dashboard' %}
-        {% set workers_active = request.endpoint == 'workers' %}
-        {% set attendance_active = request.endpoint == 'attendance' %}
-        {% set transactions_active = request.endpoint == 'transactions' %}
+        {% set workers_active = request.endpoint in ['workers', 'add_worker', 'worker_profile', 'edit_worker', 'worker_report', 'id_card', 'assignments', 'worker_login_powers'] %}
+        {% set attendance_active = request.endpoint in ['attendance', 'worker_attendance', 'closures'] %}
+        {% set payroll_active = request.endpoint in ['payroll', 'payroll_slip', 'payroll_preview', 'transactions'] %}
         {% set scan_active = request.endpoint == 'scan' %}
-        {% set profile_active = request.endpoint == 'profile' %}
+        {% set profile_active = request.endpoint in ['profile', 'settings', 'notifications'] %}
         <!-- Bottom Navigation (main screens only) — permanently fixed, never scrolls -->
         <nav class="app-bottom-nav fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm">
             <div class="app-bottom-nav-frame">
                 <div class="app-nav-row">
                     <a href="{{ url_for('dashboard') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if home_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-home text-xl"></i></span>
-                        <span class="app-nav-label">Home</span>
+                        <span class="app-nav-label">{{ _('Home') }}</span>
                     </a>
 
                     {% if current_user.is_admin %}
                     <a href="{{ url_for('workers') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if workers_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-users text-xl"></i></span>
-                        <span class="app-nav-label">Workers</span>
+                        <span class="app-nav-label">{{ _('Workers') }}</span>
                     </a>
                     {% endif %}
+
+                    {# Attendance is the screen this app exists for, and it had
+                       no button at all — the highlight for it was being
+                       computed and then never used anywhere. #}
+                    <a href="{{ url_for('attendance') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if attendance_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
+                        <span class="app-nav-label">{{ _('Attendance') }}</span>
+                    </a>
 
                     <!-- Center button: QR Scanner (scan-to-attend is the primary action) -->
                     <a href="{{ url_for('scan') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if scan_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-2xl"></i></span>
-                        <span class="app-nav-label">Scan QR</span>
+                        <span class="app-nav-label">{{ _('Scan QR') }}</span>
                     </a>
 
                     {% if current_user.is_admin %}
-                    <a href="{{ url_for('transactions') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if transactions_active else '' }}">
-                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-transfer text-xl"></i></span>
-                        <span class="app-nav-label">Transactions</span>
+                    <a href="{{ url_for('payroll') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if payroll_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-wave text-xl"></i></span>
+                        <span class="app-nav-label">{{ _('Payroll') }}</span>
                     </a>
                     {% else %}
                     <a href="{{ url_for('scan') }}?manual=1" class="app-nav-item transition-colors">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-keyboard text-xl"></i></span>
-                        <span class="app-nav-label">ID Entry</span>
+                        <span class="app-nav-label">{{ _('ID Entry') }}</span>
                     </a>
                     {% endif %}
 
                     <a href="{{ url_for('profile') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if profile_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-user text-xl"></i></span>
-                        <span class="app-nav-label">Profile</span>
+                        <span class="app-nav-label">{{ _('Profile') }}</span>
                     </a>
                 </div>
             </div>
@@ -255,11 +364,11 @@
     <div id="restricted-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl">
             <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-lock text-2xl text-red-500"></i>
+                <i class="fa-solid fa-lock text-2xl text-red-700"></i>
             </div>
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Access Restricted</h3>
-            <p class="text-gray-600 text-sm mb-6">{{ restricted_messages[0] }}</p>
-            <button onclick="document.getElementById('restricted-modal').remove()"
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">{{ _('Access Restricted') }}</h2>
+            <p class="text-gray-600 text-sm mb-6">{{ restricted_messages[0]|lflash }}</p>
+            <button data-act="remove-target" data-act-target="restricted-modal"
                     class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
                 OK
             </button>
@@ -269,6 +378,10 @@
     {% endwith %}
     
     <!-- Custom JavaScript -->
+    {# Turns data-act / data-confirm into real calls. Loaded before the page
+       scripts that define those functions, which is fine: it only looks a
+       name up when something is actually pressed. #}
+    <script src="{{ url_for('static', filename='js/actions.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
     {# Delegated from document, so it keeps working after every SPA swap and
@@ -282,7 +395,7 @@
     {% block scripts %}{% endblock %}
     
     <!-- Auto-hide flash messages -->
-    <script>
+    <script nonce="{{ csp_nonce }}">
         setTimeout(function() {
             const flashMessages = document.getElementById('flash-messages');
             if (flashMessages) {
@@ -296,7 +409,7 @@
          when it was uploaded before Supabase Storage was configured and the
          local file was wiped on a Render redeploy), swap in a neutral
          placeholder so the UI never shows a broken-image icon. -->
-    <script>
+    <script nonce="{{ csp_nonce }}">
         document.addEventListener('error', function (e) {
             var img = e.target;
             if (!img || img.tagName !== 'IMG' || img.dataset.fallbackApplied) return;
@@ -307,7 +420,7 @@
 
     <!-- Service Worker Registration — root scope so it controls the whole app
          (page caching + instant navigation + offline for real screens). -->
-    <script>
+    <script nonce="{{ csp_nonce }}">
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })

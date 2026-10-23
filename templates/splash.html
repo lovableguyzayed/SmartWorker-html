@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Welcome - SmartWorker{% endblock %}
+{% block title %}{{ _('Welcome') }} - SmartWorker{% endblock %}
 
 {% block head %}
 <style>
@@ -66,11 +66,11 @@
                 </div>
             </div>
             <h1 class="text-4xl font-bold mb-2 tracking-wide">SmartWorker</h1>
-            <p class="text-base opacity-95 font-medium">Professional Attendance Management</p>
+            <p class="text-base opacity-95 font-medium">{{ _('Professional Attendance Management') }}</p>
             <div class="mt-4 flex items-center justify-center gap-2 text-xs">
-                <span class="bg-white/20 px-3 py-1 rounded-full">Fast Setup</span>
-                <span class="bg-white/20 px-3 py-1 rounded-full">Live Reports</span>
-                <span class="bg-white/20 px-3 py-1 rounded-full">Payroll Ready</span>
+                <span class="bg-white/20 px-3 py-1 rounded-full">{{ _('Fast Setup') }}</span>
+                <span class="bg-white/20 px-3 py-1 rounded-full">{{ _('Live Reports') }}</span>
+                <span class="bg-white/20 px-3 py-1 rounded-full">{{ _('Payroll Ready') }}</span>
             </div>
         </div>
     </section>
@@ -78,7 +78,7 @@
     <main id="logo-content" class="relative z-10 px-5 pb-10 -mt-14 space-y-5">
         <section id="logo-info-card" class="bg-white/95 rounded-3xl shadow-2xl p-6 border border-gray-100">
             <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-primary mb-2">Built For Daily Operations</h2>
+                <h2 class="text-2xl font-bold text-primary mb-2">{{ _('Built For Daily Operations') }}</h2>
                 <p class="text-gray-600 text-sm leading-relaxed">
                     Track attendance, manage teams, and process payouts from one place with clear mobile-first workflows.
                 </p>
@@ -90,77 +90,77 @@
                         <i class="fa-solid fa-qrcode text-white text-lg"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-gray-800 text-base">QR Attendance</h3>
-                        <p class="text-gray-600 text-xs">Quick and secure daily check-ins</p>
+                        <h3 class="font-bold text-gray-800 text-base">{{ _('QR Attendance') }}</h3>
+                        <p class="text-gray-600 text-xs">{{ _('Quick and secure daily check-ins') }}</p>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                    <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
                 </div>
 
                 <div class="feature-tile flex items-center space-x-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div class="w-11 h-11 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shrink-0">
+                    <div class="w-11 h-11 bg-gradient-to-br from-green-700 to-green-800 rounded-xl flex items-center justify-center shrink-0">
                         <i class="fa-solid fa-users text-white text-lg"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-gray-800 text-base">Worker Records</h3>
-                        <p class="text-gray-600 text-xs">Profiles, roles, and contract details</p>
+                        <h3 class="font-bold text-gray-800 text-base">{{ _('Worker Records') }}</h3>
+                        <p class="text-gray-600 text-xs">{{ _('Profiles, roles, and contract details') }}</p>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                    <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
                 </div>
 
                 <div class="feature-tile flex items-center space-x-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div class="w-11 h-11 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shrink-0">
+                    <div class="w-11 h-11 bg-gradient-to-br from-orange-700 to-orange-800 rounded-xl flex items-center justify-center shrink-0">
                         <i class="fa-solid fa-rupee-sign text-white text-lg"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-gray-800 text-base">Payroll Policies</h3>
-                        <p class="text-gray-600 text-xs">Overtime and late deductions included</p>
+                        <h3 class="font-bold text-gray-800 text-base">{{ _('Payroll Policies') }}</h3>
+                        <p class="text-gray-600 text-xs">{{ _('Overtime and late deductions included') }}</p>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                    <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
                 </div>
 
                 <div class="feature-tile flex items-center space-x-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div class="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                    <div class="w-11 h-11 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0">
                         <i class="fa-solid fa-chart-line text-white text-lg"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-gray-800 text-base">Live Insights</h3>
-                        <p class="text-gray-600 text-xs">Daily progress and trend visibility</p>
+                        <h3 class="font-bold text-gray-800 text-base">{{ _('Live Insights') }}</h3>
+                        <p class="text-gray-600 text-xs">{{ _('Daily progress and trend visibility') }}</p>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                    <i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i>
                 </div>
             </div>
         </section>
 
         <section id="business-types" class="bg-white rounded-3xl shadow-xl p-5 border border-gray-100">
-            <h3 class="text-lg font-bold text-primary text-center mb-4">Made For Every Worksite</h3>
+            <h3 class="text-lg font-bold text-primary text-center mb-4">{{ _('Made For Every Worksite') }}</h3>
 
             <div class="grid grid-cols-2 gap-3">
                 <div class="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl">
                     <div class="w-10 h-10 bg-blue-500 rounded-xl mx-auto mb-2 flex items-center justify-center">
                         <i class="fa-solid fa-store text-white text-base"></i>
                     </div>
-                    <p class="font-semibold text-gray-800 text-sm">Retail</p>
+                    <p class="font-semibold text-gray-800 text-sm">{{ _('Retail') }}</p>
                 </div>
 
                 <div class="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl">
                     <div class="w-10 h-10 bg-green-500 rounded-xl mx-auto mb-2 flex items-center justify-center">
                         <i class="fa-solid fa-building text-white text-base"></i>
                     </div>
-                    <p class="font-semibold text-gray-800 text-sm">Office</p>
+                    <p class="font-semibold text-gray-800 text-sm">{{ _('Office') }}</p>
                 </div>
 
                 <div class="text-center p-3 bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl">
                     <div class="w-10 h-10 bg-orange-500 rounded-xl mx-auto mb-2 flex items-center justify-center">
                         <i class="fa-solid fa-hard-hat text-white text-base"></i>
                     </div>
-                    <p class="font-semibold text-gray-800 text-sm">Construction</p>
+                    <p class="font-semibold text-gray-800 text-sm">{{ _('Construction') }}</p>
                 </div>
 
                 <div class="text-center p-3 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl">
                     <div class="w-10 h-10 bg-indigo-500 rounded-xl mx-auto mb-2 flex items-center justify-center">
                         <i class="fa-solid fa-industry text-white text-base"></i>
                     </div>
-                    <p class="font-semibold text-gray-800 text-sm">Factory</p>
+                    <p class="font-semibold text-gray-800 text-sm">{{ _('Factory') }}</p>
                 </div>
             </div>
         </section>
@@ -179,7 +179,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const getStartedBtn = document.getElementById('get-started-btn');
     const logoElement = document.getElementById('main-app-logo');

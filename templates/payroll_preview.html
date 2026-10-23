@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Payroll Preview') }} - SmartWorker{% endblock %}
+
+{% block content %}
+<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-5 rounded-b-3xl shadow-lg">
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('payroll', month=month, year=year) }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Back') }}">
+            <i class="fa-solid fa-arrow-left text-lg"></i>
+        </a>
+        <div class="min-w-0">
+            <h1 class="text-xl font-bold leading-tight">{{ _('Payroll Preview') }}</h1>
+            <p class="text-sm text-white/90">{{ _(month_name) }} {{ year }} — nothing is saved yet</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-2 mt-4" id="preview-stats">
+        <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
+            <div class="text-xl font-bold" data-stat="new">{{ new_count }}</div>
+            <div class="text-xs text-white/90">{{ _('New') }}</div>
+        </div>
+        <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
+            <div class="text-xl font-bold" data-stat="changed">{{ changed_count }}</div>
+            <div class="text-xs text-white/90">{{ _('Changed') }}</div>
+        </div>
+        <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 text-center">
+            <div class="text-xl font-bold" data-stat="frozen">{{ frozen_count }}</div>
+            <div class="text-xs text-white/90">{{ _('Locked') }}</div>
+        </div>
+    </div>
+</header>
+
+<main class="p-4 pb-8 space-y-4">
+
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-500">{{ _('Total net payable') }}</span>
+            <span class="text-xl font-bold text-gray-800 amount">{{ totals.total_net|money }}</span>
+        </div>
+        <div class="flex items-center justify-between mt-1">
+            <span class="text-xs text-gray-500">Gross {{ totals.total_gross|money }}</span>
+            <span class="text-xs text-red-700">Deductions {{ totals.total_deductions|money }}</span>
+        </div>
+
+        {% if frozen_count %}
+        <p class="text-xs text-gray-500 mt-3 leading-relaxed">
+            {{ frozen_count }} worker(s) are already marked Paid for this month. Generating
+            payroll leaves those rows exactly as they are.
+        </p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('payroll_save') }}" class="mt-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="year" value="{{ year }}">
+            <button type="submit"
+                    class="w-full flex items-center justify-center p-3 bg-accent text-white rounded-2xl font-medium">
+                <i class="fa-solid fa-check mr-2"></i>
+                Generate payroll for {{ _(month_name) }}
+            </button>
+        </form>
+    </section>
+
+    {% for p in preview %}
+    <section class="bg-white rounded-3xl shadow border border-gray-100 p-4">
+        <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+                <a href="{{ url_for('worker_profile', worker_id=p.worker.id) }}"
+                   class="font-semibold text-gray-800 name-wrap block">{{ p.worker.full_name }}</a>
+                <div class="text-xs text-gray-500">{{ p.worker.worker_id }} · {{ _(p.worker.pay_type|capitalize) }}</div>
+                {% if not p.worker.has_pay_rate %}<span class="inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold whitespace-nowrap">{{ _('No pay rate') }}</span>{% endif %}
+            </div>
+            <div class="text-right shrink-0">
+                <div class="font-bold text-gray-800 amount">{{ p.net_pay|money }}</div>
+                {% if p.state == 'frozen' %}
+                <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600">
+                    <i class="fa-solid fa-lock mr-1"></i>{{ _('Paid') }}
+                </span>
+                {% elif p.state == 'new' %}
+                <span class="text-xs px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600">{{ _('New') }}</span>
+                {% elif p.state == 'changed' %}
+                <span class="text-xs px-2 py-0.5 rounded-lg {{ 'bg-green-50 text-green-700' if p.delta > 0 else 'bg-red-50 text-red-700' }}">
+                    {{ '+' if p.delta > 0 else '' }}{{ p.delta|money }}
+                </span>
+                {% else %}
+                <span class="text-xs px-2 py-0.5 rounded-lg bg-gray-50 text-gray-500">{{ _('No change') }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if p.state == 'changed' %}
+        <div class="mt-2 text-xs text-gray-500">
+            Saved {{ p.saved_net|money }} &rarr; <b class="text-gray-700">{{ p.net_pay|money }}</b>
+        </div>
+        {% endif %}
+
+        {% if p.breakdown %}
+        {% set b = p.breakdown %}
+        <div class="grid grid-cols-3 gap-2 mt-3">
+            <div class="bg-gray-50 rounded-xl p-2 text-center">
+                <div class="text-sm font-bold text-gray-800 amount">{{ b.daily_rate|money0 }}</div>
+                <div class="text-xs text-gray-500">{{ _('per day') }}</div>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-2 text-center">
+                <div class="text-sm font-bold text-gray-800">{{ b.eligible_days }}</div>
+                <div class="text-xs text-gray-500">{{ _('eligible days') }}</div>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-2 text-center">
+                <div class="text-sm font-bold {{ 'text-red-700' if b.deduction_days else 'text-gray-800' }}">{{ '%g'|format(b.deduction_days) }}</div>
+                <div class="text-xs text-gray-500">{{ _('deducted') }}</div>
+            </div>
+        </div>
+
+        <details class="mt-2">
+            <summary class="text-xs font-medium text-accent cursor-pointer">{{ _('How this was calculated') }}</summary>
+            <ul class="mt-2 space-y-1">
+                {% for line in b.explanation %}
+                <li class="text-xs text-gray-500 leading-relaxed">• {{ line|lnote }}</li>
+                {% endfor %}
+            </ul>
+            {% if p.policy_rows %}
+            <div class="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                {% for label, value in p.policy_rows %}
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-500">{{ label }}</span>
+                    <span class="text-gray-600">{{ value }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </details>
+        {% else %}
+        <div class="mt-2 text-xs text-gray-500">
+            Gross {{ p.gross_pay|money }} · deductions {{ p.deductions|money }}
+        </div>
+        {% endif %}
+    </section>
+    {% endfor %}
+
+    {% if not preview %}
+    <section class="bg-white rounded-3xl shadow border border-gray-100 p-8 text-center">
+        <i class="fa-solid fa-users text-3xl text-gray-200 mb-3"></i>
+        <p class="text-sm text-gray-500">No active workers to calculate for {{ _(month_name) }} {{ year }}.</p>
+    </section>
+    {% endif %}
+</main>
+{% endblock %}

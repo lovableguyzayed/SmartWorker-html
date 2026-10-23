@@ -21,15 +21,21 @@
         <icon density="xxhdpi" src="res/android/icon/xxhdpi.png" />
         <icon density="xxxhdpi" src="res/android/icon/xxxhdpi.png" />
 
-        <!-- Splash (Android 11 and below): branded navy with centered logo -->
-        <splash density="port-mdpi" src="res/android/splash/port-mdpi.png" />
-        <splash density="port-hdpi" src="res/android/splash/port-hdpi.png" />
-        <splash density="port-xhdpi" src="res/android/splash/port-xhdpi.png" />
-        <splash density="port-xxhdpi" src="res/android/splash/port-xxhdpi.png" />
-        <splash density="port-xxxhdpi" src="res/android/splash/port-xxxhdpi.png" />
+        <!-- Splash, via the Android 12+ system SplashScreen API: navy
+             background with the logo as the centered animated icon. This is
+             the only splash mechanism the app has. cordova-android reads
+             these two preferences itself, so no plugin is involved.
 
-        <!-- Splash (Android 12+ system SplashScreen API): navy background with
-             the logo as the centered animated icon -->
+             There used to be a set of <splash density="port-*"> tags here for
+             Android 11 and below. cordova-android 12 rejects them outright
+             ("The <splash> tags were detected and are no longer supported"),
+             and cordova-plugin-splashscreen, which was the only thing that
+             could have consumed them, refuses to install against
+             cordova-android 12 (it requires <11.0.0) — so every build skipped
+             it. The tags, the plugin and its four tuning preferences were all
+             dead weight and have been removed. Devices on Android 11 and
+             below therefore show no splash; restoring one there means pinning
+             cordova-android 11 or moving to a maintained plugin fork. -->
         <preference name="AndroidWindowSplashScreenBackground" value="#001F3F" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/android/splash-icon.png" />
 
@@ -57,11 +63,11 @@
     <preference name="StatusBarBackgroundColor" value="#001F3F" />
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="BackgroundColor" value="0xff001F3F" />
-    <!-- Faster startup: shorter splash, app content shows as soon as ready -->
-    <preference name="SplashScreenDelay" value="800" />
-    <preference name="FadeSplashScreenDuration" value="200" />
-    <preference name="AutoHideSplashScreen" value="true" />
-    <preference name="ShowSplashScreenSpinner" value="false" />
+    <!-- SplashScreenDelay / FadeSplashScreenDuration / AutoHideSplashScreen /
+         ShowSplashScreenSpinner used to sit here. All four are read only by
+         cordova-plugin-splashscreen, which no longer installs (see the splash
+         note above), so none of them affected startup. The system splash
+         dismisses itself when the first frame is ready. -->
     <preference name="LoadUrlTimeoutValue" value="60000" />
     <preference name="KeepRunning" value="true" />
 
@@ -77,7 +83,9 @@
 
     <!-- cordova-plugin-whitelist removed: deprecated and built into cordova-android 10+ -->
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
-    <plugin name="cordova-plugin-splashscreen" spec="^6.0.0" />
+    <!-- cordova-plugin-splashscreen removed: it requires cordova-android
+         <11.0.0, so the build skipped it every time. The splash now comes
+         from the Android 12+ system API (see the platform block above). -->
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
     <!-- Requests the Android runtime CAMERA permission so the in-app QR scanner
          (getUserMedia in the WebView) can open the camera. cordova-android

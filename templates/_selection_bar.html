@@ -34,10 +34,10 @@
      data-ms-param-{{ key }}="{{ value }}"
      {%- endfor %}>
     <div class="ms-bar-top">
-        <span class="ms-count" data-ms-count>0 selected</span>
+        <span class="ms-count" data-ms-count>{{ _('0 selected') }}</span>
         <div class="ms-bar-links">
-            <button type="button" class="ms-link" data-ms-selectall>Select all</button>
-            <button type="button" class="ms-link" data-ms-cancel>Cancel</button>
+            <button type="button" class="ms-link" data-ms-selectall>{{ _('Select all') }}</button>
+            <button type="button" class="ms-link" data-ms-cancel>{{ _('Cancel') }}</button>
         </div>
     </div>
     <div class="ms-actions">

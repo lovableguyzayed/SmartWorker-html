@@ -50,6 +50,24 @@
             return box ? Array.prototype.slice.call(box.querySelectorAll('[data-ms-item]')) : [];
         },
 
+        /* One row usually stands for one record, but not always: the
+         * notifications screen folds a run written by one action into a
+         * single line carrying every id behind it. The count on the bar and
+         * in the confirmation has to be records, not rows, or "Delete 1
+         * notification?" would quietly delete six. A row with one id counts
+         * one, so every other screen is unaffected. */
+        tally: function (values) {
+            var n = 0;
+            values.forEach(function (value) {
+                n += String(value).split(',').length;
+            });
+            return n;
+        },
+
+        count: function () {
+            return this.tally(Array.from(this.selected));
+        },
+
         /* ---- state ----------------------------------------------------- */
 
         enter: function (scope) {
@@ -141,14 +159,16 @@
             var bar = this.bar(this.scope);
             if (!bar) return;
             var box = this.container(this.scope);
-            var n = this.selected.size;
+            var n = this.count();
             var noun = (box && box.getAttribute('data-ms-noun')) || 'item';
             var plural = (box && box.getAttribute('data-ms-plural')) || (noun + 's');
 
             var count = bar.querySelector('[data-ms-count]');
             if (count) count.textContent = n + ' ' + (n === 1 ? noun : plural) + ' selected';
 
-            var total = this.items(this.scope).length;
+            var total = this.tally(this.items(this.scope).map(function (el) {
+                return el.getAttribute('data-ms-item');
+            }));
             var all = bar.querySelector('[data-ms-selectall]');
             if (all) all.textContent = (n === total && total > 0) ? 'Clear all' : 'Select all';
 
@@ -202,7 +222,7 @@
             var bar = this.bar(scope);
             var action = btn.getAttribute('data-ms-action');
             var ids = Array.from(this.selected);
-            var n = ids.length;
+            var n = this.tally(ids);
             var noun = (box && box.getAttribute('data-ms-noun')) || 'item';
             var plural = (box && box.getAttribute('data-ms-plural')) || (noun + 's');
 

@@ -65,14 +65,17 @@ const SmartWorker = {
         // Show toast notification
         showToast(message, type = 'info', duration = 5000) {
             const toast = document.createElement('div');
-            toast.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${this.getToastClass(type)} slide-up`;
+            // app-toast is what the close button climbs to. It used to walk
+            // up two parentElements from an inline onclick; naming the root
+            // means the dismissal survives a change to the markup inside.
+            toast.className = `app-toast fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${this.getToastClass(type)} slide-up`;
             toast.innerHTML = `
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <i class="fa-solid ${this.getToastIcon(type)} mr-2"></i>
                         <span>${message}</span>
                     </div>
-                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-current opacity-70 hover:opacity-100">
+                    <button data-act="remove-closest" data-act-target=".app-toast" class="ml-4 text-current opacity-70 hover:opacity-100">
                         <i class="fa-solid fa-times"></i>
                     </button>
                 </div>
@@ -442,6 +445,19 @@ const SmartWorker = {
     }
 };
 
+// ── Interface language ───────────────────────────────────────
+// The language lives in the server session, so the only thing the client has
+// to do is keep <html lang> honest and throw away pages the service worker
+// cached in the previous language.
+function applyLanguage(lang) {
+    const root = document.documentElement;
+    if (root.getAttribute('lang') === lang) return;
+    root.setAttribute('lang', lang);
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'purge-pages' });
+    }
+}
+
 // ── NativeShell: SPA navigation engine ───────────────────────
 // The WebView loads the document exactly once. Every link tap and form
 // submit afterwards is fetched over XHR and the new screen is swapped into
@@ -450,8 +466,11 @@ const SmartWorker = {
 // changes effectively instant, like a native Android activity switch.
 const NativeShell = {
     loadedAssets: new Set(),
-    skeletonTimer: null,
+    progressTimer: null,
     navigating: false,
+
+    // The one piece of the document that survives a screen change.
+    NAV: 'nav.app-bottom-nav',
 
     PRELOAD_SCREENS: ['/dashboard', '/workers', '/attendance', '/payroll',
                       '/transactions', '/assignments', '/settings',
@@ -556,11 +575,30 @@ const NativeShell = {
         }
     },
 
+    /* Where the reader had got to on the screen they are leaving.
+     *
+     * Written onto the history entry itself rather than a side table, so it
+     * travels with the entry: the browser hands it straight back on the pop
+     * that returns here, and a reload or a restored tab does not resurrect
+     * a position from some other visit.
+     */
+    saveScroll() {
+        try {
+            history.replaceState(
+                Object.assign({}, history.state, { y: window.scrollY }),
+                '', location.href);
+        } catch (_) { /* a history that will not take state is not fatal */ }
+    },
+
     async visit(href, opts = {}) {
         if (this.navigating) return;
         this.navigating = true;
+        // Before anything is fetched: once the body is replaced the old
+        // scroll position is unrecoverable.
+        if (opts.push !== false) this.saveScroll();
+        this.back = opts.push === false;
         document.dispatchEvent(new Event('page:before-swap'));
-        this.scheduleSkeleton();
+        this.showProgress();
         try {
             const res = await fetch(href, {
                 method: opts.method || 'GET',
@@ -573,7 +611,7 @@ const NativeShell = {
             this.render(html, res.url || href, opts.push !== false);
         } catch (err) {
             // No network and no cache — do a real navigation as last resort
-            this.cancelSkeleton();
+            this.hideProgress();
             this.navigating = false;
             if ((opts.method || 'GET') === 'GET') location.href = href;
             return;
@@ -582,7 +620,7 @@ const NativeShell = {
     },
 
     render(html, url, push) {
-        this.cancelSkeleton();
+        this.hideProgress();
         const doc = new DOMParser().parseFromString(html, 'text/html');
 
         // Merge page-specific head assets (print styles, jsPDF, QR library…)
@@ -597,52 +635,170 @@ const NativeShell = {
         });
 
         document.title = doc.title;
+
+        // Only the body is swapped, so <html lang> would keep whatever the
+        // first full load set. Carry it over: a language switch is an ordinary
+        // POST + redirect through here, and screen readers and the font
+        // fallback both pick Devanagari off this attribute.
+        const incomingLang = doc.documentElement.getAttribute('lang');
+        if (incomingLang) applyLanguage(incomingLang);
+
+        // The scripts as the parser produced them. Chrome blanks the nonce
+        // attribute on any element that reaches a document — and strips it
+        // outright from one created through innerHTML — so the copies about
+        // to appear in the page carry nonce="". These still have their
+        // attributes intact, which keeps the clone below honest. The nonce
+        // it ends up with comes from pageNonce(), not from here: see there
+        // for why the fetched page's own nonce is the wrong one to use.
+        const incoming = [...doc.body.querySelectorAll('script')];
+
+        // The tab bar outlives the screen. Replacing the body destroys it
+        // and builds a new one, which is how a native-looking app gives
+        // itself away: the bar blinks, its press animation restarts, and
+        // the active tab arrives already lit instead of lighting up. Holding
+        // a reference keeps the live node alive while it is detached, so the
+        // same element — with its CSS state and its listeners — goes back in
+        // afterwards and only its highlight changes.
+        const keptNav = document.querySelector(this.NAV);
+
         document.body.innerHTML = doc.body.innerHTML;
 
-        // innerHTML never executes scripts — replace each with a live clone
-        document.body.querySelectorAll('script').forEach((old) => {
+        const freshNav = document.querySelector(this.NAV);
+        if (keptNav && freshNav) {
+            this.syncNav(freshNav, keptNav);
+            freshNav.replaceWith(keptNav);
+        }
+
+        // innerHTML never executes scripts — replace each with a live clone.
+        document.body.querySelectorAll('script').forEach((old, i) => {
+            const source = incoming[i] || old;
             if (old.src) {
                 const path = new URL(old.src, location.href).pathname;
                 if (this.loadedAssets.has(path)) { old.remove(); return; }
                 this.loadedAssets.add(path);
             }
-            old.replaceWith(this.executable(old));
+            old.replaceWith(this.executable(source));
         });
 
         if (push && url !== location.href) history.pushState({}, '', url);
         else if (push) history.replaceState({}, '', url);
-        window.scrollTo(0, 0);
+
+        // Going back puts the reader where they were; going forward starts
+        // at the top. A list you had scrolled half way down and must scroll
+        // again after a glance at one row is the clearest sign that these
+        // are pages and not screens.
+        const y = (!push && history.state && history.state.y) || 0;
+        window.scrollTo(0, y);
+
+        this.animate(this.back);
         document.dispatchEvent(new Event('page:load'));
+    },
+
+    /* Push forward, pop backward.
+     *
+     * The same arrival animation in both directions reads as a page that
+     * re-rendered. Which way the screen comes from is the cue that says
+     * whether you went somewhere or came back, and it is the cue people
+     * read without noticing they are reading it.
+     *
+     * Set as a class rather than in the CSS for #mobile-app, so the rule
+     * can be dropped whole under prefers-reduced-motion.
+     */
+    animate(back) {
+        const screen = document.getElementById('mobile-app');
+        if (!screen) return;
+        screen.classList.add(back ? 'screen-pop' : 'screen-push');
+    },
+
+    /* Move the highlight from one tab to another, and nothing else.
+     *
+     * Which tab is lit is decided server-side — a worker profile lights
+     * Workers, a payslip lights Payroll — so the answer is read off the
+     * freshly rendered bar rather than worked out again here. Only the two
+     * active classes are touched: anything else the live bar is carrying
+     * (a press, a transition in flight) is left alone, which is the whole
+     * point of keeping it.
+     */
+    syncNav(fresh, live) {
+        const ACTIVE = ['app-nav-item-active', 'app-nav-fab-active'];
+        const want = new Map();
+        fresh.querySelectorAll('a[href]').forEach((a) =>
+            want.set(a.getAttribute('href'),
+                     ACTIVE.filter((c) => a.classList.contains(c))));
+        live.querySelectorAll('a[href]').forEach((a) => {
+            const on = want.get(a.getAttribute('href'));
+            // A tab the new bar does not have at all: leave it as it is
+            // rather than guess. The bar's shape only changes with the
+            // user's role, and that cannot change without a fresh document.
+            if (!on) return;
+            ACTIVE.forEach((c) => a.classList.toggle(c, on.includes(c)));
+        });
+    },
+
+    /* The nonce this document was served with.
+     *
+     * Not the one on the page being navigated to. The browser enforces the
+     * Content-Security-Policy header of the document that is open, and that
+     * header named a nonce minted for that one request; a script carrying
+     * the *fetched* page's nonce is refused, because as far as the open
+     * document is concerned it is an unknown value. So every re-created
+     * script has to be stamped with the open document's own nonce.
+     *
+     * Read from the property rather than the attribute: browsers blank the
+     * attribute once an element is in a document — nonce hiding, so that
+     * markup an attacker injects cannot read a nonce off a neighbour. The
+     * property stays readable to first-party code like this, which is
+     * already running and could do anything it liked anyway.
+     */
+    pageNonce() {
+        // Parked on window by base.html while this document was parsed, and
+        // so still correct after the body has been replaced — every element
+        // that carried the nonce is gone by then.
+        return window.__swNonce || '';
     },
 
     executable(node) {
         if (node.tagName !== 'SCRIPT') return node.cloneNode(true);
         const s = document.createElement('script');
         [...node.attributes].forEach((a) => s.setAttribute(a.name, a.value));
+        if (!node.src) {
+            const nonce = this.pageNonce();
+            if (nonce) s.nonce = nonce;
+        }
         s.textContent = node.textContent;
         return s;
     },
 
-    // Skeleton shimmer — only appears if a screen takes longer than 150ms
-    // (cached screens swap instantly and never show it)
-    scheduleSkeleton() {
-        this.skeletonTimer = setTimeout(() => {
-            if (document.getElementById('skeleton-overlay')) return;
-            const el = document.createElement('div');
-            el.id = 'skeleton-overlay';
-            el.innerHTML = '<div class="sk-bar sk-header"></div>' +
-                           '<div class="sk-bar sk-card"></div>' +
-                           '<div class="sk-bar sk-card"></div>' +
-                           '<div class="sk-bar sk-line"></div>' +
-                           '<div class="sk-bar sk-line short"></div>';
-            document.body.appendChild(el);
-        }, 150);
+    /* "It is coming" — and the screen you are on never goes away.
+     *
+     * There used to be a skeleton behind this: a full-screen grey shimmer
+     * after 150ms. Screens were measured swapping in 106–287ms, so an
+     * ordinary tap covered a perfectly readable screen in placeholder for a
+     * tenth of a second and then showed the next one. That flash IS the
+     * feeling of a page loading.
+     *
+     * It is gone entirely rather than merely delayed. Whatever the wait,
+     * the honest thing to show is the screen the reader is already on —
+     * which is what a native app does, and a slow screen is exactly when
+     * replacing real content with grey bars helps least. All that is left
+     * is a hairline at the top, after 110ms so an instant swap stays
+     * silent, because a tap with no acknowledgement at all feels broken.
+     */
+    PROGRESS_AFTER: 110,
+
+    showProgress() {
+        this.progressTimer = setTimeout(() => {
+            if (document.getElementById('nav-progress')) return;
+            const bar = document.createElement('div');
+            bar.id = 'nav-progress';
+            document.body.appendChild(bar);
+        }, this.PROGRESS_AFTER);
     },
 
-    cancelSkeleton() {
-        clearTimeout(this.skeletonTimer);
-        const el = document.getElementById('skeleton-overlay');
-        if (el) el.remove();
+    hideProgress() {
+        clearTimeout(this.progressTimer);
+        const bar = document.getElementById('nav-progress');
+        if (bar) bar.remove();
     },
 
     // Android hardware Back. Cordova's default is to exit the app the moment

@@ -52,9 +52,58 @@ class User(UserMixin, db.Model):
             return False
         return check_password_hash(self.password_hash, password)
 
+    #: A worker's own login. Links a User to the Worker record it may see;
+    #: nothing else in the app is reachable from that role.
+    worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=True)
+
     @property
     def is_admin(self):
         return self.role in ('admin', 'manager')
+
+    #: Workers this login may mark attendance for. Comma-separated ids, the
+    #: same shape as assigned_site_ids. Granted by an administrator one
+    #: person at a time; empty means nobody.
+    assigned_worker_ids = db.Column(db.Text, nullable=True)
+    #: Powers a worker's login can be given. Both default off: a login that
+    #: can only look at its own pay is safe to hand out widely, and that is
+    #: the whole point of it.
+    can_mark_attendance = db.Column(db.Boolean, nullable=False, default=False)
+    can_record_transactions = db.Column(db.Boolean, nullable=False, default=False)
+
+    @property
+    def worker_id_list(self):
+        raw = (self.assigned_worker_ids or '').strip()
+        return [int(t) for t in raw.split(',') if t.strip().isdigit()] if raw else []
+
+    @property
+    def is_supervisor(self):
+        """A worker who also marks the roll for others — a mukadam.
+
+        Not a separate role: the same person, with powers an administrator
+        granted. Their own attendance is never theirs to mark; see
+        supervisor_team_ids.
+        """
+        return self.is_worker and self.can_mark_attendance
+
+    @property
+    def supervisor_team_ids(self):
+        """Who this supervisor may mark — never themselves.
+
+        A mukadam marking his own attendance is the fraud this whole design
+        exists to prevent, so the exclusion lives here, at the one place
+        every caller has to come through, rather than in each view.
+        """
+        return [wid for wid in self.worker_id_list if wid != self.worker_id]
+
+    @property
+    def is_worker(self):
+        """A labourer looking at their own attendance and pay.
+
+        Deliberately not folded into is_admin's negation: an attendance user
+        is also 'not admin' but may see the whole roster for their site,
+        whereas a worker may see exactly one record — their own.
+        """
+        return self.role == 'worker'
 
     @property
     def site_id_list(self):
@@ -94,6 +143,18 @@ class CompanySetting(db.Model):
     gst_number = db.Column(db.String(50), nullable=True)
     registration_number = db.Column(db.String(50), nullable=True)
     logo = db.Column(db.Text, nullable=True)  # static path or data URI
+
+    #: Where money handed over lands in a worker's running account.
+    #:
+    #:   'month'        against the month it is dated in
+    #:   'oldest_first' against the oldest month still owed, spilling forward
+    #:
+    #: Both are real house rules and they give different answers. A crusher
+    #: that owes August and pays ₹20,000 in October is usually clearing
+    #: August; a contractor paying a month at a time is not. Defaults to
+    #: 'month', which is what the app did before the choice existed.
+    dues_allocation = db.Column(db.String(20), default='month')
+
     updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
 class Site(db.Model):
@@ -218,6 +279,18 @@ class LeaveAdjustment(db.Model):
 
 TRANSACTION_EARNING_TYPES = ('bonus', 'extra_payment', 'incentive', 'refreshment')
 TRANSACTION_DEDUCTION_TYPES = ('advance', 'loan', 'cash_advance', 'recovery', 'deduction')
+#: Wages handed over. A third kind, because it is neither of the other two.
+#: An advance is money taken before it is earned, so the month it belongs to
+#: is short by that much and the payslip rightly deducts it. Wages paid are
+#: the month's own money arriving, which does not change what the month was
+#: worth — it changes what is still owed. Settling a month used to have to be
+#: entered as an "advance", which came out right to the rupee and printed the
+#: wrong word on the payslip.
+TRANSACTION_SETTLEMENT_TYPES = ('wage_payment',)
+
+#: How the money was handed over. Empty on every row written before this
+#: existed, so nothing may assume it is set.
+PAYMENT_MODES = ('cash', 'upi', 'bank', 'cheque')
 
 class WorkerTransaction(db.Model):
     __tablename__ = 'worker_transactions'
@@ -226,7 +299,8 @@ class WorkerTransaction(db.Model):
     account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=False)
     txn_type = db.Column(db.String(30), nullable=False)
-    # advance, loan, cash_advance, recovery, deduction, bonus, extra_payment, incentive, refreshment
+    # advance, loan, cash_advance, recovery, deduction, bonus, extra_payment,
+    # incentive, refreshment, wage_payment
     amount = db.Column(db.Float, nullable=False)
     date = db.Column(db.Date, nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -235,11 +309,41 @@ class WorkerTransaction(db.Model):
     created_at = db.Column(db.DateTime, default=now_ist)
     updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
+    #: cash / upi / bank / cheque, and the UTR or cheque number. The app knew
+    #: to the rupee what had been handed over and nothing about how, so a row
+    #: could not be matched against a bank statement.
+    payment_mode = db.Column(db.String(20), nullable=True)
+    reference_no = db.Column(db.String(60), nullable=True)
+
+    #: The worker's own confirmation that the money reached them. Until this
+    #: is stamped the row is one person's word; the employer wrote it and the
+    #: worker has not agreed to it.
+    acknowledged_at = db.Column(db.DateTime, nullable=True)
+    acknowledged_by = db.Column(db.Integer, nullable=True)
+
     worker = db.relationship('Worker', backref='transactions')
 
     @property
     def is_earning(self):
         return self.txn_type in TRANSACTION_EARNING_TYPES
+
+    @property
+    def is_deduction(self):
+        """Money taken against wages not yet paid.
+
+        Not the same as "not an earning": a wage payment is money out and
+        still not a deduction, and anything summing deductions has to ask
+        this rather than negate is_earning.
+        """
+        return self.txn_type in TRANSACTION_DEDUCTION_TYPES
+
+    @property
+    def is_settlement(self):
+        return self.txn_type in TRANSACTION_SETTLEMENT_TYPES
+
+    @property
+    def is_acknowledged(self):
+        return self.acknowledged_at is not None
 
 class Notification(db.Model):
     __tablename__ = 'notifications'
@@ -319,6 +423,16 @@ class Worker(db.Model):
     status = db.Column(db.String(20), default='active')  # active, inactive
     profile_image = db.Column(db.Text, nullable=True)
     qr_code = db.Column(db.Text, nullable=True)
+
+    # --- how this worker actually gets paid --------------------------------
+    # Held so a payment can be made and recorded against the figure the app
+    # computes. Nothing here is used in any calculation.
+    bank_account_name = db.Column(db.String(120), nullable=True)
+    bank_account_number = db.Column(db.String(34), nullable=True)
+    bank_ifsc = db.Column(db.String(11), nullable=True)
+    upi_id = db.Column(db.String(100), nullable=True)
+    aadhaar_number = db.Column(db.String(12), nullable=True)
+    pan_number = db.Column(db.String(10), nullable=True)
     created_at = db.Column(db.DateTime, default=now_ist)
     updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
 
@@ -330,6 +444,49 @@ class Worker(db.Model):
                                     order_by='WorkerModification.created_at.desc()')
     leave_adjustments = db.relationship('LeaveAdjustment', backref='worker', lazy=True,
                                         order_by='LeaveAdjustment.created_at.desc()')
+
+    #: Which rate column actually pays this worker, per pay_type.
+    PAY_RATE_FIELD = {
+        'daily': 'daily_rate',
+        'monthly': 'monthly_salary',
+        'hourly': 'hourly_rate',
+        'project': 'project_rate',
+    }
+
+    @property
+    def masked_aadhaar(self):
+        """Aadhaar with all but the last four digits hidden.
+
+        Aadhaar is sensitive personal data; it is held so a payment can be
+        made and is never shown in full, nor printed on a payslip.
+        """
+        value = (self.aadhaar_number or '').strip()
+        if len(value) != 12:
+            return None
+        return 'XXXX XXXX ' + value[-4:]
+
+    @property
+    def has_payment_details(self):
+        """True once there is some way to actually send this worker money."""
+        return bool((self.bank_account_number and self.bank_ifsc) or self.upi_id)
+
+    @property
+    def pay_rate(self):
+        """The rate this worker is paid at, whatever their pay type."""
+        field = self.PAY_RATE_FIELD.get(self.pay_type)
+        return getattr(self, field, None) if field else None
+
+    @property
+    def has_pay_rate(self):
+        """False for a worker nobody has given a rate yet.
+
+        An empty rate field is stored as 0.0 rather than rejected — an
+        employer may well add someone before the rate is agreed. But a
+        worker in that state earns ₹0 every month, so everywhere that shows
+        money needs to be able to say so out loud.
+        """
+        rate = self.pay_rate
+        return rate is not None and rate > 0
 
     @property
     def current_assignment(self):
@@ -410,7 +567,111 @@ class PayrollRecord(db.Model):
     gross_pay = db.Column(db.Float, nullable=False)
     deductions = db.Column(db.Float, default=0)
     net_pay = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, paid
+    status = db.Column(db.String(20), default='pending')  # pending, partial, paid
     created_at = db.Column(db.DateTime, default=now_ist)
 
+    #: How much of this month has actually been handed over. Status used to be
+    #: the only answer and it has two values, so a month was either settled in
+    #: full or not at all — there was nowhere to say that ₹10,000 of a ₹23,000
+    #: September had been paid, which on a site is the normal case.
+    #:
+    #: NULL on every row written before this column existed. Read it through
+    #: settled_amount, never directly.
+    paid_amount = db.Column(db.Float, nullable=True)
+
+    #: Frozen copy of the salary breakdown and the policy that produced it,
+    #: written when the row is finalised. Payroll used to be recomputed live
+    #: from current settings every time it was displayed, so changing a rule
+    #: silently rewrote months that had already been paid. Once this is set,
+    #: the stored figures are shown instead of recalculating.
+    breakdown_json = db.Column(db.Text, nullable=True)
+    policy_json = db.Column(db.Text, nullable=True)
+    finalized_at = db.Column(db.DateTime, nullable=True)
+
     worker = db.relationship('Worker', backref='payroll_records')
+
+    @property
+    def settled_amount(self):
+        """What has been handed over for this month, in rupees.
+
+        A row from before paid_amount existed carries the answer only in its
+        status, so a legacy 'paid' month means its whole net_pay was handed
+        over. Without this fallback, every month settled before the upgrade
+        would reopen as unpaid and the outstanding total would jump.
+        """
+        if self.paid_amount is not None:
+            return round(float(self.paid_amount), 2)
+        return round(float(self.net_pay or 0), 2) if self.status == 'paid' else 0.0
+
+    @property
+    def payment_state(self):
+        """'paid', 'partial' or 'pending', worked out from the money.
+
+        Derived rather than stored so the badge cannot disagree with the
+        figures beside it. The half-rupee tolerance is there because net_pay
+        is a float: 23000.0 settled against 22999.999999 should read Paid.
+        """
+        settled = self.settled_amount
+        due = round(float(self.net_pay or 0), 2)
+        if settled <= 0.005:
+            return 'pending'
+        if settled + 0.005 >= due:
+            return 'paid'
+        return 'partial'
+
+
+class SalaryPolicy(db.Model):
+    """How a fixed monthly salary turns into a payable amount.
+
+    One row per account is the company-wide default (worker_id NULL); a row
+    with a worker_id overrides it for that worker only. Resolution is
+    worker row -> company row -> salary.DEFAULT_POLICY, so an employer can
+    set a house rule once and depart from it for individuals.
+
+    The columns mirror salary.POLICY_FIELDS exactly; the engine reads this
+    object through salary.normalise_policy, so an unexpected value degrades
+    to the default rather than failing a pay run.
+    """
+    __tablename__ = 'salary_policies'
+    __table_args__ = (
+        db.UniqueConstraint('account_id', 'worker_id', name='uq_salary_policy_scope'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
+    #: NULL = the company-wide default for this account
+    worker_id = db.Column(db.Integer, db.ForeignKey('workers.id'), nullable=True, index=True)
+
+    salary_basis = db.Column(db.String(12), default='fixed')        # fixed | calendar
+    basis_days = db.Column(db.Integer, default=30)
+    rounding = db.Column(db.String(10), default='nearest')          # none|nearest|up|down
+    joining_mode = db.Column(db.String(12), default='calendar')     # calendar | attendance
+    paid_leave_enabled = db.Column(db.Boolean, default=True)
+    monthly_leave_allowance = db.Column(db.Float, default=0.0)
+    leave_carry_forward = db.Column(db.Boolean, default=False)
+    absence_deduction_enabled = db.Column(db.Boolean, default=False)
+    calculation_method = db.Column(db.String(28), default='salary_minus_deductions')
+
+    created_at = db.Column(db.DateTime, default=now_ist)
+    updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
+    updated_by = db.Column(db.Integer, nullable=True)
+
+    worker = db.relationship('Worker', backref='salary_policy_rows')
+
+
+class SalaryPolicyAudit(db.Model):
+    """Who changed which salary rule, when, and what it was before.
+
+    Salary policy decides what people are paid, so a change to it needs the
+    same traceability as a change to a worker's rate.
+    """
+    __tablename__ = 'salary_policy_audits'
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
+    worker_id = db.Column(db.Integer, nullable=True)   # NULL = company-wide policy
+    field = db.Column(db.String(40), nullable=False)
+    old_value = db.Column(db.String(60), nullable=True)
+    new_value = db.Column(db.String(60), nullable=True)
+    changed_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=now_ist)

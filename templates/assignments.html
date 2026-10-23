@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Assignments - SmartWorker{% endblock %}
+{% block title %}{{ _('Assignments') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('workers') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('workers') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Assignments</div>
-                <div class="text-sm opacity-90">Assign &amp; transfer workers to sites, projects, tasks</div>
+                <h1 class="text-xl font-semibold">{{ _('Assignments') }}</h1>
+                <div class="text-sm opacity-90">{{ _('Assign & transfer workers to sites, projects, tasks') }}</div>
             </div>
         </div>
-        <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Manage sites & projects">
+        <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Manage sites & projects') }}">
             <i class="fa-solid fa-gear text-lg"></i>
         </a>
     </div>
@@ -23,28 +23,37 @@
     <form method="GET" class="bg-white/15 backdrop-blur-lg rounded-2xl p-3 border border-white/20 space-y-2">
         <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm"></i>
-            <input type="search" name="search" value="{{ search }}" placeholder="Search name or employee ID…"
+            <input type="search" name="search" value="{{ search }}" placeholder="{{ _('Search name or employee ID…') }}"
                    class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 text-sm focus:ring-2 focus:ring-white/50">
         </div>
         <div class="grid grid-cols-2 gap-2">
-            <select name="site" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                <option value="0" class="text-gray-800">All sites</option>
+            <select name="site" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                <option value="0" class="text-gray-800">{{ _('All sites') }}</option>
                 {% for site in sites %}
                 <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
                 {% endfor %}
             </select>
-            <select name="project" onchange="this.form.submit()" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                <option value="0" class="text-gray-800">All projects</option>
+            <select name="project" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
+                <option value="0" class="text-gray-800">{{ _('All projects') }}</option>
                 {% for project in projects %}
                 <option value="{{ project.id }}" {{ 'selected' if project.id == project_filter }} class="text-gray-800">{{ project.name }}</option>
                 {% endfor %}
             </select>
         </div>
+        {# The counts live on the chips that filter by them. Two tiles under
+           this row used to repeat the same two numbers, in green and rust as
+           though being unassigned were an error, and looked pressable
+           without being so. #}
         <div class="grid grid-cols-3 gap-2">
-            {% for value, label in [('all', 'All'), ('assigned', 'Assigned'), ('unassigned', 'Unassigned')] %}
+            {% for value, label in [('all', _('All')), ('assigned', _('Assigned')), ('unassigned', _('Unassigned'))] %}
             <button type="submit" name="show" value="{{ value }}"
-                    class="py-3 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'bg-white/20 text-white/80 border border-white/30' }}">
-                {{ label }}
+                    {# The unselected chips ran 3.52:1 — a white veil on the
+                       header carrying 90% white text. Tinted down, at full
+                       white, they read 8.6:1 and still show the header
+                       through. The selected chip is already solid white. #}
+                    class="tap-target flex flex-col items-center justify-center py-2 rounded-xl text-xs font-semibold {{ 'bg-white text-primary' if show == value else 'glass-chip glass-chip-bordered' }}">
+                <span class="text-base font-bold leading-tight">{{ counts[value] }}</span>
+                <span>{{ label }}</span>
             </button>
             {% endfor %}
         </div>
@@ -52,18 +61,6 @@
 </header>
 
 <main class="p-4 pb-8 space-y-3">
-    <!-- Summary -->
-    <section class="grid grid-cols-2 gap-3">
-        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-3 rounded-2xl text-center">
-            <div class="text-xl font-bold">{{ assigned_count }}</div>
-            <div class="text-xs opacity-90">Assigned</div>
-        </div>
-        <div class="bg-gradient-to-br from-amber-500 to-orange-500 text-white p-3 rounded-2xl text-center">
-            <div class="text-xl font-bold">{{ rows|length - assigned_count }}</div>
-            <div class="text-xs opacity-90">Unassigned</div>
-        </div>
-    </section>
-
     <div data-ms-scope="assignments" data-ms-noun="worker" data-ms-plural="workers" class="space-y-4">
     {% for row in rows %}
     {% set worker = row.worker %}
@@ -79,7 +76,7 @@
                 {% endif %}
             </div>
             <div class="flex-1 min-w-0">
-                <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="font-semibold text-gray-800 truncate block">{{ worker.full_name }}</a>
+                <a href="{{ url_for('worker_profile', worker_id=worker.id) }}" class="font-semibold text-gray-800 name-wrap block">{{ worker.full_name }}</a>
                 <div class="text-xs text-gray-500">{{ worker.worker_id }} • {{ worker.position }}</div>
                 {% if assignment %}
                 <div class="text-xs text-gray-600 mt-0.5">
@@ -87,23 +84,23 @@
                     {% if assignment.project %} • <i class="fa-solid fa-diagram-project text-accent mr-1"></i>{{ assignment.project.name }}{% endif %}
                     {% if assignment.task %} • {{ assignment.task.name }}{% endif %}
                 </div>
-                <div class="text-[11px] text-gray-400">Since {{ assignment.start_date.strftime('%d %b %Y') }}</div>
+                <div class="text-[11px] text-gray-500">Since {{ assignment.start_date|ldate('%d %b %Y') }}</div>
                 {% else %}
-                <div class="text-xs text-amber-600 font-medium mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>Not assigned</div>
+                <div class="text-xs text-amber-700 font-medium mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ _('Not assigned') }}</div>
                 {% endif %}
             </div>
             <div class="flex flex-col gap-1.5 shrink-0">
-                <button onclick='openAssignModal({{ worker.id }}, {{ worker.full_name|tojson }}, {{ (assignment.site_id if assignment else 0) or 0 }}, {{ (assignment.project_id if assignment else 0) or 0 }}, {{ (assignment.task_id if assignment else 0) or 0 }})'
-                        class="px-3 py-3 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
-                    <i class="fa-solid fa-{{ 'shuffle' if assignment else 'plus' }} mr-1"></i>{{ 'Transfer' if assignment else 'Assign' }}
+                <button data-act="openAssignModal" data-act-args='[{{ worker.id }}, {{ worker.full_name|tojson }}, {{ (assignment.site_id if assignment else 0) or 0 }}, {{ (assignment.project_id if assignment else 0) or 0 }}, {{ (assignment.task_id if assignment else 0) or 0 }}]'
+                        class="tap-target px-3 py-3 bg-accent text-white rounded-xl text-xs font-semibold hover:bg-primary transition-colors">
+                    <i class="fa-solid fa-{{ 'shuffle' if assignment else 'plus' }} mr-1"></i>{{ _('Transfer') if assignment else _('Assign') }}
                 </button>
                 {% if assignment %}
                 <form method="POST" action="{{ url_for('worker_assignment_end', worker_id=worker.id, assignment_id=assignment.id) }}"
-                      onsubmit="return confirm('End the current assignment for {{ worker.full_name }}?')">
+                      data-confirm="End the current assignment for {{ worker.full_name }}?">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
-                    <button class="w-full px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors">
-                        <i class="fa-solid fa-flag-checkered mr-1"></i>End
+                    <button class="tap-target w-full px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors">
+                        <i class="fa-solid fa-flag-checkered mr-1"></i>{{ _('End') }}
                     </button>
                 </form>
                 {% endif %}
@@ -112,14 +109,14 @@
     </section>
     {% else %}
     <div class="text-center text-sm text-gray-500 py-10">
-        <i class="fa-solid fa-users-slash text-3xl text-gray-300 mb-3 block"></i>
+        <i class="fa-solid fa-users-slash text-3xl text-gray-500 mb-3 block"></i>
         No workers match these filters.
     </div>
     {% endfor %}
     </div>
 
     {% if rows %}
-    <p class="ms-hint">Press and hold a worker to assign or end several at once.</p>
+    <p class="ms-hint">{{ _('Press and hold a worker to assign or end several at once.') }}</p>
     {% with sel_scope = 'assignments',
             sel_endpoint = url_for('bulk_action', scope='assignments'),
             sel_actions = [
@@ -136,26 +133,26 @@
     <div id="bulk-assign-picker" hidden
          class="ms-prompt hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center">
         <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm">
-            <h3 class="text-lg font-semibold text-gray-800 mb-1">Assign selected workers</h3>
-            <p class="text-xs text-gray-500 mb-4">Any active assignment they already have is closed and replaced.</p>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Site</label>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Assign selected workers') }}</h2>
+            <p class="text-xs text-gray-500 mb-4">{{ _('Any active assignment they already have is closed and replaced.') }}</p>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Site') }}</label>
             <select data-ms-field="site_id" class="w-full mb-3 px-3 border border-gray-200 rounded-xl">
-                <option value="">— No site —</option>
+                <option value="">{{ _('— No site —') }}</option>
                 {% for site in sites %}<option value="{{ site.id }}">{{ site.name }}</option>{% endfor %}
             </select>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Project') }}</label>
             <select data-ms-field="project_id" class="w-full mb-3 px-3 border border-gray-200 rounded-xl">
-                <option value="">— No project —</option>
+                <option value="">{{ _('— No project —') }}</option>
                 {% for project in projects %}<option value="{{ project.id }}">{{ project.name }}</option>{% endfor %}
             </select>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Task') }}</label>
             <select data-ms-field="task_id" class="w-full mb-4 px-3 border border-gray-200 rounded-xl">
-                <option value="">— No task —</option>
+                <option value="">{{ _('— No task —') }}</option>
                 {% for task in tasks %}<option value="{{ task.id }}">{{ task.name }}</option>{% endfor %}
             </select>
             <div class="grid grid-cols-2 gap-3">
-                <button type="button" data-ms-prompt-cancel class="btn-secondary py-3 rounded-xl font-medium">Cancel</button>
-                <button type="button" data-ms-prompt-ok class="btn-primary py-3 rounded-xl font-medium">Assign</button>
+                <button type="button" data-ms-prompt-cancel class="btn-secondary py-3 rounded-xl font-medium">{{ _('Cancel') }}</button>
+                <button type="button" data-ms-prompt-ok class="btn-primary py-3 rounded-xl font-medium">{{ _('Assign') }}</button>
             </div>
         </div>
     </div>
@@ -166,8 +163,8 @@
 <div id="assign-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-end justify-center">
     <div class="bg-white rounded-t-3xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">Assign <span id="assign-worker-name" class="text-accent"></span></h3>
-            <button onclick="closeAssignModal()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+            <h2 class="text-lg font-semibold text-gray-800">{{ _('Assign') }} <span id="assign-worker-name" class="text-accent"></span></h2>
+            <button aria-label="{{ _('Close') }}" data-act="closeAssignModal" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
                 <i class="fa-solid fa-times"></i>
             </button>
         </div>
@@ -175,42 +172,42 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Site</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Site') }}</label>
                 <select name="site_id" id="assign-site" class="w-full p-3 border border-lightGray rounded-xl">
-                    <option value="">— No site —</option>
+                    <option value="">{{ _('— No site —') }}</option>
                     {% for site in sites %}
                     <option value="{{ site.id }}">{{ site.name }}{% if site.status != 'active' %} (archived){% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Project</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Project') }}</label>
                 <select name="project_id" id="assign-project" class="w-full p-3 border border-lightGray rounded-xl">
-                    <option value="">— No project —</option>
+                    <option value="">{{ _('— No project —') }}</option>
                     {% for project in projects %}
                     <option value="{{ project.id }}">{{ project.name }}{% if project.status == 'archived' %} (archived){% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Task <span class="text-gray-400">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Task') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
                 <select name="task_id" id="assign-task" class="w-full p-3 border border-lightGray rounded-xl">
-                    <option value="">— No task —</option>
+                    <option value="">{{ _('— No task —') }}</option>
                     {% for task in tasks %}
                     <option value="{{ task.id }}">{{ task.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Start date') }}</label>
                 <input type="date" name="start_date" value="{{ today.isoformat() }}" class="w-full p-3 border border-lightGray rounded-xl">
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Notes <span class="text-gray-400">(optional)</span></label>
-                <input type="text" name="notes" placeholder="e.g. Transferred for finishing work"
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ _('Notes') }} <span class="text-gray-500">{{ _('(optional)') }}</span></label>
+                <input type="text" name="notes" placeholder="{{ _('e.g. Transferred for finishing work') }}"
                        class="w-full p-3 border border-lightGray rounded-xl">
             </div>
-            <p class="text-[11px] text-gray-400">If the worker already has an active assignment, it is closed automatically as a transfer the day before the new start date.</p>
+            <p class="text-[11px] text-gray-500">{{ _('If the worker already has an active assignment, it is closed automatically as a transfer the day before the new start date.') }}</p>
             <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
                 <i class="fa-solid fa-check mr-2"></i>Save Assignment
             </button>
@@ -218,7 +215,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function openAssignModal(workerId, workerName, siteId, projectId, taskId) {
     document.getElementById('assign-worker-name').textContent = workerName;
     document.getElementById('assign-form').action = '/worker/' + workerId + '/assign';

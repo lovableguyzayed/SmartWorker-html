@@ -1,30 +1,30 @@
 {% extends "base.html" %}
 
-{% block title %}Profile - SmartWorker{% endblock %}
+{% block title %}{{ _('Profile') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center space-x-4">
-            <a href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-arrow-left text-lg"></i>
             </a>
             <div>
-                <div class="text-xl font-semibold">Profile</div>
-                <div class="text-sm opacity-90">Account Settings</div>
+                <h1 class="text-xl font-semibold">{{ _('Profile') }}</h1>
+                <div class="text-sm opacity-90">{{ _('Account Settings') }}</div>
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <button onclick="showEditModal()" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <button aria-label="{{ _('Edit') }}" data-act="showEditModal" class="icon-btn bg-white/10 backdrop-blur-sm">
                 <i class="fa-solid fa-edit text-lg"></i>
             </button>
             {% if current_user.is_admin %}
-            <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="Settings">
+            <a href="{{ url_for('settings') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Settings') }}">
                 <i class="fa-solid fa-gear text-lg"></i>
             </a>
-            <button type="button" data-export-url="{{ url_for('export_data') }}"
-                    data-export-name="smartworker_data.csv"
-                    class="icon-btn bg-white/10 backdrop-blur-sm" title="Export Data">
+            <button type="button" data-export-url="{{ url_for('export_data_xlsx') }}"
+                    data-export-name="smartworker_data.xlsx"
+                    class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('Export Data') }}">
                 <i class="fa-solid fa-download text-lg"></i>
             </button>
             {% endif %}
@@ -51,18 +51,22 @@
             </div>
             <div class="flex-1 min-w-0">
                 <div class="text-xl font-bold mb-1 truncate">{{ current_user.full_name }}</div>
-                <div class="text-sm opacity-90 mb-2">{{ current_user.role.title() }} Account</div>
+                <div class="text-sm opacity-90 mb-2">{{ _('Admin Account') if current_user.role == 'admin' else current_user.role.title() ~ ' ' ~ _('Account') }}</div>
                 <div class="flex items-center flex-wrap gap-2">
-                    <div class="text-xs text-white/80 bg-white/10 px-2 py-1 rounded-lg">@{{ current_user.username }}</div>
-                    <div class="text-xs text-white/80 bg-green-500/20 px-2 py-1 rounded-lg border border-green-400/30">
-                        <i class="fa-solid fa-check-circle mr-1"></i>Active
+                    {# These three ran 4.19–4.44:1 against a 4.5 floor: a
+                       white veil on the header, carrying 90% white text.
+                       Tinted down and at full white they clear it, and the
+                       green and red still read as status colours. #}
+                    <div class="text-xs glass-chip px-2 py-1 rounded-lg">@{{ current_user.username }}</div>
+                    <div class="text-xs glass-chip px-2 py-1 rounded-lg border border-green-400/60">
+                        <i class="fa-solid fa-check-circle mr-1 text-green-300"></i>{{ _('Active') }}
                     </div>
                     {% if current_user.profile_image %}
                     <form method="POST" action="{{ url_for('profile_remove_avatar') }}" class="inline"
-                          onsubmit="return confirm('Remove your profile photo?')">
+                          data-confirm="Remove your profile photo?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button class="text-xs text-white/80 bg-red-500/20 px-2 py-1 rounded-lg border border-red-400/30 hover:bg-red-500/30 transition-colors">
-                            <i class="fa-solid fa-trash mr-1"></i>Remove photo
+                        <button class="text-xs glass-chip px-2 py-1 rounded-lg border border-red-400/60 hover:bg-red-500/30 transition-colors">
+                            <i class="fa-solid fa-trash mr-1"></i>{{ _('Remove photo') }}
                         </button>
                     </form>
                     {% endif %}
@@ -74,7 +78,7 @@
               enctype="multipart/form-data" data-native class="hidden">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="file" id="avatar-file-input" name="avatar" accept="image/*"
-                   onchange="if(this.files.length){document.getElementById('avatar-upload-form').submit();}">
+                   data-act="submit-form-if-file">
         </form>
     </div>
 </header>
@@ -86,11 +90,11 @@
         {% set today = date.today() %}
         {% set present_today = AttendanceRecord.query.filter_by(date=today, status='present').count() %}
         
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-2xl shadow-lg">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ total_workers }}</div>
-                    <div class="text-sm opacity-90">Total Workers</div>
+                    <div class="text-sm opacity-90">{{ _('Total Workers') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-users text-xl"></i>
@@ -98,11 +102,11 @@
             </div>
         </div>
         
-        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-2xl shadow-lg">
+        <div class="bg-gradient-to-br from-green-700 to-green-800 text-white p-4 rounded-2xl shadow-lg">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-2xl font-bold">{{ present_today }}</div>
-                    <div class="text-sm opacity-90">Present Today</div>
+                    <div class="text-sm opacity-90">{{ _('Present Today') }}</div>
                 </div>
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-check-circle text-xl"></i>
@@ -113,56 +117,56 @@
 
     <!-- Account Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Account Information</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Account Information') }}</h2>
         <div class="space-y-3">
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Full Name</span>
+                <span class="text-gray-600">{{ _('Full Name') }}</span>
                 <span class="font-medium text-gray-800">{{ current_user.full_name }}</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Username</span>
+                <span class="text-gray-600">{{ _('Username') }}</span>
                 <span class="font-medium text-gray-800">{{ current_user.username }}</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Email</span>
+                <span class="text-gray-600">{{ _('Email') }}</span>
                 <span class="font-medium text-gray-800">{{ current_user.email }}</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Role</span>
-                <span class="font-medium text-accent capitalize">{{ 'System Administrator' if current_user.role == 'admin' else current_user.role }}</span>
+                <span class="text-gray-600">{{ _('Role') }}</span>
+                <span class="font-medium text-accent capitalize">{{ _('System Administrator') if current_user.role == 'admin' else current_user.role }}</span>
             </div>
             {% if current_user.phone %}
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Mobile</span>
+                <span class="text-gray-600">{{ _('Mobile') }}</span>
                 <span class="font-medium text-gray-800">{{ current_user.phone }}</span>
             </div>
             {% endif %}
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Member Since</span>
-                <span class="font-medium text-gray-800">{{ current_user.created_at.strftime('%B %Y') if current_user.created_at else 'N/A' }}</span>
+                <span class="text-gray-600">{{ _('Member Since') }}</span>
+                <span class="font-medium text-gray-800">{{ current_user.created_at|ldate('%B %Y') if current_user.created_at else 'N/A' }}</span>
             </div>
         </div>
     </section>
 
     <!-- Permissions -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Permissions</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Permissions') }}</h2>
         <div class="space-y-2">
             {% if current_user.is_admin %}
-                {% for perm in ['Manage workers & payroll', 'Mark and edit attendance', 'Company settings & closures', 'Transactions & reports', 'Manage attendance users'] %}
+                {% for perm in [_('Manage workers & payroll'), _('Mark and edit attendance'), _('Company settings & closures'), _('Transactions & reports'), _('Manage attendance users')] %}
                 <div class="flex items-center text-sm text-gray-700">
-                    <i class="fa-solid fa-circle-check text-green-500 mr-2"></i>{{ perm }}
+                    <i class="fa-solid fa-circle-check text-green-700 mr-2"></i>{{ perm }}
                 </div>
                 {% endfor %}
             {% else %}
                 {% for perm in ['Mark attendance', 'Scan QR codes', 'View workers on assigned sites'] %}
                 <div class="flex items-center text-sm text-gray-700">
-                    <i class="fa-solid fa-circle-check text-green-500 mr-2"></i>{{ perm }}
+                    <i class="fa-solid fa-circle-check text-green-700 mr-2"></i>{{ perm }}
                 </div>
                 {% endfor %}
                 {% for perm in ['Edit attendance', 'Modify payroll', 'Change worker records', 'Admin settings'] %}
-                <div class="flex items-center text-sm text-gray-400">
-                    <i class="fa-solid fa-circle-xmark text-red-400 mr-2"></i>{{ perm }}
+                <div class="flex items-center text-sm text-gray-500">
+                    <i class="fa-solid fa-circle-xmark text-red-700 mr-2"></i>{{ perm }}
                 </div>
                 {% endfor %}
             {% endif %}
@@ -171,44 +175,44 @@
 
     <!-- Quick Actions -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('Quick Actions') }}</h2>
         <div class="grid grid-cols-2 gap-3">
-            <button onclick="showEditModal()" class="flex items-center justify-center p-4 bg-accent/10 text-accent rounded-2xl hover:bg-accent/20 transition-colors">
+            <button data-act="showEditModal" class="flex items-center justify-center p-4 bg-accent/10 text-accent rounded-2xl hover:bg-accent/20 transition-colors">
                 <i class="fa-solid fa-user-edit mr-2"></i>
-                Edit Profile
+                {{ _('Edit Profile') }}
             </button>
-            <button onclick="showPasswordModal()" class="flex items-center justify-center p-4 bg-orange-500/10 text-orange-600 rounded-2xl hover:bg-orange-500/20 transition-colors">
+            <button data-act="showPasswordModal" class="flex items-center justify-center p-4 bg-orange-500/10 text-orange-700 rounded-2xl hover:bg-orange-500/20 transition-colors">
                 <i class="fa-solid fa-key mr-2"></i>
-                Change Password
+                {{ _('Change Password') }}
             </button>
             {% if current_user.is_admin %}
             <a href="{{ url_for('settings') }}" class="flex items-center justify-center p-4 bg-gray-500/10 text-gray-700 rounded-2xl hover:bg-gray-500/20 transition-colors">
                 <i class="fa-solid fa-gear mr-2"></i>
-                Settings
+                {{ _('Settings') }}
             </a>
             <a href="{{ url_for('workers') }}" class="flex items-center justify-center p-4 bg-purple-500/10 text-purple-600 rounded-2xl hover:bg-purple-500/20 transition-colors">
                 <i class="fa-solid fa-users mr-2"></i>
-                Manage Workers
+                {{ _('Manage Workers') }}
             </a>
             <a href="{{ url_for('notifications') }}" class="flex items-center justify-center p-4 bg-blue-500/10 text-blue-600 rounded-2xl hover:bg-blue-500/20 transition-colors relative">
                 <i class="fa-solid fa-bell mr-2"></i>
-                Notifications
+                {{ _('Notifications') }}
                 {% if unread_notifications %}
-                <span class="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
+                <span class="absolute top-2 right-2 bg-red-700 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ unread_notifications }}</span>
                 {% endif %}
             </a>
-            <button onclick="exportData()" class="flex items-center justify-center p-4 bg-green-500/10 text-green-600 rounded-2xl hover:bg-green-500/20 transition-colors">
+            <button data-act="exportData" class="flex items-center justify-center p-4 bg-green-500/10 text-green-700 rounded-2xl hover:bg-green-500/20 transition-colors">
                 <i class="fa-solid fa-download mr-2"></i>
-                Export Data
+                {{ _('Export Data') }}
             </button>
             {% else %}
             <a href="{{ url_for('scan') }}" class="flex items-center justify-center p-4 bg-purple-500/10 text-purple-600 rounded-2xl hover:bg-purple-500/20 transition-colors">
                 <i class="fa-solid fa-qrcode mr-2"></i>
-                QR Scanner
+                {{ _('QR Scanner') }}
             </a>
-            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500/10 text-green-600 rounded-2xl hover:bg-green-500/20 transition-colors">
+            <a href="{{ url_for('attendance') }}" class="flex items-center justify-center p-4 bg-green-500/10 text-green-700 rounded-2xl hover:bg-green-500/20 transition-colors">
                 <i class="fa-solid fa-calendar-check mr-2"></i>
-                Attendance
+                {{ _('Attendance') }}
             </a>
             {% endif %}
         </div>
@@ -216,30 +220,52 @@
 
     <!-- System Information -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">System Information</h3>
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ _('System Information') }}</h2>
         <div class="space-y-3">
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Application</span>
+                <span class="text-gray-600">{{ _('Application') }}</span>
                 <span class="font-medium text-gray-800">SmartWorker v1.0</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Database Status</span>
-                <span class="font-medium text-green-600 flex items-center">
-                    <i class="fa-solid fa-circle text-xs mr-2"></i>Connected
+                <span class="text-gray-600">{{ _('Database Status') }}</span>
+                <span class="font-medium text-green-700 flex items-center">
+                    <i class="fa-solid fa-circle text-xs mr-2"></i>{{ _('Connected') }}
                 </span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">Last Backup</span>
-                <span class="font-medium text-gray-800">{{ date.today().strftime('%d %b %Y') }}</span>
+                <span class="text-gray-600">{{ _('Last Backup') }}</span>
+                <span class="font-medium text-gray-800">{{ date.today()|ldate('%d %b %Y') }}</span>
             </div>
+        </div>
+    </section>
+
+    <!-- Interface language -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+        <h2 class="text-base font-semibold text-gray-800 mb-1">{{ _('Language') }}</h2>
+        <p class="text-xs text-gray-500 mb-3">
+            {{ _('Saved for this phone only, so a site phone can be in Hindi while the office stays in English.') }}
+        </p>
+        <div class="grid grid-cols-2 gap-2">
+            {% for code, label in languages.items() %}
+            <form method="POST" action="{{ url_for('set_language', lang=code) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
+                <button type="submit"
+                        class="w-full p-3 rounded-2xl font-semibold border-2 transition-colors
+                               {{ 'border-accent text-accent bg-accent/5' if current_lang == code
+                                  else 'border-gray-200 text-gray-600' }}">
+                    {{ label }}
+                </button>
+            </form>
+            {% endfor %}
         </div>
     </section>
 
     <!-- Logout Section -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
-        <button onclick="confirmLogout()" class="w-full flex items-center justify-center p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-colors">
+        <button data-act="confirmLogout" class="w-full flex items-center justify-center p-4 bg-red-50 text-red-700 rounded-2xl hover:bg-red-100 transition-colors">
             <i class="fa-solid fa-sign-out-alt mr-2"></i>
-            Sign Out
+            {{ _('Sign Out') }}
         </button>
     </section>
 </main>
@@ -249,8 +275,8 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">Edit Profile</h3>
-                <p class="text-gray-600">Update your account information</p>
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('Edit Profile') }}</h2>
+                <p class="text-gray-600">{{ _('Update your account information') }}</p>
             </div>
             
             <form method="POST" action="{{ url_for('profile') }}" class="space-y-4">
@@ -258,23 +284,23 @@
                 <input type="hidden" name="action" value="update_profile">
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Full Name') }}</label>
                     <input type="text" name="full_name" value="{{ current_user.full_name }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Email') }}</label>
                     <input type="email" name="email" value="{{ current_user.email }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div class="flex space-x-3 pt-4">
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
-                        Save Changes
+                        {{ _('Save Changes') }}
                     </button>
-                    <button type="button" onclick="hideEditModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
-                        Cancel
+                    <button type="button" data-act="hideEditModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                        {{ _('Cancel') }}
                     </button>
                 </div>
             </form>
@@ -287,8 +313,8 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm">
             <div class="text-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">Change Password</h3>
-                <p class="text-gray-600">Update your account password</p>
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('Change Password') }}</h2>
+                <p class="text-gray-600">{{ _('Update your account password') }}</p>
             </div>
             
             <form method="POST" action="{{ url_for('profile') }}" class="space-y-4">
@@ -296,29 +322,29 @@
                 <input type="hidden" name="action" value="change_password">
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Current Password') }}</label>
                     <input type="password" name="current_password" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('New Password') }}</label>
                     <input type="password" name="new_password" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Confirm New Password') }}</label>
                     <input type="password" name="confirm_password" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div class="flex space-x-3 pt-4">
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
-                        Update Password
+                        {{ _('Update Password') }}
                     </button>
-                    <button type="button" onclick="hidePasswordModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
-                        Cancel
+                    <button type="button" data-act="hidePasswordModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                        {{ _('Cancel') }}
                     </button>
                 </div>
             </form>
@@ -326,7 +352,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function showEditModal() {
     document.getElementById('edit-profile-modal').classList.remove('hidden');
 }
@@ -346,7 +372,7 @@ function hidePasswordModal() {
 function exportData() {
     // window.location to a CSV attachment silently does nothing in the
     // Android WebView; go through the shared saver instead.
-    SmartWorkerSave.url('{{ url_for("export_data") }}', 'smartworker_data.csv')
+    SmartWorkerSave.url('{{ url_for("export_data_xlsx") }}', 'smartworker_data.xlsx')
         .then(SmartWorkerSave.toast)
         .catch(SmartWorkerSave.fail);
 }
