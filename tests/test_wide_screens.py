@@ -45,17 +45,17 @@ EXE = os.environ.get('UX_CHROME',
 PORT = 5147
 B = 'http://127.0.0.1:%d' % PORT
 
-#: 24rem, what Tailwind's max-w-sm resolves to and what the phone keeps.
-PHONE_PX = 384
-#: 44rem, the cap custom.css lifts it to from 768px up.
-WIDE_PX = 704
-
-# (label, width, should the column have widened)
+# (label, width, root font size, the column's width in px)
+#
+# The column is 44rem above 768px and 24rem below it, so these widths are
+# that cap times the root size — 44 x 18 = 792, 44 x 20 = 880 — and they
+# are written out rather than computed so a change to either number has to
+# be made deliberately here too.
 VIEWS = [
-    ('phone 390', 390, False),
-    ('small tablet portrait 760', 760, False),   # just below the breakpoint
-    ('tablet portrait 820', 820, True),
-    ('tablet landscape 1280', 1280, True),
+    ('phone 390', 390, 16, 384),
+    ('small tablet portrait 760', 760, 16, 384),   # just below the breakpoint
+    ('tablet portrait 820', 820, 18, 792),
+    ('tablet landscape 1280', 1280, 20, 880),
 ]
 
 fails = []
@@ -93,7 +93,7 @@ try:
 
     with sync_playwright() as p:
         br = p.chromium.launch(executable_path=EXE, args=['--no-sandbox'])
-        for label, width, widens in VIEWS:
+        for label, width, root_px, want_px in VIEWS:
             print('\n--- %s ---' % label)
             ctx = br.new_context(viewport={'width': width, 'height': 900},
                                  is_mobile=width < 768, has_touch=True,
@@ -106,7 +106,7 @@ try:
             pg.click('#signin-form button[type="submit"]')
             pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
 
-            narrow, over, nav_mismatch = [], [], []
+            wrong, over, nav_mismatch, roots = [], [], [], set()
             for path in SCREENS:
                 pg.goto(B + path, wait_until='domcontentloaded')
                 pg.wait_for_timeout(700)
@@ -118,23 +118,27 @@ try:
                         app: el ? Math.round(el.getBoundingClientRect().width) : 0,
                         nav: nav ? Math.round(nav.getBoundingClientRect().width) : null,
                         over: d.scrollWidth > d.clientWidth + 1,
+                        root: getComputedStyle(d).fontSize,
                     };
                 }""")
-                want = WIDE_PX if widens else PHONE_PX
-                # min(): at 390px the viewport itself is the limit, not the cap.
-                if r['app'] != min(want, width):
-                    narrow.append('%s is %dpx' % (path, r['app']))
+                roots.add(r['root'])
+                # min(): at 390px the viewport is the limit, not the cap.
+                if r['app'] != min(want_px, width):
+                    wrong.append('%s is %dpx' % (path, r['app']))
                 if r['over']:
                     over.append(path)
-                # A 384px bar under a 704px column is the thing that looks
+                # A 384px bar under a 792px column is the thing that looks
                 # broken even when the widths are technically "fine".
                 if r['nav'] is not None and r['nav'] != r['app']:
                     nav_mismatch.append('%s nav %dpx vs app %dpx'
                                         % (path, r['nav'], r['app']))
 
-            check('every screen is %dpx wide' % min(WIDE_PX if widens
-                                                    else PHONE_PX, width),
-                  narrow, [])
+            # The root size is the whole mechanism: everything in this app is
+            # in rem, so this one number is what scales type, padding, gaps,
+            # radii and the column's own cap together.
+            check('the root font size is %dpx' % root_px,
+                  sorted(roots), ['%dpx' % root_px])
+            check('every screen is %dpx wide' % min(want_px, width), wrong, [])
             check('nothing runs off the side', over, [])
             check('the bottom bar matches the column', nav_mismatch, [])
             ctx.close()
