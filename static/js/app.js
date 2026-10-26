@@ -466,7 +466,6 @@ function applyLanguage(lang) {
 // changes effectively instant, like a native Android activity switch.
 const NativeShell = {
     loadedAssets: new Set(),
-    progressTimer: null,
     navigating: false,
 
     // The one piece of the document that survives a screen change.
@@ -598,7 +597,6 @@ const NativeShell = {
         if (opts.push !== false) this.saveScroll();
         this.back = opts.push === false;
         document.dispatchEvent(new Event('page:before-swap'));
-        this.showProgress();
         try {
             const res = await fetch(href, {
                 method: opts.method || 'GET',
@@ -611,7 +609,6 @@ const NativeShell = {
             this.render(html, res.url || href, opts.push !== false);
         } catch (err) {
             // No network and no cache — do a real navigation as last resort
-            this.hideProgress();
             this.navigating = false;
             if ((opts.method || 'GET') === 'GET') location.href = href;
             return;
@@ -620,7 +617,6 @@ const NativeShell = {
     },
 
     render(html, url, push) {
-        this.hideProgress();
         const doc = new DOMParser().parseFromString(html, 'text/html');
 
         // Merge page-specific head assets (print styles, jsPDF, QR library…)
@@ -769,50 +765,32 @@ const NativeShell = {
         return s;
     },
 
-    /* "It is coming" — and the screen you are on never goes away.
+    /* Nothing is drawn while a screen is on its way.
      *
-     * There used to be a skeleton behind this: a full-screen grey shimmer
-     * after 150ms. Screens were measured swapping in 106–287ms, so an
-     * ordinary tap covered a perfectly readable screen in placeholder for a
-     * tenth of a second and then showed the next one. That flash IS the
-     * feeling of a page loading.
+     * Two things were tried here and both are gone. First a full-screen
+     * grey skeleton after 150ms, which covered a perfectly readable screen
+     * in placeholder for a tenth of a second — that flash IS the feeling of
+     * a page loading. Then a blue hairline at the top, after 110ms and
+     * later 500ms, as an acknowledgement that the tap had registered.
      *
-     * It is gone entirely rather than merely delayed. Whatever the wait,
-     * the honest thing to show is the screen the reader is already on —
-     * which is what a native app does, and a slow screen is exactly when
-     * replacing real content with grey bars helps least. All that is left
-     * is a hairline at the top, delayed so an ordinary swap stays silent,
-     * because a tap with no acknowledgement at all feels broken.
+     * The hairline had the same fault as the skeleton, just thinner. Every
+     * screen in this app is an HTTP request to the host: the server answers
+     * in 12–141ms measured on localhost and the network adds 300–600ms on
+     * top, so the bar was on screen for most of most navigations. A loading
+     * indicator that is nearly always visible is not an indicator, it is
+     * the app's resting state — and a resting state that looks like
+     * loading is exactly the "buffering" feeling this was meant to avoid.
+     * Raising the delay only made it appear slightly less often.
      *
-     * 500ms, raised from 110ms. At 110 the bar appeared on essentially
-     * every tap: the server answers a screen in 12–141ms measured on
-     * localhost, and the trip to the host adds roughly 300–600ms on top of
-     * each, so every navigation crossed the line. A bar on every tap stops
-     * being an acknowledgement and becomes the app's resting state —
-     * which reads as buffering, and is the opposite of what it is for.
+     * So the acknowledgement is the one a native app gives: the control
+     * itself responds under the finger. .app-nav-item:active and
+     * .app-nav-fab:active in custom.css dim and scale on touch, with no
+     * delay at all because they are CSS, and the screen being left stays up
+     * and readable until the next one is ready to replace it.
      *
-     * Past 500ms a wait is long enough that the reader has begun to doubt
-     * the tap registered, and that is the only moment this earns its place.
-     * Note what it cannot fix: the bar is a symptom of fetching each screen
-     * over the network, and the cure for that is a faster host, not a
-     * different number here.
+     * If a wait is long enough to need explaining, the honest fix is a
+     * faster host, not a bar that says so.
      */
-    PROGRESS_AFTER: 500,
-
-    showProgress() {
-        this.progressTimer = setTimeout(() => {
-            if (document.getElementById('nav-progress')) return;
-            const bar = document.createElement('div');
-            bar.id = 'nav-progress';
-            document.body.appendChild(bar);
-        }, this.PROGRESS_AFTER);
-    },
-
-    hideProgress() {
-        clearTimeout(this.progressTimer);
-        const bar = document.getElementById('nav-progress');
-        if (bar) bar.remove();
-    },
 
     // Android hardware Back. Cordova's default is to exit the app the moment
     // there is nothing left in history, so one stray tap on the dashboard
