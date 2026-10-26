@@ -1,7 +1,7 @@
 // Bump this whenever the caching rules change. Bumping it also wipes every
 // older cache on activate, which is how a device holding stale assets from a
 // previous version gets cleaned out.
-const CACHE_NAME = 'smartworker-v24';
+const CACHE_NAME = 'smartworker-v25';
 
 // Only the app shell is pre-cached. Every /static/ URL now carries a ?v=
 // content stamp (see _stamp_static_url in app.py), so the bare paths that used
