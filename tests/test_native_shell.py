@@ -177,20 +177,36 @@ try:
         # handler above sleeps on the Python side, which blocks this client,
         # so a wait_for_timeout here would run after the screen had already
         # arrived and would report on the wrong moment.
+        # Sampled twice, either side of NativeShell.PROGRESS_AFTER, because
+        # the threshold is the behaviour: below it the wait passes in
+        # silence, above it the bar appears. One sample could pass with the
+        # delay set to anything.
         pg.evaluate("""() => {
-            window.__mid = null;
-            setTimeout(() => { window.__mid = {
+            window.__early = null; window.__mid = null;
+            const look = () => ({
                 hairline: !!document.getElementById('nav-progress'),
                 old_screen: !!document.querySelector('nav.app-bottom-nav'),
                 grey: !!document.getElementById('skeleton-overlay'),
-            }; }, 350);
+            });
+            const after = NativeShell.PROGRESS_AFTER;
+            setTimeout(() => { window.__early = look(); },
+                       Math.max(50, after - 200));
+            setTimeout(() => { window.__mid = look(); }, after + 150);
             NativeShell.visit('/closures');
         }""")
-        pg.wait_for_timeout(2200)
+        pg.wait_for_timeout(2600)
+        early = pg.evaluate("() => window.__early")
         mid = pg.evaluate("() => window.__mid")
-        check('a moment mid-wait was actually captured', bool(mid), True)
+        check('a moment before the threshold was captured', bool(early), True)
+        check('a moment after it was captured', bool(mid), True)
+        # Raised from 110ms to 500ms: at 110 the bar showed on every tap,
+        # because the server answers in 12-141ms and the network adds
+        # 300-600ms on top. A bar on every tap is not an acknowledgement,
+        # it is the app's resting state, and it reads as buffering.
+        check('a short wait passes in silence',
+              early and early['hairline'], False)
         check('the screen you were on is still up', mid and mid['old_screen'], True)
-        check('the hairline says the tap was heard', mid and mid['hairline'], True)
+        check('a long one says the tap was heard', mid and mid['hairline'], True)
         check('and nothing grey is over it', mid and mid['grey'], False)
         slow = pg.evaluate("() => window.__slow")
         check('no overlay at any point in the wait', slow['overlay'], 0)

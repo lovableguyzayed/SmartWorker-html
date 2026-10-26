@@ -781,10 +781,23 @@ const NativeShell = {
      * the honest thing to show is the screen the reader is already on —
      * which is what a native app does, and a slow screen is exactly when
      * replacing real content with grey bars helps least. All that is left
-     * is a hairline at the top, after 110ms so an instant swap stays
-     * silent, because a tap with no acknowledgement at all feels broken.
+     * is a hairline at the top, delayed so an ordinary swap stays silent,
+     * because a tap with no acknowledgement at all feels broken.
+     *
+     * 500ms, raised from 110ms. At 110 the bar appeared on essentially
+     * every tap: the server answers a screen in 12–141ms measured on
+     * localhost, and the trip to the host adds roughly 300–600ms on top of
+     * each, so every navigation crossed the line. A bar on every tap stops
+     * being an acknowledgement and becomes the app's resting state —
+     * which reads as buffering, and is the opposite of what it is for.
+     *
+     * Past 500ms a wait is long enough that the reader has begun to doubt
+     * the tap registered, and that is the only moment this earns its place.
+     * Note what it cannot fix: the bar is a symptom of fetching each screen
+     * over the network, and the cure for that is a faster host, not a
+     * different number here.
      */
-    PROGRESS_AFTER: 110,
+    PROGRESS_AFTER: 500,
 
     showProgress() {
         this.progressTimer = setTimeout(() => {
