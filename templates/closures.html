@@ -25,11 +25,12 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div>
                 <label class="text-sm font-medium text-gray-700 mb-2 block">{{ _('Select Date') }}</label>
-                <div class="relative">
-                    <input type="date" name="date" required value="{{ date.today().isoformat() }}"
-                           class="w-full p-3 border border-lightGray rounded-2xl focus:border-accent focus:outline-none">
-                    <i class="fa-solid fa-calendar-alt absolute right-3 top-3 text-gray-500"></i>
-                </div>
+                {# No decorative calendar glyph here. <input type="date">
+                   draws its own picker icon on the right, and this one was
+                   placed at right-3 — directly on top of it, a dead glyph
+                   covering the live one. #}
+                <input type="date" name="date" required value="{{ date.today().isoformat() }}"
+                       class="w-full p-3 border border-lightGray rounded-2xl focus:border-accent focus:outline-none">
             </div>
 
             <div>

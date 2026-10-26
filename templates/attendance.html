@@ -310,12 +310,15 @@
                320px phone. #}
             <div class="flex-1 min-w-0">
                 <label class="block text-xs text-white/90 mb-1">{{ _('Select Date') }}</label>
-                <div class="relative">
-                    <i class="fa-solid fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-white/90"></i>
-                    <input type="date" name="date" value="{{ selected_date }}"
-                           class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50"
-                           data-act="submit-form">
-                </div>
+                {# No decorative calendar glyph in front of this field.
+                   <input type="date"> draws its own picker icon, so there
+                   were two calendars on one box — ours on the left, the
+                   browser's on the right — and only the right-hand one did
+                   anything. Reported as "calendar me do do icon". The
+                   padding went with it. #}
+                <input type="date" name="date" value="{{ selected_date }}"
+                       class="w-full px-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50"
+                       data-act="submit-form">
             </div>
             <div class="flex items-end space-x-2">
                 <a aria-label="{{ _('Previous day') }}" href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
