@@ -5,6 +5,7 @@
 {% block head %}
 <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/html2canvas.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pdfpage.js') }}"></script>
 <style>
 /* Calendar styles now live in static/css/custom.css (shared with the
    day view and the worker attendance history). The payslip only needs the
@@ -704,118 +705,21 @@
 
 {% block scripts %}
 <script nonce="{{ csp_nonce }}">
-function printSlip() {
-    window.print();
-}
-
 /* ------------------------------------------------------------------ *
  * PDF export
  *
- * The old exporter rasterised the slip into one tall image and sliced it
- * every 267mm. That cut is content-blind: it landed inside the attendance
- * calendar and through a transaction row, and it duplicated 30mm at every
- * break (the cursor advanced by the margin box while jsPDF clipped at the
- * page edge).
+ * The engine moved to static/js/pdfpage.js when the worker report needed
+ * one too — the rasterise, cut-at-safe-boundaries and save machinery was
+ * never payslip-specific, and the report's own "Save PDF" button was
+ * calling window.print(), which does nothing at all inside the Android
+ * WebView this app ships as. What stays here is the part that genuinely
+ * is a payslip: the running header's wording and the Devanagari problem
+ * it runs into.
  *
- * This version still rasterises — the slip is CSS-heavy and native jsPDF
- * text would need an embedded font just to draw the rupee sign — but it
- * cuts only at boundaries the DOM says are safe:
- *   [data-pdf-block]     an atomic block, never split
- *   [data-pdf-split]     a finer row, used only when a block alone is
- *                        taller than a whole page
- *   [data-pdf-keep-prev] never start a page with this block
- * Each page then gets a native-text running header and a "Page N of M"
- * footer, so a detached sheet is still attributable.
+ * The slip's markup carries the cut hints the engine reads —
+ * [data-pdf-block], [data-pdf-split], [data-pdf-keep-prev].
  * ------------------------------------------------------------------ */
-var PDF_GEOM = {
-    pageW: 210, pageH: 297,
-    marginX: 12,
-    contentTop: 24,      // below the running header band
-    contentBottom: 285,  // above the page-number footer
-    /* Capture width drives the effective type size in the PDF: the slip is
-       rendered at this pixel width and then placed 186mm wide, so a narrower
-       capture means larger printed text and more pages. 560px puts the
-       smallest type on the slip at 9.0pt — the legibility floor. Widening to
-       760px would fit the slip on 2 pages but drops that to 6.7pt. */
-    captureWidth: 560
-};
-
-/* Fonts and images must be settled before html2canvas snapshots the DOM,
-   otherwise the capture uses fallback metrics or draws a blank image. */
-function pdfWaitForAssets(root) {
-    var fontsReady = (document.fonts && document.fonts.ready)
-        ? document.fonts.ready.catch(function () {}) : Promise.resolve();
-    var images = Array.prototype.slice.call(root.querySelectorAll('img'));
-    var imagesReady = Promise.all(images.map(function (img) {
-        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-        if (typeof img.decode === 'function') return img.decode().catch(function () {});
-        return new Promise(function (resolve) { img.onload = img.onerror = resolve; });
-    }));
-    return Promise.all([fontsReady, imagesReady]);
-}
-
-/* Two frames is enough for layout to settle after the width change. */
-function pdfNextFrame() {
-    return new Promise(function (resolve) {
-        requestAnimationFrame(function () { requestAnimationFrame(resolve); });
-    });
-}
-
-/* Collect legal cut offsets (in CSS px from the top of the slip). */
-function pdfCutCandidates(root) {
-    var base = root.getBoundingClientRect().top;
-    var coarse = [], fine = [], keepPrevTops = [];
-    root.querySelectorAll('[data-pdf-block]').forEach(function (el) {
-        var r = el.getBoundingClientRect();
-        coarse.push(r.bottom - base);
-        if (el.hasAttribute('data-pdf-keep-prev')) keepPrevTops.push(r.top - base);
-    });
-    root.querySelectorAll('[data-pdf-split]').forEach(function (el) {
-        fine.push(el.getBoundingClientRect().bottom - base);
-    });
-    coarse.sort(function (a, b) { return a - b; });
-    fine.sort(function (a, b) { return a - b; });
-    return { coarse: coarse, fine: fine, keepPrevTops: keepPrevTops };
-}
-
-/* Greedy: take the lowest legal cut that still fits on the page. */
-function pdfPaginate(cand, totalPx, usablePx) {
-    function best(list, cursor, limit) {
-        var pick = null;
-        for (var i = 0; i < list.length; i++) {
-            var v = list[i];
-            if (v <= cursor + 0.5 || v > limit) continue;
-            // Never cut immediately before a keep-prev block — that would
-            // strand the signature row at the top of a page on its own.
-            var blocked = cand.keepPrevTops.some(function (t) {
-                return Math.abs(t - v) < 4;
-            });
-            if (blocked) continue;
-            if (pick === null || v > pick) pick = v;
-        }
-        return pick;
-    }
-    var pages = [], cursor = 0, guard = 0;
-    while (totalPx - cursor > usablePx && guard++ < 100) {
-        var limit = cursor + usablePx;
-        // The lowest legal cut of either kind, not block boundaries first.
-        // Preferring coarse cuts meant stopping at the end of a block when a
-        // row boundary further down would have filled the page: the slip
-        // ended a page at 59% and ran to four pages for a month that fits in
-        // three. A fine cut falls between table rows, so nothing is split
-        // that should not be.
-        var coarseCut = best(cand.coarse, cursor, limit);
-        var fineCut = best(cand.fine, cursor, limit);
-        var cut = (coarseCut === null) ? fineCut
-                : (fineCut === null) ? coarseCut
-                : Math.max(coarseCut, fineCut);
-        if (cut === null) cut = limit;   // nothing fits: unavoidable hard cut
-        pages.push({ start: cursor, end: cut });
-        cursor = cut;
-    }
-    pages.push({ start: cursor, end: totalPx });
-    return pages;
-}
+var PDF_GEOM = SmartWorkerPDF.GEOM;
 
 /* jsPDF's built-in helvetica is a Latin-1 font: pdf.text() cannot encode
  * Devanagari at all, and embedding a Devanagari TTF would add ~300KB to a
@@ -827,17 +731,9 @@ function pdfPaginate(cand, totalPx, usablePx) {
 var PDF_NATIVE_TEXT = {{ 'true' if current_lang == 'en' else 'false' }};
 var PDF_CHROME = { head: null, feet: [] };
 
-/* White background and JPEG, not a transparent PNG: jsPDF stores a PNG that
- * has an alpha channel as a raw bitmap plus a soft mask, which took the
- * header strip alone from 10KB to 451KB and the whole Hindi payslip to five
- * times the size of the English one. The chrome sits on a white page, so
- * there is nothing for the transparency to do. */
-function pdfRasterise(el) {
-    return html2canvas(el, { scale: 2, backgroundColor: '#ffffff', logging: false })
-        .then(function (c) {
-            return { url: c.toDataURL('image/jpeg', 0.92), w: c.width, h: c.height };
-        });
-}
+/* The raster helper lives in pdfpage.js; the white-background/JPEG
+ * reasoning is written up there. */
+var pdfRasterise = SmartWorkerPDF.rasterise;
 
 /* Rendered before the page loop, because html2canvas is async and the footer
  * text differs per page. A slip is one to three pages, so this is a handful
@@ -925,87 +821,31 @@ function pdfDrawChrome(pdf, geom, pageNo, pageCount) {
 }
 
 function downloadPDF() {
-    // The busy overlay is .no-print too, but must stay visible during capture.
-    var buttons = Array.prototype.slice.call(
-        document.querySelectorAll('.no-print:not(#pdf-busy)'));
-    var slip = document.getElementById('payroll-slip-content');
-    var geom = PDF_GEOM;
-    var prevWidth = slip.style.width;
-    var prevMaxWidth = slip.style.maxWidth;
-    var busy = document.getElementById('pdf-busy');
-
-    function restore() {
-        slip.style.width = prevWidth;
-        slip.style.maxWidth = prevMaxWidth;
-        buttons.forEach(function (el) { el.style.visibility = ''; });
-        if (busy) busy.classList.add('hidden');
-    }
-
-    if (busy) busy.classList.remove('hidden');
-    buttons.forEach(function (el) { el.style.visibility = 'hidden'; });
-
-    pdfWaitForAssets(slip)
-        .then(function () {
-            // Render at page proportions rather than phone width, so the
-            // payslip does not have to be blown up 2x to fill an A4 column.
-            slip.style.width = geom.captureWidth + 'px';
-            slip.style.maxWidth = 'none';
-            return pdfNextFrame();
-        })
-        .then(function () {
-            var widthPx = slip.getBoundingClientRect().width;
-            var totalPx = slip.getBoundingClientRect().height;
-            var cand = pdfCutCandidates(slip);
-            var imgW = geom.pageW - geom.marginX * 2;
-            var pxPerMm = widthPx / imgW;
-            var usablePx = (geom.contentBottom - geom.contentTop) * pxPerMm;
-            var pages = pdfPaginate(cand, totalPx, usablePx);
-
-            return pdfPrepareChrome(pages.length).then(function () {
-            return html2canvas(slip, {
-                scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
-                windowWidth: geom.captureWidth
-            }).then(function (canvas) {
-                var scale = canvas.width / widthPx;
-                var jsPDF = window.jspdf.jsPDF;
-                var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-                pages.forEach(function (p, i) {
-                    if (i > 0) pdf.addPage();
-                    var sy = Math.round(p.start * scale);
-                    var sh = Math.max(1, Math.round((p.end - p.start) * scale));
-                    var crop = document.createElement('canvas');
-                    crop.width = canvas.width;
-                    crop.height = sh;
-                    var ctx = crop.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, crop.width, crop.height);
-                    ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
-                    // JPEG, not PNG: the slip is full of gradients and
-                    // antialiased text, which PNG stores terribly — the same
-                    // document came to ~20MB lossless versus well under 1MB
-                    // here, at a quality that is indistinguishable in print.
-                    pdf.addImage(crop.toDataURL('image/jpeg', 0.94), 'JPEG',
-                                 geom.marginX, geom.contentTop, imgW, sh / scale / pxPerMm);
-                    pdfDrawChrome(pdf, geom, i + 1, pages.length);
-                });
-
-                restore();
-                // pdf.save() ends in an <a download>, which the Android
-                // WebView ignores — the file never reached the device. Hand
-                // the blob to the shared saver instead.
-                var pdfName = '{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf';
-                SmartWorkerSave.blob(pdf.output('blob'), pdfName, 'application/pdf')
-                    .then(SmartWorkerSave.toast)
-                    .catch(SmartWorkerSave.fail);
-            });
-            });
-        })
-        .catch(function (err) {
-            restore();
-            console.error('Payslip PDF export failed', err);
+    return SmartWorkerPDF.build({
+        root: document.getElementById('payroll-slip-content'),
+        filename: '{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf',
+        geom: PDF_GEOM,
+        busyId: 'pdf-busy',
+        prepareChrome: pdfPrepareChrome,
+        drawChrome: pdfDrawChrome,
+        onError: function () {
             alert({{ _('PDF generation failed. Use Print instead.')|tojson }});
-        });
+        }
+    }).catch(function () { /* already reported */ });
+}
+
+/* Print.
+ *
+ * window.print() is the right thing in a browser and is not implemented at
+ * all in an Android WebView — no dialog, no error, nothing. This screen
+ * already builds a proper PDF and hands it to a viewer through
+ * SmartWorkerSave, and every Android PDF viewer can print, so inside the
+ * app that is the route taken. See the 'print' verb in actions.js, which
+ * does the same for screens that declare a downloadPDF of their own.
+ */
+function printSlip() {
+    if (window.cordova && window.cordova.file) return downloadPDF();
+    window.print();
 }
 </script>
 {% endblock %}

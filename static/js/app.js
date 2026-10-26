@@ -876,24 +876,9 @@ window.togglePassword = function(fieldId) {
 //  nothing at all once confirm() is dismissed. profile.html owns it now and
 //  routes it through SmartWorkerSave.)
 
-// Print function
-window.printElement = function(elementId) {
-    const element = document.getElementById(elementId);
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>SmartWorker - Print</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    .no-print { display: none !important; }
-                </style>
-            </head>
-            <body>
-                ${element.outerHTML}
-            </body>
-        </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-};
+// (window.printElement lived here and was called from nowhere — grep the
+//  whole repository and this definition is the only hit. It opened a popup
+//  with window.open('', '_blank'), which an Android WebView returns null
+//  for unless the native side implements onCreateWindow, so the next line
+//  would have thrown on the one platform this app ships as. Printing goes
+//  through the 'print' verb in actions.js, which knows about the WebView.)
