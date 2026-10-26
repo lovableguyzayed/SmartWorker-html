@@ -73,7 +73,41 @@
 .ep-stat b { display: block; font-size: 1rem; font-variant-numeric: tabular-nums; color: #111827; }
 .ep-stat span { font-size: 0.7rem; color: #6b7280; }
 
+/* A closed day, where the marking controls would otherwise be.
+   Red rather than grey: this is a ban, not a disabled state, and the
+   reason for it is the first thing on the card. */
+.ep-closed {
+    background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 1.1rem; padding: 0.95rem 1rem;
+}
+.ep-closed-head {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.98rem; font-weight: 700; color: #991b1b;
+}
+.ep-closed-body { margin-top: 0.4rem; font-size: 0.85rem; color: #7f1d1d; }
+.ep-closed-btn {
+    margin-top: 0.75rem; width: 100%; min-height: 2.75rem;
+    border: 1px solid #991b1b; border-radius: 0.8rem;
+    background: #fff; color: #991b1b;
+    font-size: 0.85rem; font-weight: 600;
+}
+.ep-closed-btn:active { background: #fee2e2; }
+
 /* Roster ---------------------------------------------------------------- */
+/* Group heading inside the roster card. Sticky so the heading of the
+   group you are scrolling through stays named — on a long roll the
+   "Currently working" four scroll past in a second and everything after
+   them looks like the same list. */
+.ep-group {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: 0.45rem;
+    margin: 0 -0.75rem; padding: 0.55rem 0.75rem;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em;
+    text-transform: uppercase; color: #374151;
+}
+.ep-group i { color: #6b7280; font-size: 0.8rem; }
 .ep-row {
     display: flex; align-items: center; gap: 0.6rem;
     padding: 0.85rem 0;
@@ -347,74 +381,35 @@
 </header>
 
 <main class="p-4 pb-8">
-    <!-- Entry panel: the three most common data-entry jobs on one surface.
-         Transaction and Worker open their full existing screens rather than
-         reimplementing them in a tab. -->
-    <!-- Month calendar — click any date to open its detail below it.
-         Folded away by default: it cost 600px above the roster, and marking
-         today never needs it. The date field and its day arrows in the header
-         already move between days; this is for looking back over a month. -->
-    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
-        <details id="cal-fold">
-            <summary class="cal-summary">
-                <span class="cal-summary-label">
-                    <i class="fa-solid fa-calendar-days"></i>
-                    {{ _('Calendar') }}
-                </span>
-                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
-                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
-            </summary>
-            <div class="flex items-center justify-between mb-2 mt-3 px-1">
-                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
-                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
-                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
-                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
-                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
-            </div>
-            {% with cal_month_start = month_start,
-                    cal_month = selected_date.month, cal_year = selected_date.year,
-                    cal_data = calendar_data, cal_closures = closure_days,
-                    cal_selected = selected_date, cal_today = today,
-                    cal_interactive = true %}
-                {% include '_calendar.html' %}
-            {% endwith %}
-        </details>
-    </section>
-    <script nonce="{{ csp_nonce }}">
-    /* The month arrows are links, so changing month reloads the page. Without
-       remembering the fold, the calendar would snap shut under the person
-       every time they stepped back a month. Runs here, during parse, so it
-       does not open with a visible jump.
-
-       Browser storage can throw outright in a private window or with site
-       data blocked, so a failure to remember must never stop the page. */
-    (function () {
-        var fold = document.getElementById('cal-fold');
-        if (!fold) return;
-        try {
-            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
-        } catch (e) { /* not remembered; the calendar simply starts folded */ }
-        fold.addEventListener('toggle', function () {
-            try {
-                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
-            } catch (e) { /* nothing to do: the fold still works for this visit */ }
-        });
-    })();
-    </script>
-
-    <!-- Day detail — filled from /api/attendance/day/<date> -->
-    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
-             tabindex="-1" aria-live="polite">
-        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Loading day…') }}</div></div>
-    </section>
-
     <div class="ep-tabs">
         <span class="ep-tab ep-tab-active">{{ _('Attendance') }}</span>
         <a href="{{ url_for('transactions') }}" class="ep-tab">{{ _('Transaction') }}</a>
         <a href="{{ url_for('add_worker') }}" class="ep-tab">{{ _('Worker') }}</a>
     </div>
 
-    {% if not closure or closure.allow_attendance %}
+    {% if closure and not closure.allow_attendance %}
+    {# A closure with attendance locked used to delete this whole section
+       from the page. Nothing took its place, so the one screen in the app
+       whose purpose is marking simply had no way to mark on that date and
+       did not say why — which reads, correctly, as the feature being
+       broken. The ban is real and stays; what was missing was the
+       sentence, and the way out for whoever set the closure. #}
+    <section class="ep-closed mb-5">
+        <div class="ep-closed-head">
+            <i class="fa-solid fa-lock"></i>
+            {{ _('Closed') }} — {{ closure.reason }}
+        </div>
+        <p class="ep-closed-body">
+            {{ _('Nobody is expected on this date, so there is nothing to mark. These workers are not counted as missing.') }}
+        </p>
+        {% if current_user.is_admin %}
+        <button type="button" class="ep-closed-btn"
+                data-act="dvAllowClosure" data-act-args='[{{ closure.id }}]'>
+            {{ _('Somebody did work — allow marking on this day') }}
+        </button>
+        {% endif %}
+    </section>
+    {% else %}
     <section class="mb-5">
         <div class="ep-section-label" id="ep-date-label">{{ _('Mark') }} {{ _('today') if selected_date == today else selected_date|ldate('%d %b') }}</div>
         <div class="ep-field-label">{{ _('Scan or type employee ID') }}</div>
@@ -448,7 +443,25 @@
     {% if attendance_data %}
     <div class="bg-white rounded-3xl shadow-lg border border-gray-100 px-3"
          data-ms-scope="attendance" data-ms-noun="worker" data-ms-plural="workers">
+        {# Two groups, and the heading is emitted wherever the list turns
+           over from one to the other. routes.attendance sorts open shifts
+           to the front with a stable sort, so loop.changed() fires at most
+           once per group and the names inside each keep the roster's own
+           order. The counts are over every worker on this date, not just
+           this page — the same rule the pager line and the bulk buttons
+           already follow. #}
         {% for data in attendance_data %}
+        {% if loop.changed(data.on_shift) %}
+        <div class="ep-group">
+            {% if data.on_shift %}
+            <i class="fa-solid fa-person-digging"></i>
+            {{ _('Currently working') }} · {{ open_count }}
+            {% else %}
+            <i class="fa-solid fa-users"></i>
+            {{ _('On the roll') }} · {{ total_rows - open_count }}
+            {% endif %}
+        </div>
+        {% endif %}
         {% set row_locked = data.closure and not data.closure.allow_attendance %}
         <div class="ep-row" data-worker="{{ data.worker.id }}"
              {% if not row_locked %}data-ms-item="{{ data.worker.id }}"
@@ -562,6 +575,71 @@
         </a>
     </div>
     {% endif %}
+    {# ──────────────────────────────────────────────────────────────
+       Looking back: the month, and one day of it in full.
+
+       This sits at the foot of the screen now. Marking is the job this
+       tab exists for and it is above; the calendar is for the other
+       job — finding the day somebody was missed on — and that is a
+       deliberate trip, not something to scroll past on the way to the
+       pills. It was between the two before, so every visit started by
+       reading a list of who had not been marked yet.
+       ────────────────────────────────────────────────────────────── #}
+    <h2 class="ep-section-label mt-6">{{ _('Look back over the month') }}</h2>
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
+        <details id="cal-fold">
+            <summary class="cal-summary">
+                <span class="cal-summary-label">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    {{ _('Calendar') }}
+                </span>
+                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
+                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
+            </summary>
+            <div class="flex items-center justify-between mb-2 mt-3 px-1">
+                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
+                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
+                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
+            </div>
+            {% with cal_month_start = month_start,
+                    cal_month = selected_date.month, cal_year = selected_date.year,
+                    cal_data = calendar_data, cal_closures = closure_days,
+                    cal_selected = selected_date, cal_today = today,
+                    cal_interactive = true %}
+                {% include '_calendar.html' %}
+            {% endwith %}
+        </details>
+    </section>
+    <script nonce="{{ csp_nonce }}">
+    /* The month arrows are links, so changing month reloads the page. Without
+       remembering the fold, the calendar would snap shut under the person
+       every time they stepped back a month. Runs here, during parse, so it
+       does not open with a visible jump.
+
+       Browser storage can throw outright in a private window or with site
+       data blocked, so a failure to remember must never stop the page. */
+    (function () {
+        var fold = document.getElementById('cal-fold');
+        if (!fold) return;
+        try {
+            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
+        } catch (e) { /* not remembered; the calendar simply starts folded */ }
+        fold.addEventListener('toggle', function () {
+            try {
+                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
+            } catch (e) { /* nothing to do: the fold still works for this visit */ }
+        });
+    })();
+    </script>
+
+    <!-- Day detail — filled from /api/attendance/day/<date> -->
+    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
+             tabindex="-1" aria-live="polite">
+        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Pick a date above to see that day in full.') }}</div></div>
+    </section>
+
 </main>
 
 {% if current_user.is_admin %}
@@ -835,6 +913,9 @@ var DV_TEXT = {
     // The five marked states are in DV_STATUS_LABEL above, keyed by the
     // value the API returns; this is the one state that is not a mark.
     unmarked: {{ _('Unmarked')|tojson }},
+    // The same slot as 'unmarked', for a day the company was shut: those
+    // workers are not missing, nobody was expected.
+    closed: {{ _('Closed')|tojson }},
     on_roll: {{ _('Workers on this date')|tojson }},
     none_on_roll: {{ _('No workers were on the roll on this date.')|tojson }},
     transactions: {{ _('Transactions on this date')|tojson }},
@@ -843,7 +924,9 @@ var DV_TEXT = {
     add_txn: {{ _('Add transaction')|tojson }},
     add_closure: {{ _('Add closure')|tojson }},
     close_detail: {{ _('Close day detail')|tojson }},
-    pick_a_date: {{ _('Select a date to see its detail.')|tojson }}
+    // The same words the server paints into the resting panel, so closing
+    // the detail puts the screen back exactly where it started.
+    pick_a_date: {{ _('Pick a date above to see that day in full.')|tojson }}
 };
 var dvDay = null;
 
@@ -865,6 +948,18 @@ function dvMoney(amount) {
     });
 }
 
+/* How long the day panel will wait before it gives up and offers to try
+ * again. Nothing here cancels the write — this is a read — so the only
+ * cost of being wrong is one wasted request.
+ *
+ * It exists because there was no bound at all. On a free-tier host a cold
+ * start is 30-60 seconds, and for every one of those seconds the panel
+ * said "Loading 2026-10-19…" with no way out and nothing to press. Twelve
+ * seconds is past the slowest warm response measured (around 600ms over
+ * the network) by a wide margin, and well short of the point where
+ * somebody decides the app is broken. */
+var DV_TIMEOUT_MS = 12000;
+
 async function dvLoad(dateStr, opts) {
     opts = opts || {};
     DV_SELECTED = dateStr;
@@ -872,35 +967,58 @@ async function dvLoad(dateStr, opts) {
     var body = document.getElementById('day-panel-body');
     if (!body) return;
     body.innerHTML = '<div class="dv-muted">Loading ' + dvEsc(dateStr) + '…</div>';
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, DV_TIMEOUT_MS);
     try {
         var res = await fetch('/api/attendance/day/' + encodeURIComponent(dateStr),
-                              { credentials: 'same-origin' });
+                              { credentials: 'same-origin',
+                                signal: ctl ? ctl.signal : undefined });
         var data = await res.json();
         if (!data.success) { body.innerHTML = '<div class="dv-empty">' + dvEsc(data.message || 'Could not load this day.') + '</div>'; return; }
         dvRender(data.day);
-        // The whole screen follows one date. Without this the entry panel keeps
-        // writing to the date the page was rendered with, so selecting a past
-        // day in the calendar and then using its bulk buttons silently marked
-        // today instead.
-        dvSyncEntryPanel(data);
         if (opts.scroll) dvScrollIntoView();
     } catch (err) {
-        body.innerHTML = '<div class="dv-empty">No connection — could not load this day.</div>';
+        // Every failure ends somewhere you can press, including the one
+        // that used to end nowhere at all: the request that never answers.
+        var why = (err && err.name === 'AbortError')
+            ? 'The server did not answer in time.'
+            : 'No connection — could not load this day.';
+        body.innerHTML = '<div class="dv-empty">' + dvEsc(why) +
+            ' <button type="button" class="dv-adjust" style="color:#0062CC;font-weight:600"' +
+            ' data-act="dvRetryDay">Try again</button></div>';
+    } finally {
+        clearTimeout(timer);
     }
 }
 
-// Re-point the entry panel (its writes, its roster and its label) at the date
-// the calendar is showing, so one screen never holds two different dates.
-function dvSyncEntryPanel(data) {
-    EP_DATE = data.day.date;
-    if (data.stats) epApplyStats(data.stats);
-    if (data.rows) epApplyRows(data.rows);
-    var label = document.getElementById('ep-date-label');
-    if (label) {
-        label.textContent = {{ _('Mark')|tojson }} + ' ' +
-            (data.day.is_today ? DV_TEXT.today : data.day.date_label);
-    }
+/* The retry reads DV_SELECTED rather than taking the date as an argument:
+ * the dispatcher appends (element, event) to whatever data-act-args holds,
+ * and a date that has to survive being written into an attribute and parsed
+ * back out is a date that can be got wrong. There is only ever one date
+ * selected, and this is it. */
+function dvRetryDay() {
+    dvLoad(DV_SELECTED, { scroll: false });
 }
+
+/* dvSyncEntryPanel was here. It re-pointed the marking panel — EP_DATE,
+ * the counters, the roster and the label — at whatever date the calendar
+ * had just been given, so that one screen never held two different dates.
+ *
+ * It could not re-point the one thing that matters most. Whether the
+ * marking controls exist at all is decided by the server, from
+ * closure.allow_attendance: on a locked day the whole section is replaced
+ * by the closed card. Patching the date in place walked straight past
+ * that, so selecting a shut-down day from an ordinary one left a marking
+ * panel on screen labelled with the shut-down day's date, offering All
+ * present and four pills per row for a date every one of which the server
+ * would refuse. Measured: label read "Mark 19 October 2026" with the plant
+ * closed and 48 pills still live.
+ *
+ * Selecting a date is a navigation now (see dvSelect), so the server
+ * renders the whole screen for it and there is nothing left to keep in
+ * step. The class of bug this function existed to fix cannot occur, and
+ * neither can the one it caused.
+ */
 
 // Scroll the panel itself, not the window, so this never fights the page.
 function dvScrollIntoView() {
@@ -947,7 +1065,14 @@ function dvRender(day) {
          '<div class="dv-count"><b>' + c.late + '</b><span>' + DV_STATUS_LABEL.late + '</span></div>' +
          '<div class="dv-count"><b>' + c.absent + '</b><span>' + DV_STATUS_LABEL.absent + '</span></div>' +
          '<div class="dv-count"><b>' + c.leave + '</b><span>' + DV_STATUS_LABEL.leave + '</span></div>' +
-         '<div class="dv-count"><b>' + c.not_marked + '</b><span>' + DV_TEXT.unmarked + '</span></div></div>';
+         // One fifth box, showing whichever of the two is the day's answer.
+         // On a locked closure day everyone unmarked is counted as closed,
+         // so this reads "11 Closed" rather than "11 Unmarked" — the same
+         // eleven people, and the difference between a shut plant and a
+         // day's work nobody got round to.
+         '<div class="dv-count"><b>' + (c.closed ? c.closed : c.not_marked) +
+         '</b><span>' + (c.closed ? DV_TEXT.closed : DV_TEXT.unmarked) +
+         '</span></div></div>';
 
     // No bulk buttons here any more. "All present", "All absent" and "Close
     // shifts" are on the marking panel below, which is where marking happens
@@ -982,6 +1107,11 @@ function dvRender(day) {
         if (r.status) {
             h += '<span class="dv-state dv-state-' + r.status + '">' +
                  dvEsc(DV_STATUS_LABEL[r.status] || r.status) + '</span>';
+        } else if (r.locked) {
+            // Nobody was expected: the plant was shut and attendance is
+            // locked for this date. "Not marked" here read as an omission
+            // against every name on the roll.
+            h += '<span class="dv-state dv-state-none">' + DV_TEXT.closed + '</span>';
         } else {
             h += '<span class="dv-state dv-state-none">' +
                  {{ _('Not marked')|tojson }} + '</span>';
@@ -1079,12 +1209,64 @@ function dvRemoveClosure(id) {
     dvPost('/api/attendance/closure', { action: 'remove', closure_id: id }, null);
 }
 
-// Selecting a date updates the URL so a refresh or a shared link reopens it.
-function dvSelect(dateStr, opts) {
+/* Lift the lock without losing the closure.
+ *
+ * Deleting the closure was the only way out before, and it throws away the
+ * fact that the plant was shut — which is what pay for that day is worked
+ * out from. This keeps the record and allows marking on top of it.
+ *
+ * The marking panel is rendered by the server from `closure.allow_attendance`,
+ * so unlike every other write on this screen there is nothing to patch in
+ * place: the screen has to come back. NativeShell.visit keeps it a soft
+ * navigation, so the tab bar and the scroll position survive. */
+async function dvAllowClosure(id) {
+    if (!confirm('Allow attendance to be marked on this closure day?')) return;
+    var body = new FormData();
+    body.append('csrf_token', EP_CSRF);
+    body.append('date', DV_SELECTED);
+    body.append('action', 'allow');
+    body.append('closure_id', id);
+    try {
+        var res = await fetch('/api/attendance/closure',
+                              { method: 'POST', body: body, credentials: 'same-origin' });
+        if (!res.ok) { epToast('Could not unlock (' + res.status + ').', 'error'); return; }
+        var data = await res.json();
+        if (!data.success) {
+            (data.messages || []).forEach(function (m) { epToast(m.text, m.category); });
+            return;
+        }
+        // push:false — this is the same URL re-rendered, not somewhere new,
+        // and a history entry for it would make Back a no-op.
+        if (window.NativeShell) NativeShell.visit(window.location.href, { push: false });
+        else window.location.reload();
+    } catch (err) {
+        epToast('No connection — nothing was changed.', 'error');
+    }
+}
+
+/* Selecting a date goes to that date.
+ *
+ * It used to push the URL and then patch the page in place, which meant
+ * the screen was assembled from two sources: the server's render of the
+ * date the page loaded with, and a day payload for the date just tapped.
+ * Keeping those in step was dvSyncEntryPanel's job, and the part it could
+ * not do is written up where that function used to be.
+ *
+ * A navigation is also what the rest of the screen already assumes — the
+ * month arrows above the calendar have always been plain links to
+ * ?date=, and the date field in the header submits a GET. This makes the
+ * calendar cells the same thing, so every way of choosing a date now
+ * leads to the same screen.
+ *
+ * NativeShell makes it a soft navigation: the tab bar survives, the
+ * transition runs, and the response is the same one the arrows fetch.
+ */
+function dvSelect(dateStr) {
     var url = new URL(window.location.href);
     url.searchParams.set('date', dateStr);
-    history.pushState({ date: dateStr }, '', url);
-    dvLoad(dateStr, opts || { scroll: true });
+    url.searchParams.delete('page');   // a new date starts at its first page
+    if (window.NativeShell) NativeShell.visit(url.href);
+    else window.location.href = url.href;
 }
 
 function dvCellByDate(dateStr) {
@@ -1119,9 +1301,24 @@ function dvBindCalendar() {
         else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dvSelect(cell.dataset.date); }
         else if (e.key === 'Escape') { e.preventDefault(); dvClose(); }
     });
-    // ?date= wins on load; otherwise the server-selected date (today by default).
-    var initial = new URLSearchParams(window.location.search).get('date') || DV_SELECTED;
-    dvLoad(initial, { scroll: false });
+    /* The day panel opens for a date somebody chose, and only then.
+     *
+     * Opening the Attendance tab used to request
+     * /api/attendance/day/<today> every single time, and every piece of
+     * the answer was already on the page: the server renders the roster,
+     * the counters and the date for exactly that day before the HTML
+     * leaves it. So the first thing on the screen, on the one tab that
+     * exists for marking attendance, was a second copy of the screen
+     * loading — and on a cold host that read "Loading 2026-10-19…" and
+     * stayed there for the length of the cold start, which is where the
+     * report of a stuck calendar came from.
+     *
+     * ?date= is the mark of a choice: the calendar cells, the month
+     * arrows and the header's date field all navigate to it, and a
+     * shared link carries it. Arriving at the plain tab asks for nothing
+     * but the tab. */
+    var chosen = new URLSearchParams(window.location.search).get('date');
+    if (chosen) dvLoad(chosen, { scroll: false });
 }
 dvBindCalendar();
 // document/window listeners are registered exactly once for the lifetime of

@@ -431,6 +431,18 @@ input:checked + .toggle-slider:before {
     color: #1f2937;
 }
 .cal-cell.other   { background: #f9fafb; color: #6b7280; }
+/* A day the company was shut, drawn before the four status fills on
+   purpose: equal specificity, so whichever rule comes last wins, and
+   anybody who did work on a closure day should still be coloured by what
+   they did. This is the floor under an otherwise empty cell — without it
+   a shutdown looked exactly like a day nobody had got round to marking.
+   The hatch, rather than a flat grey, so it is not mistaken for the
+   out-of-month cells directly above and below it. */
+.cal-cell.closed  {
+    color: #6b7280;
+    background: repeating-linear-gradient(
+        -45deg, #f3f4f6, #f3f4f6 4px, #e5e7eb 4px, #e5e7eb 8px);
+}
 .cal-cell.present { background: #dcfce7; color: #166534; }
 .cal-cell.absent  { background: #fecaca; color: #991b1b; }
 .cal-cell.late    { background: #fef3c7; color: #92400e; }
@@ -914,82 +926,95 @@ body.ms-active nav.app-bottom-nav { display: none; }
 .worker-action-primary { background: #0062cc; color: #fff; }
 .worker-action-primary:hover { background: #001f3f; }
 
-/* ══════════════════════════════════════════════════════════════════════
-   Tablets: the same vertical app, at the size the screen deserves
-   ══════════════════════════════════════════════════════════════════════
+/* ═════════════════════════════════════════════════════════════════════
+   One column, as wide as whatever is holding it
+   ═════════════════════════════════════════════════════════════════════
 
-   base.html wraps every screen in #mobile-app with Tailwind's max-w-sm —
-   24rem, 384px — and centres it. On a phone that is the whole screen and
-   exactly right. On a tablet it stayed 384px whatever the screen was, so
-   the app was a phone-shaped strip down the middle: 47% of an 820px
-   portrait tablet, 30% of a 1280px landscape one.
+   base.html wraps every screen in #mobile-app with Tailwind's max-w-sm
+   — 24rem, a flat 384px that never moves. The app was drawn for a 2017
+   phone and 384px was that phone. Nothing since is 384px wide, so every
+   device has been showing a 384px app with grey either side. Measured,
+   on the attendance screen:
 
-   Widening the column alone was not the answer. A tablet held in portrait
-   wants the same single vertical column it has now — one list, one card
-   under another — but at the size of the thing holding it. A 704px column
-   of phone-sized type is a stretched phone, not a tablet app.
+       360px phone     360px app    100%   (the one size it was right for)
+       393px phone     384px        98%
+       430px phone     384px        89%    11px of grey each side
+       600px tablet    384px        64%    108px of grey each side
 
-   So the root font size moves instead. Every spacing and type value in
-   this app is in rem — Tailwind's own build is rem throughout
-   (.p-4{padding:1rem}, .text-sm{font-size:.875rem}) and so is most of
-   this file — which means one declaration scales text, padding, gaps,
-   corner radii and the column's own max-width together, in proportion.
-   The layout does not change shape at all; it grows. That is what was
-   asked for, and it is the reason this is three rules rather than a
-   rewrite of every screen.
+   That last row is the complaint, and 600px is not an unusual tablet:
+   a 1200x1920 panel at 2x density reports exactly 600 CSS px, which is
+   also why the previous min-width:768px rule never fired on it. The
+   tablet work before this widened 820px and 1280px screens and left the
+   most common tablet width of all below the breakpoint, still at 384px.
 
-   Measured on an 820x1180 portrait tablet, which is the case this was
-   raised about:
+   The fix is to stop capping at a phone and start capping at a column.
+   Two declarations do all of it:
 
-       root 16px   704px wide, 86% of the screen   (stretched phone)
-       root 18px   792px wide, 97%                 <- this
-       root 19px   820px wide, 100%, no gutter at all
+   1. max-width: 44rem replaces max-w-sm everywhere the app shell uses
+      it. Being in rem, it is 704px at phone type and 880px at the
+      largest step, so on every phone and every small tablet it is
+      larger than the screen and the column is simply the device.
 
-   18px keeps a gutter either side rather than running into the bezel,
-   and 44rem then works out at 792px by itself: the cap is in rem, so it
-   scales with everything else and needs no separate number.
+   2. the root font size steps up with the screen. Every spacing and
+      type value in this app is in rem — Tailwind's own build is rem
+      throughout (.p-4{padding:1rem}, .text-sm{font-size:.875rem}) and
+      so is most of this file — so one declaration scales text,
+      padding, gaps, corner radii and the cap itself together, in
+      proportion. The layout does not change shape; it grows. A 600px
+      column of phone-sized type would be a stretched phone, which is
+      not what was asked for.
 
-   The second step is for the large tablets — a 1024px portrait screen
-   would otherwise sit at 77% — and nothing beyond it, because a single
-   vertical column cannot usefully fill a desktop monitor however big the
-   type gets. There it stays centred, which is the right answer for a
-   column.
+   What those two produce, end to end:
 
-   Orientation is deliberately not consulted. A landscape tablet is short,
-   so bigger type shows fewer rows, but splitting the rule by orientation
-   means the app changes size when the tablet is turned — which is worse
-   than either size on its own.
+       360px   root 16   360px   100%
+       430px   root 16   430px   100%
+       600px   root 17   600px   100%
+       768px   root 18   768px   100%
+       820px   root 18   792px    97%   gutter rather than bezel
+      1024px   root 20   880px    86%
+      1280px   root 20   880px    69%   centred, which is right for a column
 
-   Phones are untouched. That is the whole reason this lives in a
-   min-width query here instead of in the template: these are site phones,
-   384px is what they have, and tests/test_wide_screens.py measures 390px
-   first for exactly that reason. */
-@media (min-width: 768px) {
-    html {
-        font-size: 18px;
-    }
+   Above 1024px nothing more happens: a single vertical column cannot
+   usefully fill a desktop monitor however big the type gets, so it
+   stays centred there.
+
+   Orientation is deliberately not consulted. A landscape tablet is
+   short, so bigger type shows fewer rows — but splitting the rule by
+   orientation means the app resizes when the tablet is turned, which is
+   worse than either size on its own.
+
+   tests/test_wide_screens.py measures all seven widths above. */
+
+/* An id beats Tailwind's single class, so max-w-sm keeps working
+   everywhere else it is used — the flash toast still wants it, because a
+   notice is read at a glance and an 880px-wide one is worse, not better.
+
+   The bottom bar and the two auth shells are separate elements carrying
+   max-w-sm of their own; left out they would sit visibly narrower than
+   the content. custom.css is linked after the Tailwind build, so one
+   class is enough to win on source order. */
+#mobile-app,
+.app-bottom-nav,
+.signin-shell,
+.signup-shell {
+    max-width: 44rem;
 }
 
-@media (min-width: 1024px) {
-    html {
-        font-size: 20px;
-    }
+/* `screen and` is load-bearing, not tidiness. A4 is about 794 CSS px
+   wide at 96dpi, so an unqualified min-width:768px query fires on
+   paper: every payslip and worker report printed at 18px root — a
+   12.5% enlargement of a layout already measured to fill two sheets —
+   and ran onto a third, nearly empty one. Caught by
+   tests/test_print_pages.py, which counts sheets. Paper has a fixed
+   width and no device to adapt to, so it keeps the base 16px. */
+@media screen and (min-width: 600px) {
+    html { font-size: 17px; }
 }
 
-@media (min-width: 768px) {
-    /* An id beats Tailwind's single class, so no !important is needed and
-       max-w-sm keeps working everywhere else it is used — the toast still
-       wants it, because a notice is read at a glance and a 792px-wide one
-       is worse, not better. */
-    #mobile-app {
-        max-width: 44rem;
-    }
+@media screen and (min-width: 768px) {
+    html { font-size: 18px; }
+}
 
-    /* The bottom bar is a separate element, capped at max-w-sm too and
-       centred with its own transform. Left alone it would sit visibly
-       narrower than the content above it. custom.css is linked after the
-       Tailwind build, so one class is enough to win on source order. */
-    .app-bottom-nav {
-        max-width: 44rem;
-    }
+@media screen and (min-width: 1024px) {
+    html { font-size: 20px; }
 }

@@ -13,6 +13,19 @@
                           false renders inert cells (payslips rasterise to PDF and
                           must stay static)
     cal_today             today's date in IST, for the "today" outline (optional)
+    cal_link_search       a worker's employee ID. Each in-month cell becomes a
+                          link to the attendance screen for that date, filtered
+                          to that worker. Mutually exclusive with
+                          cal_interactive, which handles its own clicks.
+
+  On cal_link_search: a worker's month was a picture and nothing else — it
+  has been an inert <div> per day since the first commit. "Open the worker,
+  find the day you missed, fix it there" was what people expected of it and
+  what it never did. It still does not mark anything itself: marking lives
+  on the attendance screen, in one place, and this takes you to that place
+  with the date and the worker already filled in. Two screens that both
+  mark is the duplication tests/test_attendance_dayview.py exists to
+  prevent.
 #}
 <div class="cal-grid" {% if cal_interactive %}role="grid" aria-label="{{ _('Attendance Calendar') }}"{% endif %}>
     {# weekdays_short is Monday-first (date.weekday() order); this grid is
@@ -34,18 +47,32 @@
         {% set is_selected = cal_selected is defined and cal_selected and cur == cal_selected %}
         {% set is_today = cal_today is defined and cal_today and cur == cal_today %}
         {% set status = rec.status if rec else '' %}
-        <div class="cal-cell{{ ' other' if not in_month }}{{ ' ' ~ status if status }}{{ ' cal-selected' if is_selected }}{{ ' cal-today' if is_today and not is_selected }}"
-             {% if cal_interactive and in_month %}
+        {# A closure that locks attendance fills the cell, instead of leaving
+           a white box with a 5px dot in it. An empty cell means "nobody has
+           been marked yet", and a day the company was shut is not that — it
+           was reported as the calendar "showing 19 blank". Any real status
+           still wins: the fill is a floor, and the four status rules come
+           after this one in custom.css so somebody who did work that day is
+           still coloured by what they did. #}
+        {% set closed = clo and not clo.allow_attendance %}
+        {% set state = _(status|capitalize) if status else (_('Closed') if closed else _('Not marked')) %}
+        {% set linked = cal_link_search is defined and cal_link_search and in_month %}
+        {% set tag = 'a' if linked else 'div' %}
+        <{{ tag }} class="cal-cell{{ ' other' if not in_month }}{{ ' closed' if closed }}{{ ' ' ~ status if status }}{{ ' cal-selected' if is_selected }}{{ ' cal-today' if is_today and not is_selected }}"
+             {% if linked %}
+             href="{{ url_for('attendance', date=cur.isoformat(), search=cal_link_search) }}"
+             aria-label="{{ cur|ldate('%d %B %Y') }}, {{ state }}{% if clo %}, {{ _('Closure Day') }}: {{ clo.reason }}{% endif %} — {{ _('open this date') }}"
+             {% elif cal_interactive and in_month %}
              role="gridcell"
              tabindex="{{ '0' if is_selected else '-1' }}"
              data-date="{{ cur.isoformat() }}"
              aria-selected="{{ 'true' if is_selected else 'false' }}"
-             aria-label="{{ cur|ldate('%d %B %Y') }}, {{ _(status|capitalize) if status else _('Not marked') }}{% if clo %}, {{ _('Closure Day') }}: {{ clo.reason }}{% endif %}"
+             aria-label="{{ cur|ldate('%d %B %Y') }}, {{ state }}{% if clo %}, {{ _('Closure Day') }}: {{ clo.reason }}{% endif %}"
              {% elif cal_interactive %}
              role="gridcell" aria-hidden="true"
              {% endif %}>
             <span>{{ cur.day }}</span>
             {% if clo %}<span class="cal-closure-dot" title="{{ clo.reason }}"></span>{% endif %}
-        </div>
+        </{{ tag }}>
     {% endfor %}
 </div>

@@ -2390,6 +2390,25 @@ def attendance():
         # roster costs fifty calculations rather than five thousand.
         visible_rows.append((worker, attendance, assignment))
 
+    # Whoever is on site right now goes to the top of the list.
+    #
+    # An open shift — checked in, not yet checked out — is this app's own
+    # word for "currently working", and it is the one group on the roster
+    # that is time-critical: those are the people whose shift has to be
+    # closed before overtime can be banked, and on a two-shift crusher
+    # they are a handful of names inside a roll of hundreds. Sorted here
+    # rather than in the template because the list is paged, and a worker
+    # on site who sorts onto page 3 by name is exactly as lost as before.
+    #
+    # sort() is stable, so inside each group the roster's own ordering
+    # (roster_query) is untouched.
+    def _on_shift(row):
+        rec = row[1]
+        return bool(rec and rec.check_in_time and not rec.check_out_time)
+
+    visible_rows.sort(key=lambda row: 0 if _on_shift(row) else 1)
+    open_count = sum(1 for row in visible_rows if _on_shift(row))
+
     total_rows = len(visible_rows)
     start = (page - 1) * ATTENDANCE_PER_PAGE
     page_rows = visible_rows[start:start + ATTENDANCE_PER_PAGE]
@@ -2413,6 +2432,10 @@ def attendance():
             'attendance': attendance,
             'assignment': assignment,
             'closure': closure_for_worker_on_date(worker, selected_date, closures_today),
+            # Drives the "Currently working" group header; the same test the
+            # sort above used, so the heading can never land on the wrong row.
+            'on_shift': bool(attendance and attendance.check_in_time
+                             and not attendance.check_out_time),
             'wage': wage,
             'pay_mode': pay_mode,
             'overtime_pay': overtime_pay,
@@ -2469,6 +2492,7 @@ def attendance():
                          shown_from=start + 1 if attendance_data else 0,
                          shown_to=start + len(attendance_data),
                          total_rows=total_rows,
+                         open_count=open_count,
                          selected_date=selected_date,
                          today=today_ist(),
                          stats=_scan_stats(selected_date),
@@ -2634,6 +2658,10 @@ def worker_attendance(worker_id):
                          closure_days=closure_days,
                          month=month,
                          year=year,
+                         # The month grid outlines today, like every other
+                         # host of _calendar.html. This screen was the one
+                         # that did not pass it.
+                         today=today,
                          start_date=start_date,
                          end_date=end_date,
                          timedelta=timedelta,
@@ -5390,7 +5418,14 @@ def _day_payload(on_date):
             ).all()
         }
 
-    counts = {'present': 0, 'late': 0, 'absent': 0, 'leave': 0, 'not_marked': 0}
+    # 'closed' is not a status anybody can be marked with — it is where the
+    # unmarked go on a day the company was shut. Without it a maintenance
+    # shutdown reported "11 unmarked", which is the same number and the same
+    # red as eleven people nobody got round to marking, on a day when there
+    # was by definition nothing to mark. The panel reads one of the two
+    # counts, never both: locked day, or ordinary day.
+    counts = {'present': 0, 'late': 0, 'absent': 0, 'leave': 0,
+              'not_marked': 0, 'closed': 0}
     rows = []
     for worker in workers:
         record = records.get(worker.id)
@@ -5398,10 +5433,11 @@ def _day_payload(on_date):
         assignment = next(
             (a for a in worker.assignments if assignment_active_on(a, on_date)), None)
 
+        locked = bool(worker_closure and not worker_closure.allow_attendance)
         if record and record.status in counts:
             counts[record.status] += 1
         elif not record:
-            counts['not_marked'] += 1
+            counts['closed' if locked else 'not_marked'] += 1
 
         where = None
         if assignment:
@@ -5427,7 +5463,7 @@ def _day_payload(on_date):
             'overtime_minutes': (record.overtime_minutes or 0) if record else 0,
             'late_minutes': (record.late_minutes or 0) if record else 0,
             'where': where,
-            'locked': bool(worker_closure and not worker_closure.allow_attendance),
+            'locked': locked,
             'meta': attendance_row_meta(worker, record),
         })
 
@@ -5633,6 +5669,25 @@ def api_attendance_closure():
         return jsonify({'success': False, 'message': 'Invalid date.'}), 400
 
     action = request.form.get('action', 'add')
+    if action == 'allow':
+        # "The plant was shut, but Ramesh came in anyway."
+        #
+        # Until now the only way out of a locked closure was to delete it,
+        # which throws away the fact that the company was closed at all —
+        # and that fact is what pay for the day is worked out from. This
+        # keeps the closure and lifts the lock, which is the thing that
+        # was actually meant.
+        closure = tenant_get(ClosureDay, parse_int(request.form.get('closure_id')))
+        if not closure or closure.date != on_date:
+            return jsonify({'success': False,
+                            'messages': [{'category': 'error', 'text': 'Closure not found for this date.'}],
+                            'day': _day_payload(on_date)}), 200
+        closure.allow_attendance = True
+        db.session.commit()
+        return jsonify({'success': True,
+                        'messages': [{'category': 'success',
+                                      'text': 'Attendance unlocked for this closure day.'}],
+                        'day': _day_payload(on_date)})
     if action == 'remove':
         closure = tenant_get(ClosureDay, parse_int(request.form.get('closure_id')))
         if not closure or closure.date != on_date:
