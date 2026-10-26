@@ -1,26 +1,32 @@
-"""A tablet is not a very tall phone.
+"""The column is the device, at every width anyone actually holds.
 
-base.html wraps every screen in #mobile-app with max-w-sm — 24rem, 384px —
-and centres it. On a phone that is the whole screen and exactly right. On
-a tablet it stayed 384px however big the screen was, so the app became a
-phone-shaped strip down the middle: measured at 47% of an 820px portrait
-tablet and 30% of a 1280px landscape one, 448px of empty grey each side.
+base.html wrapped every screen in #mobile-app with max-w-sm — 24rem, a
+flat 384px — and centred it. 384px was a 2017 phone. Nothing since is
+384px wide, so every device showed a 384px app with grey either side:
 
-Nothing caught it because every piece of responsive work on this app went
-downwards. tests/test_narrow_screens.py holds the layout together at
-320px, and custom.css has nine media queries of which not one was a
-min-width. Nobody had ever looked above phone width.
+    393px phone     384px    98%
+    430px phone     384px    89%
+    600px tablet    384px    64%    108px of grey each side
+    820px tablet    384px    47%
 
-Two things are measured, and the second matters more than the first:
+The 600px row is the one that was reported, and 600px is not an unusual
+tablet — a 1200x1920 panel at 2x density reports exactly 600 CSS px. An
+earlier pass at this widened 820px and 1280px behind a min-width:768px
+query and so sailed straight over the commonest tablet width of all,
+which stayed at 384px. That is the trap this file exists to close: the
+table below runs from 360px to 1280px without a gap big enough to hide a
+real device in.
 
-  1. above the breakpoint the column actually widens, and no screen
-     overflows sideways at that width
-  2. below it nothing moved at all
+Two things are measured at each width:
 
-The second is the real guard. The fix is a min-width query precisely so
-the phone layout is untouched, and a change that quietly widened phones
-would be a worse bug than the one being fixed — these are site phones,
-and 384px is what they have.
+  1. the column is min(44rem at that root size, the screen) — i.e. the
+     device below ~800px, and a centred column above it
+  2. nothing overflows sideways, and the bottom bar is exactly as wide
+     as the content above it
+
+A 384px bar under a 792px column is the thing that looks broken even
+when the widths are each technically fine, so (2) is checked on every
+screen rather than once.
 
 What is deliberately NOT tested: that the layout is *good* on a tablet.
 It is roomier, not re-laid-out — the grids are still two across. A real
@@ -45,15 +51,20 @@ EXE = os.environ.get('UX_CHROME',
 PORT = 5147
 B = 'http://127.0.0.1:%d' % PORT
 
-# (label, width, root font size, the column's width in px)
+# (label, width, root font size, the cap in px at that root size)
 #
-# The column is 44rem above 768px and 24rem below it, so these widths are
-# that cap times the root size — 44 x 18 = 792, 44 x 20 = 880 — and they
-# are written out rather than computed so a change to either number has to
-# be made deliberately here too.
+# The cap is 44rem everywhere, so each of these is 44 x the root size —
+# 44 x 16 = 704, 44 x 17 = 748, 44 x 18 = 792, 44 x 20 = 880. They are
+# written out rather than computed so a change to either number has to be
+# made deliberately here too. Below ~800px the cap is larger than the
+# screen, so the column is simply the device; the min() at the comparison
+# does that arithmetic.
 VIEWS = [
-    ('phone 390', 390, 16, 384),
-    ('small tablet portrait 760', 760, 16, 384),   # just below the breakpoint
+    ('small phone 360', 360, 16, 704),
+    ('phone 390', 390, 16, 704),
+    ('large phone 430', 430, 16, 704),
+    ('tablet portrait 600', 600, 17, 748),     # 1200x1920 at 2x — the common one
+    ('tablet portrait 768', 768, 18, 792),
     ('tablet portrait 820', 820, 18, 792),
     ('tablet landscape 1280', 1280, 20, 880),
 ]

@@ -16,6 +16,14 @@ having:
 The second matters more than it sounds. A stale report is worse than none:
 it would say "Not marked" against a man who has just been marked, and
 invite marking him twice.
+
+The report opens for a date somebody chose, so this asks for one. A plain
+visit to /attendance no longer fetches a day at all — the roster, the
+counters and the date are already in the HTML the server sent, and asking
+for them again put "Loading <date>…" at the top of the one tab that exists
+for marking. ?date= is what every way of choosing a date produces: the
+calendar cells, the month arrows and the header's date field all navigate
+to it.
 """
 import os
 import subprocess
@@ -110,7 +118,8 @@ try:
         # Content-Security-Policy refuses.
 
         pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
-        pg.goto(B + '/attendance', wait_until='domcontentloaded')
+        pg.goto(B + '/attendance?date=' + today.isoformat(),
+                wait_until='domcontentloaded')
         pg.wait_for_timeout(2600)
 
         check('the report offers no status buttons',
@@ -121,7 +130,7 @@ try:
               pg.evaluate("document.querySelectorAll('.dv-times').length"), 0)
         check('the roster is still listed',
               pg.evaluate("document.querySelectorAll('.dv-row').length") > 0, True)
-        check('and the panel below is still the editor',
+        check('and the marking panel above it is still the editor',
               pg.evaluate("document.querySelectorAll('.ep-pill').length") > 0, True)
 
         before = pg.evaluate(READ, WHO)

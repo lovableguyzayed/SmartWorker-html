@@ -209,6 +209,11 @@ try:
         pg.wait_for_timeout(600)
         check('and unfolds when pressed',
               pg.evaluate("() => document.getElementById('cal-fold').open"), True)
+        # The day view fills for a date somebody chose. Tapping a cell
+        # navigates to ?date= and the panel loads for it; a plain visit to
+        # the tab asks the server for nothing it has already been sent.
+        pg.click('.cal-cell[data-date][role="gridcell"]')
+        pg.wait_for_timeout(2600)
         check('the day view offers no status buttons',
               pg.evaluate("() => document.querySelectorAll("
                           "'.dv-row button[data-status], .dv-row .dv-pill').length"), 0)

@@ -69,10 +69,17 @@
             </div>
         </div>
         
-        <!-- Calendar (shared partial — see templates/_calendar.html) -->
+        {# Calendar (shared partial — see templates/_calendar.html).
+
+           cal_link_search makes every day of this worker's month a way in
+           to it: tapping one opens the attendance screen for that date
+           with this worker's ID already in the search box, which is the
+           screen that marks. The month itself still marks nothing — it was
+           an inert picture before and it is a picture with doors now. #}
         {% with cal_month_start = start_date.replace(day=1),
                 cal_month = start_date.month, cal_year = start_date.year,
                 cal_data = calendar_data, cal_closures = closure_days,
+                cal_today = today, cal_link_search = worker.worker_id,
                 cal_interactive = false %}
             {% include '_calendar.html' %}
         {% endwith %}

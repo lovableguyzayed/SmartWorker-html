@@ -84,6 +84,20 @@ TRANSLATIONS = {
         'Half Day': 'आधा दिन',
         'Not marked': 'दर्ज नहीं',
         'Unmarked': 'दर्ज नहीं',
+        # A day the company was shut. Deliberately not 'दर्ज नहीं' — the
+        # whole point of the word is that nothing was missed.
+        'Closed': 'बंद',
+        'Nobody is expected on this date, so there is nothing to mark. '
+        'These workers are not counted as missing.':
+            'इस दिन किसी की ड्यूटी नहीं थी, इसलिए कुछ लगाना नहीं है। '
+            'ये मज़दूर ग़ैरहाज़िर नहीं गिने जाएँगे।',
+        'Somebody did work — allow marking on this day':
+            'किसी ने काम किया था — इस दिन हाज़िरी लगाने दें',
+        'Currently working': 'अभी काम पर',
+        'On the roll': 'रजिस्टर में',
+        'Look back over the month': 'पूरे महीने का हिसाब देखें',
+        'Pick a date above to see that day in full.':
+            'ऊपर कोई तारीख़ चुनें, उस दिन का पूरा ब्यौरा यहाँ दिखेगा।',
         'Paid Days': 'वेतन वाले दिन',
         'Mark Attendance': 'हाज़िरी लगाएँ',
         'All present': 'सब हाज़िर',
@@ -96,6 +110,7 @@ TRANSLATIONS = {
         'Check In': 'आने का समय',
         'Check Out': 'जाने का समय',
         'Closure Day': 'छुट्टी का दिन',
+        'open this date': 'यह तारीख़ खोलें',
         'Daily Attendance Management': 'रोज़ की हाज़िरी',
         'Select Date': 'तारीख़ चुनें',
         'Mark': 'लगाएँ',
