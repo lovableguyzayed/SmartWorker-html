@@ -83,8 +83,42 @@ function withCurrentCsrf(body) {
   return params.toString();
 }
 
+/* One drain at a time, and never two.
+ *
+ * Two 'online' events arriving close together — a phone finding the
+ * network, flapping, and finding it again, or the event racing the sync
+ * that DOMContentLoaded starts — had both handlers reach getQueuedItems()
+ * before either had deleted anything. Both read the same row, both posted
+ * it, both succeeded, and the item was written twice: a worker marked
+ * present twice, or a wage payment recorded twice. Then both deleted it,
+ * so the queue looked correct afterwards and nothing said otherwise.
+ *
+ * Found by tests/test_offline_queue.py, which fires the event by hand on
+ * top of the browser's own and asserts the row lands exactly once.
+ *
+ * `again` covers the honest case for a second run: something queued while
+ * a drain was in flight. It runs after, rather than alongside.
+ */
+let draining = false;
+let drainAgain = false;
+
 async function syncPendingItems() {
   if (!navigator.onLine) return;
+  if (draining) { drainAgain = true; return; }
+  draining = true;
+  try {
+    await drainQueue();
+    while (drainAgain) {
+      drainAgain = false;
+      await drainQueue();
+    }
+  } finally {
+    draining = false;
+    drainAgain = false;
+  }
+}
+
+async function drainQueue() {
   const items = await getQueuedItems();
   let synced = 0;
 
@@ -133,16 +167,47 @@ function showSyncToast(message, type = 'info') {
  * Tested offline in a browser: the fetch threw TypeError, the queue was
  * empty, and nothing reached the server when the signal came back.
  *
- * Only attendance writes are queued. Replaying a payroll run or a delete
- * after the fact would be dangerous, and those are not what a supervisor
- * does standing in a field.
+ * Only what somebody does standing in a field with a phone is queued, and
+ * only things that add a row. Replaying a payroll run, a cancel or a
+ * delete after the fact would be dangerous — the state they were deciding
+ * against is hours old by the time the signal returns — and none of them
+ * is done at a gate.
+ *
+ * Money was added to this list after the scanner learned to record it. A
+ * wage payment handed over at the gate is the same shape of act as marking
+ * somebody present: it happens where there is no signal, it appends one
+ * row, and losing it silently is worse than sending it late. Before this
+ * the scanner's payment simply threw on a dead network and nothing was
+ * stored, which is precisely the failure the attendance queue exists to
+ * prevent.
  * ------------------------------------------------------------------- */
 const OFFLINE_QUEUEABLE = [
   '/api/mark_attendance',
   '/mark_attendance',
   '/api/attendance/bulk',
   '/api/attendance/times',
+  // Advances and wages recorded at the gate.
+  //
+  // The worker's confirmation is deliberately NOT here. It is
+  // /api/transaction_ack/<id>, and a queued payment has no id yet — the
+  // row does not exist until the queue drains. Queuing an acknowledgement
+  // would mean storing a confirmation of something that has not been
+  // written, against an id that will never match. Offline, the payment is
+  // saved and the confirmation is taken the next time both people are in
+  // front of the phone with a signal.
+  '/api/worker_transaction',
 ];
+
+/* What to tell the person, per endpoint. "Attendance saved on this phone"
+ * on a payment would be a small lie at exactly the moment they are
+ * watching to see their money recorded. */
+const QUEUED_AS = {
+  '/api/worker_transaction': 'Payment saved on this phone',
+};
+
+function queuedDescription(path) {
+  return QUEUED_AS[path] || 'Attendance saved on this phone';
+}
 
 function isQueueable(url, method) {
   if ((method || 'GET').toUpperCase() !== 'POST') return false;
@@ -189,12 +254,13 @@ function interceptOfflineFetch() {
     }
 
     const body = await bodyToString(init && init.body);
-    await queueRequest(new URL(url, window.location.origin).pathname,
-                       'POST', body, 'Attendance saved on this phone');
+    const path = new URL(url, window.location.origin).pathname;
+    const saved = queuedDescription(path);
+    await queueRequest(path, 'POST', body, saved);
     await updateOfflineUI();
-    showSyncToast('No internet. Attendance saved on this phone and will upload automatically.',
-                  'warning');
-    return queuedResponse('Attendance saved on this phone');
+    showSyncToast('No internet. ' + saved +
+                  ' and will upload automatically.', 'warning');
+    return queuedResponse(saved);
   };
 }
 

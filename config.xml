@@ -68,6 +68,16 @@
          cordova-plugin-splashscreen, which no longer installs (see the splash
          note above), so none of them affected startup. The system splash
          dismisses itself when the first frame is ready. -->
+    <!-- The QR scanner's camera preview. An Android WebView defaults to
+         setMediaPlaybackRequiresUserGesture(true), so <video>.play() is
+         refused unless a tap is in progress — and html5-qrcode starts the
+         preview from its own callback, not from the tap. The camera opens,
+         the permission is granted, the stream is attached, and the element
+         renders black: no error anywhere, because nothing failed. It only
+         ever did this in the APK; a browser has no such rule, which is why
+         every test of the scanner passed. -->
+    <preference name="MediaPlaybackRequiresUserAction" value="false" />
+
     <preference name="LoadUrlTimeoutValue" value="60000" />
     <preference name="KeepRunning" value="true" />
 

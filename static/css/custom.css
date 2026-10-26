@@ -54,36 +54,18 @@ input, textarea, [contenteditable="true"] {
     user-select: text;
 }
 
-/* ── "It is coming": a hairline, not a blanked screen ──
-   Creeps toward the right and never reaches it, because it has no idea how
-   far along the request is and a bar that completes and then waits is a
-   worse lie than one that is still moving. */
-@keyframes navProgress {
-    from { transform: scaleX(0); }
-    to   { transform: scaleX(0.9); }
-}
-#nav-progress {
-    position: fixed;
-    top: 0; left: 50%;
-    width: 100%; max-width: 24rem;
-    margin-left: -12rem;
-    height: 2px;
-    z-index: 70;
-    background: #007bff;                  /* the accent, as bg-accent compiles it */
-    transform-origin: left center;
-    animation: navProgress 2.4s cubic-bezier(.1,.6,.3,1) forwards;
-}
-/* Narrow screens: max-width already caps it, so centre on the viewport. */
-@media (max-width: 24rem) {
-    #nav-progress { left: 0; margin-left: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-    #nav-progress { animation: none; transform: scaleX(0.3); }
-}
+/* ── Nothing is drawn while a screen is on its way ──
+   A grey skeleton lived here, then a blue hairline. Both had the same
+   fault: every screen in this app is fetched from the host, so an
+   indicator timed to appear "when it is slow" was on screen for most of
+   most navigations — and something nearly always visible is not an
+   indicator, it is the resting state. A resting state that looks like
+   loading is the buffering feeling it was meant to prevent.
 
-/* The skeleton shimmer that used to live here is gone. However long the
-   wait, the screen the reader is already on is the honest thing to show,
-   and the hairline above says the tap was heard. */
+   The acknowledgement a native app gives is the control responding under
+   the finger, which is the rule immediately below, and it costs nothing
+   because it is CSS with no delay to tune. #nav-progress and its keyframes
+   are gone from here and from app.js together. */
 
 /* ── Nav tap feedback: instant highlight ── */
 .app-nav-item:active,
