@@ -586,6 +586,20 @@ TRANSLATIONS = {
         'paid': 'दे दिया',
         'pending': 'बाक़ी',
         'Generate / Refresh Payroll': 'वेतन बनाएँ / ताज़ा करें',
+        # The saved record has fallen behind what the month is now worth.
+        'Saved figures are behind for %n worker(s).':
+            '%n मज़दूर के सेव किए हुए आँकड़े पीछे रह गए हैं।',
+        'The amounts below are up to date. Generate payroll again so the '
+        'saved records and payslips match them.':
+            'नीचे दिखाई दे रही रक़में सही हैं। वेतन दोबारा बनाइए ताकि सेव किया '
+            'हुआ रिकॉर्ड और पर्ची भी इन्हीं से मिल जाएँ।',
+        '%n worker(s) already have money paid against this month.':
+            'इस महीने का भुगतान %n मज़दूर को हो चुका है।',
+        "Generating payroll leaves their saved records alone. Anything "
+        "recorded since is in the worker's account.":
+            'वेतन बनाने से उनका सेव किया हुआ रिकॉर्ड नहीं बदलता। उसके बाद का '
+            'हिसाब मज़दूर के खाते में दर्ज है।',
+        'See what would change': 'क्या बदलेगा, देखिए',
         'Saves the latest calculation for every active worker this month. '
         'Months already marked Paid are left untouched.':
             'इस महीने के हर चालू मज़दूर का ताज़ा हिसाब सेव करता है। '
@@ -1579,10 +1593,34 @@ def _hi_money(shape):
 _FLASH_PATTERNS_SOURCE = {
     'hi': [
         # Notes the day view paints from JSON rather than raising as a flash.
+        #
+        # The first of these is dead wording kept on purpose: it was the
+        # message a Hindi screen showed in English, which is why this whole
+        # file's flash layer exists. routes.py no longer raises it — a
+        # generated month that nobody has been paid for needs no warning,
+        # because the figure follows the money by itself — but a phone that
+        # has the old page cached still can.
         (r'^Payroll for (.+?) has already been generated\. '
          r'Re-generate it so this change is reflected in pay\.$',
          r'\1 का वेतन पहले ही बन चुका है। यह बदलाव पे में दिखे, '
          r'इसके लिए वेतन दोबारा बनाएँ।'),
+        # What replaced it: said only once money has gone out, because that
+        # is the only case where the pay does not follow by itself.
+        (r'^(.+?) has already been paid in full for (.+?), so that '
+         r"month's payroll figure stays as it is\. "
+         r'The amount is recorded in their account\.$',
+         r'\2 को \1 का पूरा भुगतान हो चुका है, इसलिए उस महीने का वेतन वैसा ही '
+         r'रहेगा। यह रक़म उनके खाते में दर्ज है।'),
+        (r'^(.+?) already has money paid against it for (.+?), so generating '
+         r"payroll leaves that month's saved record alone\. "
+         r'The amount is recorded in their account\.$',
+         r'\2 को \1 का कुछ भुगतान हो चुका है, इसलिए वेतन बनाने से उस महीने का '
+         r'सेव किया हुआ रिकॉर्ड नहीं बदलेगा। यह रक़म उनके खाते में दर्ज है।'),
+        (r'^(\d+) worker\(s\) already have money paid against (.+?)\. '
+         r'Their payroll figures stay as they are; '
+         r'everyone else recalculates on sight\.$',
+         r'\2 का भुगतान \1 मज़दूर को हो चुका है। उनके आँकड़े वैसे ही रहेंगे; '
+         r'बाक़ी सबका हिसाब अपने आप ताज़ा होता रहता है।'),
         (r'^(.+?) had not joined on this date\.$',
          r'\1 इस तारीख़ को भर्ती नहीं हुए थे।'),
         (r'^Attendance is locked for (.+?) on this closure day\.$',
@@ -1614,6 +1652,10 @@ _FLASH_PATTERNS_SOURCE = {
          r'\1 की तनख़्वाह बदल दी गई। वेतन अपने-आप दोबारा जुड़ जाएगा।'),
         (r'^Transaction (.+?)\. Payroll updates automatically\.$',
          r'लेन-देन \1। वेतन अपने-आप बदल जाएगा।'),
+        # Without the promise, for a month that already has money paid
+        # against it: the warning that follows says why, so repeating
+        # "the pay updates by itself" here would contradict it.
+        (r'^Transaction (.+?)\.$', r'लेन-देन \1।'),
         (r'^Worker (.+?) added successfully with ID: (.+)$',
          r'मज़दूर \1 जुड़ गया, आईडी: \2'),
         (r'^Worker (.+?) updated successfully$', r'मज़दूर \1 की जानकारी बदल गई'),
@@ -1631,6 +1673,11 @@ _FLASH_PATTERNS_SOURCE = {
          _hi_money('{2} के लिए {0} {1} दर्ज कर लिया गया।')),
         (r'^(.+?) of ₹(\S+) saved for (.+?)\. Payroll updates automatically\.$',
          _hi_money('{2} के लिए {0} ₹{1} सेव हुआ। वेतन अपने-आप बदल जाएगा।')),
+        # Same message on a month that has money paid against it. The
+        # sentence about the pay is left off, because the warning raised
+        # beside it says what actually happens.
+        (r'^(.+?) of ₹(\S+) saved for (.+?)\.$',
+         _hi_money('{2} के लिए {0} ₹{1} सेव हुआ।')),
         (r'^(.+?) deleted successfully\.$', r'\1 हटा दिया गया।'),
         (r'^(.+?) name is required\.$', r'\1 का नाम ज़रूरी है।'),
         (r'^(.+?) saved successfully\.$', r'\1 सेव हो गया।'),

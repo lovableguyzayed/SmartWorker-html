@@ -60,6 +60,53 @@
         </div>
     </section>
 
+    {# What is stored against this month, against what it is worth today.
+       Both numbers were already in hand — net_pay on this screen has always
+       been the fresh one — but nothing ever said that the saved record had
+       fallen behind it, so an advance recorded after a generate changed the
+       figure on screen and not the payslip, and an advance recorded against
+       a month that had been paid out changed neither and said nothing at
+       all. The preview screen has compared the two all along; it just had
+       no reason to be opened. #}
+    {% if stale_count or locked_count %}
+    <section class="bg-amber-50 border border-amber-200 rounded-3xl p-4">
+        <div class="flex items-start gap-3">
+            <i class="fa-solid fa-triangle-exclamation text-amber-700 mt-0.5"></i>
+            <div class="min-w-0">
+                {% if stale_count %}
+                {# %n, not %(n)d: _() here takes one argument and does no
+                   interpolation of its own, and the sentence has to stay
+                   whole for the translator. Same convention as the bulk
+                   action confirmations. #}
+                <p class="text-sm font-semibold text-amber-900">
+                    {{ _('Saved figures are behind for %n worker(s).')|replace('%n', stale_count) }}
+                </p>
+                <p class="text-sm text-amber-800 mt-1">
+                    {{ _('The amounts below are up to date. Generate payroll again so the saved records and payslips match them.') }}
+                </p>
+                {% endif %}
+                {% if locked_count %}
+                <p class="text-sm font-semibold text-amber-900 {{ 'mt-3' if stale_count }}">
+                    {{ _('%n worker(s) already have money paid against this month.')|replace('%n', locked_count) }}
+                </p>
+                {# Deliberately says nothing about the figure on screen: a
+                   fully paid row is frozen and shows what was paid, while a
+                   part-paid one still recomputes and shows today's number.
+                   What is true of both is that generating skips them. #}
+                <p class="text-sm text-amber-800 mt-1">
+                    {{ _('Generating payroll leaves their saved records alone. Anything recorded since is in the worker\'s account.') }}
+                </p>
+                {% endif %}
+                <a href="{{ url_for('payroll_preview', month=month, year=year) }}"
+                   class="inline-flex items-center mt-3 text-sm font-semibold text-amber-900 underline">
+                    <i class="fa-solid fa-magnifying-glass-dollar mr-2"></i>
+                    {{ _('See what would change') }}
+                </a>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
     <!-- Generate / Refresh -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div>

@@ -3102,6 +3102,12 @@ def _build_payroll_rows(month, year):
             record_id = None
             record_settled = 0.0
 
+        # Kept before the freeze below swaps in the stored figures, so a
+        # caller can still ask "what would this month be worth today" of a
+        # row that is showing what it was worth when it was paid. That
+        # difference is what the payroll screen's out-of-date banner counts.
+        fresh_net = net_pay
+
         # A finalised month shows what was actually paid, not what today's
         # rules would produce. Without this, changing a salary policy
         # rewrote the figures on months that had already been settled.
@@ -3136,6 +3142,12 @@ def _build_payroll_rows(month, year):
             'gross_pay': gross_pay,
             'deductions': deductions,
             'net_pay': net_pay,
+            # What today's attendance and transactions make the month worth,
+            # and what is stored against it. Equal on an ordinary row,
+            # because net_pay is the fresh figure; they part company once a
+            # month has been paid out and frozen.
+            'fresh_net': round(fresh_net, 2),
+            'saved_net': float(existing_record.net_pay or 0) if existing_record else None,
             'status': record_status,
             'record_id': record_id,
             'settled': record_settled,
@@ -3184,6 +3196,24 @@ def payroll():
 
     rows, totals, _ = _build_payroll_rows(month, year)
 
+    # Two ways a row can disagree with what is stored against it, counted
+    # over the whole roster rather than the page, because "is this month's
+    # payroll right" is not a question about page 2.
+    #
+    #   stale  — the stored row is behind, and a generate will update it.
+    #            The screen itself already shows the fresh figure, so this
+    #            is about the payslip and the saved record, not the number
+    #            being read. Nothing warned about it before.
+    #   locked — money has gone out against the month, so the figure is
+    #            deliberately held and a generate skips the row. Saying
+    #            "press generate" here would be advice that does nothing.
+    stale = sum(1 for r in rows
+                if r['saved_net'] is not None and r['settled'] <= 0
+                and abs(r['fresh_net'] - r['saved_net']) > 0.009)
+    locked = sum(1 for r in rows
+                 if r['settled'] > 0
+                 and abs(r['fresh_net'] - (r['saved_net'] or 0)) > 0.009)
+
     # The totals stay whole-roster on purpose: "what does this month cost" is
     # the figure an employer needs, and a per-page subtotal would be a
     # different and much less useful number. Computing them is cheap — 341ms
@@ -3221,6 +3251,8 @@ def payroll():
         shown_from=start + 1 if total_rows else 0,
         shown_to=min(start + PAYROLL_PER_PAGE, total_rows),
         total_rows=total_rows,
+        stale_count=stale,
+        locked_count=locked,
     )
 
 
@@ -3742,6 +3774,9 @@ def supervisor_transaction():
     ))
     db.session.commit()
     flash(f'{label} of ₹{amount:,.2f} added for {worker.full_name}.', 'success')
+    effect = _payroll_effect_note(worker, on_date)
+    if effect:
+        flash(effect, 'warning')
     return redirect(back)
 
 
@@ -4727,7 +4762,22 @@ def transactions_save():
     db.session.commit()
 
     label = TRANSACTION_TYPE_LABELS[txn_type]
-    flash(f'{label} of ₹{amount:,.2f} saved for {worker.full_name}. Payroll updates automatically.', 'success')
+    # "Payroll updates automatically" used to be said unconditionally here,
+    # and it is true for every month that has not been paid out — but on a
+    # settled month the figure does not move and saying otherwise is how
+    # somebody records an advance, looks at payroll, and finds nothing.
+    #
+    # Two flashes rather than one built with `+`: tests/test_flash_messages
+    # reads these calls with ast and only follows literals, so a message
+    # assembled around an `or` would quietly stop being checked for a Hindi
+    # translation — which is the exact bug that test was written for.
+    note = _payroll_effect_note(worker, txn_date)
+    if note:
+        flash(f'{label} of ₹{amount:,.2f} saved for {worker.full_name}.', 'success')
+        flash(note, 'warning')
+    else:
+        flash(f'{label} of ₹{amount:,.2f} saved for {worker.full_name}. '
+              f'Payroll updates automatically.', 'success')
     return redirect(redirect_to)
 
 @app.route('/transactions/<int:txn_id>/cancel', methods=['POST'])
@@ -4737,7 +4787,12 @@ def transactions_cancel(txn_id):
     txn.status = 'cancelled' if txn.status == 'active' else 'active'
     db.session.commit()
     state = 'cancelled' if txn.status == 'cancelled' else 'restored'
-    flash(f'Transaction {state}. Payroll updates automatically.', 'success')
+    note = _payroll_effect_note(txn.worker, txn.date) if txn.worker else None
+    if note:
+        flash(f'Transaction {state}.', 'success')
+        flash(note, 'warning')
+    else:
+        flash(f'Transaction {state}. Payroll updates automatically.', 'success')
     return redirect(safe_redirect_target(request.form.get('redirect_to'), url_for('transactions')))
 
 def _ack_describer():
@@ -5369,13 +5424,83 @@ def _date_editability(on_date):
     return True, 'ok', ''
 
 
-def _payroll_lock_note(on_date):
-    """Warn when editing a month whose payroll has already been generated."""
-    saved = PayrollRecord.query.filter_by(month=on_date.month, year=on_date.year).first()
-    if not saved:
+def _month_is_settled(record):
+    """Has any money gone out against this saved payroll month?
+
+    The one question that decides whether a later change reaches the pay.
+    payroll_save skips a record whose settled_amount is above zero — once
+    money has been handed over, recalculating could put the net below what
+    was paid and the month would read as overpaid because a rule changed —
+    and _build_payroll_rows shows the saved figures rather than today's for
+    the same reason. Below that line everything recomputes on sight.
+    """
+    return bool(record) and (record.settled_amount or 0) > 0
+
+
+def _payroll_effect_note(worker, on_date):
+    """What recording money or attendance on this date does to the pay.
+
+    None when the month's figure follows the change by itself, which is
+    the ordinary case: the payroll screen recomputes every unsettled row
+    on every visit, so an advance taken on the 15th is on the screen
+    before the page finishes loading. Measured: a pending October row went
+    from ₹1,600 to ₹900 the moment a ₹2,500 advance was saved, with no
+    generate in between.
+
+    A sentence when it does not. That happens only once money has gone out
+    against the month — and then the honest thing to say is not "press
+    generate again", because generate deliberately skips exactly those
+    rows. The amount is not lost: the ledger allocates every advance and
+    every payment against the months they belong to regardless, which is
+    what the worker's account screen shows.
+
+    This replaced a note that fired on *any* saved payroll row and told
+    people to re-generate. For a pending month that was advice to fix
+    something that was not broken, and for a settled one it was advice
+    that does nothing.
+    """
+    record = PayrollRecord.query.filter_by(
+        worker_id=worker.id, month=on_date.month, year=on_date.year).first()
+    if not _month_is_settled(record):
         return None
-    return (f'Payroll for {MONTH_NAMES[on_date.month - 1]} {on_date.year} has already been '
-            f'generated. Re-generate it so this change is reflected in pay.')
+    # Fully paid and part paid are both held against a generate — payroll_save
+    # tests settled_amount, not the status — but they do not look the same on
+    # the screen, and this app part-settles months on purpose.
+    #
+    #   paid     the row is frozen, so the figure does not move at all
+    #   partial  the row still recomputes, so the figure does move; what
+    #            cannot be refreshed is the stored record behind it
+    #
+    # One sentence for both would have to be wrong about one of them.
+    month = f'{MONTH_NAMES[on_date.month - 1]} {on_date.year}'
+    if record.payment_state == 'paid':
+        return (f'{month} has already been paid in full for {worker.full_name}, '
+                f'so that month\'s payroll figure stays as it is. '
+                f'The amount is recorded in their account.')
+    return (f'{month} already has money paid against it for {worker.full_name}, '
+            f'so generating payroll leaves that month\'s saved record alone. '
+            f'The amount is recorded in their account.')
+
+
+def _payroll_lock_note(on_date):
+    """The same warning for a screen that is showing a whole roster.
+
+    The day view covers every worker on a date, so it cannot name one.
+    Fires only when somebody on the roster has been paid for that month,
+    for the reason written up in _payroll_effect_note.
+    """
+    # Counted in Python, not in the WHERE clause: settled_amount is a
+    # property, not a column — it falls back to net_pay for a legacy row
+    # that carries the answer only in its status. A month holds at most one
+    # row per worker, so this is one query either way.
+    settled = sum(1 for record in PayrollRecord.query.filter_by(
+        month=on_date.month, year=on_date.year).all()
+        if _month_is_settled(record))
+    if not settled:
+        return None
+    return (f'{settled} worker(s) already have money paid against '
+            f'{MONTH_NAMES[on_date.month - 1]} {on_date.year}. Their payroll '
+            f'figures stay as they are; everyone else recalculates on sight.')
 
 
 def _log_attendance_edit(worker, on_date, field, old_value, new_value):
@@ -5617,7 +5742,9 @@ def api_attendance_times():
     db.session.commit()
 
     messages = [{'category': 'success', 'text': f'Times updated for {worker.full_name}.'}]
-    note = _payroll_lock_note(on_date)
+    # This edit is about one worker, so the note can name them rather than
+    # reporting on the whole roster the way the day panel's banner does.
+    note = _payroll_effect_note(worker, on_date)
     if note:
         messages.append({'category': 'warning', 'text': note})
     return jsonify({'success': True, 'messages': messages, 'day': _day_payload(on_date)})
@@ -5654,7 +5781,7 @@ def api_attendance_transaction():
 
     messages = [{'category': 'success',
                  'text': f'{TRANSACTION_TYPE_LABELS[txn_type]} of ₹{amount:.2f} added for {worker.full_name}.'}]
-    note = _payroll_lock_note(on_date)
+    note = _payroll_effect_note(worker, on_date)
     if note:
         messages.append({'category': 'warning', 'text': note})
     return jsonify({'success': True, 'messages': messages, 'day': _day_payload(on_date)})
@@ -5883,11 +6010,18 @@ def api_worker_transaction():
         )
 
     db.session.commit()
+    booked = [{'category': 'success',
+               'text': f'{label} {money.money(amount)} recorded for '
+                       f'{worker.full_name}.'}]
+    # At the gate as much as anywhere: if that month has been paid out, the
+    # payroll figure will not move and the person holding the phone should
+    # hear it now rather than wonder later.
+    effect = _payroll_effect_note(worker, on_date)
+    if effect:
+        booked.append({'category': 'warning', 'text': effect})
     return jsonify({
         'success': True,
-        'messages': [{'category': 'success',
-                      'text': f'{label} {money.money(amount)} recorded for '
-                              f'{worker.full_name}.'}],
+        'messages': booked,
         'transaction': {
             'id': txn.id,
             'type': txn_type,
