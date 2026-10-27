@@ -97,8 +97,13 @@
                     {{ _('Generating payroll leaves their saved records alone. Anything recorded since is in the worker\'s account.') }}
                 </p>
                 {% endif %}
+                {# py-3, so the link is a 44px target rather than a 20px one
+                   — measured at 183x20 by tests/test_tap_targets.py, which
+                   is the whole reason that test exists. The margin above
+                   comes down by the same amount the padding adds, so the
+                   spacing reads as it did. #}
                 <a href="{{ url_for('payroll_preview', month=month, year=year) }}"
-                   class="inline-flex items-center mt-3 text-sm font-semibold text-amber-900 underline">
+                   class="inline-flex items-center mt-1 py-3 text-sm font-semibold text-amber-900 underline">
                     <i class="fa-solid fa-magnifying-glass-dollar mr-2"></i>
                     {{ _('See what would change') }}
                 </a>
