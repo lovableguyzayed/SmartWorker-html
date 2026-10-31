@@ -406,17 +406,26 @@ def compute(worker, policy, records, period_start: date, period_end: date,
             'Absence deduction is switched off, so %d absent day(s) were not charged.'
             % counts['absent']
         )
-    # Said either way round, because a day nobody marked is worth knowing
-    # about whichever answer the employer has chosen for it.
+    # Only when it changed the money.
+    #
+    # This said it both ways round at first — the paid case too, so that a
+    # gap in the marking was visible whatever the policy. On the default
+    # policy that is every payslip of every month still running, saying
+    # that something did not happen. The explanation under the salary
+    # table had been tuned to exactly five lines, with the print
+    # stylesheet squeezed to keep the slip on two sheets; a sixth line
+    # took every payslip and every worker report to three, the last of
+    # them nearly empty. tests/test_print_pages.py counts the sheets and
+    # caught it.
+    #
+    # The count is in the breakdown either way (`unmarked_days`), so a
+    # screen that wants to show "8 days were never marked" still can. A
+    # payslip explains how the figure was reached, and on the paid setting
+    # these days did not reach it.
     if charge_unmarked:
         explanation.append(
             '%d day(s) of this month were never marked and are charged as '
             'absences.' % unmarked_days
-        )
-    elif unmarked_days:
-        explanation.append(
-            '%d day(s) of this month were never marked. They are paid, '
-            'because unmarked days are set to count as paid.' % unmarked_days
         )
     if counts['before_joining']:
         explanation.append(

@@ -99,9 +99,12 @@ check('five days nobody marked costs nothing', gap['net_payable'], 23000.0)
 check('and the setting says why', gap['unmarked_days_policy'], 'paid')
 check('the days are still counted and reported', gap['unmarked_days'], 5)
 check('but none of them was charged', gap['charged_unmarked_days'], 0)
-check('and the payslip says so out loud',
-      any('never marked' in line and 'paid' in line
-          for line in gap['explanation']), True)
+# Deliberately NOT said on the payslip. The explanation is how the figure
+# was reached, and on this setting these days did not reach it; saying so
+# anyway added a sixth line to a block tuned for five and took every slip
+# to a third, nearly empty sheet (tests/test_print_pages.py).
+check('the payslip does not explain a day that cost nothing',
+      any('never marked' in line for line in gap['explanation']), False)
 
 print('\n--- the same five marked Absent, for the comparison ---')
 marked_absent = [FakeRecord(date(2026, 9, d)) for d in range(1, 31)
