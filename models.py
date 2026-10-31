@@ -651,6 +651,11 @@ class SalaryPolicy(db.Model):
     leave_carry_forward = db.Column(db.Boolean, default=False)
     absence_deduction_enabled = db.Column(db.Boolean, default=False)
     calculation_method = db.Column(db.String(28), default='salary_minus_deductions')
+    #: What a day with no attendance row at all is worth: 'paid' or
+    #: 'absent'. See salary.UNMARKED_DAYS. Defaults to 'paid', which is what
+    #: the app did before this column existed, so no account's figures move
+    #: until an employer chooses otherwise.
+    unmarked_days = db.Column(db.String(8), default='paid')
 
     created_at = db.Column(db.DateTime, default=now_ist)
     updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)

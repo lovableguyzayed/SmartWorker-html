@@ -312,6 +312,12 @@ SCHEMA_PATCHES = {
         ('can_mark_attendance', "BOOLEAN NOT NULL DEFAULT 0"),
         ('can_record_transactions', "BOOLEAN NOT NULL DEFAULT 0"),
     ],
+    'salary_policies': [
+        # What a day with no attendance row is worth. 'paid' is what the
+        # engine did before the column existed, so an account that never
+        # opens the setting keeps the figures it already had.
+        ('unmarked_days', "VARCHAR(8) DEFAULT 'paid'"),
+    ],
     'closure_days': [
         ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),
         ('scope', "VARCHAR(20) DEFAULT 'company'"),

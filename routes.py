@@ -381,6 +381,32 @@ def calculate_overtime_minutes_for_record(worker, attendance_record):
 def get_late_grace_minutes(worker):
     return max(parse_int(getattr(worker, 'late_grace_minutes', 10), 10), 0)
 
+def worked_a_night_shift(attendance_record):
+    """Did this day's shift run past midnight?
+
+    A worker record carries exactly one shift — start_time and end_time —
+    and a crusher runs two. So for anybody on nights, that one shift is the
+    wrong thing to measure against, and the app needs to notice before it
+    measures.
+
+    Two ways to tell, because only one of them is ever filled in. The
+    attendance row has a `shift` column that the seeder writes ('day' or
+    'night') and nothing else in the app does, so a row marked through the
+    screens carries None; a check-out at or before the check-in on the
+    clock means the shift crossed midnight, which is true whoever wrote
+    the row.
+    """
+    if not attendance_record:
+        return False
+    if (attendance_record.shift or '').strip().lower() == 'night':
+        return True
+    check_in = attendance_record.check_in_time
+    check_out = attendance_record.check_out_time
+    if not check_in or not check_out:
+        return False
+    return check_out.time() <= check_in.time()
+
+
 def calculate_late_minutes_for_record(worker, attendance_record):
     if (
         not attendance_record
@@ -390,13 +416,64 @@ def calculate_late_minutes_for_record(worker, attendance_record):
     ):
         return 0
 
+    # A night is not twelve hours of lateness.
+    #
+    # This measured the check-in against worker.start_time whatever shift
+    # was worked. Javed is on 08:00-20:00 and moved to nights on 21
+    # October, clocking in at 20:00 — so every night came out 720 minutes
+    # late, and his October read 2,160. Nothing was deducted only because
+    # his late policy happens to be off; with late deduction set per hour
+    # the same month lost ₹1,800, measured.
+    #
+    # There is no night-shift start anywhere to measure against — a worker
+    # holds one shift — so the honest answer is that lateness is unknown
+    # for that day, not that it was half a day. Giving a worker a second
+    # shift to be judged against is the real fix and is a larger change
+    # than this.
+    if worked_a_night_shift(attendance_record):
+        return 0
+    if started_another_shift(worker, attendance_record.check_in_time):
+        return 0
+
     shift_start = datetime.combine(attendance_record.date, worker.start_time)
     late_minutes = int((attendance_record.check_in_time - shift_start).total_seconds() // 60)
     return max(late_minutes, 0)
 
+
+def started_another_shift(worker, check_in_time):
+    """Is this check-in for a later shift rather than a late arrival?
+
+    Somebody clocking in at 20:00 against an 08:00-20:00 shift has not
+    turned up twelve hours late for the day shift; the day shift is over
+    and they are starting the night one. Lateness is about arriving after
+    your shift began, and this is a check-in after it ended.
+
+    This is the live half of the same problem worked_a_night_shift covers
+    retrospectively: at the gate there is no check-out yet, and nothing in
+    the app writes the shift column, so a tap at 20:00 has only the clock
+    to go on.
+
+    Only for a shift that lies inside one day. A worker whose own shift is
+    the night one (start 20:00, end 08:00) has start after end, and every
+    check-in would look like it came after the end.
+    """
+    if not worker.start_time or not worker.end_time or not check_in_time:
+        return False
+    if worker.end_time <= worker.start_time:
+        return False          # the worker's own shift already crosses midnight
+    return check_in_time.time() >= worker.end_time
+
 def is_late_check_in(worker, attendance_date, check_in_time):
-    """True when a check-in falls after shift start plus grace time."""
+    """True when a check-in falls after shift start plus grace time.
+
+    A check-in that lands after the shift has ended is somebody starting
+    the next shift, not arriving late for the one that finished — see
+    started_another_shift. Without that test, moving a crusher hand onto
+    nights marked them Late every single night.
+    """
     if not worker.start_time or not check_in_time:
+        return False
+    if started_another_shift(worker, check_in_time):
         return False
     shift_start = datetime.combine(attendance_date, worker.start_time)
     return check_in_time > shift_start + timedelta(minutes=get_late_grace_minutes(worker))
@@ -1680,6 +1757,67 @@ def _attendance_closures_in_period(period_start, period_end):
     return cache[key]
 
 
+def _closures_in_period(period_start, period_end):
+    """Every closure in the period, cached per request.
+
+    _attendance_closures_in_period above returns only the ones that still
+    allow attendance, because that is what closure bonus pay is about.
+    Counting days nobody marked needs the other kind too — a day the plant
+    was shut is the one day nobody can be charged for.
+    """
+    cache = getattr(g, '_all_closure_period_cache', None)
+    if cache is None:
+        cache = g._all_closure_period_cache = {}
+    key = (period_start, period_end)
+    if key not in cache:
+        cache[key] = ClosureDay.query.filter(
+            ClosureDay.date >= period_start,
+            ClosureDay.date <= period_end,
+        ).all()
+    return cache[key]
+
+
+def count_unmarked_days(worker, records, period_start, period_end):
+    """Days of this period that went by with no attendance row at all.
+
+    Counted here rather than in salary.py because it needs today's date
+    and the closure calendar, and that module is deliberately kept clear
+    of both. What it answers is "how many days did nobody record", which
+    is a fact about the month whatever the employer then does with it.
+
+    Three kinds of day are never counted, and each one would be unfair in
+    a different way:
+
+      * days still to come. Docking somebody on the 12th for the 20th is
+        not a policy, it is a bug. The window stops at today.
+      * days before they joined. They were not employed.
+      * days the plant was shut with attendance locked. Nobody could come
+        in, so nobody can be marked absent for it. A closure that still
+        allows attendance is an ordinary working day here, because work
+        was possible on it.
+    """
+    start = period_start
+    if worker.join_date and worker.join_date > start:
+        start = worker.join_date
+    end = min(period_end, today_ist())
+    if end < start:
+        return 0
+
+    marked = {r.date for r in (records or []) if r.date}
+    shut = {
+        c.date for c in _closures_in_period(period_start, period_end)
+        if not c.allow_attendance and closure_applies_to_worker(c, worker)
+    }
+
+    unmarked = 0
+    day = start
+    while day <= end:
+        if day not in marked and day not in shut:
+            unmarked += 1
+        day += timedelta(days=1)
+    return unmarked
+
+
 def resolve_salary_policy(worker):
     """The salary policy in force for one worker, cached per request.
 
@@ -1822,7 +1960,9 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         carried = leave_balance['balance_before'] if leave_balance else 0.0
         salary_breakdown = salary.compute(
             worker, policy, attendance_records, period_start, period_end,
-            carried_leave_balance=carried)
+            carried_leave_balance=carried,
+            unmarked_days=count_unmarked_days(worker, attendance_records,
+                                              period_start, period_end))
 
         base_pay = salary_breakdown['gross_eligible_salary']
         leave_deductions = salary_breakdown['deduction_amount']
@@ -6340,6 +6480,7 @@ def _salary_policy_from_form(form, prefix=''):
         'leave_carry_forward': field('leave_carry_forward') == 'on',
         'absence_deduction_enabled': field('absence_deduction_enabled') == 'on',
         'calculation_method': field('calculation_method'),
+        'unmarked_days': field('unmarked_days'),
     }
     rate = (field('deduction_rate') or '').strip()
     # Blank means "derive it from the salary"; the engine reads None that way.
