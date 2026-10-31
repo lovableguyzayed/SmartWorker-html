@@ -39,6 +39,21 @@ ROUNDING = ('none', 'nearest', 'up', 'down')
 JOINING_MODE = ('calendar', 'attendance')     # spec's Method B and Method A
 CALC_METHOD = ('salary_minus_deductions', 'rate_times_payable_days')
 
+#: What a day with no attendance row at all is worth.
+#:
+#: 'paid'   the day costs nothing. Only a day somebody marked Absent is
+#:          deducted. This is what the app has always done, and it is a
+#:          real policy — plenty of employers pay the salary and dock only
+#:          what they deliberately record.
+#: 'absent' a past day nobody marked is charged like any other absence.
+#:
+#: The difference is not small and it is silent: a month with five days
+#: nobody got round to marking paid out in full, measured at ₹23,000
+#: against ₹20,345 for the same five days marked Absent. Default stays
+#: 'paid' so no existing account's figures move until an employer picks
+#: the other one.
+UNMARKED_DAYS = ('paid', 'absent')
+
 #: Applied when neither the worker nor the company has configured anything.
 #: Chosen to reproduce the behaviour the app had before this module existed:
 #: absence deduction off, so no existing worker's pay changes until an
@@ -53,6 +68,7 @@ DEFAULT_POLICY = {
     'leave_carry_forward': False,
     'absence_deduction_enabled': False,
     'calculation_method': 'salary_minus_deductions',
+    'unmarked_days': 'paid',
     #: Rupees deducted per chargeable day. None = derive it from the salary
     #: (salary / basis, rounded by the policy), which is what the
     #: specification asks for. It is not None by default because workers
@@ -114,6 +130,8 @@ def normalise_policy(raw) -> dict:
         policy['joining_mode'] = DEFAULT_POLICY['joining_mode']
     if policy['calculation_method'] not in CALC_METHOD:
         policy['calculation_method'] = DEFAULT_POLICY['calculation_method']
+    if policy['unmarked_days'] not in UNMARKED_DAYS:
+        policy['unmarked_days'] = DEFAULT_POLICY['unmarked_days']
 
     try:
         policy['basis_days'] = max(1, min(31, int(policy['basis_days'])))
@@ -260,13 +278,23 @@ def apply_leave_allowance(absent_days: int, leave_days: int, policy: dict,
 # ---------------------------------------------------------------------------
 
 def compute(worker, policy, records, period_start: date, period_end: date,
-            carried_leave_balance: float = 0.0) -> dict:
+            carried_leave_balance: float = 0.0,
+            unmarked_days: int = 0) -> dict:
     """Full monthly salary breakdown for one worker.
 
     Every number the report needs is returned, along with `explanation`: the
     ordered sentences that say how the figure was reached. The report renders
     those rather than re-deriving the arithmetic, so the explanation can never
     drift from the calculation.
+
+    `unmarked_days` is how many days of this period are in the past, fall
+    inside this worker's employment, are not a closure, and carry no
+    attendance row at all. It is counted by the caller and passed in, not
+    worked out here, for the reason the rest of this module keeps its
+    distance: today's date and the closure calendar are request-scoped, and
+    a test has to be able to hand this function known figures. It is used
+    only when the policy says unmarked days are absences; the default
+    policy ignores it entirely.
     """
     policy = normalise_policy(policy)
     monthly_salary = _dec(getattr(worker, 'monthly_salary', 0) or 0)
@@ -280,7 +308,22 @@ def compute(worker, policy, records, period_start: date, period_end: date,
     joined_midway = bool(join_date and period_start < join_date <= period_end)
 
     counts = split_attendance(records, win_start, win_end)
-    leave_info = apply_leave_allowance(counts['absent'], counts['leave'], policy,
+
+    # Days nobody marked, charged as absences when the employer has asked
+    # for that. Added before the leave allowance rather than after, so a
+    # forgotten day is covered by the month's paid leave exactly like a day
+    # somebody typed Absent into — otherwise the allowance would protect
+    # the deliberate absence and not the accidental one, which is backwards.
+    #
+    # Ignored for a joining month under joining_mode 'attendance': that
+    # branch pays only for attended days, so a day with no row is already
+    # unpaid and charging it again would deduct it twice.
+    charge_unmarked = (policy['unmarked_days'] == 'absent'
+                       and unmarked_days > 0
+                       and not (policy['joining_mode'] == 'attendance' and joined_midway))
+    absent_for_allowance = counts['absent'] + (unmarked_days if charge_unmarked else 0)
+
+    leave_info = apply_leave_allowance(absent_for_allowance, counts['leave'], policy,
                                        carried_leave_balance)
 
     # Absence deduction can be switched off entirely; when it is, absences are
@@ -363,6 +406,18 @@ def compute(worker, policy, records, period_start: date, period_end: date,
             'Absence deduction is switched off, so %d absent day(s) were not charged.'
             % counts['absent']
         )
+    # Said either way round, because a day nobody marked is worth knowing
+    # about whichever answer the employer has chosen for it.
+    if charge_unmarked:
+        explanation.append(
+            '%d day(s) of this month were never marked and are charged as '
+            'absences.' % unmarked_days
+        )
+    elif unmarked_days:
+        explanation.append(
+            '%d day(s) of this month were never marked. They are paid, '
+            'because unmarked days are set to count as paid.' % unmarked_days
+        )
     if counts['before_joining']:
         explanation.append(
             '%d attendance record(s) before the joining date were ignored.'
@@ -399,6 +454,14 @@ def compute(worker, policy, records, period_start: date, period_end: date,
         'payable_present_days': counts['payable_present'],
         'absent_days': counts['absent'],
         'leave_days': counts['leave'],
+        # Days of this period with no attendance row at all, and how many of
+        # them this policy charged for. Both are reported whatever the
+        # policy says, so the payslip can show "6 days were never marked"
+        # on an account that pays for them as readily as on one that does
+        # not — the count is a fact about the month either way.
+        'unmarked_days': unmarked_days,
+        'charged_unmarked_days': unmarked_days if charge_unmarked else 0,
+        'unmarked_days_policy': policy['unmarked_days'],
         'records_before_joining': counts['before_joining'],
         # leave
         'leave_allowance': leave_info['allowance'],
@@ -457,6 +520,8 @@ LABELS = {
                      'attendance': 'Actual attendance since joining'},
     'calculation_method': {'salary_minus_deductions': 'Monthly salary minus deductions',
                            'rate_times_payable_days': 'Daily rate x payable days'},
+    'unmarked_days': {'paid': 'Paid, like a normal working day',
+                      'absent': 'Counted as absent'},
 }
 
 
@@ -475,6 +540,7 @@ def describe(policy: dict) -> list:
         ('Leave carry-forward', 'On' if p['leave_carry_forward'] else 'Off'),
         ('Absence deduction', 'On' if p['absence_deduction_enabled'] else 'Off'),
         ('Calculation method', LABELS['calculation_method'][p['calculation_method']]),
+        ('Days nobody marked', LABELS['unmarked_days'][p['unmarked_days']]),
     ]
 
 

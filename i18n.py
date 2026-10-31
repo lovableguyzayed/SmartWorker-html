@@ -258,6 +258,16 @@ TRANSLATIONS = {
         'Actual attendance since joining': 'भर्ती के बाद की असली हाज़िरी',
         'Monthly salary minus deductions': 'महीने की तनख़्वाह में से कटौती',
         'Daily rate x payable days': 'दिहाड़ी × देने योग्य दिन',
+        # What a day with no attendance entry at all is worth.
+        'Days nobody marked': 'जिन दिनों की हाज़िरी नहीं लगी',
+        'Paid, like a normal working day': 'पूरा पैसा, आम काम के दिन की तरह',
+        'Counted as absent': 'ग़ैरहाज़िर गिने जाएँगे',
+        'A day with no attendance entry at all — neither present nor absent. '
+        'Days still to come, days before joining and days the plant was shut '
+        'are never counted.':
+            'वो दिन जिस पर कोई एंट्री ही नहीं — न हाज़िर, न ग़ैरहाज़िर। आने वाले '
+            'दिन, भर्ती से पहले के दिन, और जिन दिनों प्लांट बंद था, वो कभी नहीं '
+            'गिने जाते।',
 
         # --- worker profile report -----------------------------------------
         'Employee Report': 'मज़दूर की रिपोर्ट',

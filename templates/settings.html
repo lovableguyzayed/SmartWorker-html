@@ -468,6 +468,16 @@
                     </select>
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Days nobody marked') }}</label>
+                    <select name="unmarked_days" class="w-full p-3 border border-lightGray rounded-xl">
+                        {% for key, label in salary_labels.unmarked_days.items() %}
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.unmarked_days == key }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('A day with no attendance entry at all — neither present nor absent. Days still to come, days before joining and days the plant was shut are never counted.') }}</p>
+                </div>
+
                 <div class="border-t border-gray-100 pt-4 space-y-3">
                     <label class="flex items-center justify-between">
                         <span class="text-sm font-medium text-gray-700">{{ _('Paid monthly leave') }}</span>
