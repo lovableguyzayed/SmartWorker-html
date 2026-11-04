@@ -1484,6 +1484,150 @@ def worker_account(worker_id):
 DUES_WORKER_CAP = 300
 
 
+def _prefetch_dues_months(workers, upto):
+    """Warm the per-month caches for the whole roster, once per month.
+
+    The dues screen walks every worker's whole employment month by month,
+    and each of those months ran calculate_pay_summary, which asks the
+    database for that one worker's transactions and leave counters. Twelve
+    workers over seven months came to 494 queries — 41 each — and only
+    19ms of that was the database. The rest was the round trips.
+
+    prefetch_period_transactions and prefetch_leave_ledgers already load a
+    month for a whole roster in one query each; the payroll screen has
+    called them since it was paged. This screen never did, so it asked for
+    the same month twelve times over. Priming them per month turns
+    workers x months lookups into months, and every later call answers
+    from memory.
+
+    Nothing about the figures changes: the caches are what the per-worker
+    helpers read first, and they hold exactly what those helpers would
+    have fetched.
+    """
+    if not workers:
+        return
+    starts = [w.join_date for w in workers if w.join_date]
+    if not starts:
+        return
+    worker_ids = [w.id for w in workers]
+    span = list(ledger.months_between(min(starts), upto))
+    if not span:
+        return
+    months = [(date(y, mo, 1), date(y, mo, _cal.monthrange(y, mo)[1]))
+              for y, mo in span]
+    earliest, latest = months[0][0], months[-1][1]
+
+    # Three queries for the whole span, not three per month.
+    #
+    # Calling the per-month prefetches in a loop was the first cut and it
+    # halved the screen, but then became the largest thing on it: 31 months
+    # x 4 queries, and the cost was not the database — 14ms of SQL against
+    # 230ms of wall time — it was building 124 SQLAlchemy queries. So the
+    # span is fetched once and bucketed in Python, and the same two caches
+    # are filled for every month, which is all the per-worker helpers read.
+
+    txn_cache = getattr(g, '_txn_period_cache', None)
+    if txn_cache is None:
+        txn_cache = g._txn_period_cache = {}
+    by_month_txns = {key: {wid: [] for wid in worker_ids} for key in months}
+    for txn in WorkerTransaction.query.filter(
+        WorkerTransaction.worker_id.in_(worker_ids),
+        WorkerTransaction.status == 'active',
+        WorkerTransaction.date >= earliest,
+        WorkerTransaction.date <= latest,
+    ).order_by(WorkerTransaction.date).all():
+        key = (date(txn.date.year, txn.date.month, 1),
+               date(txn.date.year, txn.date.month,
+                    _cal.monthrange(txn.date.year, txn.date.month)[1]))
+        if key in by_month_txns:
+            by_month_txns[key][txn.worker_id].append(txn)
+    txn_cache.update(by_month_txns)
+
+    # Leave: one row per adjustment and one per leave day, counted here.
+    # used_before is cumulative, so the months are walked in order and the
+    # running total carried forward rather than re-counted per month.
+    adjustments = db.session.query(
+        LeaveAdjustment.worker_id, LeaveAdjustment.days,
+        LeaveAdjustment.effective_date, LeaveAdjustment.created_at,
+    ).filter(LeaveAdjustment.worker_id.in_(worker_ids)).all()
+
+    leave_days = db.session.query(
+        AttendanceRecord.worker_id, AttendanceRecord.date,
+    ).filter(
+        AttendanceRecord.worker_id.in_(worker_ids),
+        AttendanceRecord.status == 'leave',
+    ).all()
+
+    # Leave taken before the span starts counts towards used_before for
+    # every month in it, so it is seeded rather than ignored.
+    carried = {wid: 0 for wid in worker_ids}
+    in_month = {key: {wid: 0 for wid in worker_ids} for key in months}
+    for worker_id, taken in leave_days:
+        if taken < earliest:
+            carried[worker_id] = carried.get(worker_id, 0) + 1
+            continue
+        key = (date(taken.year, taken.month, 1),
+               date(taken.year, taken.month,
+                    _cal.monthrange(taken.year, taken.month)[1]))
+        if key in in_month:
+            in_month[key][worker_id] = in_month[key].get(worker_id, 0) + 1
+
+    # Closures, for both of the caches that hold them. These are keyed by
+    # period like the others but are not per worker, so they were the one
+    # group left that grew with the length of somebody's employment rather
+    # than with the size of the roster — 31 of the 73 remaining queries.
+    all_closures = ClosureDay.query.filter(
+        ClosureDay.date >= earliest, ClosureDay.date <= latest).all()
+    by_month_closures = {key: [] for key in months}
+    for closure in all_closures:
+        key = (date(closure.date.year, closure.date.month, 1),
+               date(closure.date.year, closure.date.month,
+                    _cal.monthrange(closure.date.year, closure.date.month)[1]))
+        if key in by_month_closures:
+            by_month_closures[key].append(closure)
+
+    closure_cache = getattr(g, '_closure_period_cache', None)
+    if closure_cache is None:
+        closure_cache = g._closure_period_cache = {}
+    all_closure_cache = getattr(g, '_all_closure_period_cache', None)
+    if all_closure_cache is None:
+        all_closure_cache = g._all_closure_period_cache = {}
+    for key, found in by_month_closures.items():
+        # _attendance_closures_in_period holds only the ones that still
+        # allow attendance; _closures_in_period holds every one. Same rows,
+        # two different questions.
+        closure_cache.setdefault(key, [c for c in found if c.allow_attendance])
+        all_closure_cache.setdefault(key, found)
+
+    leave_cache = getattr(g, '_leave_ledger_cache', None)
+    if leave_cache is None:
+        leave_cache = g._leave_ledger_cache = {}
+    running = dict(carried)
+    for key in months:
+        period_start, period_end = key
+        period_end_ts = datetime.combine(period_end, datetime.max.time())
+        ledgers = {}
+        for wid in worker_ids:
+            # The same window _leave_adjustment_window builds in SQL: an
+            # adjustment with no effective date is bounded by when it was
+            # entered, so one typed in later cannot leak into a month that
+            # has already closed.
+            manual = sum(
+                float(days or 0.0) for a_wid, days, eff, created in adjustments
+                if a_wid == wid and (
+                    eff <= period_end if eff is not None
+                    else (created is not None and created <= period_end_ts))
+            )
+            ledgers[wid] = {
+                'manual_adjustment': manual,
+                'used_before': running.get(wid, 0),
+                'used_this_month': in_month[key].get(wid, 0),
+            }
+        leave_cache[key] = ledgers
+        for wid in worker_ids:
+            running[wid] = running.get(wid, 0) + in_month[key].get(wid, 0)
+
+
 def _company_dues(upto=None, allocation=None):
     """Every active worker's arrears, worst first.
 
@@ -1500,6 +1644,8 @@ def _company_dues(upto=None, allocation=None):
                .limit(DUES_WORKER_CAP + 1).all())
     capped = len(workers) > DUES_WORKER_CAP
     workers = workers[:DUES_WORKER_CAP]
+
+    _prefetch_dues_months(workers, upto)
 
     rows = []
     for worker in workers:
