@@ -441,12 +441,13 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Daily salary rounding') }}</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Rounding') }}</label>
                     <select name="rounding" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.rounding.items() %}
-                        <option value="{{ key }}" {{ 'selected' if salary_policy.rounding == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.rounding == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('Applies to every pay type — monthly, daily, hourly and project — and to overtime, deductions and closure bonus.') }}</p>
                 </div>
 
                 <div>
@@ -463,7 +464,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Mid-month joining') }}</label>
                     <select name="joining_mode" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.joining_mode.items() %}
-                        <option value="{{ key }}" {{ 'selected' if salary_policy.joining_mode == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.joining_mode == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
                     <p class="text-xs text-gray-500 mt-1">{{ _('Days before the joining date are never paid or deducted.') }}</p>
@@ -473,7 +474,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Salary calculation method') }}</label>
                     <select name="calculation_method" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.calculation_method.items() %}
-                        <option value="{{ key }}" {{ 'selected' if salary_policy.calculation_method == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.calculation_method == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -482,7 +483,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Days nobody marked') }}</label>
                     <select name="unmarked_days" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.unmarked_days.items() %}
-                        <option value="{{ key }}" {{ 'selected' if salary_policy.unmarked_days == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.unmarked_days == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
                     <p class="text-xs text-gray-500 mt-1">{{ _('A day with no attendance entry at all — neither present nor absent. Days still to come, days before joining and days the plant was shut are never counted.') }}</p>

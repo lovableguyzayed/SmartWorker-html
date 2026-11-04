@@ -231,8 +231,8 @@
                 <div class="mt-2 space-y-1">
                     {% for label, value in effective_policy_rows %}
                     <div class="flex justify-between text-xs">
-                        <span class="text-gray-500">{{ label }}</span>
-                        <span class="text-gray-800 font-medium">{{ value }}</span>
+                        <span class="text-gray-500">{{ _(label) }}</span>
+                        <span class="text-gray-800 font-medium">{{ value|lpolicy }}</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -253,19 +253,19 @@
 
                     <select name="rounding" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.rounding.items() %}
-                        <option value="{{ key }}" {{ 'selected' if effective_policy.rounding == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if effective_policy.rounding == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
 
                     <select name="joining_mode" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.joining_mode.items() %}
-                        <option value="{{ key }}" {{ 'selected' if effective_policy.joining_mode == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if effective_policy.joining_mode == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
 
                     <select name="calculation_method" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.calculation_method.items() %}
-                        <option value="{{ key }}" {{ 'selected' if effective_policy.calculation_method == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if effective_policy.calculation_method == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
 
@@ -849,8 +849,8 @@
                             <i class="fa-solid {{ 'fa-user-slash text-amber-700' if worker.status == 'active' else 'fa-user-check text-green-700' }}"></i>
                         </div>
                         <div class="text-left">
-                            <div class="font-medium text-gray-800">{{ 'Deactivate Worker' if worker.status == 'active' else 'Reactivate Worker' }}</div>
-                            <div class="text-xs text-gray-500">{{ 'Mark as inactive — keeps all records' if worker.status == 'active' else 'Mark as active again' }}</div>
+                            <div class="font-medium text-gray-800">{{ _('Deactivate Worker') if worker.status == 'active' else _('Reactivate Worker') }}</div>
+                            <div class="text-xs text-gray-500">{{ _('Mark as inactive — keeps all records') if worker.status == 'active' else _('Mark as active again') }}</div>
                         </div>
                     </button>
                 </form>
