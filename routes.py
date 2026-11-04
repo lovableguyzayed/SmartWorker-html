@@ -6620,6 +6620,7 @@ def _salary_policy_from_form(form, prefix=''):
         'salary_basis': field('salary_basis'),
         'basis_days': field('basis_days'),
         'rounding': field('rounding'),
+        'rounding_stage': field('rounding_stage'),
         'joining_mode': field('joining_mode'),
         'paid_leave_enabled': field('paid_leave_enabled') == 'on',
         'monthly_leave_allowance': field('monthly_leave_allowance'),

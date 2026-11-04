@@ -258,6 +258,19 @@ TRANSLATIONS = {
         'Actual attendance since joining': 'भर्ती के बाद की असली हाज़िरी',
         'Monthly salary minus deductions': 'महीने की तनख़्वाह में से कटौती',
         'Daily rate x payable days': 'दिहाड़ी × देने योग्य दिन',
+        # Whether the rounding lands on the daily rate or on the month.
+        'Round the rate or the month': 'दिहाड़ी गोल करें या महीने का कुल',
+        'Round the daily rate, then multiply':
+            'दिहाड़ी को गोल करके दिनों से गुणा करें',
+        "Round the month's total, not the daily rate":
+            'दिहाड़ी पूरी रखें, महीने का कुल गोल करें',
+        'A whole-rupee daily rate rarely multiplies back to the salary: '
+        '₹885 × 26 is ₹23,010, not ₹23,000. Rounding the month instead keeps '
+        'the days adding up.':
+            'पूरे रुपये की दिहाड़ी को दिनों से गुणा करने पर तनख़्वाह वापस नहीं '
+            'मिलती: ₹885 × 26 = ₹23,010, ₹23,000 नहीं। महीने का कुल गोल करने पर '
+            'दिनों का जोड़ सही बैठता है।',
+
         # What a day with no attendance entry at all is worth.
         'Days nobody marked': 'जिन दिनों की हाज़िरी नहीं लगी',
         'Paid, like a normal working day': 'पूरा पैसा, आम काम के दिन की तरह',

@@ -450,6 +450,16 @@
                 </div>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Round the rate or the month') }}</label>
+                    <select name="rounding_stage" class="w-full p-3 border border-lightGray rounded-xl">
+                        {% for key, label in salary_labels.rounding_stage.items() %}
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.rounding_stage == key }}>{{ _(label) }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('A whole-rupee daily rate rarely multiplies back to the salary: ₹885 × 26 is ₹23,010, not ₹23,000. Rounding the month instead keeps the days adding up.') }}</p>
+                </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Mid-month joining') }}</label>
                     <select name="joining_mode" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.joining_mode.items() %}

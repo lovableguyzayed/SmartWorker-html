@@ -54,6 +54,27 @@ CALC_METHOD = ('salary_minus_deductions', 'rate_times_payable_days')
 #: the other one.
 UNMARKED_DAYS = ('paid', 'absent')
 
+#: WHERE the rounding is applied, which is a different question from how.
+#:
+#: 'rate'  round the daily rate, then multiply. ₹23,000 over 26 days is
+#:         ₹884.6154, rounded to ₹885, and 25 attended days pay ₹22,125.
+#:         The figure on the payslip is a whole rupee and the arithmetic can
+#:         be done in your head, which is why site payrolls do it this way.
+#: 'total' multiply the exact rate, round the month's total once at the end.
+#:         25 days pay ₹884.6154 x 25 = ₹22,115.38, rounded to ₹22,115.
+#:
+#: They are not the same amount, and 'rate' has one consequence worth
+#: knowing before choosing it: a whole-rupee daily rate almost never
+#: multiplies back to the salary. ₹885 x 26 is ₹23,010 and ₹767 x 30 is
+#: ₹23,010 — ten rupees more than the ₹23,000 the worker is on. That shows
+#: up on any month paid as rate x days, and it is the arithmetic, not a bug
+#: to be fixed: a rounded rate cannot divide a salary exactly. 'total' has
+#: no such gap because it rounds once, at the end.
+#:
+#: Default stays 'rate', so no account's existing figures move until an
+#: employer picks the other one.
+ROUNDING_STAGE = ('rate', 'total')
+
 #: Applied when neither the worker nor the company has configured anything.
 #: Chosen to reproduce the behaviour the app had before this module existed:
 #: absence deduction off, so no existing worker's pay changes until an
@@ -62,6 +83,7 @@ DEFAULT_POLICY = {
     'salary_basis': 'fixed',
     'basis_days': 30,
     'rounding': 'nearest',
+    'rounding_stage': 'rate',
     'joining_mode': 'calendar',
     'paid_leave_enabled': True,
     'monthly_leave_allowance': 0.0,
@@ -126,6 +148,8 @@ def normalise_policy(raw) -> dict:
         policy['salary_basis'] = DEFAULT_POLICY['salary_basis']
     if policy['rounding'] not in ROUNDING:
         policy['rounding'] = DEFAULT_POLICY['rounding']
+    if policy['rounding_stage'] not in ROUNDING_STAGE:
+        policy['rounding_stage'] = DEFAULT_POLICY['rounding_stage']
     if policy['joining_mode'] not in JOINING_MODE:
         policy['joining_mode'] = DEFAULT_POLICY['joining_mode']
     if policy['calculation_method'] not in CALC_METHOD:
@@ -169,6 +193,22 @@ def basis_days_for(policy: dict, period_start: date, period_end: date) -> int:
     return int(policy['basis_days'])
 
 
+def apply_rounding(value: Decimal, mode: str) -> Decimal:
+    """Round one amount by the policy's rounding mode.
+
+    The same four modes govern a daily rate and a month's total, so they are
+    written once here. 'none' still quantizes to paise — an amount with
+    fourteen decimal places is not "unrounded", it is unprintable.
+    """
+    if mode == 'none':
+        return value.quantize(_TWOPLACES, rounding=ROUND_HALF_UP)
+    if mode == 'up':
+        return value.quantize(Decimal('1'), rounding=ROUND_CEILING)
+    if mode == 'down':
+        return value.quantize(Decimal('1'), rounding=ROUND_FLOOR)
+    return value.quantize(Decimal('1'), rounding=ROUND_HALF_UP)   # 'nearest'
+
+
 def daily_rate(monthly_salary, policy: dict, period_start: date, period_end: date):
     """Return (exact_rate, rounded_rate) as Decimals.
 
@@ -177,17 +217,7 @@ def daily_rate(monthly_salary, policy: dict, period_start: date, period_end: dat
     """
     basis = basis_days_for(policy, period_start, period_end)
     exact = _dec(monthly_salary) / Decimal(basis)
-
-    mode = policy['rounding']
-    if mode == 'none':
-        rounded = exact.quantize(_TWOPLACES, rounding=ROUND_HALF_UP)
-    elif mode == 'up':
-        rounded = exact.quantize(Decimal('1'), rounding=ROUND_CEILING)
-    elif mode == 'down':
-        rounded = exact.quantize(Decimal('1'), rounding=ROUND_FLOOR)
-    else:                                    # 'nearest'
-        rounded = exact.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
-    return exact, rounded
+    return exact, apply_rounding(exact, policy['rounding'])
 
 
 def eligible_window(worker_join_date, period_start: date, period_end: date):
@@ -303,6 +333,16 @@ def compute(worker, policy, records, period_start: date, period_end: date,
     basis = basis_days_for(policy, period_start, period_end)
     exact_rate, rounded_rate = daily_rate(monthly_salary, policy, period_start, period_end)
 
+    # Which of the two the arithmetic below actually multiplies by. On
+    # 'total' the exact rate is carried all the way through and the month's
+    # figure is rounded once at the very end, which is the only way the days
+    # can add back up to the salary: ₹885 x 26 is ₹23,010, ₹884.6154 x 26 is
+    # ₹23,000 exactly. On 'rate' — the default, and what the app has always
+    # done — the whole-rupee rate is what gets multiplied, because that is
+    # the figure the employer quotes and can check by hand.
+    round_total = policy['rounding_stage'] == 'total'
+    calc_rate = exact_rate if round_total else rounded_rate
+
     join_date = getattr(worker, 'join_date', None)
     win_start, win_end, eligible_days = eligible_window(join_date, period_start, period_end)
     joined_midway = bool(join_date and period_start < join_date <= period_end)
@@ -350,30 +390,30 @@ def compute(worker, policy, records, period_start: date, period_end: date,
     elif policy['joining_mode'] == 'attendance' and joined_midway:
         # Method A: pay only for days actually worked since joining.
         payable_days = _dec(counts['payable_present'])
-        gross = rounded_rate * payable_days
+        gross = calc_rate * payable_days
         explanation.append(
             'Joined %s. Paid for %g attended day(s) from the joining date at '
             '%s/day.' % (join_date.strftime('%d %b %Y'), float(payable_days),
-                         _rupees(rounded_rate))
+                         _rupees(calc_rate))
         )
         # Absences are already excluded by only paying attended days; charging
         # them again would deduct the same day twice.
         deduction_days = Decimal('0')
     elif joined_midway:
         # Method B: pro-rate the month by eligible calendar days, then deduct.
-        gross = rounded_rate * Decimal(eligible_days)
+        gross = calc_rate * Decimal(eligible_days)
         explanation.append(
             'Joined %s, so %d of %d day(s) are eligible: %d x %s = %s.'
             % (join_date.strftime('%d %b %Y'), eligible_days, total_calendar_days,
-               eligible_days, _rupees(rounded_rate),
-               _rupees(rounded_rate * Decimal(eligible_days)))
+               eligible_days, _rupees(calc_rate),
+               _rupees(calc_rate * Decimal(eligible_days)))
         )
     elif policy['calculation_method'] == 'rate_times_payable_days':
         payable_days = Decimal(basis) - deduction_days
-        gross = rounded_rate * Decimal(basis)
+        gross = calc_rate * Decimal(basis)
         explanation.append(
             'Daily rate %s x %d day(s) basis = %s.'
-            % (_rupees(rounded_rate), basis, _rupees(gross))
+            % (_rupees(calc_rate), basis, _rupees(gross))
         )
     else:
         gross = monthly_salary
@@ -387,7 +427,7 @@ def compute(worker, policy, records, period_start: date, period_end: date,
     if policy['deduction_rate'] is not None:
         deduction_rate = _dec(policy['deduction_rate'])
     else:
-        deduction_rate = rounded_rate
+        deduction_rate = calc_rate
     deduction_amount = deduction_rate * deduction_days
     if deduction_days > 0:
         explanation.append(
@@ -437,8 +477,23 @@ def compute(worker, policy, records, period_start: date, period_end: date,
     if net < 0:
         net = Decimal('0')
         explanation.append('Deductions exceeded the eligible salary; net floored at 0.')
-    explanation.append('Final payable: %s - %s = %s.'
-                       % (_rupees(gross), _rupees(deduction_amount), _rupees(net)))
+
+    # On 'total' the month's figure is rounded here, once, and the word
+    # "rounded" is added to the line that is already being printed rather
+    # than on a line of its own. The explanation block under the salary
+    # table is five lines and the print stylesheet is squeezed to keep a
+    # payslip on two sheets — a sixth line took every slip to three, which
+    # tests/test_print_pages.py caught the last time (see the note on
+    # unmarked days above).
+    rounded_note = ''
+    if round_total:
+        before = net
+        net = apply_rounding(net, policy['rounding'])
+        if net != before:
+            rounded_note = ' (rounded)'
+    explanation.append('Final payable: %s - %s = %s%s.'
+                       % (_rupees(gross), _rupees(deduction_amount),
+                          _rupees(net), rounded_note))
 
     return {
         # identity / inputs
@@ -446,13 +501,18 @@ def compute(worker, policy, records, period_start: date, period_end: date,
         'salary_basis': policy['salary_basis'],
         'basis_days': basis,
         'rounding': policy['rounding'],
+        'rounding_stage': policy['rounding_stage'],
         'join_date': join_date,
         'joined_midway': joined_midway,
         'period_start': period_start,
         'period_end': period_end,
         # rates
         'daily_rate_exact': float(exact_rate.quantize(Decimal('0.0001'))),
-        'daily_rate': _money(rounded_rate),
+        # The rate the month was actually priced at, not the rate the
+        # rounding mode would produce in the abstract. On 'total' those are
+        # different numbers, and a payslip whose rate does not multiply up
+        # to its own gross is a payslip nobody can check.
+        'daily_rate': _money(calc_rate),
         'deduction_rate': _money(deduction_rate),
         'deduction_rate_is_derived': policy['deduction_rate'] is None,
         # days
@@ -525,6 +585,8 @@ LABELS = {
     'salary_basis': {'fixed': 'Fixed days', 'calendar': 'Actual calendar days'},
     'rounding': {'none': 'No rounding', 'nearest': 'Nearest rupee',
                  'up': 'Always round up', 'down': 'Always round down'},
+    'rounding_stage': {'rate': 'Round the daily rate, then multiply',
+                       'total': "Round the month's total, not the daily rate"},
     'joining_mode': {'calendar': 'Calendar days from joining date',
                      'attendance': 'Actual attendance since joining'},
     'calculation_method': {'salary_minus_deductions': 'Monthly salary minus deductions',
@@ -542,7 +604,8 @@ def describe(policy: dict) -> list:
         basis = '%s (%d)' % (basis, p['basis_days'])
     return [
         ('Salary basis', basis),
-        ('Daily rate rounding', LABELS['rounding'][p['rounding']]),
+        ('Rounding', LABELS['rounding'][p['rounding']]),
+        ('Rounded on', LABELS['rounding_stage'][p['rounding_stage']]),
         ('Mid-month joining', LABELS['joining_mode'][p['joining_mode']]),
         ('Paid leave', ('%g day(s) per month' % p['monthly_leave_allowance'])
                        if p['paid_leave_enabled'] else 'Disabled'),
