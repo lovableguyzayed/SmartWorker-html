@@ -730,6 +730,14 @@ input:checked + .toggle-slider:before {
 
 /* The bar sits where the nav does; hide the nav so they never stack. */
 body.ms-active nav.app-bottom-nav { display: none; }
+
+/* While a text field has focus the keyboard is up, and on Android the
+   WebView shortens the viewport to fit it — so a position:fixed bottom:0
+   bar is placed on top of the keys, over the field being typed into. It
+   steps aside instead. KeyboardAware in app.js puts the class on <body>.
+   Declared with the same `body.x nav.y` shape as the rule above so the two
+   carry equal weight and neither depends on source order. */
+body.kb-open nav.app-bottom-nav { display: none; }
 /* Long-press must not start a text selection anywhere in a selectable list. */
 [data-ms-scope] { -webkit-touch-callout: none; }
 
