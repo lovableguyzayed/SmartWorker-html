@@ -52,6 +52,8 @@ def check(label, got, want):
 
 NOTE_ONLINE = 'ZZ offline test online'
 NOTE_QUEUED = 'ZZ offline test queued'
+NOTE_POCKET = 'ZZ offline test pocket'
+NOTE_MORNING = 'ZZ offline test morning'
 
 
 def count(note):
@@ -66,7 +68,8 @@ with app.app_context():
     # Nothing from a previous run may be left behind, or the counts below
     # measure the wrong thing.
     m.WorkerTransaction.query.filter(
-        m.WorkerTransaction.description.in_([NOTE_ONLINE, NOTE_QUEUED])
+        m.WorkerTransaction.description.in_(
+            [NOTE_ONLINE, NOTE_QUEUED, NOTE_POCKET, NOTE_MORNING])
     ).delete(synchronize_session=False)
     db.session.commit()
 
@@ -176,6 +179,65 @@ try:
         check('the payment reached the database', count(NOTE_QUEUED), 1)
         check('exactly once', count(NOTE_QUEUED), 1)
         check('and the queue is empty again', pg.evaluate(QUEUE_LEN), 0)
+
+        # ------------------------------------------------------------------
+        print('\n--- out of a pocket, with the signal back ---')
+
+        # The case this app is actually used in: mark at a gate with no
+        # bars, pocket the phone, walk to the office. The WebView was
+        # asleep for that walk, and it does not reliably raise 'online'
+        # for a connection that returned while it was — so the queue can
+        # sit full against a perfectly good connection until the next cold
+        # start. Coming back to the app has to be enough on its own.
+        #
+        # Isolating that is the whole difficulty, and the first version of
+        # this check did not: going offline and back through Playwright
+        # makes the BROWSER raise 'online', which the old listener catches,
+        # so the case passed with the new one deleted and proved nothing.
+        #
+        # So the browser stays online throughout and the item is put into
+        # the queue directly, through the app's own queueRequest(). Nothing
+        # but a return to the app can drain it.
+        pg.evaluate("""async ([wid, today, note]) => {
+            await queueRequest('/api/worker_transaction', 'POST', {
+                worker_id: wid, txn_type: 'advance', amount: '333',
+                date: today, description: note,
+            }, 'payment');
+        }""", [WID, args['today'], NOTE_POCKET])
+        check('it is sitting in the queue', pg.evaluate(QUEUE_LEN), 1)
+        check('and not in the database yet', count(NOTE_POCKET), 0)
+
+        pg.evaluate("""() => {
+            document.dispatchEvent(new Event('visibilitychange'));
+            document.dispatchEvent(new Event('resume'));
+        }""")
+        for _ in range(40):
+            if count(NOTE_POCKET):
+                break
+            pg.wait_for_timeout(250)
+        check('coming back to the app drained it', count(NOTE_POCKET), 1)
+        check('exactly once', count(NOTE_POCKET), 1)
+        check('and the queue is empty', pg.evaluate(QUEUE_LEN), 0)
+
+        # ------------------------------------------------------------------
+        print('\n--- and the next morning, after the app was closed ---')
+
+        ctx.set_offline(True)
+        pg.evaluate("() => window.dispatchEvent(new Event('offline'))")
+        pg.evaluate(POST, dict(args, amount='444', note=NOTE_MORNING))
+        check('it is queued overnight', pg.evaluate(QUEUE_LEN), 1)
+        ctx.set_offline(False)
+        # A fresh load of the app, which is what reopening it is. The queue
+        # lives in IndexedDB, so it survives; the question is whether
+        # anything still looks at it.
+        pg.goto(B + '/dashboard', wait_until='domcontentloaded')
+        for _ in range(40):
+            if count(NOTE_MORNING):
+                break
+            pg.wait_for_timeout(250)
+        check('opening the app again sent it', count(NOTE_MORNING), 1)
+        check('exactly once', count(NOTE_MORNING), 1)
+        check('and the queue is empty', pg.evaluate(QUEUE_LEN), 0)
 
         print('\n--- what must never be queued ---')
         # A queued acknowledgement would point at an id the server has not
