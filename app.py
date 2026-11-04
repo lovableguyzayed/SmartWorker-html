@@ -317,6 +317,9 @@ SCHEMA_PATCHES = {
         # engine did before the column existed, so an account that never
         # opens the setting keeps the figures it already had.
         ('unmarked_days', "VARCHAR(8) DEFAULT 'paid'"),
+        # Whether the rounding applies to the daily rate or to the month's
+        # total. 'rate' is the old behaviour, for the same reason.
+        ('rounding_stage', "VARCHAR(8) DEFAULT 'rate'"),
     ],
     'closure_days': [
         ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),

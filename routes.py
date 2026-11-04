@@ -2153,13 +2153,18 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         if closure_day_info:
             pct = float(getattr(worker, 'closure_extra_percentage', 0) or 0) / 100.0
             method = (getattr(worker, 'closure_calculation_method', 'daily_percent') or 'daily_percent')
-            mwd = int(getattr(worker, 'monthly_working_days', 26) or 26) or 26
+            mwd = int(getattr(worker, 'monthly_working_days', 30) or 30) or 30
             swh = int(getattr(worker, 'standard_working_hours', 8) or 8) or 8
 
             if worker.pay_type == 'daily':
                 _daily_base = float(worker.daily_rate or 0)
             elif worker.pay_type == 'monthly':
-                _daily_base = float(worker.monthly_salary or 0) / mwd
+                # The salary policy's basis, not the worker's own field: a
+                # closure day is priced off the same daily rate the salary
+                # is, or the same worker is worth ₹766.67 a day to the
+                # payroll and ₹884.62 a day to a closure bonus.
+                _daily_base = (float(worker.monthly_salary or 0)
+                               / (salary_breakdown['basis_days'] or mwd))
             elif worker.pay_type == 'hourly':
                 _daily_base = float(worker.hourly_rate or 0) * swh
             else:
@@ -2352,7 +2357,7 @@ def add_worker():
             if rate_error:
                 flash(rate_error, 'error')
                 return redirect(request.url)
-            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
+            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 30)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
             if request.form.get('leave_deduction'):
@@ -2546,7 +2551,7 @@ def edit_worker(worker_id):
             if rate_error:
                 flash(rate_error, 'error')
                 return redirect(request.url)
-            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
+            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 30)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
             if request.form.get('leave_deduction'):
@@ -6620,6 +6625,7 @@ def _salary_policy_from_form(form, prefix=''):
         'salary_basis': field('salary_basis'),
         'basis_days': field('basis_days'),
         'rounding': field('rounding'),
+        'rounding_stage': field('rounding_stage'),
         'joining_mode': field('joining_mode'),
         'paid_leave_enabled': field('paid_leave_enabled') == 'on',
         'monthly_leave_allowance': field('monthly_leave_allowance'),

@@ -406,7 +406,12 @@ class Worker(db.Model):
     half_day_grace_minutes = db.Column(db.Integer, default=20)
 
     # Monthly worker rate derivation helpers
-    monthly_working_days = db.Column(db.Integer, default=26)
+    #: Shift counting, not salary pricing. The salary basis is the salary
+    #: policy's `basis_days` — a monthly salary is divided by 30 whatever the
+    #: length of the month — and this field is no longer read as that basis.
+    #: It defaulted to 26 and silently priced every monthly worker's day at
+    #: salary/26.
+    monthly_working_days = db.Column(db.Integer, default=30)
     standard_working_hours = db.Column(db.Integer, default=8)
 
     # Closure day payment settings
@@ -645,6 +650,11 @@ class SalaryPolicy(db.Model):
     salary_basis = db.Column(db.String(12), default='fixed')        # fixed | calendar
     basis_days = db.Column(db.Integer, default=30)
     rounding = db.Column(db.String(10), default='nearest')          # none|nearest|up|down
+    #: WHERE that rounding lands: 'rate' rounds the daily rate and then
+    #: multiplies, 'total' multiplies the exact rate and rounds the month's
+    #: figure once. See salary.ROUNDING_STAGE. 'rate' is what the engine did
+    #: before this column existed.
+    rounding_stage = db.Column(db.String(8), default='rate')        # rate | total
     joining_mode = db.Column(db.String(12), default='calendar')     # calendar | attendance
     paid_leave_enabled = db.Column(db.Boolean, default=True)
     monthly_leave_allowance = db.Column(db.Float, default=0.0)
