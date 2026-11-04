@@ -188,10 +188,20 @@ with app.app_context():
           routes.count_unmarked_days(worker, [], nxt, nxt_end), 0)
 
     # Joined halfway through: the days before are not this worker's.
-    midway = FakeWorker(join_date=start + timedelta(days=5))
+    #
+    # Asked of LAST month, not this one. Written against this month it read
+    # "joined on the 6th" and expected the days from the 6th to today — which
+    # on the 4th is a joining date in the future and an expected count of
+    # minus one. The month has to be over for the arithmetic to mean
+    # anything, and then every day of it counts.
+    prev_end = start - timedelta(days=1)
+    prev_start = prev_end.replace(day=1)
+    prev_join = prev_start + timedelta(days=5)
+    flask.g._all_closure_period_cache[(prev_start, prev_end)] = []
+    midway = FakeWorker(join_date=prev_join)
     check('days before joining are not counted',
-          routes.count_unmarked_days(midway, [], start, end),
-          (today - (start + timedelta(days=5))).days + 1)
+          routes.count_unmarked_days(midway, [], prev_start, prev_end),
+          (prev_end - prev_join).days + 1)
 
     # A day the plant was shut with attendance locked.
     shut_day = start + timedelta(days=1)
