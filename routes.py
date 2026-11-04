@@ -3,9 +3,10 @@ import qrcode
 import io
 import base64
 import csv
+import hmac
 import json
-import random
 import re
+import secrets
 import calendar as _cal
 from datetime import datetime, date, timedelta
 from functools import wraps
@@ -17,6 +18,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image as PILImage, ImageOps as PILImageOps
 from app import app, db, csrf
 from timeutil import IST, now_ist, today_ist, ISTDate
+import sms
 import storage
 import supabase_auth
 import tenancy
@@ -101,13 +103,27 @@ REGISTER_OTP_SESSION_KEYS = (
     'register_otp_mobile',
     'register_otp_expires_at',
     'register_otp_verified',
+    'register_otp_attempts',
+    'register_otp_sent_at',
 )
 LOGIN_OTP_SESSION_KEYS = (
     'login_otp',
     'login_otp_mobile',
     'login_otp_expires_at',
     'login_otp_user_id',
+    'login_otp_attempts',
+    'login_otp_sent_at',
 )
+
+#: A six-digit code has a million values, which is plenty against five
+#: guesses and nothing at all against unlimited ones: a script can walk the
+#: whole range inside the five minutes the code is valid. So the guesses are
+#: counted, and the code is thrown away after this many.
+OTP_MAX_ATTEMPTS = 5
+
+#: And one code per minute per session, so nobody can be made to pay for a
+#: thousand text messages by somebody holding down a button.
+OTP_RESEND_SECONDS = 60
 
 def allowed_image_file(filename):
     if not filename or '.' not in filename:
@@ -718,6 +734,55 @@ def clear_login_otp_session():
     for key in LOGIN_OTP_SESSION_KEYS:
         session.pop(key, None)
 
+
+def otp_resend_wait(kind):
+    """Seconds left before another code may be sent, 0 when it may."""
+    sent_at = session.get('%s_otp_sent_at' % kind)
+    if not sent_at:
+        return 0
+    elapsed = now_ist().timestamp() - float(sent_at)
+    return max(0, int(OTP_RESEND_SECONDS - elapsed))
+
+
+def otp_delivery_result(kind, mobile, code):
+    """Send the code and return the JSON body and status for the caller.
+
+    One place decides what the screen is told, because the three answers are
+    easy to get wrong in three different ways:
+
+      * it was sent — say so, and say nothing else.
+      * nothing was sent and this is a development server — the code is in
+        the log, which is the only way to test the flow without a phone, and
+        the screen says exactly that instead of "check your messages".
+      * nothing was sent on a real server — say the message could not be
+        sent. The old code claimed delivery either way, so an employer
+        signing up waited for a text that was never going to arrive and had
+        no way of knowing it.
+    """
+    delivered, detail = sms.send_otp(mobile, code, kind)
+    if delivered:
+        return {'success': True,
+                'message': 'OTP has been sent to %s.' % mobile,
+                'expires_in': 300}, 200
+    if app.debug or app.testing:
+        return {'success': True,
+                'message': ('No SMS provider is set up on this server, so '
+                            'the code is in the server log.'),
+                'expires_in': 300, 'delivered': False}, 200
+    app.logger.error('OTP for %s could not be sent: %s', mobile, detail)
+    return {'success': False,
+            'message': ('The code could not be sent just now. Please try '
+                        'again, or sign in with your password.')}, 503
+
+
+def otp_attempt_failed(kind):
+    """Count a wrong guess; True when the code has been spent."""
+    key = '%s_otp_attempts' % kind
+    used = int(session.get(key) or 0) + 1
+    session[key] = used
+    session.modified = True
+    return used >= OTP_MAX_ATTEMPTS
+
 def generate_unique_username(full_name, email):
     base_source = (email.split('@')[0] if email else full_name or 'user').strip().lower()
     normalized = ''.join(char if char.isalnum() else '_' for char in base_source).strip('_')
@@ -1029,6 +1094,14 @@ def login_send_otp():
             'message': 'Please enter a valid mobile number.'
         }), 400
 
+    wait = otp_resend_wait('login')
+    if wait:
+        return jsonify({
+            'success': False,
+            'message': 'A code was just sent. Please wait %d seconds.' % wait,
+            'retry_after': wait,
+        }), 429
+
     user = User.query.filter_by(phone=mobile).first()
     if not user:
         return jsonify({
@@ -1036,7 +1109,7 @@ def login_send_otp():
             'message': 'No account found with this mobile number.'
         }), 404
 
-    otp_code = f"{random.randint(0, 999999):06d}"
+    otp_code = '%06d' % secrets.randbelow(1000000)
     expires_at = now_ist() + timedelta(minutes=5)
 
     clear_login_otp_session()
@@ -1044,15 +1117,16 @@ def login_send_otp():
     session['login_otp_mobile'] = mobile
     session['login_otp_expires_at'] = expires_at.timestamp()
     session['login_otp_user_id'] = user.id
+    session['login_otp_attempts'] = 0
+    session['login_otp_sent_at'] = now_ist().timestamp()
     session.modified = True
 
-    app.logger.info("Login OTP for %s: %s", mobile, otp_code)
-
-    return jsonify({
-        'success': True,
-        'message': f'OTP has been sent to {mobile}. (Check server logs in demo mode)',
-        'expires_in': 300,
-    })
+    # sms.py decides where the code goes and never logs it when a provider
+    # is configured. The code is not in this function's log line either.
+    body, status = otp_delivery_result('login', mobile, otp_code)
+    if not body['success']:
+        clear_login_otp_session()
+    return jsonify(body), status
 
 @app.route('/login/verify-otp', methods=['POST'])
 @csrf.exempt
@@ -1085,10 +1159,20 @@ def login_verify_otp():
             'message': 'Please verify OTP for the same mobile number.'
         }), 400
 
-    if otp_code != stored_otp:
+    # compare_digest, not !=, so the time taken says nothing about how many
+    # leading digits were right.
+    if not hmac.compare_digest(str(otp_code), str(stored_otp)):
+        if otp_attempt_failed('login'):
+            clear_login_otp_session()
+            return jsonify({
+                'success': False,
+                'message': ('Too many wrong attempts. Please request a new '
+                            'code.')
+            }), 429
+        left = OTP_MAX_ATTEMPTS - int(session.get('login_otp_attempts') or 0)
         return jsonify({
             'success': False,
-            'message': 'Invalid OTP. Please try again.'
+            'message': 'Invalid OTP. %d attempt(s) left.' % left
         }), 400
 
     user = User.query.get(user_id)
@@ -1120,7 +1204,15 @@ def register_send_otp():
             'message': 'Please enter a valid mobile number.'
         }), 400
 
-    otp_code = f"{random.randint(0, 999999):06d}"
+    wait = otp_resend_wait('register')
+    if wait:
+        return jsonify({
+            'success': False,
+            'message': 'A code was just sent. Please wait %d seconds.' % wait,
+            'retry_after': wait,
+        }), 429
+
+    otp_code = '%06d' % secrets.randbelow(1000000)
     expires_at = now_ist() + timedelta(minutes=5)
 
     clear_register_otp_session()
@@ -1128,15 +1220,14 @@ def register_send_otp():
     session['register_otp_mobile'] = mobile
     session['register_otp_expires_at'] = expires_at.timestamp()
     session['register_otp_verified'] = False
+    session['register_otp_attempts'] = 0
+    session['register_otp_sent_at'] = now_ist().timestamp()
     session.modified = True
 
-    app.logger.info("Registration OTP for %s: %s", mobile, otp_code)
-
-    return jsonify({
-        'success': True,
-        'message': f'OTP has been sent to {mobile}. (Check server logs in demo mode)',
-        'expires_in': 300,
-    })
+    body, status = otp_delivery_result('register', mobile, otp_code)
+    if not body['success']:
+        clear_register_otp_session()
+    return jsonify(body), status
 
 @app.route('/register/verify-otp', methods=['POST'])
 @csrf.exempt
@@ -1168,10 +1259,18 @@ def register_verify_otp():
             'message': 'Please verify the same mobile number used for OTP.'
         }), 400
 
-    if otp_code != stored_otp:
+    if not hmac.compare_digest(str(otp_code), str(stored_otp)):
+        if otp_attempt_failed('register'):
+            clear_register_otp_session()
+            return jsonify({
+                'success': False,
+                'message': ('Too many wrong attempts. Please request a new '
+                            'code.')
+            }), 429
+        left = OTP_MAX_ATTEMPTS - int(session.get('register_otp_attempts') or 0)
         return jsonify({
             'success': False,
-            'message': 'Invalid OTP. Please try again.'
+            'message': 'Invalid OTP. %d attempt(s) left.' % left
         }), 400
 
     session['register_otp_verified'] = True
@@ -3816,7 +3915,7 @@ def worker_create_login(worker_id):
         flash('That mobile number is already used by another login.', 'error')
         return redirect(url_for('worker_profile', worker_id=worker_id))
 
-    password = '%06d' % random.randint(100000, 999999)
+    password = '%06d' % secrets.randbelow(1000000)
     login = User.query.filter_by(worker_id=worker.id, role='worker').first()
     if not login:
         login = User(
