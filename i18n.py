@@ -1226,6 +1226,8 @@ TRANSLATIONS = {
         'Unspecified': 'तय नहीं',
         'Update profile details': 'प्रोफ़ाइल की जानकारी बदलें',
         'Used to derive daily rate': 'दिहाड़ी निकालने के लिए',
+        'Shift counting only. The salary basis is in Settings.':
+            'सिर्फ़ शिफ़्ट गिनने के लिए। तनख़्वाह का हिसाब सेटिंग्स में है।',
         'Used to derive hourly rate': 'घंटे का रेट निकालने के लिए',
         'Used when worked time is up to 50% of shift hours.':
             'जब काम का समय शिफ़्ट के 50% तक हो तब लगता है।',

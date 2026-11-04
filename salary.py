@@ -636,7 +636,19 @@ def seed_from_worker(worker) -> dict:
     rate = getattr(worker, 'leave_deduction_per_day', None)
     if rate:
         seeded['deduction_rate'] = float(rate)
-    basis = getattr(worker, 'monthly_working_days', None)
-    if basis:
-        seeded['basis_days'] = int(basis)
+    # The worker's own "monthly working days" is NOT read as the salary
+    # basis, deliberately.
+    #
+    # It used to be, and that is how a ₹23,000 worker came to be priced at
+    # ₹885 a day: the field defaults to 26 on the add-worker form, nobody
+    # types anything into it, and 23000/26 is ₹884.62. The employer's rule
+    # is that a monthly salary is divided by 30 whatever the month — 28, 30
+    # or 31 days, the month is a month — so the basis belongs to the salary
+    # policy, where it can be seen and changed, and not to a per-worker
+    # field that quietly says 26.
+    #
+    # The field still means what it says for counting shifts (closure extra
+    # pay prices a day off it), and an employer who really does want a
+    # 26-day basis sets it in Settings, where it reads as a rule rather
+    # than as a default nobody chose.
     return seeded

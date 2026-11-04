@@ -406,7 +406,12 @@ class Worker(db.Model):
     half_day_grace_minutes = db.Column(db.Integer, default=20)
 
     # Monthly worker rate derivation helpers
-    monthly_working_days = db.Column(db.Integer, default=26)
+    #: Shift counting, not salary pricing. The salary basis is the salary
+    #: policy's `basis_days` — a monthly salary is divided by 30 whatever the
+    #: length of the month — and this field is no longer read as that basis.
+    #: It defaulted to 26 and silently priced every monthly worker's day at
+    #: salary/26.
+    monthly_working_days = db.Column(db.Integer, default=30)
     standard_working_hours = db.Column(db.Integer, default=8)
 
     # Closure day payment settings
