@@ -258,6 +258,35 @@ TRANSLATIONS = {
         'Actual attendance since joining': 'भर्ती के बाद की असली हाज़िरी',
         'Monthly salary minus deductions': 'महीने की तनख़्वाह में से कटौती',
         'Daily rate x payable days': 'दिहाड़ी × देने योग्य दिन',
+        # Words the Hindi screens were still showing in English. Found by
+        # tools/ux/hindi_gaps.py, which reads every screen in Hindi and
+        # reports the runs of Latin text left on it — 148 of them, of which
+        # 19 already had a Hindi form that the template was not asking for
+        # (it printed the dictionary key instead of looking it up) and the
+        # rest, below, had none.
+        # Half-translated sentences read worse than either language on its
+        # own — "Generate payroll for नवंबर" was the month translated inside
+        # an English sentence. The whole sentence is one unit now, with the
+        # month substituted, so Hindi can put the month where Hindi puts it:
+        # before the verb, not after it.
+        'Generate payroll for %(month)s': '%(month)s की तनख़्वाह बनाएँ',
+        'Record advances, loans, bonuses and deductions for '
+        '%(month)s %(year)s.':
+            '%(month)s %(year)s के लिए पेशगी, क़र्ज़, बोनस और कटौती दर्ज करें।',
+
+        'Reactivate Worker': 'मज़दूर को फिर सक्रिय करें',
+        'Mark as active again': 'फिर से सक्रिय कर दें',
+        'End Assignment': 'तैनाती ख़त्म करें',
+        'Mark Read': 'पढ़ा हुआ चिह्नित करें',
+        'Mark Unread': 'अनपढ़ा चिह्नित करें',
+        'Disable': 'बंद करें',
+        'Generate': 'बनाएँ',
+        'Rounded on': 'पूर्णांकन कहाँ लगे',
+        'Add Worker - SmartWorker': 'मज़दूर जोड़ें - SmartWorker',
+        'Edit Worker - SmartWorker': 'मज़दूर में बदलाव - SmartWorker',
+        'Example: 2 free leaves, then ₹500 per extra leave day':
+            'उदाहरण: 2 छुट्टियाँ मुफ़्त, उसके बाद हर छुट्टी पर ₹500',
+
         # The rounding option, which governs every pay type and not only
         # the monthly salary it used to be filed under.
         'Applies to every pay type — monthly, daily, hourly and project — '

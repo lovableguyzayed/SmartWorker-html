@@ -598,7 +598,7 @@
                     <div class="divide-y divide-slate-100">
                         {% macro srow(label, value, strong=False) -%}
                         <div class="flex items-center justify-between px-3 py-1.5" data-pdf-split>
-                            <span class="text-xs text-slate-500">{{ label }}</span>
+                            <span class="text-xs text-slate-500">{{ _(label) }}</span>
                             <span class="text-xs {{ 'font-bold text-slate-900' if strong else 'font-medium text-slate-700' }} amount">{{ value }}</span>
                         </div>
                         {%- endmacro %}
