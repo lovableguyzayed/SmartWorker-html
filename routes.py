@@ -2113,6 +2113,35 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         _, _pdays = _cal.monthrange(period_start.year, period_start.month)
         period_end = period_start.replace(day=_pdays)
 
+    # ---- whole rupees are part of the calculation, not a setting ---------
+    #
+    # Rounding started as a dropdown on the salary policy, and a dropdown
+    # left alone pays people in paise. Worse, it only ever governed the
+    # salary: an hourly worker at ₹118.75 an hour and a daily worker on
+    # ₹512.33 came out with paise whatever the dropdown said, because their
+    # pay never went through the salary engine at all. ₹22,712.50 is not an
+    # amount anybody hands over at a crusher gate.
+    #
+    # So every figure this function WORKS OUT is rounded here, by the same
+    # rule the policy states, and the rounding is no longer optional. What
+    # is NOT rounded is every figure somebody TYPED IN — an advance, a
+    # bonus, a wage payment. Those are records of money that changed hands;
+    # rounding ₹2,250.50 to ₹2,251 would not tidy the books, it would
+    # misstate what was paid.
+    #
+    # 'No rounding' still means no rounding. An employer who picks it is
+    # asking for the paise, and gets them.
+    _round_mode = 'nearest'
+    try:
+        _round_mode = resolve_salary_policy(worker)['rounding']
+    except Exception:                      # no app context, no policy table
+        pass
+
+    def _whole(amount):
+        """One computed amount, rounded by the policy's own rule."""
+        return float(salary.apply_rounding(
+            salary._dec(amount or 0), _round_mode))
+
     attendance_summary = calculate_attendance_summary(attendance_records)
     present_days = attendance_summary['present_days']
     absent_days = attendance_summary['absent_days']
@@ -2306,6 +2335,7 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
                     f'Closure day extra pay ({getattr(worker, "closure_extra_percentage", 0)}% via {method.replace("_", " ")}) applied.'
                 )
 
+    closure_extra_pay = _whole(closure_extra_pay)
     base_pay += closure_extra_pay
 
     # Transactions (advances, loans, bonuses, recoveries, ...) for this period
@@ -2329,6 +2359,15 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
     delay_penalty, delay_breakdown = calculate_delay_penalty(worker, period_start, period_end)
     if delay_penalty > 0:
         policy_notes.append('Project delay penalty applied.')
+
+    # Every computed figure, in whole rupees, before anything is added up:
+    # the total is then the sum of the parts exactly as the payslip prints
+    # them. The transaction amounts are left alone — see _whole above.
+    base_pay = _whole(base_pay)
+    overtime_pay = _whole(overtime_pay)
+    leave_deductions = _whole(leave_deductions)
+    late_deductions = _whole(late_deductions)
+    delay_penalty = _whole(delay_penalty)
 
     deductions = leave_deductions + late_deductions + delay_penalty
     estimated_pay = base_pay + overtime_pay + transaction_earnings - deductions - transaction_deductions
