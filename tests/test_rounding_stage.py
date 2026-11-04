@@ -167,6 +167,36 @@ check('and the payslip quotes the rate it was priced at',
       on_total['daily_rate'], 884.62)
 check('the explanation says the month was rounded',
       on_total['explanation'][-1].endswith('(rounded).'), True)
+
+# The account and dues screens are built from the GROSS, not the net
+# (ledger.build takes `gross` out of compute_month), so rounding only the
+# net left the payslip saying ₹19,167 and the statement saying ₹19,166.67
+# for the same month. Both have to be whole rupees, and the net has to be
+# the difference of the two as printed.
+check('the gross is a whole rupee too, not just the net',
+      on_total['gross_eligible_salary'] % 1, 0.0)
+check('and so is the deduction', on_total['deduction_amount'] % 1, 0.0)
+check('so the final line adds up exactly as printed',
+      round(on_total['gross_eligible_salary']
+            - on_total['deduction_amount'], 2), on_total['net_payable'])
+
+docked = salary.compute(
+    old, policy(basis_days=26, rounding='nearest', rounding_stage='total',
+                absence_deduction_enabled=True),
+    present(SEP[0], datetime.date(2026, 9, 28))
+    + [Rec(datetime.date(2026, 9, 29), 'absent'),
+       Rec(datetime.date(2026, 9, 30), 'absent')], *SEP)
+check('a month with deductions is whole rupees throughout',
+      [docked['gross_eligible_salary'] % 1, docked['deduction_amount'] % 1,
+       docked['net_payable'] % 1], [0.0, 0.0, 0.0])
+
+# And "no rounding" still means no rounding: the paise are the point.
+raw = salary.compute(
+    javed, policy(basis_days=26, rounding='none', joining_mode='attendance',
+                  rounding_stage='total'),
+    aug_days, *AUG)
+check('"no rounding" keeps the paise, on either stage',
+      raw['net_payable'], 22115.38)
 check('it is still as short as it was',
       len(on_total['explanation']), len(on_rate['explanation']))
 

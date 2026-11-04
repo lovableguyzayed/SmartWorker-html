@@ -487,9 +487,28 @@ def compute(worker, policy, records, period_start: date, period_end: date,
     # unmarked days above).
     rounded_note = ''
     if round_total:
-        before = net
-        net = apply_rounding(net, policy['rounding'])
-        if net != before:
+        # The gross and the deduction are rounded too, not only the net.
+        #
+        # Rounding the net alone left the month's figure a whole rupee on the
+        # payslip while the gross it was derived from kept its paise — and the
+        # account and dues screens are built from the gross, not the net
+        # (ledger.build takes `gross` out of compute_month). So a worker's
+        # payslip said ₹19,167 and his statement said ₹19,166.67 for the same
+        # month. Whichever one the employer quoted, the other one contradicted
+        # him.
+        #
+        # Rounded here rather than inside each branch above so the explanation
+        # keeps the real arithmetic — "25 day(s) at ₹766.67/day" is how the
+        # figure was reached — and the final line shows what it was rounded
+        # to. The net is then the difference of two whole rupees, so the line
+        # adds up as printed.
+        before = (gross, deduction_amount, net)
+        gross = apply_rounding(gross, policy['rounding'])
+        deduction_amount = apply_rounding(deduction_amount, policy['rounding'])
+        net = gross - deduction_amount
+        if net < 0:
+            net = Decimal('0')
+        if (gross, deduction_amount, net) != before:
             rounded_note = ' (rounded)'
     explanation.append('Final payable: %s - %s = %s%s.'
                        % (_rupees(gross), _rupees(deduction_amount),

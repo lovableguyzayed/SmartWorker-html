@@ -841,11 +841,68 @@ const NativeShell = {
     }
 };
 
+// ---------------------------------------------------------------------------
+// The bottom bar steps aside while the keyboard is up.
+//
+// The bar is position:fixed; bottom:0. Android's WebView opens the keyboard
+// with windowSoftInputMode=adjustResize, which shortens the viewport by the
+// height of the keyboard — so "the bottom" moves up, and the bar rides up
+// with it and parks itself on top of the keys, over the field being typed
+// into. Nothing is animating it; it is sitting exactly where it was told to.
+//
+// So it is hidden while a text field has focus. Nobody needs to change
+// screens mid-word, and this is the one behaviour that is the same in the
+// WebView, in Chrome and on a desktop, without touching the Cordova shell
+// (which would mean a new APK, where this reaches the phone from the server).
+//
+// Listeners are on `document` and delegated: NativeShell.visit() replaces
+// document.body.innerHTML, so anything bound to an element inside it would
+// be gone after the first navigation.
+//
+// The clearance padding on #mobile-app stays as it is. Removing it with the
+// bar would reflow the page underneath the keyboard, moving the field the
+// user is typing into — which is the one thing worse than a misplaced bar.
+const KeyboardAware = {
+    TEXTUAL: new Set(['text', 'password', 'email', 'number', 'tel', 'search',
+                      'url', 'date', 'time', 'datetime-local', 'month']),
+
+    isTextual(el) {
+        if (!el) return false;
+        const tag = el.tagName;
+        if (tag === 'TEXTAREA') return true;
+        if (el.isContentEditable) return true;
+        // A <select> opens a picker, not a keyboard, on both platforms.
+        if (tag !== 'INPUT') return false;
+        return this.TEXTUAL.has((el.type || 'text').toLowerCase());
+    },
+
+    set(open) {
+        document.body.classList.toggle('kb-open', !!open);
+    },
+
+    init() {
+        document.addEventListener('focusin', (e) => {
+            if (this.isTextual(e.target)) this.set(true);
+        });
+        document.addEventListener('focusout', () => {
+            // Deferred, and then asked what actually has focus: tabbing from
+            // one field to the next fires focusout before focusin, so acting
+            // on it directly flickers the bar back for a frame between two
+            // boxes on the same form.
+            setTimeout(() => this.set(this.isTextual(document.activeElement)), 0);
+        });
+        // A screen change ends any typing, and the class lives on <body>,
+        // which survives the innerHTML swap that the rest of it does not.
+        document.addEventListener('page:load', () => this.set(false));
+    },
+};
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     SmartWorker.init();
     NativeShell.init();
     NativeShell.initAndroidBack();
+    KeyboardAware.init();
 });
 
 // Expose SmartWorker globally for use in templates
