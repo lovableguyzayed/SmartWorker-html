@@ -721,10 +721,68 @@ def calculate_delay_penalty(worker, period_start, period_end):
     return round(penalty_total, 2), breakdown
 
 def normalize_mobile_number(value):
-    return ''.join(char for char in (value or '') if char.isdigit())
+    """An Indian mobile number as its ten digits, however it was typed.
+
+    This used to be "keep the digits and stop", which quietly broke
+    signing in for anybody who writes their number the way most people
+    actually write it:
+
+        +91 98765 43210  ->  919876543210   looked up, not found
+        09876543210      ->  09876543210    looked up, not found
+        98765 43210      ->  9876543210     found
+
+    The number is stored as ten digits, so the first two never matched a
+    row and the screen said "No account found with this mobile number" to
+    somebody whose account was right there. A '+91' or a leading zero is
+    not a typo to be rejected either — it is the same number — so both are
+    taken off rather than refused.
+
+    Anything that is not ten digits after that is returned as it is, for
+    is_valid_mobile_number to turn down with a message.
+    """
+    digits = ''.join(char for char in (value or '') if char.isdigit())
+    # 0091..., 91..., 0... — all prefixes on a ten-digit number.
+    for prefix in ('0091', '091', '91', '0'):
+        if len(digits) == 10 + len(prefix) and digits.startswith(prefix):
+            return digits[len(prefix):]
+    return digits
+
 
 def is_valid_mobile_number(value):
-    return 10 <= len(normalize_mobile_number(value)) <= 15
+    """Ten digits beginning 6, 7, 8 or 9 — the whole Indian mobile range.
+
+    The old rule was "between ten and fifteen digits", which accepted a
+    landline (0135 2345678), a number starting with 5 that cannot exist,
+    and 1234567890. Letting those through does not help anybody: the
+    number is what an OTP is sent to, and what a worker is called on.
+    """
+    digits = normalize_mobile_number(value)
+    return len(digits) == 10 and digits[0] in '6789'
+
+def find_user_by_mobile(mobile):
+    """The account for this mobile number, however the number was stored.
+
+    New rows store ten digits, but a row written before
+    normalize_mobile_number was fixed can hold '+91 98765 43210' or
+    '09876543210', and an exact match on ten digits would miss it — the
+    same "No account found" for an account that is right there. So: exact
+    first, then a short list filtered on the last four digits and compared
+    properly. The filter is there to keep this off a full table scan.
+    """
+    digits = normalize_mobile_number(mobile)
+    if not digits:
+        return None
+    user = User.query.filter_by(phone=digits).first()
+    if user:
+        return user
+    for candidate in (User.query
+                      .filter(User.phone.isnot(None))
+                      .filter(User.phone.like('%' + digits[-4:]))
+                      .limit(50).all()):
+        if normalize_mobile_number(candidate.phone) == digits:
+            return candidate
+    return None
+
 
 def clear_register_otp_session():
     for key in REGISTER_OTP_SESSION_KEYS:
@@ -1102,7 +1160,7 @@ def login_send_otp():
             'retry_after': wait,
         }), 429
 
-    user = User.query.filter_by(phone=mobile).first()
+    user = find_user_by_mobile(mobile)
     if not user:
         return jsonify({
             'success': False,
@@ -2422,7 +2480,8 @@ def add_worker():
         worker = Worker()
         worker.worker_id = worker_id
         worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
-        worker.phone = clean_text(request.form.get('phone'), 'phone')
+        worker.phone = (normalize_mobile_number(request.form.get('phone'))
+                        or clean_text(request.form.get('phone'), 'phone'))
         worker.email = clean_text(request.form.get('email'), 'email') or None
         worker.address = (request.form.get('address') or '').strip() or None
         worker.position = clean_text(request.form.get('position'), 'position')
@@ -2616,7 +2675,8 @@ def edit_worker(worker_id):
         before_values = {field: getattr(worker, field) for field, _ in WORKER_TRACKED_FIELDS}
         # Update worker details
         worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
-        worker.phone = clean_text(request.form.get('phone'), 'phone')
+        worker.phone = (normalize_mobile_number(request.form.get('phone'))
+                        or clean_text(request.form.get('phone'), 'phone'))
         worker.email = clean_text(request.form.get('email'), 'email') or None
         worker.address = (request.form.get('address') or '').strip() or None
         worker.position = clean_text(request.form.get('position'), 'position')
