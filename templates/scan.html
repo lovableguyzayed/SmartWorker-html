@@ -3,7 +3,19 @@
 {% block title %}{{ _('QR Scanner') }} - SmartWorker{% endblock %}
 
 {% block head %}
-<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+{# The scanner library is NOT loaded here.
+
+   It is 367KB — a third of everything this app downloads on a first visit,
+   and 73 seconds of a 2G connection on its own. Loading it in <head> meant
+   every person who opened this screen paid for it before the screen
+   appeared, including the ones who came here to type an employee ID into
+   the box at the bottom, which is what you do when the QR sticker is dusty
+   or the light is bad.
+
+   startScanner() calls ensureLibraryLoaded(), which appends the script and
+   waits for it, so pressing the button fetches it then — in parallel with
+   the camera permission prompt, which takes a moment anyway. That path
+   already existed for SPA navigation; it is now the only path. #}
 <style>
 /* Self-contained: the vendored Tailwind build is purged, so utilities that
    weren't present at compile time silently do nothing. Everything sizing- or
