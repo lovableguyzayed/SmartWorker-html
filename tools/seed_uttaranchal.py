@@ -37,9 +37,28 @@ import models as m
 # ---------------------------------------------------------------- the facts
 COMPANY = 'Uttaranchal Stone Crusher'
 ADMIN_USER = 'Javed'
-ADMIN_PASS = '7906030129'
 ADMIN_EMAIL = 'javed@uttaranchalstonecrusher.in'
 ADMIN_PHONE = '7906030129'
+
+# Passwords come from the environment, and this script refuses to run
+# without them.
+#
+# Both used to be written here in plain text, four lines from each other,
+# in a PUBLIC repository: anyone who read this file could sign in to the
+# live account. (They are not repeated in this comment either. Quoting a
+# password in order to explain that it leaked leaves it exactly where it
+# was.)
+#
+# A password in a repository is published the moment it is pushed, and
+# taking it out of this file does not unpublish it — git keeps every
+# version, and the repository is public. The passwords that were here have
+# to be CHANGED in the app; this change only stops the next one leaking.
+#
+#   export SEED_ADMIN_PASSWORD='...'
+#   export SEED_SUPERVISOR_PASSWORD='...'
+#   python tools/seed_uttaranchal.py
+ADMIN_PASS = os.environ.get('SEED_ADMIN_PASSWORD') or ''
+SUPERVISOR_PASS = os.environ.get('SEED_SUPERVISOR_PASSWORD') or ''
 
 YEAR = 2026
 JOINED = date(YEAR, 8, 7)          # 7 August
@@ -201,7 +220,7 @@ def build():
     sup = m.User(username='imran', email='imran@uttaranchalstonecrusher.in',
                  full_name=mukadam.full_name, role='worker')
     sup.account_id = acct.id
-    sup.set_password('imran12345')
+    sup.set_password(SUPERVISOR_PASS)
     sup.worker_id = mukadam.id
     sup.can_mark_attendance = True
     sup.can_record_transactions = True
@@ -324,6 +343,28 @@ def main():
                          'is written')
     args = ap.parse_args()
 
+    # Checked before the database is even opened: a seed that ran with an
+    # empty password would set an empty password, and the account it builds
+    # is the live one.
+    missing = [name for name, value in
+               (('SEED_ADMIN_PASSWORD', ADMIN_PASS),
+                ('SEED_SUPERVISOR_PASSWORD', SUPERVISOR_PASS))
+               if not value]
+    if missing and args.apply:
+        print('These are not set, and this script will not invent them:\n')
+        for name in missing:
+            print('   %s' % name)
+        print('\nThey used to be written into this file, in a public '
+              'repository.\nSet them in the environment and run it again:\n')
+        print("   export SEED_ADMIN_PASSWORD='...'")
+        print("   export SEED_SUPERVISOR_PASSWORD='...'")
+        print('   python tools/seed_uttaranchal.py --apply')
+        return 1
+    if any(len(p) < 8 for p in (ADMIN_PASS, SUPERVISOR_PASS) if p):
+        print('A password under 8 characters is not worth setting. '
+              'Pick longer ones.')
+        return 1
+
     with app.app_context():
         uri = app.config['SQLALCHEMY_DATABASE_URI']
         shown = uri.split('@')[-1] if '@' in uri else uri
@@ -355,8 +396,11 @@ def main():
         print('\nbuilding:')
         acct, admin, me, workers = build()
         print('   company           %s (account %d)' % (COMPANY, acct.id))
-        print('   admin login       %s / %s' % (ADMIN_USER, ADMIN_PASS))
-        print('   mukadam login     imran / imran12345')
+        # The usernames, not the passwords. Whoever ran this script set
+        # them and knows them; printing them again only puts them into a
+        # terminal history, a CI log or a screenshot.
+        print('   admin login       %s (SEED_ADMIN_PASSWORD)' % ADMIN_USER)
+        print('   mukadam login     imran (SEED_SUPERVISOR_PASSWORD)')
         print('   workers           %d' % m.Worker.query.count())
         print('   attendance rows   %d' % m.AttendanceRecord.query.count())
         print('   transactions      %d' % m.WorkerTransaction.query.count())
