@@ -188,6 +188,63 @@ with app.app_context():
                       description=marked).count(), 0)
 
         # ------------------------------------------------------------------
+        print('\n--- the setting governs every pay structure, not just salary ---')
+
+        # The employer's requirement, in his words: it stays an option, but
+        # the option has to apply in every working structure. There are
+        # four on the worker form — Daily Wage, Monthly Salary, Hourly Rate,
+        # Project Based — and the rounding used to reach only the monthly
+        # one, because it lived inside the salary engine and the other three
+        # never go through it.
+        #
+        # Checked by setting the policy rather than saving one: this
+        # database is the fixture every other suite logs into, and a company
+        # policy row written here would change what they all compute.
+        STRUCTURES = [
+            # 23000/7 = 3285.714..., and priced as rate x days so the
+            # fraction actually reaches the figure. Paid as a flat salary
+            # it would come out whole whatever the rounding said, and the
+            # 'no rounding' half of this check would prove nothing.
+            ('monthly', dict(pay_type='monthly', monthly_salary=23000),
+             dict(basis_days=7,
+                  calculation_method='rate_times_payable_days')),
+            ('daily',   dict(pay_type='daily', daily_rate=512.33), {}),
+            ('hourly',  dict(pay_type='hourly', hourly_rate=118.75), {}),
+            ('project', dict(pay_type='project', project_rate=40000.50), {}),
+        ]
+        real_resolver = routes.resolve_salary_policy
+        for structure, fields, extra in STRUCTURES:
+            saved = {k: getattr(worker, k) for k in fields}
+            for key, value in fields.items():
+                setattr(worker, key, value)
+            try:
+                for mode, must_be_whole in (('nearest', True), ('none', False)):
+                    policy = dict(salary.DEFAULT_POLICY, rounding=mode, **extra)
+                    routes.resolve_salary_policy = lambda w, _p=policy: _p
+                    try:
+                        s = routes.calculate_pay_summary(
+                            worker, records(worker.id), START, END)
+                    finally:
+                        routes.resolve_salary_policy = real_resolver
+                    got = whole(s['estimated_pay'])
+                    if must_be_whole:
+                        check('%-8s + "nearest rupee" -> %s'
+                              % (structure, s['estimated_pay']), got, True)
+                    else:
+                        # Each structure above is set up so that "no
+                        # rounding" has paise to keep. If one of these ever
+                        # reads whole, either the rounding stopped honouring
+                        # the setting or the case stopped producing a
+                        # fraction — and both are worth a failure.
+                        check('%-8s + "no rounding" keeps the paise in %s'
+                              % (structure, s['estimated_pay']),
+                              whole(s['estimated_pay']), False)
+            finally:
+                for key, value in saved.items():
+                    setattr(worker, key, value)
+                db.session.rollback()
+
+        # ------------------------------------------------------------------
         print('\n--- "no rounding" still means no rounding ---')
 
         exact, rounded = salary.daily_rate(

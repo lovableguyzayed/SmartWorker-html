@@ -258,6 +258,13 @@ TRANSLATIONS = {
         'Actual attendance since joining': 'भर्ती के बाद की असली हाज़िरी',
         'Monthly salary minus deductions': 'महीने की तनख़्वाह में से कटौती',
         'Daily rate x payable days': 'दिहाड़ी × देने योग्य दिन',
+        # The rounding option, which governs every pay type and not only
+        # the monthly salary it used to be filed under.
+        'Applies to every pay type — monthly, daily, hourly and project — '
+        'and to overtime, deductions and closure bonus.':
+            'हर तरह की तनख़्वाह पर लागू — महीना, दिहाड़ी, घंटा और ठेका — और '
+            'ओवरटाइम, कटौती व बंदी के बोनस पर भी।',
+
         # Whether the rounding lands on the daily rate or on the month.
         'Round the rate or the month': 'दिहाड़ी गोल करें या महीने का कुल',
         'Round the daily rate, then multiply':

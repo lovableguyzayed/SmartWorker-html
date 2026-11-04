@@ -441,12 +441,13 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Daily salary rounding') }}</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Rounding') }}</label>
                     <select name="rounding" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.rounding.items() %}
                         <option value="{{ key }}" {{ 'selected' if salary_policy.rounding == key }}>{{ label }}</option>
                         {% endfor %}
                     </select>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('Applies to every pay type — monthly, daily, hourly and project — and to overtime, deductions and closure bonus.') }}</p>
                 </div>
 
                 <div>
