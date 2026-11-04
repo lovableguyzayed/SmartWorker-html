@@ -256,12 +256,17 @@ finally:
     server.terminate()
     server.wait(timeout=10)
     with app.app_context():
+        # All four, not the two this test started with. Adding the pocket
+        # and morning cases to the cleanup at the TOP and not to this one
+        # left two rows in the shared database after every run — caught by
+        # the suite's own debris check, which exists because a half-cleaned
+        # fixture once failed four unrelated tests.
+        probes = [NOTE_ONLINE, NOTE_QUEUED, NOTE_POCKET, NOTE_MORNING]
         m.WorkerTransaction.query.filter(
-            m.WorkerTransaction.description.in_([NOTE_ONLINE, NOTE_QUEUED])
+            m.WorkerTransaction.description.in_(probes)
         ).delete(synchronize_session=False)
         db.session.commit()
-        check('the probe rows are gone',
-              count(NOTE_ONLINE) + count(NOTE_QUEUED), 0)
+        check('the probe rows are gone', sum(count(n) for n in probes), 0)
 
 print()
 if fails:
