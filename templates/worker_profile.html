@@ -47,7 +47,7 @@
                     <div class="text-sm opacity-90">ID: {{ worker.worker_id }}</div>
                     {# A white veil on a white-veiled card: this read 2.91:1.
                        glass-chip tints down instead of up — see custom.css. #}
-                    <div class="glass-chip px-3 py-1 rounded-xl text-xs font-medium">{{ worker.employee_type }}</div>
+                    <div class="glass-chip px-3 py-1 rounded-xl text-xs font-medium">{{ worker.employee_type|lterm }}</div>
                 </div>
             </div>
         </div>
@@ -479,7 +479,7 @@
             </div>
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Employee Type') }}</span>
-                <span class="font-medium text-gray-800">{{ worker.employee_type }}</span>
+                <span class="font-medium text-gray-800">{{ worker.employee_type|lterm }}</span>
             </div>
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Join Date') }}</span>
@@ -487,7 +487,7 @@
             </div>
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Status') }}</span>
-                <span class="font-medium text-green-700 capitalize">{{ worker.status }}</span>
+                <span class="font-medium text-green-700 capitalize">{{ worker.status|lterm }}</span>
             </div>
         </div>
     </section>
@@ -498,7 +498,7 @@
         <div class="space-y-3">
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Pay Type') }}</span>
-                <span class="font-medium text-gray-800 capitalize">{{ worker.pay_type }}</span>
+                <span class="font-medium text-gray-800 capitalize">{{ worker.pay_type|lterm }}</span>
             </div>
             {% if worker.pay_type == 'daily' and worker.daily_rate %}
             <div class="flex justify-between items-center">
@@ -532,7 +532,7 @@
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Leave Policy') }}</span>
                 <span class="font-medium {{ 'text-green-700' if worker.leave_policy_enabled else 'text-gray-500' }}">
-                    {{ 'Enabled' if worker.leave_policy_enabled else 'Disabled' }}
+                    {{ _('Enabled') if worker.leave_policy_enabled else _('Disabled') }}
                 </span>
             </div>
             <div class="flex justify-between items-center">
@@ -557,7 +557,7 @@
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">{{ _('Late Policy') }}</span>
                 <span class="font-medium {{ 'text-green-700' if worker.late_policy_enabled else 'text-gray-500' }}">
-                    {{ 'Enabled' if worker.late_policy_enabled else 'Disabled' }}
+                    {{ _('Enabled') if worker.late_policy_enabled else _('Disabled') }}
                 </span>
             </div>
             {% if worker.late_policy_enabled and worker.late_deduction_per_day %}
@@ -607,12 +607,12 @@
                     <div>
                         <div class="font-medium text-gray-800">{{ record.date|ldate('%d %B %Y') }}</div>
                         {% if record.check_in_time %}
-                            <div class="text-sm text-gray-600">Check-in: {{ record.check_in_time.strftime('%H:%M') }}</div>
+                            <div class="text-sm text-gray-600">{{ _('Check-in') }}: {{ record.check_in_time.strftime('%H:%M') }}</div>
                         {% endif %}
                     </div>
                 </div>
                 <div class="{% if record.status == 'present' %}bg-green-100 text-green-800{% elif record.status == 'absent' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-3 py-1 rounded-full text-xs font-medium">
-                    {{ record.status.title() }}
+                    {{ record.status|lterm }}
                 </div>
             </div>
             {% endfor %}
@@ -706,7 +706,7 @@
                            class="w-full p-3 border border-lightGray rounded-xl">
                 </div>
                 <div id="mod-salary-field">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">New {{ worker.pay_type|title }} Salary / Rate (₹)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('New %(type)s rate (₹)') % {'type': worker.pay_type|lterm} }}</label>
                     <input type="number" name="new_salary" step="0.01" min="0" class="w-full p-3 border border-lightGray rounded-xl">
                 </div>
                 <div id="mod-amount-field" class="hidden">

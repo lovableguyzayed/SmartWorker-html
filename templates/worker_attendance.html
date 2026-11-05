@@ -44,7 +44,7 @@
             <div class="flex-1">
                 <div class="text-lg font-bold mb-1">{{ worker.full_name }}</div>
                 <div class="text-sm opacity-90 mb-1">{{ worker.position }} • {{ worker.department }}</div>
-                <div class="text-sm opacity-90">ID: {{ worker.worker_id }}</div>
+                <div class="text-sm opacity-90">{{ _('ID') }}: {{ worker.worker_id }}</div>
             </div>
         </div>
     </div>
@@ -294,7 +294,7 @@
                 {% endif %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">{{ _('Half-Day Grace') }}</span>
-                    <span class="font-semibold text-gray-800">{{ pay_summary.half_day_grace_minutes }} min</span>
+                    <span class="font-semibold text-gray-800">{{ pay_summary.half_day_grace_minutes }} {{ _('min') }}</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">{{ _('Base Wage') }}</span>

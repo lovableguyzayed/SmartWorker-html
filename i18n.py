@@ -1119,14 +1119,80 @@ TRANSLATIONS = {
             'देर के मिनट और ओवरटाइम मज़दूर की शिफ़्ट सेटिंग से अपने आप दोबारा गिने जाते हैं।',
         'Mark as inactive — keeps all records':
             'बंद के तौर पर दर्ज करें — सारे रिकॉर्ड रहेंगे',
-        'New Daily Salary / Rate (₹)':
-            'नई दिहाड़ी / रेट (₹)',
         'No modifications yet. Promotions, salary changes and category changes are logged here permanently.':
             'अभी कोई बदलाव नहीं। पदोन्नति, तनख़्वाह और श्रेणी के बदलाव यहाँ हमेशा के लिए दर्ज होते हैं।',
         'These users log in with their mobile number. They can only mark attendance, scan QR codes and view workers on their assigned sites — nothing else.':
             'ये उपयोगकर्ता अपने मोबाइल नंबर से लॉगिन करते हैं। ये सिर्फ़ हाज़िरी लगा सकते हैं, QR स्कैन कर सकते हैं और अपनी दी गई साइटों के मज़दूर देख सकते हैं — इसके अलावा कुछ नहीं।',
+        # Keywords the application stored itself — a pay type, a status, an
+        # employee category — printed through the lterm filter. They were
+        # appearing raw in the middle of Hindi on the worker screens.
         'permanent':
             'पक्का',
+        'contract': 'ठेके पर',
+        'temporary': 'अस्थायी',
+        'active': 'चालू',
+        'inactive': 'बंद',
+        'daily': 'दिहाड़ी',
+        'monthly': 'महीने की',
+        'hourly': 'घंटे की',
+        'project': 'ठेके की',
+        'present': 'हाज़िर',
+        'absent': 'ग़ैरहाज़िर',
+        'late': 'देर से',
+        'half day': 'आधा दिन',
+        'not marked': 'नहीं लगी',
+        'disabled': 'बंद',
+
+        # Composites: a figure and a word side by side. Each needed the word
+        # pulled out of the markup, because a dictionary cannot translate
+        # "₹800/day" as one lump.
+        'month': 'महीना',
+        'hour': 'घंटा',
+        'project rate': 'ठेका',
+        'New %(type)s rate (₹)': 'नई %(type)s दर (₹)',
+        # The one label on the selection bar that had no Hindi. Its
+        # neighbours — Disable, Activate, Restore, Delete — all did, which
+        # is why it sat there alone in English.
+        'Enable': 'चालू करें',
+        # How a mark got made, written into a notification's second line.
+        'qr scan': 'QR स्कैन',
+        'scanner': 'स्कैनर',
+        'bulk': 'एक साथ कई',
+        'manual': 'हाथ से',
+        '%(count)sm late': '%(count)s मिनट देर',
+        'Enabled': 'चालू',
+        'deadline': 'आख़िरी तारीख़',
+        'worker override': 'मज़दूर का अलग नियम',
+        'company-wide': 'पूरी कंपनी के लिए',
+        'deductions': 'कटौती',
+        'Save Assignment': 'तैनाती सेव करें',
+        'Save Salary Policy': 'तनख़्वाह का नियम सेव करें',
+        '%(count)s day(s) delayed': '%(count)s दिन की देरी',
+        'How a fixed monthly salary becomes a payable amount. It applies '
+        'to the %(count)s worker(s) on a monthly salary.':
+            'तय महीने की तनख़्वाह देने लायक़ रक़म कैसे बनती है। यह महीने की '
+            'तनख़्वाह वाले %(count)s मज़दूरों पर लागू होता है।',
+        'A month already marked Paid keeps the figures it was paid with — '
+        'changing a rule here never rewrites it.':
+            'जो महीना दे दिया गया लग चुका है, उसमें वही आँकड़े रहेंगे जिन '
+            'पर पैसा दिया गया था — यहाँ नियम बदलने से वे कभी नहीं बदलते।',
+        '%(count)s worker(s) have their own override and ignore these '
+        'settings.':
+            '%(count)s मज़दूरों के अपने अलग नियम हैं, वे इन सेटिंग्स को '
+            'नहीं मानते।',
+        'No company policy is saved yet. Each worker is calculated from '
+        'the leave quota and deduction rate already on his own record, '
+        'exactly as before. Saving here switches everyone to these rules.':
+            'अभी कंपनी का कोई नियम सेव नहीं है। हर मज़दूर का हिसाब उसके ही '
+            'रिकॉर्ड में पहले से दर्ज छुट्टी के कोटे और कटौती की दर से हो '
+            'रहा है, बिल्कुल पहले जैसा। यहाँ सेव करने पर सब इन नियमों पर '
+            'आ जाएँगे।',
+        'With the Fixed % method the bonus applies to the half-day base '
+        'amount. With the Hours or Minutes methods only the time actually '
+        'logged is used.':
+            'तय % वाले तरीक़े में बोनस आधे दिन की मूल रक़म पर लगता है। '
+            'घंटे या मिनट वाले तरीक़ों में सिर्फ़ दर्ज हुआ असली समय गिना '
+            'जाता है।',
         'Attendance marked by site users will appear here.':
             'साइट के उपयोगकर्ताओं की लगाई हाज़िरी यहाँ दिखेगी।',
         'Authorized Attendance Users': 'हाज़िरी के अधिकार वाले उपयोगकर्ता',
@@ -1519,6 +1585,14 @@ def format_date(value, fmt, lang):
 # and the stored audit records are left exactly as they were written.
 _NOTE_PATTERNS_SOURCE = {
     'hi': [
+        # A notification written before notifications were reworked into
+        # grouped rows. The application no longer writes this shape, but a
+        # database seeded before the change still holds them, and they are
+        # the only English left on an otherwise Hindi screen. The names,
+        # the id, the date and the site are the employer's own data and
+        # pass through untouched.
+        (r'^(.+?) marked (.+?) \((\S+?)\) as (\S+) on (.+?) at (.+)$',
+         r'\1 ने \2 (\3) की \5 को \6 पर हाज़िरी लगाई: \4'),
         (r'^Joining date (.+?) falls after this period, so no salary is payable\.$',
          r'भर्ती की तारीख़ \1 इस अवधि के बाद है, इसलिए कोई तनख़्वाह नहीं बनती।'),
         (r'^Joined (.+?)\. Paid for (\S+) attended day\(s\) from the joining date at (\S+)/day\.$',
@@ -1616,7 +1690,12 @@ def translate_note(text, lang):
             # The replacement supplies a ₹ because a note stored before the
             # engine wrote its own has none. One written since arrives with
             # it already, so the two meet as ₹₹ — collapse it.
-            return new.replace('₹₹', '₹')
+            #
+            # A date inside the stored text is copied across by the pattern
+            # as it stands, so its month is still English: "20 Oct 2026" in
+            # the middle of a Hindi sentence.
+            return _localise_keywords(
+                _localise_months(new.replace('₹₹', '₹'), lang), lang)
     return text
 
 
@@ -2008,10 +2087,42 @@ def _localise_months(text, lang):
     months = MONTHS.get(lang)
     if not months:
         return text
+    # Whole words only. A plain substring swap turned a worker called
+    # Augustine into "अगस्तine" — his own name, half rewritten, on a
+    # screen his employer reads out to him.
     for idx, english in enumerate(_ENGLISH_MONTHS):
-        if english in text:
-            text = text.replace(english, months[idx])
+        text = re.sub(r'\b%s\b' % english, months[idx], text)
+    # And the three-letter forms, which a stored date uses ("20 Oct 2026").
+    # Full names are swapped first, above, so by here "March" can no
+    # longer be mistaken for "Mar".
+    short = MONTHS_SHORT.get(lang)
+    if short:
+        for idx, english in enumerate(_ENGLISH_MONTHS):
+            text = re.sub(r'\b%s\b' % english[:3], short[idx], text)
     return text
+
+#: Words a stored sentence carries that a pattern copies across verbatim,
+#: because they sit inside a captured group. Months have their own swap
+#: above; these are the attendance keywords.
+_STRANDED = ('present', 'absent', 'late', 'half_day', 'leave', 'holiday')
+
+
+def _localise_keywords(text, lang):
+    """Swap a stranded status word inside an already-translated message.
+
+    A pattern can reorder a sentence but it cannot look a captured group
+    up in the dictionary, so "...हाज़िरी लगाई: present" came out with the
+    one word that actually says what happened still in English.
+    """
+    table = TRANSLATIONS.get(lang)
+    if not table:
+        return text
+    for word in _STRANDED:
+        said = table.get(word)
+        if said:
+            text = re.sub(r'\b%s\b' % word, said, text)
+    return text
+
 
 def translate_flash(text, lang):
     """One flash message, translated on its way to the screen.

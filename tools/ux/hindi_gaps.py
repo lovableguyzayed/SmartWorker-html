@@ -35,16 +35,45 @@ with app.app_context():
     DATA = set()
     for row in m.Worker.query.all():
         DATA |= set(re.findall(r"[A-Za-z][\w'’.-]+", row.full_name or ''))
-        DATA |= {row.worker_id or '', row.position or '', row.department or ''}
+        DATA |= {row.worker_id or ''}
+        # Word by word, not as whole strings: a designation the employer
+        # typed in reaches the screen as "Crane Operator • Civil", and
+        # matching only the whole "Crane Operator" left both words looking
+        # like untranslated interface text.
+        for value in (row.position, row.department):
+            DATA |= set(re.findall(r"[A-Za-z][\w'’.-]+", value or ''))
     for model, field in ((m.Site, 'name'), (m.Project, 'name'),
                          (m.WorkTask, 'name'), (m.Department, 'name')):
         for row in model.query.all():
             DATA |= set(re.findall(r"[A-Za-z][\w'’.-]+", getattr(row, field) or ''))
 
-SKIP = {'SmartWorker', 'QR', 'PDF', 'CSV', 'ID', 'IST', 'UTC', 'AM', 'PM',
-        'OT', 'UPI', 'IFSC', 'PAN', 'GST', 'OTP', 'SUN', 'MON', 'TUE', 'WED',
-        'THU', 'FRI', 'SAT', 'Munsi'}
+SKIP = {'SmartWorker', 'QR', 'PDF', 'PNG', 'CSV', 'ID', 'IST', 'UTC', 'AM',
+        'PM', 'OT', 'UPI', 'IFSC', 'PAN', 'GST', 'OTP', 'ESI', 'EPF', 'SUN',
+        'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'Munsi'}
 SKIP |= {d for d in DATA if d}
+# Staff names are data exactly as worker names are: a supervisor called
+# "Site Supervisor" is not an untranslated string.
+with app.app_context():
+    for row in m.User.query.all():
+        for value in (row.full_name, row.username, row.email,
+                      getattr(row, 'position', None)):
+            DATA |= set(re.findall(r"[A-Za-z][\w'’.-]+", value or ''))
+    for row in m.Site.query.all():
+        for value in (row.address, row.contact_person):
+            DATA |= set(re.findall(r"[A-Za-z][\w'’.-]+", value or ''))
+# Word by word as well as whole: an email address reaches the screen as
+# "demo@acme.test", which splits into words the whole-string match misses.
+DATA |= {word for value in list(DATA)
+         for word in re.findall(r"[A-Za-z]+", value)}
+# A language names itself in its own script: the picker should read
+# "English", not "अंग्रेज़ी", or somebody who cannot read Hindi cannot
+# find his way back out of it.
+SKIP |= {'English'}
+SKIP |= {d for d in DATA if d}
+
+# HTML entities are not words. &rarr; was being read as "rarr" and counted
+# as untranslated English on three screens.
+ENTITY = re.compile(r'&[A-Za-z][A-Za-z0-9]{1,8};')
 
 TAGS = re.compile(r'<(script|style)[^>]*>.*?</\1>', re.S | re.I)
 TEXT = re.compile(r'>([^<>]+)<')
@@ -62,7 +91,8 @@ with app.test_client() as c:
             chunk = chunk.strip()
             if not chunk or '{{' in chunk:
                 continue
-            words = [w for w in LATIN_WORD.findall(chunk) if w not in SKIP]
+            words = [w for w in LATIN_WORD.findall(ENTITY.sub(' ', chunk))
+                     if w not in SKIP]
             if words:
                 per_screen[path].add(chunk[:60])
 

@@ -5967,9 +5967,18 @@ def attendance_row_meta(worker, record):
         CO002 · 9:04 AM → 6:12 PM · +52m
         CO005 · not marked
     """
+    # Built here rather than in the template, so each word has to be
+    # translated on the way out: this line sits under every worker's name
+    # on the screen a mukadam uses most, and "not marked" in the middle of
+    # Hindi is the first thing he sees when he opens the app.
+    lang = _current_lang()
+
+    def word(text):
+        return i18n.translate(text, lang)
+
     parts = [worker.worker_id]
     if not record:
-        parts.append('not marked')
+        parts.append(word('not marked'))
         return ' · '.join(parts)
 
     if record.check_in_time:
@@ -5978,15 +5987,16 @@ def attendance_row_meta(worker, record):
             clock += ' → ' + _fmt_clock(record.check_out_time)
         parts.append(clock)
         if record.late_minutes and record.late_minutes > 0:
-            parts.append(f'{record.late_minutes}m late')
+            parts.append(word('%(count)sm late')
+                         % {'count': record.late_minutes})
         if record.check_out_time:
             if record.overtime_minutes and record.overtime_minutes > 0:
                 parts.append(f'+{record.overtime_minutes}m')
         else:
-            parts.append('shift open')
+            parts.append(word('shift open'))
     else:
         # absent / leave carry no clock times
-        parts.append(record.status)
+        parts.append(word(record.status))
     return ' · '.join(parts)
 
 
@@ -6916,7 +6926,16 @@ def group_notifications(items, today):
             })
         rows = groups[-1]['rows']
 
-        subject, dash, outcome = (item.title or '').partition(NOTE_DASH)
+        title = (item.title or '').strip()
+        # Rows written before notifications were reworked carry an
+        # "Attendance: " prefix that the writer no longer adds. Left on,
+        # it rides into the subject and shows up as the one piece of
+        # English on an otherwise Hindi screen, in front of a man's name.
+        for stale_prefix in ('Attendance: ', 'Transaction: '):
+            if title.startswith(stale_prefix):
+                title = title[len(stale_prefix):]
+                break
+        subject, dash, outcome = title.partition(NOTE_DASH)
         outcome = outcome.strip()
         key = (item.category, item.body or '', outcome) if dash and outcome else None
 
@@ -7395,6 +7414,51 @@ def _lfield(field):
 def _lvalue(value, field=''):
     """A stored audit value, in words and in the interface language."""
     return i18n.translate(salary.value_label(field, value), _current_lang())
+
+
+@app.template_filter('lparts')
+def _lparts(value):
+    """A dot-joined line whose pieces are translated one at a time.
+
+    A notification's second line is assembled from whatever applied —
+    "Dwarka Expressway Package 3 · qr scan". The site's name is the
+    employer's own and must not be touched; "qr scan" and "bulk" are
+    interface words and were reaching a Hindi screen in English. Each
+    piece is looked up on its own and anything unknown passes through,
+    which is what keeps the site name intact.
+    """
+    text = (value or '').strip()
+    if not text:
+        return text
+    lang = _current_lang()
+
+    def piece(part):
+        part = part.strip()
+        # An exact word first; failing that, a whole stored sentence, which
+        # is how a notification written before the rework reads.
+        said = i18n.translate(part, lang)
+        return said if said != part else i18n.translate_note(part, lang)
+
+    return ' · '.join(piece(part) for part in text.split('·'))
+
+
+@app.template_filter('lterm')
+def _lterm(value):
+    """One stored keyword — permanent, active, daily — in the reader's words.
+
+    These are columns the application itself wrote: a pay type, a status,
+    an employee category. They were being printed raw, so a man reading
+    the Hindi interface saw "permanent" and "daily" in the middle of his
+    own language on the screens he looks at most.
+
+    Lower-cased before the lookup because the same keyword has been
+    entered with and without a capital over the years, and an unknown one
+    falls through unchanged rather than disappearing.
+    """
+    text = (value or '').strip()
+    if not text:
+        return text
+    return i18n.translate(text.replace('_', ' ').lower(), _current_lang())
 
 
 @app.template_filter('lpolicy')

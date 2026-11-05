@@ -59,7 +59,7 @@
                             {%- if row.more %}, {{ _('and %n more')|replace('%n', row.more) }}{% endif -%}
                         </div>
                         {% endif %}
-                        {% if row.body %}<div class="text-xs text-gray-600 mt-0.5">{{ row.body }}</div>{% endif %}
+                        {% if row.body %}<div class="text-xs text-gray-600 mt-0.5">{{ row.body|lparts }}</div>{% endif %}
                         {# Stored timestamps are naive IST — see timeutil.py — so
                            this line labelled them with the wrong zone. A foreman
                            reading "09:35 UTC" adds five and a half hours and
