@@ -84,7 +84,7 @@
                     {% if assignment.project %} • <i class="fa-solid fa-diagram-project text-accent mr-1"></i>{{ assignment.project.name }}{% endif %}
                     {% if assignment.task %} • {{ assignment.task.name }}{% endif %}
                 </div>
-                <div class="text-[11px] text-gray-500">Since {{ assignment.start_date|ldate('%d %b %Y') }}</div>
+                <div class="text-[11px] text-gray-500">{{ _('Since') }} {{ assignment.start_date|ldate('%d %b %Y') }}</div>
                 {% else %}
                 <div class="text-xs text-amber-700 font-medium mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ _('Not assigned') }}</div>
                 {% endif %}
@@ -209,7 +209,7 @@
             </div>
             <p class="text-[11px] text-gray-500">{{ _('If the worker already has an active assignment, it is closed automatically as a transfer the day before the new start date.') }}</p>
             <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors">
-                <i class="fa-solid fa-check mr-2"></i>Save Assignment
+                <i class="fa-solid fa-check mr-2"></i>{{ _('Save Assignment') }}
             </button>
         </form>
     </div>

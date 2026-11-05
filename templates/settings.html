@@ -263,10 +263,10 @@
                         <div class="text-xs text-gray-500">
                             {% if project.site %}{{ project.site.name }} • {% endif %}
                             {% if project.start_date %}{{ project.start_date|ldate('%d %b %y') }}{% endif %}
-                            {% if project.deadline %} → deadline {{ project.deadline|ldate('%d %b %y') }}{% endif %}
+                            {% if project.deadline %} → {{ _('deadline') }} {{ project.deadline|ldate('%d %b %y') }}{% endif %}
                         </div>
                         {% if project.deadline and project.delay_days > 0 %}
-                        <div class="text-xs text-red-700 font-medium mt-0.5"><i class="fa-solid fa-clock mr-1"></i>{{ project.delay_days }} day(s) delayed</div>
+                        <div class="text-xs text-red-700 font-medium mt-0.5"><i class="fa-solid fa-clock mr-1"></i>{{ _('%(count)s day(s) delayed') % {'count': project.delay_days} }}</div>
                         {% endif %}
                     </div>
                     <div class="flex items-center space-x-1 ml-2">
@@ -416,20 +416,16 @@
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
             <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Salary Calculation Policy') }}</h2>
             <p class="text-xs text-gray-500 mb-1">
-                How a fixed monthly salary becomes a payable amount. Applies to the
-                {{ monthly_worker_count }} worker(s) on a monthly salary.
+                {{ _('How a fixed monthly salary becomes a payable amount. It applies to the %(count)s worker(s) on a monthly salary.') % {'count': monthly_worker_count} }}
             </p>
             <p class="text-xs text-gray-500 mb-4">
-                Months already marked <b>{{ _('Paid') }}</b> keep the figures they were paid with —
-                changing a rule here never rewrites them.
-                {% if salary_overrides %}{{ salary_overrides }} worker(s) have their own override and ignore these settings.{% endif %}
+                {{ _('A month already marked Paid keeps the figures it was paid with — changing a rule here never rewrites it.') }}
+                {% if salary_overrides %}{{ _('%(count)s worker(s) have their own override and ignore these settings.') % {'count': salary_overrides} }}{% endif %}
             </p>
 
             {% if not salary_policy_saved %}
             <div class="bg-blue-50 border border-blue-100 text-blue-800 text-xs rounded-2xl p-3 mb-4">
-                No company policy saved yet. Each worker is currently calculated from the
-                leave quota and deduction rate already on their own record, exactly as
-                before. Saving here switches everyone to these rules.
+                {{ _('No company policy is saved yet. Each worker is calculated from the leave quota and deduction rate already on his own record, exactly as before. Saving here switches everyone to these rules.') }}
             </div>
             {% endif %}
 
@@ -531,7 +527,7 @@
                 </div>
 
                 <button type="submit" class="w-full bg-accent text-white py-3 rounded-2xl font-semibold">
-                    <i class="fa-solid fa-floppy-disk mr-2"></i>Save Salary Policy
+                    <i class="fa-solid fa-floppy-disk mr-2"></i>{{ _('Save Salary Policy') }}
                 </button>
             </form>
         </div>
@@ -719,7 +715,7 @@
                     <b>{{ a.new_value|lvalue(a.field) }}</b>
                     <span class="text-gray-500">
                         · {{ a.created_at|ldate('%d %b %Y, %I:%M %p') if a.created_at }}
-                        {% if a.worker_id %}· worker override{% else %}· company-wide{% endif %}
+                        {% if a.worker_id %}· {{ _('worker override') }}{% else %}· {{ _('company-wide') }}{% endif %}
                     </span>
                 </div>
                 {% endfor %}
@@ -785,8 +781,8 @@
                         <div class="text-xs text-gray-500"><i class="fa-solid fa-mobile-screen mr-1"></i>{{ auser.phone }}</div>
                         {% endif %}
                         <div class="text-xs text-gray-500">
-                            Sites: {{ auser.site_id_list|length if auser.site_id_list else 'All' }} •
-                            Projects: {{ auser.project_id_list|length if auser.project_id_list else 'All' }}
+                            {{ _('Sites') }}: {{ auser.site_id_list|length if auser.site_id_list else _('All') }} •
+                            {{ _('Projects') }}: {{ auser.project_id_list|length if auser.project_id_list else _('All') }}
                         </div>
                     </div>
                     <div class="flex items-center space-x-1 ml-2">
