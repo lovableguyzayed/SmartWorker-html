@@ -151,11 +151,23 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Aadhaar Number') }}</label>
-                        <input type="text" name="aadhaar_number" inputmode="numeric" maxlength="12"
-                               value="{{ worker.aadhaar_number or '' if worker else '' }}"
+                        <label class="block text-sm font-medium text-gray-700 mb-2" for="aadhaar_number">{{ _('Aadhaar Number') }}</label>
+                        {# The box is deliberately empty: only the last four
+                           digits are kept, so there is no full number to put
+                           back in it. An empty box therefore leaves what is
+                           on file alone — removing one is the checkbox. #}
+                        <input type="text" name="aadhaar_number" id="aadhaar_number"
+                               inputmode="numeric" maxlength="12" value=""
                                class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                        <p class="text-[0.65rem] text-gray-500 mt-1">{{ _('Shown masked, and never printed on a payslip.') }}</p>
+                        {% if worker and worker.masked_aadhaar %}
+                        <p class="text-[0.65rem] text-gray-600 mt-1">{{ _('On file:') }} <span class="font-medium">{{ worker.masked_aadhaar }}</span> — {{ _('leave blank to keep it.') }}</p>
+                        <label class="flex items-center gap-2 mt-1 text-[0.65rem] text-gray-600">
+                            <input type="checkbox" name="aadhaar_remove" value="1" class="w-4 h-4">
+                            {{ _('Remove the Aadhaar on file') }}
+                        </label>
+                        {% else %}
+                        <p class="text-[0.65rem] text-gray-500 mt-1">{{ _('Only the last 4 digits are kept, and none are printed on a payslip.') }}</p>
+                        {% endif %}
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('PAN') }}</label>

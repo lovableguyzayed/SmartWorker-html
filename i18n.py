@@ -308,6 +308,21 @@ TRANSLATIONS = {
 
         # The minimum wage floor. The employer's own figures, because the
         # state notifies them by category and they change twice a year.
+        # The owner's own backup. The free database it runs on is deleted
+        # thirty days after it is created, with no backup of any kind.
+        'Take a backup': 'बैकअप लें',
+        'Your whole wage record as spreadsheets you keep yourself — '
+        'workers, attendance, payments, payroll. Take one every month and '
+        'keep it somewhere safe.':
+            'आपकी पूरी मज़दूरी का हिसाब स्प्रेडशीट में, आपके ही पास — '
+            'मज़दूर, हाज़िरी, भुगतान, तनख़्वाह। हर महीने एक लें और '
+            'सुरक्षित जगह रखें।',
+        "It holds your workers' names, phone numbers and bank details, so "
+        'look after the file. Passwords and photographs are not in it.':
+            'इसमें आपके मज़दूरों के नाम, फ़ोन नंबर और बैंक की जानकारी है, '
+            'इसलिए फ़ाइल सँभाल कर रखें। पासवर्ड और फ़ोटो इसमें नहीं हैं।',
+        'Download a backup': 'बैकअप डाउनलोड करें',
+
         'Minimum wage': 'न्यूनतम मज़दूरी',
         'Your state notifies these, by category, and they change. Enter '
         'your own figures. A wage below the floor is flagged when you save '
@@ -566,8 +581,15 @@ TRANSLATIONS = {
         'UPI ID': 'UPI आईडी',
         'Aadhaar Number': 'आधार संख्या',
         'PAN': 'PAN',
-        'Shown masked, and never printed on a payslip.':
-            'ढकी हुई दिखती है, और तनख़्वाह पर्ची पर कभी नहीं छपती।',
+        # Only the last four digits are kept, so the box on the form is
+        # empty and a blank one means "leave it alone".
+        'Only the last 4 digits are kept, and none are printed on a '
+        'payslip.':
+            'सिर्फ़ आख़िरी 4 अंक रखे जाते हैं, और तनख़्वाह पर्ची पर कोई '
+            'नहीं छपता।',
+        'On file:': 'दर्ज है:',
+        'leave blank to keep it.': 'वही रखना है तो ख़ाली छोड़ दें।',
+        'Remove the Aadhaar on file': 'दर्ज आधार हटा दें',
         'No way to pay this worker is recorded yet.':
             'इस मज़दूर को पैसा भेजने का कोई ज़रिया अभी दर्ज नहीं है।',
         'My Attendance & Pay': 'मेरी हाज़िरी और मज़दूरी',
@@ -1619,6 +1641,12 @@ FLASH_MESSAGES = {
         'That deduction no longer exists.': 'वह कटौती अब मौजूद नहीं है।',
         'Give the deduction a name, as it should read on the payslip.':
             'कटौती को नाम दें, जैसा पर्ची पर छपना चाहिए।',
+
+        # Payment-detail errors. These reach the screen through a variable
+        # rather than a literal, so the parser that checks flashes cannot
+        # see them; they are listed here so they are not left in English.
+        'Aadhaar number should be 12 digits, or just the last 4.':
+            'आधार संख्या 12 अंकों की हो, या सिर्फ़ आख़िरी 4 अंक।',
 
         # What the app says when something goes wrong, instead of Flask's
         # own white English page. The first pair is the common one: a

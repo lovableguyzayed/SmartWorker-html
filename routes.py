@@ -5,6 +5,7 @@ import base64
 import csv
 import hmac
 import json
+import logging
 import re
 import secrets
 import calendar as _cal
@@ -29,6 +30,7 @@ import i18n
 import money
 import excel
 import ledger
+import backup
 from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
@@ -242,7 +244,6 @@ IFSC_RE = re.compile(r'^[A-Z]{4}0[A-Z0-9]{6}$')
 PAN_RE = re.compile(r'^[A-Z]{5}[0-9]{4}[A-Z]$')
 UPI_RE = re.compile(r'^[\w.\-]{2,60}@[A-Za-z]{2,20}$')
 ACCOUNT_RE = re.compile(r'^\d{9,18}$')
-AADHAAR_RE = re.compile(r'^\d{12}$')
 
 
 def clean_payment_details(form):
@@ -262,7 +263,6 @@ def clean_payment_details(form):
         'bank_account_number': squash('bank_account_number'),
         'bank_ifsc': squash('bank_ifsc', upper=True),
         'upi_id': (form.get('upi_id') or '').strip(),
-        'aadhaar_number': squash('aadhaar_number'),
         'pan_number': squash('pan_number', upper=True),
     }
     errors = []
@@ -270,7 +270,6 @@ def clean_payment_details(form):
         ('bank_account_number', ACCOUNT_RE, 'Bank account number should be 9 to 18 digits.'),
         ('bank_ifsc', IFSC_RE, 'IFSC should look like HDFC0001234.'),
         ('upi_id', UPI_RE, 'UPI id should look like name@bank.'),
-        ('aadhaar_number', AADHAAR_RE, 'Aadhaar number should be 12 digits.'),
         ('pan_number', PAN_RE, 'PAN should look like ABCDE1234F.'),
     )
     for field, pattern, message in checks:
@@ -282,12 +281,45 @@ def clean_payment_details(form):
     return {k: (v or None) for k, v in values.items()}, errors
 
 
+def apply_aadhaar(worker, form):
+    """Keep the last four digits of an Aadhaar, and only those.
+
+    A full Aadhaar number is not needed to pay anybody: a bank account and
+    IFSC, or a UPI id, is what moves the money. It was held only to
+    recognise which card a man showed, and four digits do that, so four is
+    what is stored from here on. Twelve, leaked, are somebody's identity.
+
+    Two things this has to get right, both of them about not losing data:
+
+      * the box on the form is empty, because there is no full number left
+        to show in it. An empty box therefore means "leave what is on
+        file", NOT "delete it" — otherwise an employer who opens a worker
+        to change his wage and presses Save has just erased his Aadhaar.
+      * so there has to be a way to actually remove one, which is the
+        checkbox, said out loud rather than inferred from a blank.
+
+    Returns any errors, like the other payment fields.
+    """
+    raw = ''.join(ch for ch in (form.get('aadhaar_number') or '')
+                  if ch.isdigit())
+    if form.get('aadhaar_remove') == '1' and not raw:
+        worker.aadhaar_number = None
+        return []
+    if not raw:
+        return []
+    # Twelve as printed on the card, or four if that is all he has to hand.
+    if len(raw) not in (4, 12):
+        return ['Aadhaar number should be 12 digits, or just the last 4.']
+    worker.aadhaar_number = raw[-4:]
+    return []
+
+
 def apply_payment_details(worker, form):
     """Copy validated payment details onto a worker. Returns any errors."""
     values, errors = clean_payment_details(form)
     for field, value in values.items():
         setattr(worker, field, value)
-    return errors
+    return errors + apply_aadhaar(worker, form)
 
 
 def clean_rate(value):
@@ -7776,6 +7808,70 @@ def settings_statutory_save():
         flash('%s saved, switched off. Nothing is being deducted for it.'
               % name, 'success')
     return redirect(url_for('settings') + '#section-salary')
+
+
+@app.route('/settings/backup')
+@admin_required
+def settings_backup():
+    """Hand the owner a zip of his own data, on the spot.
+
+    The free Postgres this runs on is deleted thirty days after it is
+    created, with no backup of any kind. He should not have to ask anyone
+    — including whoever wrote this — to get his wage record out.
+
+    Every query here is scoped by hand rather than left to the tenant
+    filter. Most of it would be filtered anyway, but ``users`` and
+    ``accounts`` are deliberately NOT auto-filtered (the login layer
+    scopes them itself), and a backup is exactly the place where that
+    exception would quietly become one employer downloading another
+    employer's workers.
+    """
+    account = current_user.account_id
+
+    def scoped(model):
+        return model.query.filter(model.account_id == account).all()
+
+    tables = [
+        ('workers', Worker, scoped(Worker)),
+        ('attendance', AttendanceRecord, scoped(AttendanceRecord)),
+        ('transactions', WorkerTransaction, scoped(WorkerTransaction)),
+        ('payroll', PayrollRecord, scoped(PayrollRecord)),
+        ('leave_adjustments', LeaveAdjustment, scoped(LeaveAdjustment)),
+        ('closure_days', ClosureDay, scoped(ClosureDay)),
+        ('worker_changes', WorkerModification, scoped(WorkerModification)),
+        ('sites', Site, scoped(Site)),
+        ('projects', Project, scoped(Project)),
+        ('project_assignments', ProjectAssignment,
+         scoped(ProjectAssignment)),
+        ('work_tasks', WorkTask, scoped(WorkTask)),
+        ('departments', Department, scoped(Department)),
+        ('salary_policies', SalaryPolicy, scoped(SalaryPolicy)),
+        ('salary_policy_changes', SalaryPolicyAudit,
+         scoped(SalaryPolicyAudit)),
+        ('statutory_deductions', StatutoryDeduction,
+         scoped(StatutoryDeduction)),
+        ('minimum_wages', MinimumWage, scoped(MinimumWage)),
+        ('company_settings', CompanySetting, scoped(CompanySetting)),
+        ('notifications', Notification, scoped(Notification)),
+        ('logins', User, scoped(User)),
+        ('workspace', Account,
+         Account.query.filter(Account.id == account).all()),
+    ]
+
+    company = CompanySetting.query.first()
+    taken = now_ist()
+    data, counts = backup.build(tables, company.name if company else None,
+                               taken)
+
+    filename = 'smartworker-backup-%s.zip' % taken.strftime('%Y-%m-%d')
+    response = make_response(data)
+    response.headers['Content-Type'] = 'application/zip'
+    response.headers['Content-Disposition'] = (
+        'attachment; filename="%s"' % filename)
+    logging.info('Backup taken for account %s: %d workers, %d attendance '
+                 'rows, %d bytes', account, counts.get('workers', 0),
+                 counts.get('attendance', 0), len(data))
+    return response
 
 
 @app.route('/settings/minimum_wage', methods=['POST'])
