@@ -2495,6 +2495,33 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         'closure_day_breakdown': closure_day_breakdown,
     }
 
+def warn_if_phone_is_shared(phone, exclude_id=None):
+    """Say so when this number already belongs to somebody else.
+
+    A warning and not a refusal, deliberately. Two labourers on one number
+    is normal on a site — a family has one phone, and the younger brother
+    gives his father's. Blocking it would make an honest employer invent a
+    fake number, which is worse than the truth.
+
+    But it was accepted in silence, and silence is wrong twice over: the
+    number is how an employer rings a man, and it is the username of the
+    worker's own login, so only the first of the two can ever have one —
+    and that only surfaces much later, on a different screen, as a message
+    about a mobile number he thought was free.
+    """
+    digits = normalize_mobile_number(phone)
+    if not digits or not is_valid_mobile_number(digits):
+        return
+    others = Worker.query.filter(Worker.phone == digits)
+    if exclude_id:
+        others = others.filter(Worker.id != exclude_id)
+    other = others.first()
+    if other:
+        flash('This number is already saved for %s (%s). Two workers can '
+              'share a phone, but only one of them can have a login.'
+              % (other.full_name, other.worker_id), 'warning')
+
+
 @app.route('/add_worker', methods=['GET', 'POST'])
 @admin_required
 def add_worker():
@@ -2508,6 +2535,7 @@ def add_worker():
         worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
         worker.phone = (normalize_mobile_number(request.form.get('phone'))
                         or clean_text(request.form.get('phone'), 'phone'))
+        warn_if_phone_is_shared(worker.phone)
         worker.email = clean_text(request.form.get('email'), 'email') or None
         worker.address = (request.form.get('address') or '').strip() or None
         worker.position = clean_text(request.form.get('position'), 'position')
@@ -2703,6 +2731,7 @@ def edit_worker(worker_id):
         worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
         worker.phone = (normalize_mobile_number(request.form.get('phone'))
                         or clean_text(request.form.get('phone'), 'phone'))
+        warn_if_phone_is_shared(worker.phone, exclude_id=worker.id)
         worker.email = clean_text(request.form.get('email'), 'email') or None
         worker.address = (request.form.get('address') or '').strip() or None
         worker.position = clean_text(request.form.get('position'), 'position')

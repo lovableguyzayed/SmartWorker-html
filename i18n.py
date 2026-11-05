@@ -1656,6 +1656,13 @@ def _hi_money(shape):
 #: match the shape, keep what was interpolated.
 _FLASH_PATTERNS_SOURCE = {
     'hi': [
+        # One number on two men. Said as a warning, not a refusal — a
+        # family shares a phone and the app should not make somebody
+        # invent a number to get past it.
+        (r'^This number is already saved for (.+?) \((.+?)\)\. Two workers '
+         r'can share a phone, but only one of them can have a login\.$',
+         r'यह नंबर पहले से \1 (\2) के नाम पर है। दो मज़दूर एक ही फ़ोन रख '
+         r'सकते हैं, पर लॉगिन सिर्फ़ एक का बन सकता है।'),
         # Notes the day view paints from JSON rather than raising as a flash.
         #
         # The first of these is dead wording kept on purpose: it was the
