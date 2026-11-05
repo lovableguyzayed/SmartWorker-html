@@ -8,6 +8,16 @@ measured.
 The list is in the order I would do it, which is by what breaks a real
 person's day — not by what is quickest.
 
+**Where it stands now:** 61 test files, all passing. No English left on
+any Hindi screen. PF/ESI, a minimum wage floor, Aadhaar masked at rest and
+a backup you can take yourself are all built and merged — the statutory
+rules and the wage floor sit silent until you fill them in.
+
+**Three things are still yours and I cannot do them from here:** check
+which database `DATABASE_URL` points at before the free one expires, make
+the repository private, and change the two passwords that are in its
+history. They are at the end, under *Still needs a decision from you*.
+
 ---
 
 ## Already fixed, in this pass
@@ -67,8 +77,11 @@ amounts somebody **typed in** are left exactly as typed.
 Hindi translation that the template never asked for** — the whole salary
 policy, every dropdown on Settings, every "Policy in force" row. Two
 sentences were half-translated ("Generate payroll for नवंबर"), which reads
-worse than either language. Down to 100, and most of what is left is data:
-worker names, job titles, clock times.
+worse than either language.
+
+This got to zero in a later pass — see **Hindi: finished** at the end,
+which also explains why the honest before-figure is smaller than the one
+this section quotes.
 
 ### 5. The live account's passwords were in a public repository
 
@@ -92,7 +105,7 @@ gets India wrong:
 | Rupee grouping | `₹22,69,214` — lakh/crore, not `2,269,214` |
 | Dates | `07 Aug 2026`, month names in the interface language. Never `08/07/2026`, which half the world reads as 8 July |
 | Currency symbol | One `money` filter, 73 sites, no hardcoded `Rs.` |
-| Aadhaar on screen | Masked to `XXXX XXXX 1234`, never on a payslip, not in any export |
+| Aadhaar on screen | Masked to `XXXX XXXX 1234`, never on a payslip, not in any export — and since round three, only those four digits are stored at all |
 | Hindi numerals | Latin digits kept, which is what Indian users expect for money |
 | Night shift | 20:00–08:00 no longer counted as twelve hours late |
 | Weekly off | An unmarked day is paid by default, so Sundays nobody marks cost nothing |
@@ -184,83 +197,188 @@ It is not wrong, but it is not an answer either. Small, and not yet fixed.
 
 ---
 
-## Needs a decision from you — I have not done these
+## Round three: the four you handed back to me
 
-These are not bugs. They are business and legal choices, and getting them
-wrong in software is worse than not having them.
+These four had been sitting in this document as *your* decisions. You said
+to build what I had recommended, so I did. Each is off or silent until you
+use it, and each has its own test file.
 
-### A. PF and ESI — **the one I would settle before launch**
+### A. PF and ESI — built, and switched off until you switch it on
 
-There is no statutory deduction anywhere in the app. For a stone crusher:
+The whole difficulty is that the figure attached to each one behaves in two
+opposite ways, and getting them the wrong way round is a real amount of
+somebody's money:
 
-* **ESI** applies at **10 or more** employees, for wages up to ₹21,000/month.
-  Employee 0.75%, employer 3.25%.
-* **EPF** applies at **20 or more** employees. 12% and 12%, on wages up to
-  ₹15,000/month.
+| | What the figure means | A man on ₹30,000 |
+|---|---|---|
+| **ESI** 0.75% / 3.25%, ₹21,000 | an **eligibility line** — above it he is out of the scheme | nothing is deducted |
+| **EPF** 12% / 12%, ₹15,000 | a **cap on the base** | 12% of ₹15,000 = **₹1,800** |
 
-You have 12 workers on the roster, so **ESI is very likely already due**.
-I am not a lawyer and your registration status is something only you know,
-but a payroll app for Indian labour that cannot show a PF or ESI line will
-be asked for one the first time an inspector or an accountant looks at it.
+Treat ESI's figure as a cap and that man loses ₹157 he does not owe. Treat
+EPF's as an eligibility line and he keeps ₹1,800 he does. Both are checked
+from both sides of each figure.
 
-Three ways to go, cheapest first:
+Nothing is hardcoded — the rates change by notification, so you type in
+your own, and **every rule is off until you switch it on**. An employer who
+is not registered must not have money taken off his men's wages because an
+application assumed he was.
 
-1. **A configurable deduction** — a name, a percentage, a wage ceiling, on
-   or off per worker. Represents ESI, EPF, labour welfare cess or anything
-   else, and takes about a day. Does not file anything or produce ECR
-   files; it puts the right line on the payslip and the right figure in the
-   total.
-2. **Proper EPF/ESI** — the statutory rates, both halves, the ceilings, and
-   an ECR-format export for the EPFO portal. Several days, and worth it
-   only if you are actually registered.
-3. **Nothing**, deliberately, until an accountant asks. Legitimate for a
-   small roster, and a decision rather than an oversight.
+The employer's share is recorded as your cost and never deducted from the
+worker. Each line is named on the payslip with its percentage, because
+"Deductions ₹1,800" with no name is a figure a man cannot check, and it is
+the number he will be asked about at home.
 
-Say which and I will build it.
+Settings → Salary → Statutory deductions. `tests/test_statutory.py`, 23
+checks.
 
-### B. Minimum wage floor
+### B. Minimum wage floor — a warning, never a block
 
-Uttarakhand notifies minimum wages by skill category, revised twice a year.
-Nothing in the app knows them, so a daily rate below the floor can be saved
-with no warning. A warning is easy; keeping a rate table current is not,
-because the notifications change and nobody maintains a machine-readable
-feed. My suggestion: one editable floor per category in Settings, and a
-warning — not a block — when a rate is saved below it. You keep the
-numbers up to date, the app stops you forgetting.
+Settings → Salary → Minimum wage. Your figures, against the position names
+you already use ("Helper", "Operator"), plus one for everybody. A floor set
+for a position beats the general one. Blank checks nothing.
 
-### C. Aadhaar at rest
+It **warns and saves anyway**, and the third reason is the real one:
 
-Masked everywhere it is shown, which is the part that matters most. But the
-full twelve digits sit in the database in plain text, and the edit form
-sends them back to the browser every time a worker is opened.
+1. a floor the app enforced would be a floor from the wrong year the moment
+   a notification lapsed, and you would be locked out of saving a correct
+   wage by a stale number;
+2. apprentices, part days, piece work and a man kept on his old rate
+   pending arrears are all real, and none of them are a form error;
+3. refused, an employer types in a figure he does not mean in order to get
+   past the screen — and then the rate on record is a lie. A warning you
+   read and override leaves the truth in the database.
 
-Two options: **store only the last four digits** (enough to identify a
-person against a document, nothing to leak), or **encrypt the column**.
-The first is simpler and safer and loses nothing you actually use. It is
-your data, so your call — I have not touched it.
+A monthly man is judged on the monthly figure, never the daily one. An
+hourly man is judged on the hours in *your* working day (eight unless you
+say otherwise — a crusher on a ten-hour shift should not be measured
+against somebody else's day). Piece rate is not judged at all.
 
-### D. The database will expire
+`tests/test_min_wage.py`, 29 checks.
+
+### C. Aadhaar — only the last four digits are kept now
+
+A full Aadhaar is not needed to pay anybody: a bank account and IFSC, or a
+UPI id, is what moves the money. It was held only so you could recognise
+which card a man showed you, and four digits do that.
+
+**Your existing numbers have not been touched.** Rows already holding
+twelve digits are read correctly and will be replaced with four the next
+time that worker is saved. Destroying data you entered is not mine to do —
+if you want the old ones cleared now, say so.
+
+One thing worth knowing, because it is the kind of change that quietly
+eats data: once the form stops showing the full number, the Aadhaar box is
+**empty**. An empty box that meant "delete" would wipe a man's Aadhaar
+every time you opened him to change his wage. So an empty box leaves what
+is on file alone, and removing one is a checkbox you tick on purpose.
+
+`tests/test_aadhaar.py`, 24 checks.
+
+### D. A backup, in your own hands
+
+Settings → Company → **Download a backup**. One zip, one spreadsheet per
+kind of record, a README inside in Hindi and English. Measured on the demo
+data: 20 CSVs, 15 KB.
+
+Not in it, and verified absent: password hashes, Supabase ids,
+photographs and QR images (they would turn 15 KB into tens of megabytes
+over 2G), and all but the last four digits of an Aadhaar.
+
+It is one workspace's data and only that. `users` and `accounts` sit
+outside the app's automatic tenant filter on purpose — the login layer
+scopes them itself — and a backup is exactly where that exception would
+quietly become one employer downloading another employer's workers and
+their bank accounts. Every query is scoped by hand, and the test proves
+it: written the careless way, another workspace's row and another
+employer's login end up in the file.
+
+A supervisor cannot take one. He can mark attendance; he cannot walk out
+with the wage book.
+
+`tests/test_backup.py`, 32 checks.
+
+---
+
+## Still needs a decision from you
+
+### The database will expire
 
 Render's free Postgres is deleted 30 days after creation, plus a 14-day
 grace period, **with no backup**. If the live data is on it, there is a
-date on which it goes. Check which database `DATABASE_URL` points at. This
-is the item most likely to lose real work, and it needs nothing from me.
+date on which it goes. Check which database `DATABASE_URL` points at.
+
+The backup button above means you can now protect yourself whatever you
+decide — take one every month. But where this thing is hosted is your
+call, not mine, and it is still the item most likely to lose real work.
+
+### The repository is public, and the old passwords are in its history
+
+Two things I have flagged before and cannot do for you:
+
+* **Make the repository private.** It is public today.
+* **Change the passwords for Javed and imran.** They were committed once.
+  Removing them from the current files, which is done, does not remove
+  them from git history — and a child's photograph is in there too.
+
+Rotating a password takes a minute and makes the leaked one worthless.
+Until then it is a live credential sitting in a public place.
+
+### The QR scanner's fallback — I recommend against it
+
+There is a faster camera API (`BarcodeDetector`) some phones have. I am
+**not** changing the scanner to use it, because there is no such API in
+this environment to test against, and the scanner is how attendance gets
+marked at the gate. An untested change to a core path is worse than a
+slightly slower one that works.
 
 ---
 
 ## Watching, not yet acted on
 
-* **A worker who leaves with money owed drops off the dues screen**, which
-  lists active workers only. Nobody is inactive today, so nothing is hidden
-  right now — but the first time somebody is let go mid-month holding
-  arrears, their debt disappears from the one screen that is supposed to
-  show it. A filter would fix it; it needs a small decision about whether
-  they appear by default.
-* **Hindi on the remaining screens.** 100 runs left, mostly data. The ones
-  that are not: a few page titles and composite phrases like
-  "35 day(s) delayed" that need a placeholder rather than a dictionary
-  entry.
 * **Slow first load.** Render's free instance sleeps after 15 minutes and
   takes about a minute to wake, which is most of what you feel as
   slowness. Nothing in the code will fix that; a paid instance or a Mumbai
   VPS will.
+* **Notifications written before they were reworked.** Six rows in the demo
+  database are in the old shape. They now read correctly in Hindi, by
+  pattern, because your live database may hold the same ones — but they are
+  stale rows, not something the app writes any more.
+
+---
+
+## Hindi: finished, and the measuring tool was lying first
+
+Measured with `tools/ux/hindi_gaps.py`, which renders every screen in
+Hindi and reports runs of Latin text. The same tool against the old code
+and the new:
+
+| | English runs on Hindi screens |
+|---|---|
+| Before | **65** across 13 screens |
+| After | **0** |
+
+It first reported 92. Twenty-seven of those were the tool's own false
+positives — it read the arrow entity `&rarr;` as the word "rarr", did not
+know PNG, ESI and EPF were acronyms that stay, and did not treat staff
+names, site addresses or email addresses as data the way it already
+treated worker names. Fixing those is honest measurement, not translation,
+which is why the before-figure here is 65 and not 92.
+
+What was genuinely in English: keywords the app had written itself and
+printed raw (`permanent`, `active`, `daily`, `pending`, `not marked`) in
+the middle of Hindi on the worker list and profile; composites where the
+English is glued to a figure in the markup (`₹800/day`, `20 min`,
+`36 day(s) delayed`, `Gross ₹1,33,000`); four paragraphs never wrapped for
+translation at all; and one label that *could never* have been translated,
+because it is assembled in the template — so the dictionary entry somebody
+wrote for it was dead the day it was written.
+
+Two real bugs surfaced on the way:
+
+* a worker called **Augustine** appeared as "अगस्तine" — his own name,
+  half rewritten, on the screen his employer reads out to him. The month
+  swapper was matching substrings instead of whole words.
+* the one word that says what actually happened — present, absent, late —
+  came through in English inside otherwise-Hindi notifications, because a
+  pattern can reorder a sentence but cannot look a captured group up in
+  the dictionary.
