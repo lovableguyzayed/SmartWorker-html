@@ -535,11 +535,69 @@ async function startScanner() {
         setIdle('');
         setStatus({{ _('Point the camera at the QR code on the ID card.')|tojson }});
         setPauseLabel();
+        startStruggleHint();
     } catch (err) {
         scannerRunning = false;
-        setIdle({{ _('Camera unavailable')|tojson }});
-        setStatus({{ _('Camera unavailable')|tojson }} + ' (' + escapeHtml(err && err.message ? err.message : err) +
-                  '). Allow camera access in Settings, or enter the Employee ID below.');
+        cameraFailed(err);
+    }
+}
+
+// Why the camera did not open, in words, and the right thing to do about
+// each one.
+//
+// This used to print the browser's own exception into the sentence:
+//
+//   Camera unavailable (NotAllowedError: Permission denied by system).
+//   Allow camera access in Settings, or enter the Employee ID below.
+//
+// Three things wrong with that at a gate. The half after the bracket was
+// never translated, so a Hindi screen ended in English. The advice was
+// the same whatever happened — "allow camera access" is no use to a phone
+// that has no camera, or one where WhatsApp has the camera open. And
+// NotAllowedError is developer text; the man holding the phone cannot act
+// on it. It goes to the console, where it belongs.
+var CAMERA_REASONS = {
+    NotAllowedError:        {{ _('Camera permission was refused. Allow the camera in your phone settings, or type the ID below.')|tojson }},
+    PermissionDeniedError:  {{ _('Camera permission was refused. Allow the camera in your phone settings, or type the ID below.')|tojson }},
+    NotFoundError:          {{ _('No camera this app can use. Type the ID below instead.')|tojson }},
+    DevicesNotFoundError:   {{ _('No camera this app can use. Type the ID below instead.')|tojson }},
+    NotReadableError:       {{ _('Another app is using the camera. Close it and try again, or type the ID below.')|tojson }},
+    TrackStartError:        {{ _('Another app is using the camera. Close it and try again, or type the ID below.')|tojson }},
+    OverconstrainedError:   {{ _('That camera could not be opened. Try the other camera, or type the ID below.')|tojson }},
+    SecurityError:          {{ _('The camera only works on a secure connection. Type the ID below instead.')|tojson }}
+};
+
+// html5-qrcode rejects with a STRING, not an Error:
+//
+//   "Error getting userMedia, error = NotAllowedError: Permission denied"
+//
+// so err.name is undefined and every failure fell through to the general
+// message — the mapping above was there and never once used. The name is
+// read out of the text as well, which is the only thing the library
+// actually hands over. Measured, not assumed: the first version of this
+// matched on err.name alone and the test reported the generic sentence
+// for a denied camera.
+function cameraErrorName(err) {
+    if (err && err.name) return err.name;
+    var text = String((err && err.message) || err || '');
+    var hit = text.match(/([A-Za-z]*Error)\s*:/);
+    return hit ? hit[1] : '';
+}
+
+function cameraFailed(err) {
+    var name = cameraErrorName(err);
+    var why = CAMERA_REASONS[name] ||
+        {{ _('The camera could not be started. Type the ID below instead.')|tojson }};
+    if (window.console && console.warn) {
+        console.warn('scanner: camera failed', name, err);
+    }
+    setIdle({{ _('Camera unavailable')|tojson }});
+    setStatus(why);
+    // Put the cursor where the work can still be done. Nobody standing in
+    // the sun wants to hunt for the box after being told to use it.
+    var manual = document.getElementById('manual-id');
+    if (manual) {
+        try { manual.focus({preventScroll: false}); } catch (e) { manual.focus(); }
     }
 }
 
@@ -586,7 +644,41 @@ function setPauseLabel() {
     if (icon) icon.className = paused ? 'fa-solid fa-play' : 'fa-solid fa-pause';
 }
 
+// Twelve seconds of pointing at a card that will not read.
+//
+// The library calls its error callback on every frame it cannot decode,
+// which is most frames even when everything is fine, so none of that can
+// be shown. But a card that has been in a trouser pocket on a crusher
+// site for six months is scratched, dusty, and sometimes just a
+// photocopy — and the screen went on repeating its hold-the-camera-here
+// line for as long as somebody was willing to stand there, which at a
+// gate with twenty men waiting is not long.
+//
+// (That line is not quoted here on purpose. Comments in this block are
+// served to the phone like the rest of the script, and
+// tests/test_scan_payment.py reads the rendered Hindi page for English —
+// it caught this comment quoting the English sentence, which is the check
+// doing exactly its job.)
+//
+// So: say nothing for twelve seconds, because an ordinary scan takes two,
+// and then offer the way out. Cleared the moment anything reads, and
+// whenever the scanner stops.
+var struggleTimer = null;
+
+function startStruggleHint() {
+    clearStruggleHint();
+    struggleTimer = setTimeout(function () {
+        if (!scannerRunning || scannerPaused) return;
+        setStatus({{ _('Not reading? Wipe the card and hold it still — or type the ID below.')|tojson }});
+    }, 12000);
+}
+
+function clearStruggleHint() {
+    if (struggleTimer) { clearTimeout(struggleTimer); struggleTimer = null; }
+}
+
 function onScanSuccess(decodedText) {
+    clearStruggleHint();
     var now = Date.now();
     if (decodedText === lastScan.code && now - lastScan.at < 4000) return;
     lastScan = { code: decodedText, at: now };
@@ -932,6 +1024,9 @@ if (!window.__scanBootHooked) {
 }
 
 function stopScannerCamera() {
+    // A hint about a card nobody is pointing at any more would arrive on
+    // whatever screen the user moved to.
+    clearStruggleHint();
     if (html5Qrcode && scannerRunning) {
         try {
             var stopping = html5Qrcode.stop();

@@ -287,6 +287,31 @@ TRANSLATIONS = {
         'Example: 2 free leaves, then ₹500 per extra leave day':
             'उदाहरण: 2 छुट्टियाँ मुफ़्त, उसके बाद हर छुट्टी पर ₹500',
 
+        # The scanner, when the camera will not open. Each cause gets the
+        # advice that fits it: "allow camera access" is no use to a phone
+        # with no camera, or one where another app holds it.
+        'Camera permission was refused. Allow the camera in your phone '
+        'settings, or type the ID below.':
+            'कैमरे की इजाज़त नहीं मिली। फ़ोन की सेटिंग्स में कैमरा चालू करें, '
+            'या नीचे ID टाइप करें।',
+        'No camera this app can use. Type the ID below instead.':
+            'इस ऐप के लिए कोई कैमरा नहीं है। नीचे ID टाइप कर दें।',
+        'Another app is using the camera. Close it and try again, or type '
+        'the ID below.':
+            'कैमरा किसी दूसरे ऐप के पास है। उसे बंद करके फिर कोशिश करें, '
+            'या नीचे ID टाइप करें।',
+        'That camera could not be opened. Try the other camera, or type '
+        'the ID below.':
+            'यह कैमरा नहीं खुल सका। दूसरा कैमरा आज़माएँ, या नीचे ID टाइप करें।',
+        'The camera only works on a secure connection. Type the ID below '
+        'instead.':
+            'कैमरा सिर्फ़ सुरक्षित कनेक्शन पर चलता है। नीचे ID टाइप कर दें।',
+        'The camera could not be started. Type the ID below instead.':
+            'कैमरा चालू नहीं हो सका। नीचे ID टाइप कर दें।',
+        'Not reading? Wipe the card and hold it still — or type the ID '
+        'below.':
+            'पढ़ नहीं रहा? कार्ड पोंछें और सीधा पकड़ें — या नीचे ID टाइप करें।',
+
         # The small page that replaces Flask's white 400/404/500.
         'That screen does not exist.': 'ऐसा कोई स्क्रीन नहीं है।',
         'The address may be mistyped, or what it pointed at has been '
