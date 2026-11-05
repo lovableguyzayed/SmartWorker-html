@@ -976,6 +976,9 @@ TRANSLATIONS = {
             'नियुक्त करें / तबादला',
         'Auto-Generated':
             'अपने आप बनेगा',
+        # On the dues screen: he is listed because he is still owed, not
+        # because he still turns up.
+        'Has left · still owed': 'जा चुका · पैसा बाक़ी',
         'Deactivate':
             'बंद करें',
         'Deactivate Worker':

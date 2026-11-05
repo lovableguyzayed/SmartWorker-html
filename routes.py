@@ -1796,7 +1796,24 @@ def _company_dues(upto=None, allocation=None):
     """
     upto = upto or today_ist()
     allocation = allocation or _dues_allocation()
-    workers = (Worker.query.filter_by(status='active')
+
+    # Everybody on the roll, and everybody who has left — not only the
+    # active ones.
+    #
+    # This screen exists to answer "who is still owed money". Listing only
+    # active workers answered a different question, and got the first one
+    # exactly backwards on the case that matters most: a man who is let go
+    # in the middle of a month, holding three months of arrears, is marked
+    # inactive and his debt disappears from the one screen that is supposed
+    # to show debts. Nobody is reminded of it again.
+    #
+    # Someone who has left and is square is dropped below, after the
+    # arithmetic, because there is no cheap way to ask the database for it
+    # — the outstanding figure comes out of the ledger, not a column. So
+    # they cost a statement each and then go. Worth it: the alternative is
+    # a screen that quietly forgets people the day they stop coming in.
+    workers = (Worker.query
+               .filter(Worker.status.in_(('active', 'inactive')))
                .order_by(Worker.join_date, Worker.id)
                .limit(DUES_WORKER_CAP + 1).all())
     capped = len(workers) > DUES_WORKER_CAP
@@ -1822,7 +1839,16 @@ def _company_dues(upto=None, allocation=None):
             # Where to send it, if anywhere. An amount owed with no way to
             # pay it is the pair of facts an owner needs together.
             'has_payment_details': worker.has_payment_details,
+            # So the screen can say so rather than listing him as though
+            # he turned up this morning.
+            'has_left': worker.status != 'active',
         })
+
+    # A worker who has left and is owed nothing is not news. One who has
+    # left owing nothing to nobody but who is still owed stays, in red,
+    # until he is paid.
+    rows = [r for r in rows
+            if not r['has_left'] or r['outstanding'] > ledger.EPSILON]
 
     # Worst first: the question is who to pay next, and that is whoever is
     # owed most and has been waiting longest.
