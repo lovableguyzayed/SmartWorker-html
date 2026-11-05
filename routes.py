@@ -7193,6 +7193,18 @@ def _lnotes(value):
     return i18n.translate_notes(value, _current_lang())
 
 
+@app.template_filter('lfield')
+def _lfield(field):
+    """A policy field's name, in the interface language."""
+    return i18n.translate(salary.field_label(field), _current_lang())
+
+
+@app.template_filter('lvalue')
+def _lvalue(value, field=''):
+    """A stored audit value, in words and in the interface language."""
+    return i18n.translate(salary.value_label(field, value), _current_lang())
+
+
 @app.template_filter('lpolicy')
 def _lpolicy(value):
     """One value out of salary.describe(), translated for display."""

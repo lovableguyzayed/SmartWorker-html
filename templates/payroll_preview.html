@@ -10,7 +10,10 @@
         </a>
         <div class="min-w-0">
             <h1 class="text-xl font-bold leading-tight">{{ _('Payroll Preview') }}</h1>
-            <p class="text-sm text-white/90">{{ _(month_name) }} {{ year }} — nothing is saved yet</p>
+            {# One sentence, not a translated month glued to an English tail.
+             Half-translated reads worse than either language: this said
+             "नवंबर 2026 — nothing is saved yet". #}
+            <p class="text-sm text-white/90">{{ _('%(month)s %(year)s — nothing is saved yet') % {'month': _(month_name), 'year': year} }}</p>
         </div>
     </div>
 

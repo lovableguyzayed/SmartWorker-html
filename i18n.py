@@ -287,6 +287,23 @@ TRANSLATIONS = {
         'Example: 2 free leaves, then ₹500 per extra leave day':
             'उदाहरण: 2 छुट्टियाँ मुफ़्त, उसके बाद हर छुट्टी पर ₹500',
 
+        # Half-translated sentences: a Hindi month glued to an English
+        # tail, which reads worse than either language on its own.
+        '%(month)s %(year)s — nothing is saved yet':
+            '%(month)s %(year)s — अभी कुछ सेव नहीं हुआ',
+
+        # The change log on the settings screen. Only the names that were
+        # not already in this table: 'Salary basis', 'Absence deduction',
+        # 'Calculation method', 'Mid-month joining', 'Paid leave',
+        # 'Leave carry-forward', 'Rounded on', 'On' and 'Off' are all here
+        # already, from the policy screens that use the same words —
+        # test_i18n refuses a second copy, and it is right to: two
+        # spellings of one setting is how a screen ends up calling the
+        # same thing two things.
+        'Days in a month': 'महीने में दिन',
+        'Paid leave days a month': 'महीने में पेड छुट्टी के दिन',
+        'Deduction per day': 'प्रति दिन कटौती',
+
         # The scanner, when the camera will not open. Each cause gets the
         # advice that fits it: "allow camera access" is no use to a phone
         # with no camera, or one where another app holds it.

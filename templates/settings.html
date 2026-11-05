@@ -533,8 +533,15 @@
             <div class="space-y-2">
                 {% for a in policy_audit %}
                 <div class="text-xs text-gray-600 border-b border-gray-50 pb-2 last:border-0">
-                    <b>{{ a.field.replace('_', ' ') }}</b>
-                    {{ a.old_value }} &rarr; <b>{{ a.new_value }}</b>
+                    {# The column name with its underscores removed, and
+                       str(value) straight out of the table, is the
+                       database talking: "absence deduction False -> True",
+                       "0.0 -> 2.0", and "None" where nothing was set
+                       before. In words now, and in Hindi on a Hindi
+                       screen. #}
+                    <b>{{ a.field|lfield }}</b>
+                    {{ a.old_value|lvalue(a.field) }} &rarr;
+                    <b>{{ a.new_value|lvalue(a.field) }}</b>
                     <span class="text-gray-500">
                         · {{ a.created_at|ldate('%d %b %Y, %I:%M %p') if a.created_at }}
                         {% if a.worker_id %}· worker override{% else %}· company-wide{% endif %}
