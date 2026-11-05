@@ -735,6 +735,76 @@ class StatutoryDeduction(db.Model):
         return wage
 
 
+class MinimumWage(db.Model):
+    """The floor the law puts under a wage, in the employer's own words.
+
+    Minimum wages in India are notified by the state government, by skill
+    category, and they move twice a year with the variable dearness
+    allowance. Uttarakhand's unskilled daily rate is not a figure this
+    application can know, and it certainly cannot know which category a
+    man at a stone crusher falls into.
+
+    So the figure is the employer's to enter, against the position names
+    he already uses on his own workers, and a blank one checks nothing.
+    The hours a day stands for is his too: eight is the statutory norm,
+    but a crusher that runs a ten-hour shift should be able to say so
+    rather than be measured against somebody else's day.
+
+    One floor per category per account. An empty category is the floor
+    for everybody, and a floor named for his own position beats it.
+    """
+    __tablename__ = 'minimum_wages'
+
+    #: What an hourly rate is multiplied by to reach a day, when the
+    #: employer has not said otherwise. The statutory working day.
+    DEFAULT_HOURS_PER_DAY = 8.0
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'),
+                           nullable=True, index=True)
+    #: Matched against the worker's position, ignoring case and spacing.
+    #: Empty means every worker.
+    category = db.Column(db.String(60), nullable=False, default='')
+    #: Either may be left blank, and a blank one is simply not checked.
+    daily_amount = db.Column(db.Float, nullable=True)
+    monthly_amount = db.Column(db.Float, nullable=True)
+    hours_per_day = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, default=now_ist)
+
+    @staticmethod
+    def normalize_category(text):
+        """'  Senior  Operator ' and 'senior operator' are one category."""
+        return ' '.join((text or '').split()).lower()
+
+    @property
+    def hours(self):
+        return float(self.hours_per_day or self.DEFAULT_HOURS_PER_DAY)
+
+    def floor_for(self, worker):
+        """The floor this man's wage is measured against, and what it is.
+
+        Returns (floor, wage, what the comparison took a day to be), or
+        None when this floor says nothing about a man paid his way.
+        """
+        pay_type = (worker.pay_type or '').strip()
+        if pay_type == 'monthly':
+            if not self.monthly_amount:
+                return None
+            return (float(self.monthly_amount),
+                    float(worker.monthly_salary or 0), None)
+        if not self.daily_amount:
+            return None
+        if pay_type == 'daily':
+            return (float(self.daily_amount),
+                    float(worker.daily_rate or 0), None)
+        if pay_type == 'hourly':
+            return (float(self.daily_amount),
+                    float(worker.hourly_rate or 0) * self.hours, self.hours)
+        # Piece rate. A project figure is not a wage for a day or a month,
+        # so there is nothing here to compare and no warning to give.
+        return None
+
+
 class SalaryPolicyAudit(db.Model):
     """Who changed which salary rule, when, and what it was before.
 
