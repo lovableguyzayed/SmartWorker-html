@@ -100,6 +100,90 @@ gets India wrong:
 
 ---
 
+## Round two: measured, then fixed
+
+### 6. A cold start was 1,240 KB over 22 requests
+
+Measured through a browser against a real server, counting what the
+network carries. On 2G that is **254 seconds of transfer** before Render's
+cold start even begins.
+
+The icon fonts had been subsetted long ago — 147 KB down to 9.6 KB for the
+111 icons this app draws. **The stylesheet never was.** It still named all
+2,452 icons in 102 KB, and 2,336 of those names pointed at glyphs that had
+already been removed from the font. Every first-time visitor downloaded
+it.
+
+```
+all.min.css                 99.6 KB  ->  19.1 KB
+fa-regular + fa-brands      375 KB in the repo  ->  deleted (never drawn)
+QR scanner library          loaded in <head>    ->  loaded on demand
+```
+
+Cold start is 1,159 KB now. `tools/subset_icons.py` cuts the stylesheet as
+well as the fonts, and keeps the complete originals in
+`tools/fontawesome-full/` so it can be re-run after adding an icon without
+narrowing a little more each time.
+
+**Still open, and deliberately not done:** the QR library is 367 KB — a
+third of what is left, and 73 seconds of 2G on its own. Modern Android
+Chrome has a built-in `BarcodeDetector` that would make it unnecessary for
+most phones. **This test environment does not have that API, so I cannot
+verify it works**, and the scanner is a core feature — putting an untested
+second camera path into it would be guessing. It needs trying on a real
+Android phone.
+
+### 7. The offline queue could sit full against a good connection
+
+The queue drained on the `online` event and on startup. That covers the
+signal returning while somebody is watching the screen, and opening the
+app the next morning. It did not cover the way this app is actually used:
+
+> mark attendance at the gate where there are no bars → pocket the phone →
+> walk up to the office where there are → open the app again
+
+The WebView was asleep for that walk, and does not reliably raise `online`
+for a connection that came back while it slept. A whole shift's attendance
+could wait in a phone for no reason. It now drains on `resume` and on
+`visibilitychange` too.
+
+Proven both ways: without the listener the queue stays full and three
+checks fail; with it the row lands exactly once.
+
+### 8. A debt disappeared when the man stopped coming in
+
+The dues screen listed workers with status `active`. A labourer let go
+mid-month holding three months of arrears is marked inactive — correctly —
+and his debt vanished from the one screen that exists to show debts.
+
+Everybody who has left is now walked too, and the ones who are square are
+dropped. A departed worker who is still owed is labelled **"Has left ·
+still owed"**, so nobody rings a man who left in August to ask why he is
+not at the gate.
+
+### 9. Two workers could be given one phone number, in silence
+
+That number is how you ring a man, and it is the username of his own
+login — so only the first of the two can ever have one, and that surfaces
+much later, on a different screen.
+
+It warns now and does **not** refuse: a family on a site shares one phone,
+and blocking it would make an honest employer invent a fake number.
+
+### What was checked here and held
+
+An 11.8 MB photo off a phone camera is accepted and compressed in under a
+second. A text file renamed `.jpg` is refused. The worker ID is generated
+rather than typed, so it cannot collide. The offline queue sends exactly
+once, never twice.
+
+One rough edge worth knowing: when the session expires while the app sits
+in a pocket, the next save returns Flask's own `400 Bad Request — The CSRF
+token is missing` page, in English, with no way back to the login screen.
+It is not wrong, but it is not an answer either. Small, and not yet fixed.
+
+---
+
 ## Needs a decision from you — I have not done these
 
 These are not bugs. They are business and legal choices, and getting them

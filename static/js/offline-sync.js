@@ -298,6 +298,34 @@ window.addEventListener('offline', async () => {
   showSyncToast('You are now offline. Data will be saved locally.', 'warning');
 });
 
+// Coming back to the app is a chance to drain, and on a phone it is the
+// likeliest one.
+//
+// The queue drained on 'online' and on startup, which covers the signal
+// returning while somebody is looking at the screen, and opening the app
+// the next morning. It did not cover the case this app is actually used
+// in: marking attendance at a gate with no bars, putting the phone in a
+// pocket, walking back up to the office, and opening it again. The
+// WebView was paused for that walk and does not reliably fire 'online'
+// for a connection that came back while it was asleep — so the queue
+// could sit full with a perfectly good connection until the next cold
+// start.
+//
+// Both events, because Cordova raises 'resume' and the browser raises
+// 'visibilitychange', and the app ships as both. syncPendingItems()
+// already refuses to run twice at once and returns immediately when
+// offline, so asking twice costs nothing.
+async function syncOnReturn() {
+  if (!navigator.onLine) return;
+  await updateOfflineUI();
+  await syncPendingItems();
+}
+
+document.addEventListener('resume', syncOnReturn, false);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) syncOnReturn();
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
   interceptOfflineFetch();
   interceptOfflineForms();

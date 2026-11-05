@@ -1796,7 +1796,24 @@ def _company_dues(upto=None, allocation=None):
     """
     upto = upto or today_ist()
     allocation = allocation or _dues_allocation()
-    workers = (Worker.query.filter_by(status='active')
+
+    # Everybody on the roll, and everybody who has left — not only the
+    # active ones.
+    #
+    # This screen exists to answer "who is still owed money". Listing only
+    # active workers answered a different question, and got the first one
+    # exactly backwards on the case that matters most: a man who is let go
+    # in the middle of a month, holding three months of arrears, is marked
+    # inactive and his debt disappears from the one screen that is supposed
+    # to show debts. Nobody is reminded of it again.
+    #
+    # Someone who has left and is square is dropped below, after the
+    # arithmetic, because there is no cheap way to ask the database for it
+    # — the outstanding figure comes out of the ledger, not a column. So
+    # they cost a statement each and then go. Worth it: the alternative is
+    # a screen that quietly forgets people the day they stop coming in.
+    workers = (Worker.query
+               .filter(Worker.status.in_(('active', 'inactive')))
                .order_by(Worker.join_date, Worker.id)
                .limit(DUES_WORKER_CAP + 1).all())
     capped = len(workers) > DUES_WORKER_CAP
@@ -1822,7 +1839,16 @@ def _company_dues(upto=None, allocation=None):
             # Where to send it, if anywhere. An amount owed with no way to
             # pay it is the pair of facts an owner needs together.
             'has_payment_details': worker.has_payment_details,
+            # So the screen can say so rather than listing him as though
+            # he turned up this morning.
+            'has_left': worker.status != 'active',
         })
+
+    # A worker who has left and is owed nothing is not news. One who has
+    # left owing nothing to nobody but who is still owed stays, in red,
+    # until he is paid.
+    rows = [r for r in rows
+            if not r['has_left'] or r['outstanding'] > ledger.EPSILON]
 
     # Worst first: the question is who to pay next, and that is whoever is
     # owed most and has been waiting longest.
@@ -2469,6 +2495,33 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         'closure_day_breakdown': closure_day_breakdown,
     }
 
+def warn_if_phone_is_shared(phone, exclude_id=None):
+    """Say so when this number already belongs to somebody else.
+
+    A warning and not a refusal, deliberately. Two labourers on one number
+    is normal on a site — a family has one phone, and the younger brother
+    gives his father's. Blocking it would make an honest employer invent a
+    fake number, which is worse than the truth.
+
+    But it was accepted in silence, and silence is wrong twice over: the
+    number is how an employer rings a man, and it is the username of the
+    worker's own login, so only the first of the two can ever have one —
+    and that only surfaces much later, on a different screen, as a message
+    about a mobile number he thought was free.
+    """
+    digits = normalize_mobile_number(phone)
+    if not digits or not is_valid_mobile_number(digits):
+        return
+    others = Worker.query.filter(Worker.phone == digits)
+    if exclude_id:
+        others = others.filter(Worker.id != exclude_id)
+    other = others.first()
+    if other:
+        flash('This number is already saved for %s (%s). Two workers can '
+              'share a phone, but only one of them can have a login.'
+              % (other.full_name, other.worker_id), 'warning')
+
+
 @app.route('/add_worker', methods=['GET', 'POST'])
 @admin_required
 def add_worker():
@@ -2482,6 +2535,7 @@ def add_worker():
         worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
         worker.phone = (normalize_mobile_number(request.form.get('phone'))
                         or clean_text(request.form.get('phone'), 'phone'))
+        warn_if_phone_is_shared(worker.phone)
         worker.email = clean_text(request.form.get('email'), 'email') or None
         worker.address = (request.form.get('address') or '').strip() or None
         worker.position = clean_text(request.form.get('position'), 'position')
@@ -2677,6 +2731,7 @@ def edit_worker(worker_id):
         worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
         worker.phone = (normalize_mobile_number(request.form.get('phone'))
                         or clean_text(request.form.get('phone'), 'phone'))
+        warn_if_phone_is_shared(worker.phone, exclude_id=worker.id)
         worker.email = clean_text(request.form.get('email'), 'email') or None
         worker.address = (request.form.get('address') or '').strip() or None
         worker.position = clean_text(request.form.get('position'), 'position')

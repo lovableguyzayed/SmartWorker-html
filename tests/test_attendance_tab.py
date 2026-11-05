@@ -76,7 +76,16 @@ TODAY = today_ist()
 # A plain past date: recent enough to be inside the calendar's month,
 # and never today, so "can a past date still be marked" is really asked.
 PAST = TODAY - timedelta(days=3)
-# The shut day. Far enough from PAST that the two never collide.
+# The shut day. Far enough from PAST that the two never collide — and
+# chosen, below, so that nobody is already marked on it.
+#
+# A fixed TODAY - 5 was wrong for a reason that only shows on some days:
+# the demo roster has attendance on scattered dates, and when the fifth day
+# back happened to be one of them, the calendar cell carried that worker's
+# real status. A status beats "Closed" in the cell's label, by design — the
+# plant was shut but this man worked — so the check for the word "Closed"
+# failed, on a calendar that was doing exactly the right thing. It passed
+# for weeks and then broke at midnight IST when the date rolled over.
 SHUT = TODAY - timedelta(days=5)
 
 created_closure = None
@@ -109,6 +118,25 @@ with app.app_context():
         rec.check_in_time = _dt.datetime.combine(TODAY, _dt.time(8, 5))
         rec.check_out_time = None
     ON_SITE = [w.full_name for w in roster[2:4]]
+
+    # Move SHUT back until it lands on a day nobody on this roster is
+    # marked for, so the cell under test really is a closed-and-unmarked
+    # one. Six weeks is far more room than the demo data needs and still
+    # inside what the calendar will show.
+    roster_ids = [w.id for w in roster]
+    for back in range(5, 45):
+        candidate = TODAY - timedelta(days=back)
+        if candidate == PAST:
+            continue
+        clash = m.AttendanceRecord.query.filter(
+            m.AttendanceRecord.date == candidate,
+            m.AttendanceRecord.worker_id.in_(roster_ids)).count()
+        if not clash:
+            SHUT = candidate
+            break
+    else:
+        sys.exit('every day of the last six weeks is marked; '
+                 'this test needs one that is not')
 
     # Whatever closure is on that date, this test needs it locked. An
     # existing one is used as it is rather than replaced, and only a
