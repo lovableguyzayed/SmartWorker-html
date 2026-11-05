@@ -435,6 +435,18 @@
                     </div>
                     {% endif %}
 
+                    {# Each statutory line by name, not lumped into one
+                       figure. A man who is told "deductions ₹1,800" and
+                       not which law took it has no way to check it, and
+                       this is the number he will be asked about at
+                       home. #}
+                    {% for line in pay_summary.statutory_breakdown %}
+                    <div class="pay-row">
+                        <span class="text-sm text-gray-600">{{ line.name }} ({{ '%g'|format(line.percent) }}%)</span>
+                        <span class="amount text-sm font-medium text-red-700">−{{ line.amount|money2 }}</span>
+                    </div>
+                    {% endfor %}
+
                     {% if pay_summary.transaction_deductions > 0 %}
                     <div class="pay-row">
                         <span class="text-sm text-gray-600">{{ _('Advances / Loans / Recoveries') }}</span>

@@ -33,7 +33,7 @@ from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
     WorkerModification, LeaveAdjustment, WorkerTransaction, Notification,
-    SalaryPolicy, SalaryPolicyAudit,
+    SalaryPolicy, SalaryPolicyAudit, StatutoryDeduction,
     TRANSACTION_EARNING_TYPES, TRANSACTION_DEDUCTION_TYPES,
     TRANSACTION_SETTLEMENT_TYPES, PAYMENT_MODES,
 )
@@ -2188,6 +2188,23 @@ def resolve_salary_policy(worker):
     return salary.resolve_policy(worker, base, override)
 
 
+def _statutory_rules():
+    """The account's statutory deductions, once per request.
+
+    Read through the ordinary query so the tenancy layer scopes them, and
+    cached because payroll asks for them once per worker and the answer is
+    the same for all of them.
+    """
+    if not has_app_context():
+        return []
+    rules = getattr(g, '_statutory_rules', None)
+    if rules is None:
+        rules = g._statutory_rules = (
+            StatutoryDeduction.query.filter_by(enabled=True)
+            .order_by(StatutoryDeduction.id).all())
+    return rules
+
+
 def calculate_pay_summary(worker, attendance_records, period_start=None, period_end=None):
     # Derive the payroll month when the caller doesn't pass it explicitly.
     if period_start is None or period_end is None:
@@ -2455,7 +2472,44 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
     late_deductions = _whole(late_deductions)
     delay_penalty = _whole(delay_penalty)
 
-    deductions = leave_deductions + late_deductions + delay_penalty
+    # ---- what the law takes off, if the employer is registered --------
+    #
+    # ESI at ten or more employees, EPF at twenty, a welfare cess in some
+    # states. None of it was here, and it is the first thing an accountant
+    # asks for. The rates are not written into the code: they change by
+    # notification, and an employer who is not registered leaves them off,
+    # which is the default.
+    #
+    # The wage these are taken of is the month's gross before anything the
+    # employer has handed over in advance — an advance is not a reduction
+    # in wages, and treating it as one would understate the contribution.
+    statutory_deductions = 0.0
+    employer_statutory = 0.0
+    statutory_breakdown = []
+    wage_for_statutory = base_pay + overtime_pay
+    for rule in _statutory_rules():
+        if not rule.applies_to(wage_for_statutory):
+            continue
+        rule_base = rule.base_for(wage_for_statutory)
+        own = _whole(rule_base * float(rule.percent or 0) / 100.0)
+        theirs = _whole(rule_base * float(rule.employer_percent or 0) / 100.0)
+        if own <= 0 and theirs <= 0:
+            continue
+        statutory_deductions += own
+        employer_statutory += theirs
+        statutory_breakdown.append({
+            'name': rule.name,
+            'percent': float(rule.percent or 0),
+            'employer_percent': float(rule.employer_percent or 0),
+            'base': rule_base,
+            'amount': own,
+            'employer_amount': theirs,
+        })
+    if statutory_breakdown:
+        policy_notes.append('Statutory deductions applied.')
+
+    deductions = (leave_deductions + late_deductions + delay_penalty
+                  + statutory_deductions)
     estimated_pay = base_pay + overtime_pay + transaction_earnings - deductions - transaction_deductions
     policy_note = ' '.join(policy_notes)
 
@@ -2463,6 +2517,12 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         'pay_type': worker.pay_type,
         'base_pay': round(base_pay, 2),
         'overtime_pay': round(overtime_pay, 2),
+        # What the law took, line by line, and what it cost the employer
+        # on top — which is not deducted from anybody but is money the
+        # business owes and should be able to see.
+        'statutory_deductions': round(statutory_deductions, 2),
+        'statutory_breakdown': statutory_breakdown,
+        'employer_statutory': round(employer_statutory, 2),
         'leave_deductions': round(leave_deductions, 2),
         'late_deductions': round(late_deductions, 2),
         'delay_penalty': delay_penalty,
@@ -4785,6 +4845,8 @@ def settings():
     # settings screen can say how many people a change will actually affect.
     policy_row = SalaryPolicy.query.filter_by(worker_id=None).first()
     salary_policy = salary.normalise_policy(policy_row)
+    statutory_deductions = (StatutoryDeduction.query
+                            .order_by(StatutoryDeduction.id).all())
     overridden = SalaryPolicy.query.filter(SalaryPolicy.worker_id.isnot(None)).count()
     monthly_worker_count = Worker.query.filter_by(pay_type='monthly', status='active').count()
     policy_audit = (SalaryPolicyAudit.query
@@ -4814,6 +4876,7 @@ def settings():
                            salary_overrides=overridden,
                            monthly_worker_count=monthly_worker_count,
                            salary_labels=salary.LABELS,
+                           statutory_deductions=statutory_deductions,
                            policy_audit=policy_audit,
                            dues_allocation=_dues_allocation(),
                            allocation_labels=ALLOCATION_LABELS,
@@ -7552,3 +7615,67 @@ def _crashed(error):
     return _plain_page('Something went wrong at our end.',
                        'Nothing was saved. Please try again in a moment.',
                        500)
+
+
+@app.route('/settings/statutory/save', methods=['POST'])
+@admin_required
+def settings_statutory_save():
+    """Add, change or remove one statutory deduction.
+
+    Deliberately plain: a name, two percentages and a figure whose meaning
+    is chosen from a list, because the rates and the ceilings change by
+    notification and nothing in this application should pretend to know
+    what they are this year.
+    """
+    row_id = parse_int(request.form.get('id'), 0)
+    row = None
+    if row_id:
+        row = StatutoryDeduction.query.filter_by(id=row_id).first()
+        if row is None:
+            flash('That deduction no longer exists.', 'error')
+            return redirect(url_for('settings') + '#section-salary')
+
+    if request.form.get('delete') == '1' and row is not None:
+        name = row.name
+        db.session.delete(row)
+        db.session.commit()
+        flash('%s will no longer be deducted.' % name, 'success')
+        return redirect(url_for('settings') + '#section-salary')
+
+    name = clean_text(request.form.get('name'), 'full_name')[:40].strip()
+    if not name:
+        flash('Give the deduction a name, as it should read on the payslip.',
+              'error')
+        return redirect(url_for('settings') + '#section-salary')
+
+    percent = max(0.0, min(100.0, parse_float(request.form.get('percent'), 0)))
+    employer = max(0.0, min(100.0,
+                            parse_float(request.form.get('employer_percent'), 0)))
+    ceiling_raw = (request.form.get('ceiling') or '').strip()
+    ceiling = max(0.0, parse_float(ceiling_raw, 0)) if ceiling_raw else None
+    mode = request.form.get('ceiling_mode') or 'none'
+    if mode not in StatutoryDeduction.CEILING_MODES:
+        mode = 'none'
+    # A ceiling with no meaning, or a meaning with no ceiling, is a rule
+    # that will surprise somebody at the end of a month.
+    if mode != 'none' and not ceiling:
+        mode = 'none'
+
+    if row is None:
+        row = StatutoryDeduction(account_id=current_user.account_id)
+        db.session.add(row)
+    row.name = name
+    row.percent = percent
+    row.employer_percent = employer
+    row.ceiling = ceiling
+    row.ceiling_mode = mode
+    row.enabled = 'enabled' in request.form
+    db.session.commit()
+
+    if row.enabled:
+        flash('%s saved. It will be deducted from the next payroll run.'
+              % name, 'success')
+    else:
+        flash('%s saved, switched off. Nothing is being deducted for it.'
+              % name, 'success')
+    return redirect(url_for('settings') + '#section-salary')

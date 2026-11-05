@@ -526,6 +526,99 @@
             </form>
         </div>
 
+        {# ESI, EPF, a welfare cess. Off until somebody turns them on: an
+           employer who is not registered must not have money taken off his
+           men's wages because an app assumed he was. #}
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Statutory deductions') }}</h2>
+            <p class="text-xs text-gray-500 mb-3">{{ _('ESI, PF or a welfare fund. Nothing is deducted until you add a rule and switch it on.') }}</p>
+
+            {% for d in statutory_deductions %}
+            <form method="POST" action="{{ url_for('settings_statutory_save') }}"
+                  class="border border-gray-100 rounded-2xl p-3 mb-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" value="{{ d.id }}">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Name on the payslip') }}</label>
+                        <input type="text" name="name" value="{{ d.name }}" maxlength="40" required
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _("Worker's share %") }}</label>
+                        <input type="number" name="percent" value="{{ d.percent }}" step="0.01" min="0" max="100"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _("Employer's share %") }}</label>
+                        <input type="number" name="employer_percent" value="{{ d.employer_percent }}" step="0.01" min="0" max="100"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Wage figure (₹)') }}</label>
+                        <input type="number" name="ceiling" value="{{ (d.ceiling if d.ceiling is not none else '') or '' }}" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('What that figure means') }}</label>
+                        <select name="ceiling_mode" class="w-full p-3 border border-lightGray rounded-xl">
+                            <option value="none" {{ 'selected' if d.ceiling_mode == 'none' }}>{{ _('No limit') }}</option>
+                            <option value="eligibility" {{ 'selected' if d.ceiling_mode == 'eligibility' }}>{{ _('Above it, nothing is deducted (ESI)') }}</option>
+                            <option value="cap" {{ 'selected' if d.ceiling_mode == 'cap' }}>{{ _('Take the % of this much only (PF)') }}</option>
+                        </select>
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 mt-3 text-sm text-gray-700">
+                    <input type="checkbox" name="enabled" {{ 'checked' if d.enabled }} class="w-5 h-5">
+                    {{ _('Deduct this from pay') }}
+                </label>
+                <div class="flex gap-2 mt-3">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-2xl font-semibold">{{ _('Save') }}</button>
+                    <button type="submit" name="delete" value="1"
+                            class="px-4 py-3 rounded-2xl font-semibold text-red-700 border border-red-200">{{ _('Remove') }}</button>
+                </div>
+            </form>
+            {% endfor %}
+
+            <form method="POST" action="{{ url_for('settings_statutory_save') }}"
+                  class="border border-dashed border-gray-200 rounded-2xl p-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Add a deduction') }}</label>
+                        <input type="text" name="name" placeholder="ESI" maxlength="40"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _("Worker's share %") }}</label>
+                        <input type="number" name="percent" step="0.01" min="0" max="100" placeholder="0.75"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _("Employer's share %") }}</label>
+                        <input type="number" name="employer_percent" step="0.01" min="0" max="100" placeholder="3.25"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Wage figure (₹)') }}</label>
+                        <input type="number" name="ceiling" step="1" min="0" placeholder="21000"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('What that figure means') }}</label>
+                        <select name="ceiling_mode" class="w-full p-3 border border-lightGray rounded-xl">
+                            <option value="none">{{ _('No limit') }}</option>
+                            <option value="eligibility">{{ _('Above it, nothing is deducted (ESI)') }}</option>
+                            <option value="cap">{{ _('Take the % of this much only (PF)') }}</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="w-full mt-3 border border-accent text-accent py-3 rounded-2xl font-semibold">
+                    <i class="fa-solid fa-plus mr-2"></i>{{ _('Add a deduction') }}
+                </button>
+            </form>
+        </div>
+
         {% if policy_audit %}
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
             <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Recent policy changes') }}</h2>
