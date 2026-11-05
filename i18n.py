@@ -287,6 +287,21 @@ TRANSLATIONS = {
         'Example: 2 free leaves, then ₹500 per extra leave day':
             'उदाहरण: 2 छुट्टियाँ मुफ़्त, उसके बाद हर छुट्टी पर ₹500',
 
+        # The small page that replaces Flask's white 400/404/500.
+        'That screen does not exist.': 'ऐसा कोई स्क्रीन नहीं है।',
+        'The address may be mistyped, or what it pointed at has been '
+        'removed.':
+            'पता ग़लत लिखा हो सकता है, या जो चीज़ वहाँ थी वो हटा दी गई है।',
+        'That photo is too big to upload.':
+            'यह तस्वीर अपलोड के लिए बहुत बड़ी है।',
+        'Take it again at a lower size, or choose a smaller file.':
+            'छोटे साइज़ में दोबारा लें, या कोई छोटी फ़ाइल चुनें।',
+        'Something went wrong at our end.':
+            'हमारी तरफ़ से कुछ गड़बड़ हो गई।',
+        'Nothing was saved. Please try again in a moment.':
+            'कुछ भी सेव नहीं हुआ। थोड़ी देर बाद दोबारा कोशिश करें।',
+        'Back to the app': 'ऐप पर वापस',
+
         # The rounding option, which governs every pay type and not only
         # the monthly salary it used to be filed under.
         'Applies to every pay type — monthly, daily, hourly and project — '
@@ -1509,6 +1524,30 @@ def translate_notes(text, lang):
 #: already in flight still comes out in the reader's language.
 FLASH_MESSAGES = {
     'hi': {
+        # What the app says when something goes wrong, instead of Flask's
+        # own white English page. The first pair is the common one: a
+        # WebView killed for memory while the app sat in a pocket, coming
+        # back with a CSRF token signed against a session that is gone.
+        'The app was asleep too long and that did not save. '
+        'Please try it once more.':
+            'ऐप बहुत देर बंद रहा, इसलिए वो सेव नहीं हुआ। एक बार फिर कोशिश करें।',
+        'The app was asleep too long. Please try that once more.':
+            'ऐप बहुत देर बंद रहा। एक बार फिर कोशिश करें।',
+        'That screen does not exist.': 'ऐसा कोई स्क्रीन नहीं है।',
+        'That is not something this app has.':
+            'यह चीज़ इस ऐप में है ही नहीं।',
+        'That photo is too big to upload. Try taking it again at a '
+        'lower size.':
+            'यह तस्वीर अपलोड के लिए बहुत बड़ी है। छोटे साइज़ में दोबारा लें।',
+        'That file is too big to upload.':
+            'यह फ़ाइल अपलोड के लिए बहुत बड़ी है।',
+        'Something went wrong at our end. Nothing was saved. '
+        'Please try again.':
+            'हमारी तरफ़ से कुछ गड़बड़ हो गई। कुछ भी सेव नहीं हुआ। '
+            'दोबारा कोशिश करें।',
+        'Something went wrong at our end. Please try again.':
+            'हमारी तरफ़ से कुछ गड़बड़ हो गई। दोबारा कोशिश करें।',
+
         'Assignment does not belong to this worker.':
             'यह नियुक्ति इस मज़दूर की नहीं है।',
         'Assignment marked as completed.': 'नियुक्ति पूरी हुई के रूप में दर्ज।',
