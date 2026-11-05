@@ -612,10 +612,22 @@ class PayrollRecord(db.Model):
         status, so a legacy 'paid' month means its whole net_pay was handed
         over. Without this fallback, every month settled before the upgrade
         would reopen as unpaid and the outstanding total would jump.
+
+        Never negative. A month where the advances already drawn exceed
+        what the work was worth has a negative net, and "mark this month
+        paid" used to write that negative straight into paid_amount —
+        which the running account then read as money handed over, so
+        ``closing = opening + earned - drawn - settled`` ADDED the
+        shortfall back and the debt disappeared. A man who had drawn
+        ₹12,000 against an ₹8,000 month owed ₹4,000, and one tap made it
+        ₹0. Clamped here as well as refused at the route, so a row already
+        written that way cannot go on corrupting the account.
         """
         if self.paid_amount is not None:
-            return round(float(self.paid_amount), 2)
-        return round(float(self.net_pay or 0), 2) if self.status == 'paid' else 0.0
+            return max(0.0, round(float(self.paid_amount), 2))
+        if self.status == 'paid':
+            return max(0.0, round(float(self.net_pay or 0), 2))
+        return 0.0
 
     @property
     def payment_state(self):
@@ -627,6 +639,17 @@ class PayrollRecord(db.Model):
         """
         settled = self.settled_amount
         due = round(float(self.net_pay or 0), 2)
+        # Below zero, not merely at it: what the work was worth has already
+        # been drawn as advances. Calling that "pending" told an employer a
+        # wage was still waiting to be handed over, and calling it "paid"
+        # would say money changed hands that never did. What is left over is
+        # a debt, and the running account is where a debt belongs — not on
+        # a wage badge.
+        #
+        # A month of exactly zero is a different thing: nobody worked and
+        # nobody drew anything. It keeps the plain reading it always had.
+        if due < -0.005:
+            return 'drawn'
         if settled <= 0.005:
             return 'pending'
         if settled + 0.005 >= due:

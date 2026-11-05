@@ -4063,12 +4063,30 @@ def payroll_toggle_paid(record_id):
     go. Paying part of a month goes through /payroll/<id>/settle.
     """
     record = tenant_get_or_404(PayrollRecord, record_id)
+    due = round(float(record.net_pay or 0), 2)
+    # A month whose wage has already been drawn as advances is not a month
+    # anybody can hand money over for. Marking it paid used to write the
+    # negative net into paid_amount, which the running account reads as
+    # money handed over — so the shortfall was added back and the debt the
+    # man owed disappeared.
+    if due < -0.005 and record.payment_state != 'paid':
+        record.paid_amount = 0.0
+        record.status = record.payment_state
+        db.session.commit()
+        flash('%s has already drawn %s for %s %s, so there is nothing to '
+              'hand over. What is left stands against him in his account '
+              'and comes off next month.'
+              % (record.worker.full_name, money.money(abs(due)),
+                 MONTH_NAMES[record.month - 1], record.year), 'warning')
+        return redirect(url_for('payroll', month=record.month,
+                                year=record.year))
+
     closing = record.payment_state == 'paid'
     if closing:
         record.paid_amount = 0.0
         record.status = 'pending'
     else:
-        record.paid_amount = round(float(record.net_pay or 0), 2)
+        record.paid_amount = max(0.0, due)
         record.status = 'paid'
     # Stamp the moment it became history. Re-opening a record clears the stamp
     # so the next save is free to recalculate it.

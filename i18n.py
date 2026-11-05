@@ -1154,6 +1154,10 @@ TRANSLATIONS = {
         # neighbours — Disable, Activate, Restore, Delete — all did, which
         # is why it sat there alone in English.
         'Enable': 'चालू करें',
+        # A month whose wage was already taken as peshgi. Nothing is
+        # payable, and saying "pending" would promise a wage that is not
+        # coming.
+        'Already drawn': 'पहले ले लिया',
         # How a mark got made, written into a notification's second line.
         'qr scan': 'QR स्कैन',
         'scanner': 'स्कैनर',
@@ -1900,6 +1904,19 @@ _FLASH_PATTERNS_SOURCE = {
     'hi': [
         (r'^(.+) will no longer be deducted\.$',
          r'\1 अब नहीं काटा जाएगा।'),
+        # Nothing to hand over, because the peshgi already exceeded the
+        # month. The shortfall is a debt, not a wage.
+        (r'^(.+?) has already drawn (\S+) for (.+?) (\d{4}), so there is '
+         r'nothing to hand over\. What is left stands against him in his '
+         r'account and comes off next month\.$',
+         r'\1 ने \3 \4 के लिए पहले ही \2 ले लिए हैं, इसलिए अब कुछ देना '
+         r'नहीं है। जो बचा है वह उनके खाते में उनके नाम चढ़ा है और अगले '
+         r'महीने से कटेगा।'),
+        (r'^(\d+) worker\(s\) had already drawn more than the month was '
+         r'worth, so nothing was handed over for them\. It stands in '
+         r'their account\.$',
+         r'\1 मज़दूरों ने महीने की कमाई से ज़्यादा पहले ही ले लिया था, '
+         r'इसलिए उन्हें कुछ नहीं दिया गया। वह उनके खाते में चढ़ा है।'),
         # The minimum wage floor. Every one of these is a warning or a
         # receipt, never a refusal to save.
         (r'^The minimum wage for (.+?) is no longer set\.$',
