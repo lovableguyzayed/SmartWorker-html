@@ -615,6 +615,53 @@ LABELS = {
 }
 
 
+#: The policy fields in words, for the change log on the settings screen.
+#: It printed the column name with the underscores taken out —
+#: "absence deduction False -> True" — which is the database talking, not
+#: the application.
+FIELD_LABELS = {
+    'salary_basis': 'Salary basis',
+    'basis_days': 'Days in a month',
+    'rounding': 'Rounding',
+    'rounding_stage': 'Rounded on',
+    'joining_mode': 'Mid-month joining',
+    'paid_leave_enabled': 'Paid leave',
+    'monthly_leave_allowance': 'Paid leave days a month',
+    'leave_carry_forward': 'Leave carry-forward',
+    'absence_deduction_enabled': 'Absence deduction',
+    'calculation_method': 'Calculation method',
+    'unmarked_days': 'Days nobody marked',
+    'deduction_rate': 'Deduction per day',
+}
+
+
+def field_label(field: str) -> str:
+    """One policy field, in words."""
+    return FIELD_LABELS.get(field, (field or '').replace('_', ' ').strip())
+
+
+def value_label(field: str, value):
+    """One stored audit value, in words.
+
+    The audit table keeps str(value), so a boolean arrives as 'True', a
+    quantity as '2.0', and a field that was not set before as None. All
+    three were printed exactly like that.
+    """
+    if value is None or value == '':
+        return '—'
+    text = str(value)
+    if text in ('True', 'False'):
+        return 'On' if text == 'True' else 'Off'
+    names = LABELS.get(field)
+    if names and text in names:
+        return names[text]
+    try:                                  # 2.0 -> 2, 766.67 -> 766.67
+        number = float(text)
+        return ('%g' % number)
+    except (TypeError, ValueError):
+        return text
+
+
 def describe(policy: dict) -> list:
     """Policy as (label, value) pairs for display."""
     p = normalise_policy(policy)
