@@ -16,6 +16,8 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload, joinedload
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage, ImageOps as PILImageOps
+from flask_wtf.csrf import CSRFError
+
 from app import app, db, csrf
 from timeutil import IST, now_ist, today_ist, ISTDate
 import sms
@@ -7396,3 +7398,145 @@ def one_time_setup(token):
                            admin_user=seeder.ADMIN_USER,
                            crew=len(seeder.CREW) + 1,
                            confirm_phrase=SETUP_CONFIRM, done=True)
+
+
+# ---------------------------------------------------------------------------
+# When something goes wrong, say so in the app rather than in Flask's voice
+#
+# There were no error handlers at all. A phone that had been sitting in a
+# pocket came back to Flask's own page —
+#
+#     400 Bad Request
+#     The CSRF token is missing.
+#
+# white, in English, with no bottom bar and no way back to anything. The
+# same for a mistyped URL and for a crash. For a labourer's mukadam
+# holding the phone at a gate, that is the application being broken,
+# whatever it says.
+#
+# Each of these answers in the shape the caller asked in: JSON to a fetch,
+# because the screens paint their own notices from it, and a redirect with
+# a flash to anything else.
+# ---------------------------------------------------------------------------
+
+def _wants_json():
+    """True when the caller is a script rather than a browser address bar."""
+    if request.path.startswith('/api/'):
+        return True
+    if request.is_json:
+        return True
+    accept = request.headers.get('Accept', '')
+    return 'application/json' in accept and 'text/html' not in accept
+
+
+@app.errorhandler(CSRFError)
+def _csrf_expired(error):
+    """The session went while the app was closed.
+
+    Not an attack, in practice: it is an Android WebView that was killed
+    for memory with a page still loaded, and the token in that page signed
+    against a session cookie that no longer exists. The login itself
+    usually survives — Flask-Login's remember cookie is separate — so the
+    honest answer is "try that again", not "you are not allowed".
+    """
+    app.logger.info('CSRF rejected on %s: %s', request.path, error.description)
+    if _wants_json():
+        return jsonify({
+            'success': False,
+            'expired': True,
+            'message': 'The app was asleep too long. Please try that once '
+                       'more.',
+        }), 400
+    flash('The app was asleep too long and that did not save. '
+          'Please try it once more.', 'warning')
+    return redirect(request.referrer or url_for('dashboard'))
+
+
+# A small page, built here rather than from a template: an error handler
+# that renders base.html can fail for the same reason the request did, and
+# then there is nothing at all. Inline and dependency-free, and carrying
+# one control on purpose — this is a dead end, and the only thing on it
+# should be the way out.
+_PLAIN_PAGE = """<!doctype html>
+<html lang="%(lang)s"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%(title)s</title>
+<style>
+ body{margin:0;min-height:100vh;display:flex;align-items:center;
+      justify-content:center;background:#f8fafc;
+      font-family:system-ui,-apple-system,'Noto Sans Devanagari',sans-serif;
+      color:#0f172a}
+ .card{max-width:22rem;margin:1rem;padding:2rem 1.5rem;text-align:center;
+       background:#fff;border-radius:1.25rem;
+       box-shadow:0 10px 30px rgba(15,23,42,.08)}
+ h1{font-size:1.125rem;margin:0 0 .5rem}
+ p{margin:0 0 1.5rem;color:#475569;font-size:.9375rem;line-height:1.5}
+ a{display:block;padding:.875rem 1rem;border-radius:.875rem;
+   background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600}
+</style></head><body><div class="card">
+<h1>%(title)s</h1><p>%(message)s</p><a href="%(href)s">%(action)s</a>
+</div></body></html>"""
+
+
+def _plain_page(title, message, status):
+    """An apology with a door in it."""
+    lang = _current_lang()
+    home = (url_for('dashboard') if current_user.is_authenticated
+            else url_for('login'))
+    body = _PLAIN_PAGE % {
+        'lang': lang,
+        'title': i18n.translate(title, lang),
+        'message': i18n.translate(message, lang),
+        'href': home,
+        'action': i18n.translate('Back to the app', lang),
+    }
+    return body, status, {'Content-Type': 'text/html; charset=utf-8'}
+
+
+@app.errorhandler(404)
+def _not_found(error):
+    """Still a 404, and that matters.
+
+    The first version redirected, which broke two things at once.
+    /__setup/<token> answers 404 on purpose, so a wrong guess cannot tell
+    a stranger that the route exists — tests/test_one_time_setup.py caught
+    that immediately. And a redirect whose destination depends on whether
+    you are signed in tells any passer-by whether somebody is signed in.
+    The status stays; only the page changes.
+    """
+    if _wants_json():
+        return jsonify({'success': False,
+                        'message': 'That is not something this app has.'}), 404
+    return _plain_page('That screen does not exist.',
+                       'The address may be mistyped, or what it pointed at '
+                       'has been removed.', 404)
+
+
+@app.errorhandler(413)
+def _too_large(error):
+    """An upload over the limit. Says which upload, because a photo off a
+    modern phone is the only thing here big enough to hit it."""
+    if _wants_json():
+        return jsonify({'success': False,
+                        'message': 'That file is too big to upload.'}), 413
+    return _plain_page('That photo is too big to upload.',
+                       'Take it again at a lower size, or choose a smaller '
+                       'file.', 413)
+
+
+@app.errorhandler(500)
+def _crashed(error):
+    """Nothing is explained to the user here on purpose — an exception's
+    text is for the log, not for a stranger's screen — but they are told
+    that it was us and not them, and given somewhere to go."""
+    app.logger.exception('Unhandled error on %s', request.path)
+    if _wants_json():
+        return jsonify({'success': False,
+                        'message': 'Something went wrong at our end. '
+                                   'Please try again.'}), 500
+    # A redirect was wrong here too: a 500 carrying a Location header is
+    # not followed by a browser, so it showed nothing at all — an error
+    # handler producing the blank page it exists to prevent.
+    return _plain_page('Something went wrong at our end.',
+                       'Nothing was saved. Please try again in a moment.',
+                       500)
