@@ -674,6 +674,67 @@ class SalaryPolicy(db.Model):
     worker = db.relationship('Worker', backref='salary_policy_rows')
 
 
+class StatutoryDeduction(db.Model):
+    """A percentage taken off a wage by law — ESI, EPF, a welfare cess.
+
+    There was nothing of the kind in this application, and for an Indian
+    employer that is the first thing an accountant asks for. ESI applies
+    at ten or more employees, EPF at twenty, and both are a percentage of
+    wages with a figure attached that behaves in one of two different
+    ways:
+
+      ceiling_mode 'eligibility'  ESI. Wages up to ₹21,000 a month are
+                                  covered; above that the man is out of
+                                  the scheme and nothing is deducted at
+                                  all.
+      ceiling_mode 'cap'          EPF. 12% of wages, but only of the
+                                  first ₹15,000 — ₹1,800 whatever he
+                                  earns above it.
+
+    Getting those two the same way round is the whole difficulty, and
+    deducting ESI from somebody earning ₹30,000 — or capping it instead of
+    exempting him — is a real amount of somebody's money.
+
+    One row per deduction per account. The rates are not hardcoded
+    anywhere: they change by notification, and an employer who is not
+    registered should be able to turn the whole thing off, which is the
+    default.
+    """
+    __tablename__ = 'statutory_deductions'
+
+    CEILING_MODES = ('eligibility', 'cap', 'none')
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'),
+                           nullable=True, index=True)
+    #: What the payslip calls it: 'ESI', 'EPF', 'Labour welfare fund'.
+    name = db.Column(db.String(40), nullable=False)
+    #: The worker's own share, as a percentage of the wage.
+    percent = db.Column(db.Float, nullable=False, default=0.0)
+    #: The employer's share. Not deducted from the worker — recorded so the
+    #: employer knows the cost and the payslip can be honest about it.
+    employer_percent = db.Column(db.Float, nullable=False, default=0.0)
+    ceiling = db.Column(db.Float, nullable=True)
+    ceiling_mode = db.Column(db.String(12), default='none')
+    enabled = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=now_ist)
+
+    def applies_to(self, wage):
+        """Whether this deduction touches a wage of this size at all."""
+        if not self.enabled or not self.percent:
+            return False
+        if self.ceiling_mode == 'eligibility' and self.ceiling:
+            return float(wage) <= float(self.ceiling) + 0.005
+        return True
+
+    def base_for(self, wage):
+        """The part of the wage the percentage is taken of."""
+        wage = float(wage or 0)
+        if self.ceiling_mode == 'cap' and self.ceiling:
+            return min(wage, float(self.ceiling))
+        return wage
+
+
 class SalaryPolicyAudit(db.Model):
     """Who changed which salary rule, when, and what it was before.
 

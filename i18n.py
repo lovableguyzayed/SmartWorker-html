@@ -287,6 +287,25 @@ TRANSLATIONS = {
         'Example: 2 free leaves, then ₹500 per extra leave day':
             'उदाहरण: 2 छुट्टियाँ मुफ़्त, उसके बाद हर छुट्टी पर ₹500',
 
+        # Statutory deductions — ESI, PF, a welfare fund.
+        'Statutory deductions': 'क़ानूनी कटौतियाँ',
+        'ESI, PF or a welfare fund. Nothing is deducted until you add a '
+        'rule and switch it on.':
+            'ESI, PF या कल्याण कोष। जब तक आप नियम जोड़ कर चालू नहीं करते, '
+            'कोई कटौती नहीं होती।',
+        'Name on the payslip': 'पर्ची पर नाम',
+        "Worker's share %": 'मज़दूर का हिस्सा %',
+        "Employer's share %": 'मालिक का हिस्सा %',
+        'Wage figure (₹)': 'तनख़्वाह की सीमा (₹)',
+        'What that figure means': 'उस सीमा का मतलब',
+        'No limit': 'कोई सीमा नहीं',
+        'Above it, nothing is deducted (ESI)':
+            'उससे ऊपर कुछ नहीं कटेगा (ESI)',
+        'Take the % of this much only (PF)':
+            '% सिर्फ़ इतनी रक़म पर लगेगा (PF)',
+        'Deduct this from pay': 'यह तनख़्वाह से काटें',
+        'Add a deduction': 'कटौती जोड़ें',
+
         # Half-translated sentences: a Hindi month glued to an English
         # tail, which reads worse than either language on its own.
         '%(month)s %(year)s — nothing is saved yet':
@@ -1479,6 +1498,8 @@ _NOTE_PATTERNS_SOURCE = {
          r'मज़दूरी आने-जाने के समय के हिसाब से लगी है।'),
         (r'^Overtime policy added extra pay\.$',
          r'ओवरटाइम के नियम से अतिरिक्त रक़म जुड़ी।'),
+        (r'^Statutory deductions applied\.$',
+         r'क़ानूनी कटौतियाँ लगाई गईं।'),
         (r'^Bonus/extra payment transactions added to pay\.$',
          r'इनाम और अतिरिक्त भुगतान रक़म में जोड़े गए।'),
         (r'^Advance/loan/deduction transactions recovered from pay\.$',
@@ -1566,6 +1587,11 @@ def translate_notes(text, lang):
 #: already in flight still comes out in the reader's language.
 FLASH_MESSAGES = {
     'hi': {
+        # Statutory deductions, from the settings screen.
+        'That deduction no longer exists.': 'वह कटौती अब मौजूद नहीं है।',
+        'Give the deduction a name, as it should read on the payslip.':
+            'कटौती को नाम दें, जैसा पर्ची पर छपना चाहिए।',
+
         # What the app says when something goes wrong, instead of Flask's
         # own white English page. The first pair is the common one: a
         # WebView killed for memory while the app sat in a pocket, coming
@@ -1737,6 +1763,12 @@ def _hi_money(shape):
 #: match the shape, keep what was interpolated.
 _FLASH_PATTERNS_SOURCE = {
     'hi': [
+        (r'^(.+) will no longer be deducted\.$',
+         r'\1 अब नहीं काटा जाएगा।'),
+        (r'^(.+) saved\. It will be deducted from the next payroll run\.$',
+         r'\1 सेव हो गया। अगली तनख़्वाह से काटा जाएगा।'),
+        (r'^(.+) saved, switched off\. Nothing is being deducted for it\.$',
+         r'\1 सेव हो गया, बंद है। इसके लिए कुछ नहीं कट रहा।'),
         # One number on two men. Said as a warning, not a refusal — a
         # family shares a phone and the app should not make somebody
         # invent a number to get past it.
