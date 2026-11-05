@@ -3875,6 +3875,14 @@ def _build_payroll_rows(month, year):
             'record_id': record_id,
             'settled': record_settled,
             'still_owed': round(max(net_pay - record_settled, 0.0), 2),
+            # Nobody marked this man once, all period, and he is still
+            # being paid. That follows from the employer's own setting for
+            # days nobody marked, and the arithmetic is not touched here —
+            # but it must be said, because the figure looks exactly like an
+            # ordinary month. In the first month of using this, when nobody
+            # is marking attendance yet, every monthly worker draws a full
+            # salary in silence.
+            'never_marked': not records and net_pay > 0.005,
         })
 
     return rows, {
@@ -3887,6 +3895,10 @@ def _build_payroll_rows(month, year):
         'pending_count': pending_count,
         'partial_count': partial_count,
         'worker_count': len(rows),
+        # Counted so it can be said once at the top of the screen, before
+        # the employer taps Generate, rather than only on whichever rows he
+        # happens to scroll past.
+        'never_marked_count': sum(1 for r in rows if r['never_marked']),
     }, start_date
 
 

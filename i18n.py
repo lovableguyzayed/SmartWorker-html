@@ -1158,6 +1158,18 @@ TRANSLATIONS = {
         # payable, and saying "pending" would promise a wage that is not
         # coming.
         'Already drawn': 'पहले ले लिया',
+        # Paid without a single attendance mark. The figure looks like any
+        # other month, which is exactly why it has to be said.
+        'Attendance never marked': 'हाज़िरी कभी नहीं लगी',
+        '%(count)s worker(s) are being paid with no attendance marked at '
+        'all this month.':
+            'इस महीने %(count)s मज़दूरों को तनख़्वाह मिल रही है जबकि उनकी '
+            'हाज़िरी एक बार भी नहीं लगी।',
+        'Days nobody marked count as paid, which is your setting. Mark the '
+        'month or change that setting if this is not right.':
+            'जिन दिनों किसी ने हाज़िरी नहीं लगाई वे मिले हुए माने जाते हैं '
+            '— यह आपकी ही सेटिंग है। अगर यह ठीक नहीं है तो महीने की '
+            'हाज़िरी लगाएँ या वह सेटिंग बदलें।',
         # How a mark got made, written into a notification's second line.
         'qr scan': 'QR स्कैन',
         'scanner': 'स्कैनर',

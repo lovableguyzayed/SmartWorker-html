@@ -112,6 +112,19 @@
     </section>
     {% endif %}
 
+    {% if totals.never_marked_count %}
+    {# Said before he taps Generate, not only on the rows he scrolls past.
+       The arithmetic follows his own setting for days nobody marked; what
+       he cannot see from the figures is that nobody marked these men at
+       all. #}
+    <section class="bg-red-50 border border-red-200 rounded-3xl p-4">
+        <p class="text-sm text-red-900 font-semibold">
+            <i class="fa-solid fa-triangle-exclamation mr-2"></i>{{ _('%(count)s worker(s) are being paid with no attendance marked at all this month.') % {'count': totals.never_marked_count} }}
+        </p>
+        <p class="text-xs text-red-800 mt-1">{{ _('Days nobody marked count as paid, which is your setting. Mark the month or change that setting if this is not right.') }}</p>
+    </section>
+    {% endif %}
+
     <!-- Generate / Refresh -->
     <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
         <div>
@@ -188,6 +201,10 @@
                         <div class="font-medium text-gray-800 name-wrap">{{ worker.full_name }}</div>
                         <div class="text-xs text-gray-500">{{ worker.worker_id }} · {{ _(worker.pay_type|capitalize) }}</div>
                         {% if not worker.has_pay_rate %}<span class="inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold whitespace-nowrap">{{ _('No pay rate') }}</span>{% endif %}
+                        {# Paid without a single attendance mark. The figure
+                           looks like any other month, which is why it has to
+                           be said. #}
+                        {% if row.never_marked %}<span class="inline-block bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold whitespace-nowrap">{{ _('Attendance never marked') }}</span>{% endif %}
                     </div>
                 </a>
 
