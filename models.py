@@ -460,13 +460,22 @@ class Worker(db.Model):
 
     @property
     def masked_aadhaar(self):
-        """Aadhaar with all but the last four digits hidden.
+        """The last four digits, written in the shape of the card.
 
-        Aadhaar is sensitive personal data; it is held so a payment can be
-        made and is never shown in full, nor printed on a payslip.
+        Only the last four are kept. A full Aadhaar number is not needed
+        to pay a man — a bank account and IFSC, or a UPI id, is what moves
+        the money — and it was being held only to recognise which card he
+        showed at the gate. Four digits do that. Twelve, if they ever got
+        out, are somebody's identity.
+
+        A row saved before that changed may still hold all twelve, which
+        is why this does not assume a length: it is not this application's
+        place to quietly rewrite data an employer put in. Either way, only
+        four are ever shown, and none are printed on a payslip.
         """
-        value = (self.aadhaar_number or '').strip()
-        if len(value) != 12:
+        value = ''.join(ch for ch in (self.aadhaar_number or '')
+                        if ch.isdigit())
+        if len(value) not in (4, 12):
             return None
         return 'XXXX XXXX ' + value[-4:]
 

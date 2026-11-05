@@ -127,6 +127,16 @@
                 </button>
             </form>
         </div>
+
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Take a backup') }}</h2>
+            <p class="text-xs text-gray-500 mb-3">{{ _('Your whole wage record as spreadsheets you keep yourself — workers, attendance, payments, payroll. Take one every month and keep it somewhere safe.') }}</p>
+            <p class="text-xs text-gray-500 mb-3">{{ _('It holds your workers\' names, phone numbers and bank details, so look after the file. Passwords and photographs are not in it.') }}</p>
+            <a href="{{ url_for('settings_backup') }}"
+               class="block w-full text-center border border-accent text-accent py-3 rounded-2xl font-semibold">
+                <i class="fa-solid fa-download mr-2"></i>{{ _('Download a backup') }}
+            </a>
+        </div>
     </section>
 
     <!-- ══════════ Sites Section ══════════ -->
