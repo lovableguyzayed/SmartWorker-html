@@ -619,6 +619,78 @@
             </form>
         </div>
 
+        <div class="bg-white rounded-3xl p-4 shadow-card mb-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Minimum wage') }}</h2>
+            <p class="text-xs text-gray-500 mb-3">{{ _('Your state notifies these, by category, and they change. Enter your own figures. A wage below the floor is flagged when you save a worker — never refused.') }}</p>
+
+            {% for w in minimum_wages %}
+            <form method="POST" action="{{ url_for('settings_minimum_wage_save') }}"
+                  class="border border-gray-100 rounded-2xl p-3 mb-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="category" value="{{ w.category or '' }}">
+                <p class="text-sm font-semibold text-gray-800 mb-2">
+                    {{ w.category or _('Every worker') }}
+                </p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Per day (₹)') }}</label>
+                        <input type="number" name="daily_amount" value="{{ (w.daily_amount if w.daily_amount is not none else '') or '' }}" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Per month (₹)') }}</label>
+                        <input type="number" name="monthly_amount" value="{{ (w.monthly_amount if w.monthly_amount is not none else '') or '' }}" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Hours in your working day') }}</label>
+                        <input type="number" name="hours_per_day" value="{{ (w.hours_per_day if w.hours_per_day is not none else '') or '' }}" step="0.5" min="1" max="24"
+                               placeholder="{{ default_wage_hours }}"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                        <p class="text-xs text-gray-500 mt-1">{{ _('Only used to judge an hourly rate against the daily floor.') }}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-2xl font-semibold">{{ _('Save') }}</button>
+                    <button type="submit" name="delete" value="1"
+                            class="px-4 py-3 rounded-2xl font-semibold text-red-700 border border-red-200">{{ _('Remove') }}</button>
+                </div>
+            </form>
+            {% endfor %}
+
+            <form method="POST" action="{{ url_for('settings_minimum_wage_save') }}"
+                  class="border border-dashed border-gray-200 rounded-2xl p-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="min-wage-category">{{ _('Which workers') }}</label>
+                        <input type="text" name="category" id="min-wage-category" maxlength="60" list="min-wage-positions"
+                               placeholder="{{ _('Leave blank for every worker') }}"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                        <datalist id="min-wage-positions">
+                            {% for position in known_positions %}
+                            <option value="{{ position }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        <p class="text-xs text-gray-500 mt-1">{{ _('A designation you already use, such as Helper or Operator. A floor set for his designation is used instead of the one for every worker.') }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Per day (₹)') }}</label>
+                        <input type="number" name="daily_amount" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Per month (₹)') }}</label>
+                        <input type="number" name="monthly_amount" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                </div>
+                <button type="submit" class="w-full mt-3 border border-accent text-accent py-3 rounded-2xl font-semibold">
+                    <i class="fa-solid fa-plus mr-2"></i>{{ _('Set a minimum wage') }}
+                </button>
+            </form>
+        </div>
+
         {% if policy_audit %}
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
             <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Recent policy changes') }}</h2>
@@ -697,7 +769,11 @@
                             <span class="text-xs px-2 py-0.5 rounded-full ml-1 {{ 'bg-green-100 text-green-700' if (auser.status or 'active') == 'active' else 'bg-red-100 text-red-700' }}">
                                 {{ _((auser.status or 'active')|capitalize) }}</span>
                         </div>
+                        {# A login with no number showed the word "None" beside
+                           a telephone icon. No number means no line. #}
+                        {% if auser.phone %}
                         <div class="text-xs text-gray-500"><i class="fa-solid fa-mobile-screen mr-1"></i>{{ auser.phone }}</div>
+                        {% endif %}
                         <div class="text-xs text-gray-500">
                             Sites: {{ auser.site_id_list|length if auser.site_id_list else 'All' }} •
                             Projects: {{ auser.project_id_list|length if auser.project_id_list else 'All' }}

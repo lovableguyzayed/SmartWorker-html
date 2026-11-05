@@ -306,6 +306,34 @@ TRANSLATIONS = {
         'Deduct this from pay': 'यह तनख़्वाह से काटें',
         'Add a deduction': 'कटौती जोड़ें',
 
+        # The minimum wage floor. The employer's own figures, because the
+        # state notifies them by category and they change twice a year.
+        'Minimum wage': 'न्यूनतम मज़दूरी',
+        'Your state notifies these, by category, and they change. Enter '
+        'your own figures. A wage below the floor is flagged when you save '
+        'a worker — never refused.':
+            'ये आपका राज्य श्रेणी के हिसाब से तय करता है और ये बदलती रहती '
+            'हैं। अपने आँकड़े भरें। इससे कम मज़दूरी पर मज़दूर सेव करते वक़्त '
+            'चेतावनी मिलेगी — रोका नहीं जाएगा।',
+        'Every worker': 'हर मज़दूर',
+        'Per day (₹)': 'प्रति दिन (₹)',
+        'Per month (₹)': 'प्रति महीना (₹)',
+        'Hours in your working day': 'आपके काम के दिन में घंटे',
+        'Only used to judge an hourly rate against the daily floor.':
+            'सिर्फ़ घंटे की दर को दिन की न्यूनतम दर से जाँचने के लिए।',
+        'Which workers': 'कौन से मज़दूर',
+        'Leave blank for every worker': 'हर मज़दूर के लिए ख़ाली छोड़ें',
+        'A designation you already use, such as Helper or Operator. A '
+        'floor set for his designation is used instead of the one for '
+        'every worker.':
+            'वही पद जो आप पहले से लिखते हैं, जैसे हेल्पर या ऑपरेटर। जिस पद '
+            'के लिए दर तय है, उसके लिए हर मज़दूर वाली दर की जगह वही लगेगी।',
+        'Set a minimum wage': 'न्यूनतम मज़दूरी तय करें',
+        # Goes inside a warning, so it has to be Hindi before it is slotted
+        # in: a flash is translated by its shape and the slots are copied
+        # across as they stand.
+        'every worker': 'हर मज़दूर',
+
         # Half-translated sentences: a Hindi month glued to an English
         # tail, which reads worse than either language on its own.
         '%(month)s %(year)s — nothing is saved yet':
@@ -1765,6 +1793,37 @@ _FLASH_PATTERNS_SOURCE = {
     'hi': [
         (r'^(.+) will no longer be deducted\.$',
          r'\1 अब नहीं काटा जाएगा।'),
+        # The minimum wage floor. Every one of these is a warning or a
+        # receipt, never a refusal to save.
+        (r'^The minimum wage for (.+?) is no longer set\.$',
+         r'\1 के लिए न्यूनतम मज़दूरी अब तय नहीं है।'),
+        (r'^Enter a daily or a monthly figure, or the floor for (.+?) is '
+         r'not set at all\.$',
+         r'दिन या महीने का आँकड़ा भरें, वरना \1 के लिए न्यूनतम मज़दूरी तय '
+         r'ही नहीं होगी।'),
+        (r'^Minimum wage saved for (.+?)\. A wage below it is flagged when '
+         r'you save a worker, never refused\.$',
+         r'\1 के लिए न्यूनतम मज़दूरी सेव हो गई। इससे कम मज़दूरी पर मज़दूर '
+         r'सेव करते वक़्त चेतावनी मिलेगी, रोका नहीं जाएगा।'),
+        (r'^(.+?) is on (.+?) an hour, which is (.+?) for a day of (.+?) '
+         r'hours, below the (.+?) a day minimum wage you have set for '
+         r'(.+?)\. Saved as entered; change it if that is not what you '
+         r'meant\.$',
+         r'\1 को घंटे के \2 मिलते हैं, यानी \4 घंटे के दिन के \3 — जो \6 के '
+         r'लिए आपकी तय की हुई \5 प्रति दिन की न्यूनतम मज़दूरी से कम है। जैसा '
+         r'भरा था वैसा सेव हो गया; अगर मतलब यह नहीं था तो बदल दें।'),
+        (r'^(.+?) is on (.+?) a month, below the (.+?) a month minimum '
+         r'wage you have set for (.+?)\. Saved as entered; change it if '
+         r'that is not what you meant\.$',
+         r'\1 को महीने के \2 मिलते हैं, जो \4 के लिए आपकी तय की हुई \3 '
+         r'प्रति महीना की न्यूनतम मज़दूरी से कम है। जैसा भरा था वैसा सेव हो '
+         r'गया; अगर मतलब यह नहीं था तो बदल दें।'),
+        (r'^(.+?) is on (.+?) a day, below the (.+?) a day minimum wage '
+         r'you have set for (.+?)\. Saved as entered; change it if that '
+         r'is not what you meant\.$',
+         r'\1 को दिन के \2 मिलते हैं, जो \4 के लिए आपकी तय की हुई \3 प्रति '
+         r'दिन की न्यूनतम मज़दूरी से कम है। जैसा भरा था वैसा सेव हो गया; '
+         r'अगर मतलब यह नहीं था तो बदल दें।'),
         (r'^(.+) saved\. It will be deducted from the next payroll run\.$',
          r'\1 सेव हो गया। अगली तनख़्वाह से काटा जाएगा।'),
         (r'^(.+) saved, switched off\. Nothing is being deducted for it\.$',

@@ -33,7 +33,7 @@ from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
     WorkerModification, LeaveAdjustment, WorkerTransaction, Notification,
-    SalaryPolicy, SalaryPolicyAudit, StatutoryDeduction,
+    SalaryPolicy, SalaryPolicyAudit, StatutoryDeduction, MinimumWage,
     TRANSACTION_EARNING_TYPES, TRANSACTION_DEDUCTION_TYPES,
     TRANSACTION_SETTLEMENT_TYPES, PAYMENT_MODES,
 )
@@ -2584,6 +2584,89 @@ def warn_if_phone_is_shared(phone, exclude_id=None):
               % (other.full_name, other.worker_id), 'warning')
 
 
+def wage_floor_for(worker):
+    """The floor that applies to this man: his own position's, else all.
+
+    A floor entered against his position beats the one entered for
+    everybody, because that is what entering it meant.
+    """
+    rules = MinimumWage.query.all()
+    if not rules:
+        return None
+    wanted = MinimumWage.normalize_category(worker.position)
+    general = None
+    for rule in rules:
+        category = MinimumWage.normalize_category(rule.category)
+        if category and category == wanted:
+            return rule
+        if not category:
+            general = rule
+    return general
+
+
+def warn_if_below_minimum_wage(worker):
+    """Say so when a wage is under the floor the employer entered.
+
+    A warning and not a refusal, and the third reason is the real one:
+
+      * a floor the application enforced would be a floor from the wrong
+        year the moment a notification lapsed, and an employer would be
+        locked out of saving a correct wage by a stale figure;
+      * apprentices, part days, piece work and a man kept on his old rate
+        pending arrears are all real, and none of them are a form error;
+      * refused, an employer types in a figure he does not mean in order
+        to get past the screen, and then the rate on record is a lie. A
+        warning he reads and overrides leaves the truth in the database.
+    """
+    rule = wage_floor_for(worker)
+    if rule is None:
+        return
+    found = rule.floor_for(worker)
+    if found is None:
+        return
+    floor, wage, hours = found
+    # No rate at all is a different matter, and already said elsewhere.
+    if wage <= 0 or wage >= floor:
+        return
+    # Three separate sentences rather than one with the day, the month and
+    # the category slotted into it. A flash is translated whole, by its
+    # shape, and whatever sits inside a slot is copied across untouched —
+    # so "a day" or "for Operator" built into a slot would come out as
+    # English in the middle of a Hindi warning.
+    who = _wage_category_label(rule.category)
+    if hours:
+        flash('%s is on %s an hour, which is %s for a day of %s hours, '
+              'below the %s a day minimum wage you have set for %s. Saved '
+              'as entered; change it if that is not what you meant.'
+              % (worker.full_name, money.money0(worker.hourly_rate or 0),
+                 money.money0(wage), ('%g' % hours), money.money0(floor),
+                 who), 'warning')
+    elif (worker.pay_type or '') == 'monthly':
+        flash('%s is on %s a month, below the %s a month minimum wage you '
+              'have set for %s. Saved as entered; change it if that is not '
+              'what you meant.'
+              % (worker.full_name, money.money0(wage), money.money0(floor),
+                 who), 'warning')
+    else:
+        flash('%s is on %s a day, below the %s a day minimum wage you have '
+              'set for %s. Saved as entered; change it if that is not what '
+              'you meant.'
+              % (worker.full_name, money.money0(wage), money.money0(floor),
+                 who), 'warning')
+
+
+def _wage_category_label(category):
+    """'Operator', or 'every worker' in the reader's own language.
+
+    A flash is translated by its shape and whatever sits in a slot is
+    copied across untouched, so this has to be Hindi before it goes in.
+    """
+    category = (category or '').strip()
+    if category:
+        return category
+    return i18n.translate('every worker', _current_lang())
+
+
 @app.route('/add_worker', methods=['GET', 'POST'])
 @admin_required
 def add_worker():
@@ -2739,6 +2822,7 @@ def add_worker():
         if not worker.has_pay_rate:
             flash(f'{worker.full_name} has no pay rate yet, so payroll will '
                   f'show ₹0 for them until one is set.', 'warning')
+        warn_if_below_minimum_wage(worker)
 
         return redirect(url_for('workers'))
     
@@ -2933,6 +3017,7 @@ def edit_worker(worker_id):
         if not worker.has_pay_rate:
             flash(f'{worker.full_name} has no pay rate yet, so payroll will '
                   f'show ₹0 for them until one is set.', 'warning')
+        warn_if_below_minimum_wage(worker)
 
         return redirect(url_for('worker_profile', worker_id=worker_id))
 
@@ -4847,6 +4932,15 @@ def settings():
     salary_policy = salary.normalise_policy(policy_row)
     statutory_deductions = (StatutoryDeduction.query
                             .order_by(StatutoryDeduction.id).all())
+    # The floor for everybody first, then each named category.
+    minimum_wages = sorted(MinimumWage.query.all(),
+                           key=lambda r: ((r.category or '').strip().lower()
+                                          or ''))
+    # Positions he already uses, offered so a floor can be set against one
+    # without his having to remember how he spelt it.
+    known_positions = sorted({
+        (w.position or '').strip() for w in Worker.query.all()
+        if (w.position or '').strip()})
     overridden = SalaryPolicy.query.filter(SalaryPolicy.worker_id.isnot(None)).count()
     monthly_worker_count = Worker.query.filter_by(pay_type='monthly', status='active').count()
     policy_audit = (SalaryPolicyAudit.query
@@ -4877,6 +4971,9 @@ def settings():
                            monthly_worker_count=monthly_worker_count,
                            salary_labels=salary.LABELS,
                            statutory_deductions=statutory_deductions,
+                           minimum_wages=minimum_wages,
+                           known_positions=known_positions,
+                           default_wage_hours=MinimumWage.DEFAULT_HOURS_PER_DAY,
                            policy_audit=policy_audit,
                            dues_allocation=_dues_allocation(),
                            allocation_labels=ALLOCATION_LABELS,
@@ -7678,4 +7775,61 @@ def settings_statutory_save():
     else:
         flash('%s saved, switched off. Nothing is being deducted for it.'
               % name, 'success')
+    return redirect(url_for('settings') + '#section-salary')
+
+
+@app.route('/settings/minimum_wage', methods=['POST'])
+@admin_required
+def settings_minimum_wage_save():
+    """Set, change or remove the floor for one category.
+
+    Keyed on the category and not on a row id, because a second floor for
+    the same category is not a second floor — it is the same one being
+    corrected, which is what happens when a new notification comes out.
+    """
+    category = clean_text(request.form.get('category'), 'position')[:60]
+    category = ' '.join((category or '').split())
+    wanted = MinimumWage.normalize_category(category)
+    existing = None
+    for rule in MinimumWage.query.all():
+        if MinimumWage.normalize_category(rule.category) == wanted:
+            existing = rule
+            break
+
+    label = _wage_category_label(category)
+    if request.form.get('delete') == '1':
+        if existing is not None:
+            db.session.delete(existing)
+            db.session.commit()
+        flash('The minimum wage for %s is no longer set.' % label, 'success')
+        return redirect(url_for('settings') + '#section-salary')
+
+    daily_raw = (request.form.get('daily_amount') or '').strip()
+    monthly_raw = (request.form.get('monthly_amount') or '').strip()
+    hours_raw = (request.form.get('hours_per_day') or '').strip()
+    daily = max(0.0, parse_float(daily_raw, 0)) if daily_raw else None
+    monthly = max(0.0, parse_float(monthly_raw, 0)) if monthly_raw else None
+    hours = max(0.0, min(24.0, parse_float(hours_raw, 0))) if hours_raw else None
+
+    # A floor of zero is no floor. Storing it would warn about every wage
+    # or none, depending on which way the comparison fell.
+    if not daily and not monthly:
+        if existing is not None:
+            db.session.delete(existing)
+            db.session.commit()
+        flash('Enter a daily or a monthly figure, or the floor for %s is '
+              'not set at all.' % label, 'error')
+        return redirect(url_for('settings') + '#section-salary')
+
+    if existing is None:
+        existing = MinimumWage(account_id=current_user.account_id)
+        db.session.add(existing)
+    existing.category = category
+    existing.daily_amount = daily
+    existing.monthly_amount = monthly
+    existing.hours_per_day = hours or None
+    db.session.commit()
+
+    flash('Minimum wage saved for %s. A wage below it is flagged when you '
+          'save a worker, never refused.' % label, 'success')
     return redirect(url_for('settings') + '#section-salary')
