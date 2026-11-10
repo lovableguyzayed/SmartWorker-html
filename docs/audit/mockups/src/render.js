@@ -25,6 +25,13 @@ const MOCKS = {
     ['login_after', 'B1-AUTH_login_after_bigfont', true],
     ['otp_after', 'B1-AUTH_otp_after_bigfont', true],
   ],
+  'batch3_suggest.html': [
+    ['slip_share', 'B3-SUG_payslip_share_after'],
+    ['slip_bigfont', 'B3-SUG_payslip_after_bigfont', true],
+    ['profile_help', 'B3-SUG_profile_help_after'],
+    ['delete_account', 'B3-SUG_delete_account_after'],
+    ['att_workers_first', 'B3-SUG_attendance_workers_first_bigfont', true],
+  ],
   'batch2_nav.html': [
     ['att_after', 'B2-NAV_attendance_after'],
     ['att_after_hi', 'B2-NAV_attendance_after_hindi'],
