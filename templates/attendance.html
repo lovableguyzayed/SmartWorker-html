@@ -403,76 +403,6 @@
     </section>
     {% endif %}
 
-    {# ──────────────────────────────────────────────────────────────
-       Looking back: the month, and one day of it in full.
-
-       Directly under the quick-mark box, which is where it was asked
-       for. It has moved twice: it used to sit above the roster, so every
-       visit began by scrolling past a calendar to reach the pills, and
-       it then went to the foot of the screen, which put it out of reach
-       of the one hand holding the phone.
-
-       The marking panel is split around it rather than pushed below it
-       — the label, the employee-ID box and this, then the bulk buttons
-       and the counters. Splitting keeps the calendar where it was asked
-       for without the day's three most-pressed buttons moving to the
-       far side of it.
-       ────────────────────────────────────────────────────────────── #}
-    <h2 class="ep-section-label mt-5">{{ _('Look back over the month') }}</h2>
-    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
-        <details id="cal-fold">
-            <summary class="cal-summary">
-                <span class="cal-summary-label">
-                    <i class="fa-solid fa-calendar-days"></i>
-                    {{ _('Calendar') }}
-                </span>
-                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
-                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
-            </summary>
-            <div class="flex items-center justify-between mb-2 mt-3 px-1">
-                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
-                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
-                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
-                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
-                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
-            </div>
-            {% with cal_month_start = month_start,
-                    cal_month = selected_date.month, cal_year = selected_date.year,
-                    cal_data = calendar_data, cal_closures = closure_days,
-                    cal_selected = selected_date, cal_today = today,
-                    cal_interactive = true %}
-                {% include '_calendar.html' %}
-            {% endwith %}
-        </details>
-    </section>
-    <script nonce="{{ csp_nonce }}">
-    /* The month arrows are links, so changing month reloads the page. Without
-       remembering the fold, the calendar would snap shut under the person
-       every time they stepped back a month. Runs here, during parse, so it
-       does not open with a visible jump.
-
-       Browser storage can throw outright in a private window or with site
-       data blocked, so a failure to remember must never stop the page. */
-    (function () {
-        var fold = document.getElementById('cal-fold');
-        if (!fold) return;
-        try {
-            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
-        } catch (e) { /* not remembered; the calendar simply starts folded */ }
-        fold.addEventListener('toggle', function () {
-            try {
-                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
-            } catch (e) { /* nothing to do: the fold still works for this visit */ }
-        });
-    })();
-    </script>
-
-    <!-- Day detail — filled from /api/attendance/day/<date> -->
-    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
-             tabindex="-1" aria-live="polite">
-        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Pick a date above to see that day in full.') }}</div></div>
-    </section>
-
     {% if not (closure and not closure.allow_attendance) %}
     <section class="mb-5">
         <div class="ep-bulk">
@@ -631,6 +561,69 @@
         </a>
     </div>
     {% endif %}
+
+    {# ──────────────────────────────────────────────────────────────
+       Looking back: the month, and one day of it in full.
+
+       After the roster (design review S5, approved by the owner): the
+       people still to mark are why this screen is opened, so the day's
+       marking comes first and the calendar is where you go deliberately.
+       Folded by default, so it costs one row until it is wanted.
+       ────────────────────────────────────────────────────────────── #}
+    <h2 class="ep-section-label mt-5">{{ _('Look back over the month') }}</h2>
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
+        <details id="cal-fold">
+            <summary class="cal-summary">
+                <span class="cal-summary-label">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    {{ _('Calendar') }}
+                </span>
+                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
+                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
+            </summary>
+            <div class="flex items-center justify-between mb-2 mt-3 px-1">
+                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
+                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
+                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
+            </div>
+            {% with cal_month_start = month_start,
+                    cal_month = selected_date.month, cal_year = selected_date.year,
+                    cal_data = calendar_data, cal_closures = closure_days,
+                    cal_selected = selected_date, cal_today = today,
+                    cal_interactive = true %}
+                {% include '_calendar.html' %}
+            {% endwith %}
+        </details>
+    </section>
+    <script nonce="{{ csp_nonce }}">
+    /* The month arrows are links, so changing month reloads the page. Without
+       remembering the fold, the calendar would snap shut under the person
+       every time they stepped back a month. Runs here, during parse, so it
+       does not open with a visible jump.
+
+       Browser storage can throw outright in a private window or with site
+       data blocked, so a failure to remember must never stop the page. */
+    (function () {
+        var fold = document.getElementById('cal-fold');
+        if (!fold) return;
+        try {
+            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
+        } catch (e) { /* not remembered; the calendar simply starts folded */ }
+        fold.addEventListener('toggle', function () {
+            try {
+                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
+            } catch (e) { /* nothing to do: the fold still works for this visit */ }
+        });
+    })();
+    </script>
+
+    <!-- Day detail — filled from /api/attendance/day/<date> -->
+    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
+             tabindex="-1" aria-live="polite">
+        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Pick a date above to see that day in full.') }}</div></div>
+    </section>
 
 </main>
 

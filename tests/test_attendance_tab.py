@@ -10,7 +10,7 @@ Four things are measured here, and each one was a complaint:
 
   * marking comes first. The quick-mark field, the bulk buttons and the
     roster are above the calendar, and the calendar is at the foot under
-    "Look back over the month", where you go deliberately.
+    "Look back over the month", where you go deliberately (design S5).
 
   * whoever is on site is at the top of the roster, under a count, with
     the rest of the roll under its own count below them. An open shift —
@@ -220,17 +220,15 @@ try:
         check('the quick-mark field is on the screen at all',
               tops['mark'] > 0, True)
         check('marking is above the roster', tops['mark'] < tops['roster'], True)
-        # The calendar sits directly under the employee-ID box, which is
-        # where it was asked for. The marking panel is split around it
-        # rather than pushed below it, so the day's three most-pressed
-        # buttons stay on this side of a 600px calendar.
-        check('the calendar is directly under the ID box',
-              tops['mark'] < tops['calendar'], True)
-        check('and the day panel under the calendar',
-              tops['calendar'] < tops['panel'], True)
-        check('the bulk buttons come after it', tops['panel'] < tops['bulk'], True)
+        # Marking first, then the roster; the month calendar and the day
+        # it opens come after the roster (design review S5).
+        check('the bulk buttons are under the ID box', tops['mark'] < tops['bulk'], True)
         check('then the counters', tops['bulk'] < tops['stats'], True)
-        check('and the roster last', tops['stats'] < tops['roster'], True)
+        check('then the roster', tops['stats'] < tops['roster'], True)
+        check('and the calendar after the roster',
+              tops['roster'] < tops['calendar'], True)
+        check('with the day panel under the calendar',
+              tops['calendar'] < tops['panel'], True)
         check('the bulk buttons are there too', pg.evaluate(
             "() => document.querySelectorAll('.ep-bulk button').length") >= 1, True)
 
