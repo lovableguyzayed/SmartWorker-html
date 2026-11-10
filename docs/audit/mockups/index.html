@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartWorker previews</title>
+<style>
+:root { --navy: #001F3F; --blue: #007BFF; --ink: #0f172a; --muted: #475569; --line: #e2e8f0; --bg: #f1f5f9; --card: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #e2e8f0; --muted: #94a3b8; --line: #334155; --bg: #0b1220; --card: #111a2e; } }
+:root[data-theme="dark"] { --ink: #e2e8f0; --muted: #94a3b8; --line: #334155; --bg: #0b1220; --card: #111a2e; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--ink); padding: 16px; }
+header { max-width: 1200px; margin: 0 auto 20px; }
+h1 { margin: 0 0 6px; font-size: 1.5rem; }
+header p { margin: 0; color: var(--muted); line-height: 1.5; }
+section { max-width: 1200px; margin: 0 auto 28px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+section h2 { margin: 0 0 4px; font-size: 1.125rem; }
+.note { color: var(--muted); margin: 0 0 14px; line-height: 1.5; font-size: .9375rem; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; align-items: start; }
+figure { margin: 0; }
+figure img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); display: block; background: #fff; }
+figcaption { font-size: .8125rem; color: var(--muted); margin-top: 6px; }
+.tag { display: inline-block; font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 6px; }
+.before { background: #fee2e2; color: #991b1b; } .after { background: #dcfce7; color: #166534; }
+.status { font-weight: 700; color: #b45309; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SmartWorker — before / after previews</h1>
+  <p>Nothing on this page is built yet. Each batch waits for your OK. Reply with “OK batch 1” or with changes. Full findings: <a href="../APP_AUDIT_REPORT.md">APP_AUDIT_REPORT.md</a>.</p>
+</header>
+
+<section>
+  <h2>Batch 1 — Sign in and sign up <span class="status">· waiting for your OK</span></h2>
+  <p class="note"><b>AUTH-01, AUTH-03, AUTH-09, COMP-01.</b> Today: two separate screens. Sign-up has 9 fields, mandatory email, and Send/Verify buttons side by side. After: one screen for everyone. Enter the mobile number (+91 already there), get the code, and a first-timer adds only their name. Password sign-in stays one tap away for staff accounts. Terms, Privacy and WhatsApp help are linked. <b>Depends on D1</b>: OTP sign-in needs an SMS provider.</p>
+  <div class="pair">
+    <figure><img src="B1-AUTH_login_before.png" alt="Current sign-in screen"><figcaption><span class="tag before">Before</span>Sign in today</figcaption></figure>
+    <figure><img src="B1-AUTH_register_before.png" alt="Current sign-up screen, full length"><figcaption><span class="tag before">Before</span>Sign up today (full length: 9 fields)</figcaption></figure>
+    <figure><img src="B1-AUTH_login_after.png" alt="New sign-in screen"><figcaption><span class="tag after">After</span>One way in: mobile number</figcaption></figure>
+    <figure><img src="B1-AUTH_login_after_hindi.png" alt="New sign-in screen in Hindi"><figcaption><span class="tag after">After</span>The same in Hindi</figcaption></figure>
+    <figure><img src="B1-AUTH_otp_after.png" alt="OTP screen"><figcaption><span class="tag after">After</span>Code: 6 boxes, SMS autofill, 30 s resend timer, change number</figcaption></figure>
+    <figure><img src="B1-AUTH_otp_wrong_after.png" alt="Wrong OTP"><figcaption><span class="tag after">After</span>Wrong code: says what to do and how many tries are left</figcaption></figure>
+    <figure><img src="B1-AUTH_newuser_after.png" alt="First-time details"><figcaption><span class="tag after">After</span>First time only: name, business optional, email optional</figcaption></figure>
+    <figure><img src="B1-AUTH_password_after.png" alt="Password sign-in"><figcaption><span class="tag after">After</span>Password sign-in (staff, owners who set one)</figcaption></figure>
+    <figure><img src="B1-AUTH_login_before_bigfont.png" alt="Current sign-in at large text"><figcaption><span class="tag before">Before</span>Largest text setting</figcaption></figure>
+    <figure><img src="B1-AUTH_login_after_bigfont.png" alt="New sign-in at large text"><figcaption><span class="tag after">After</span>Largest text setting: wraps, nothing cut off</figcaption></figure>
+    <figure><img src="B1-AUTH_otp_after_bigfont.png" alt="New OTP at large text"><figcaption><span class="tag after">After</span>OTP at largest text</figcaption></figure>
+    <figure><img src="B1-AUTH_login_after_tablet.png" alt="New sign-in on a tablet"><figcaption><span class="tag after">After</span>10" tablet: a centred card, not a stretched phone</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>Batch 2 — Bottom tabs, large text, dates <span class="status">· next</span></h2>
+  <p class="note">NAV-01, A11Y-01, DATE-01: 5 tabs instead of 6, and the attendance and worker screens at the largest text.</p>
+</section>
+<section>
+  <h2>Batch 3 — Payslip share, delete account, policy pages <span class="status">· after D3</span></h2>
+  <p class="note">PDF-02, COMP-01, COMP-02.</p>
+</section>
+</body>
+</html>
