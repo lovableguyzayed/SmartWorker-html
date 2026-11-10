@@ -28,7 +28,10 @@
     border-radius: 0.85rem;
     background: #f3f4f6;
     color: #4b5563;
-    font-size: 0.95rem; font-weight: 600;
+    /* Sized to a third of the phone at most, so "Transaction" stays one
+       word at the largest text rather than losing its last letters. */
+    font-size: min(0.95rem, 4.2vw); font-weight: 600;
+    text-align: center; line-height: 1.2; padding: 0.25rem 0.35rem;
 }
 .ep-tab-active { background: #001F3F; color: #fff; }
 
@@ -57,7 +60,7 @@
 
 .ep-bulk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 0.7rem; }
 .ep-bulk button {
-    min-height: 2.9rem; padding: 0 0.3rem;
+    min-height: 2.9rem; padding: 0.25rem 0.3rem; line-height: 1.2;
     border: 1px solid #e5e7eb; border-radius: 0.8rem;
     background: #fff; color: #374151;
     font-size: 0.85rem; font-weight: 500;
@@ -65,9 +68,9 @@
 .ep-bulk button:disabled { opacity: 0.45; }
 .ep-hint { font-size: 0.85rem; color: #6b7280; margin-top: 0.7rem; line-height: 1.45; }
 
-.ep-stats { display: flex; gap: 0.4rem; margin-top: 0.9rem; }
+.ep-stats { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.9rem; }
 .ep-stat {
-    flex: 1; text-align: center; padding: 0.4rem 0.2rem;
+    flex: 1 1 3rem; min-width: 0; text-align: center; padding: 0.4rem 0.2rem;
     border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
 }
 .ep-stat b { display: block; font-size: 1rem; font-variant-numeric: tabular-nums; color: #111827; }
@@ -327,64 +330,6 @@
     <!-- Entry panel: the three most common data-entry jobs on one surface.
          Transaction and Worker open their full existing screens rather than
          reimplementing them in a tab. -->
-    <!-- Month calendar — click any date to open its detail below it.
-         Folded away by default: it cost 600px above the roster, and marking
-         today never needs it. The date field and its day arrows in the header
-         already move between days; this is for looking back over a month. -->
-    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
-        <details id="cal-fold">
-            <summary class="cal-summary">
-                <span class="cal-summary-label">
-                    <i class="fa-solid fa-calendar-days"></i>
-                    {{ _('Calendar') }}
-                </span>
-                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
-                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
-            </summary>
-            <div class="flex items-center justify-between mb-2 mt-3 px-1">
-                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
-                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
-                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
-                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
-                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
-            </div>
-            {% with cal_month_start = month_start,
-                    cal_month = selected_date.month, cal_year = selected_date.year,
-                    cal_data = calendar_data, cal_closures = closure_days,
-                    cal_selected = selected_date, cal_today = today,
-                    cal_interactive = true %}
-                {% include '_calendar.html' %}
-            {% endwith %}
-        </details>
-    </section>
-    <script nonce="{{ csp_nonce }}">
-    /* The month arrows are links, so changing month reloads the page. Without
-       remembering the fold, the calendar would snap shut under the person
-       every time they stepped back a month. Runs here, during parse, so it
-       does not open with a visible jump.
-
-       Browser storage can throw outright in a private window or with site
-       data blocked, so a failure to remember must never stop the page. */
-    (function () {
-        var fold = document.getElementById('cal-fold');
-        if (!fold) return;
-        try {
-            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
-        } catch (e) { /* not remembered; the calendar simply starts folded */ }
-        fold.addEventListener('toggle', function () {
-            try {
-                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
-            } catch (e) { /* nothing to do: the fold still works for this visit */ }
-        });
-    })();
-    </script>
-
-    <!-- Day detail — filled from /api/attendance/day/<date> -->
-    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
-             tabindex="-1" aria-live="polite">
-        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Loading day…') }}</div></div>
-    </section>
-
     <div class="ep-tabs">
         <span class="ep-tab ep-tab-active">{{ _('Attendance') }}</span>
         <a href="{{ url_for('transactions') }}" class="ep-tab">{{ _('Transaction') }}</a>
@@ -539,6 +484,69 @@
         </a>
     </div>
     {% endif %}
+
+    {# The month calendar and the day it opens come after the roster
+       (docs/audit/mockups, batch 3, S5). The people still to mark are the
+       reason this screen is opened; at the largest text size they were a
+       whole screen below a calendar and a summary of the same day. #}
+    <!-- Month calendar — click any date to open its detail below it.
+         Folded away by default: it cost 600px above the roster, and marking
+         today never needs it. The date field and its day arrows in the header
+         already move between days; this is for looking back over a month. -->
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
+        <details id="cal-fold">
+            <summary class="cal-summary">
+                <span class="cal-summary-label">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    {{ _('Calendar') }}
+                </span>
+                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
+                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
+            </summary>
+            <div class="flex items-center justify-between mb-2 mt-3 px-1">
+                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
+                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
+                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
+            </div>
+            {% with cal_month_start = month_start,
+                    cal_month = selected_date.month, cal_year = selected_date.year,
+                    cal_data = calendar_data, cal_closures = closure_days,
+                    cal_selected = selected_date, cal_today = today,
+                    cal_interactive = true %}
+                {% include '_calendar.html' %}
+            {% endwith %}
+        </details>
+    </section>
+    <script nonce="{{ csp_nonce }}">
+    /* The month arrows are links, so changing month reloads the page. Without
+       remembering the fold, the calendar would snap shut under the person
+       every time they stepped back a month. Runs here, during parse, so it
+       does not open with a visible jump.
+
+       Browser storage can throw outright in a private window or with site
+       data blocked, so a failure to remember must never stop the page. */
+    (function () {
+        var fold = document.getElementById('cal-fold');
+        if (!fold) return;
+        try {
+            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
+        } catch (e) { /* not remembered; the calendar simply starts folded */ }
+        fold.addEventListener('toggle', function () {
+            try {
+                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
+            } catch (e) { /* nothing to do: the fold still works for this visit */ }
+        });
+    })();
+    </script>
+
+    <!-- Day detail — filled from /api/attendance/day/<date> -->
+    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
+             tabindex="-1" aria-live="polite">
+        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Loading day…') }}</div></div>
+    </section>
+
 </main>
 
 {% if current_user.is_admin %}
