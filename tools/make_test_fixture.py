@@ -35,7 +35,9 @@ def main():
 
     os.environ.update(env)
     sys.path.insert(0, ROOT)
+    from datetime import datetime, time, timedelta
     from app import app, db
+    from timeutil import today_ist
     import models as m
     with app.app_context():
         if not m.User.query.filter_by(username='demo').first():
@@ -46,6 +48,30 @@ def main():
             demo.set_password('demo12345')
             db.session.add(demo)
             db.session.commit()
+        account_id = m.User.query.filter_by(username='demo').first().account_id
+        today = today_ist()
+        workers = (m.Worker.query.filter_by(status='active')
+                   .order_by(m.Worker.id).all())
+
+        # Something marked today: the attendance screen opens on today, and
+        # its edit and adjust controls only exist for rows already marked.
+        if not m.AttendanceRecord.query.filter_by(date=today).first():
+            for w in workers[:3]:
+                db.session.add(m.AttendanceRecord(
+                    account_id=account_id, worker_id=w.id, date=today,
+                    status='present', marked_via='manual',
+                    check_in_time=datetime.combine(today, time(9, 0))))
+
+        # One current assignment, so ending an assignment has something to end.
+        if not m.ProjectAssignment.query.filter_by(status='active').first():
+            site = m.Site.query.filter_by(status='active').first()
+            if site and workers:
+                db.session.add(m.ProjectAssignment(
+                    account_id=account_id, worker_id=workers[-1].id,
+                    site_id=site.id, start_date=today - timedelta(days=30),
+                    status='active'))
+        db.session.commit()
+
         print('fixture ready: demo / demo12345 (admin), imran / %s (supervisor)'
               % env['SEED_SUPERVISOR_PASSWORD'])
 
