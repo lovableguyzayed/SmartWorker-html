@@ -1058,3 +1058,26 @@ body.ms-active nav.app-bottom-nav { display: none; }
    at normal text these come out at the size they always had. */
 .grid .text-2xl.font-bold { font-size: min(1.5rem, 6.4vw); }
 .grid .text-lg.font-bold { font-size: min(1.125rem, 5vw); }
+
+/* Screen headers: back button and title on the left, icon buttons on the
+   right. At the largest text the title used to keep its one-line width and
+   push the buttons off the screen (ID card +46px). The title side shrinks
+   and wraps; the buttons keep their size. */
+header > .flex.justify-between > .flex:first-child { flex: 1 1 auto; min-width: 0; }
+header > .flex.justify-between > .flex:first-child > div { min-width: 0; }
+header > .flex.justify-between > .flex:first-child h1 { overflow-wrap: anywhere; }
+header > .flex.justify-between > .flex:last-child:not(:first-child) { flex-shrink: 0; }
+
+/* The same for any two-sided row whose left side is itself a group (an
+   icon or avatar beside some text): the left side wraps, the right keeps
+   its size. */
+.flex.justify-between > .flex:first-child:not(:last-child) { min-width: 0; flex-shrink: 1; }
+.flex.justify-between > .flex:first-child:not(:last-child) > div { min-width: 0; overflow-wrap: anywhere; }
+
+/* Printable screens (payslip, worker report) are an A4 sheet inside a
+   one-cell table, so the running header repeats on paper. A table grows to
+   fit its widest child; on screen it must keep to the phone instead.
+   Paper and the saved PDF are laid out at A4 width and do not change. */
+@media screen {
+    .print-frame { table-layout: fixed; width: 100%; }
+}
