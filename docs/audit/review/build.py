@@ -64,9 +64,9 @@ def build():
   <p class="sub">The app as built, in the approved design, and the corrections still suggested</p>
   <div class="meta">10 November 2026 · branch <code>claude/keen-curie-wr54kr</code> · not yet live</div>
   <div class="summary">
-    <div><b>2</b><span>batches approved and built<br>(sign in · tabs, attendance, dates)</span></div>
+    <div><b>3</b><span>batches approved and built<br>(sign in · tabs, dates · share, text size, attendance)</span></div>
     <div><b>32</b><span>screens checked<br>at phone size</span></div>
-    <div><b>5</b><span>corrections suggested<br>(batch 3, for your OK)</span></div>
+    <div><b>3 + 2</b><span>batch 3: S1, S2, S5 built;<br>S3, S4 wait for your details</span></div>
     <div><b>42/42</b><span>automatic test scripts<br>passing</span></div>
   </div>
   <h3>How to read this</h3>
@@ -128,24 +128,25 @@ def build():
 
     # ---- suggested corrections --------------------------------------------
     sug = [
-        ('S1 · Share a payslip on WhatsApp',
-         'Payslips travel by WhatsApp, but there is no Share button today, and the ID card\'s Share does not work inside the Android app. Suggested: a bar at the foot of the payslip with <b>Share</b> first, then Save PDF and Print, and a short "Saved to …" note after saving. Needs the native file plugins (done this round) to share the real PDF.',
-         row(fig('screens/admin_payroll_slip_1.jpg', 'Payslip today: Save and Print hide in the header', 'before'),
-             fig(M + 'B3-SUG_payslip_share_after.png', 'Share leads, at thumb height', 'suggest'), cls='two')),
-        ('S2 · Payslip readable at the largest text',
-         'The payslip and ID card are laid out like an A4 sheet, so at the largest text they still scroll sideways (+72 px, +46 px). Suggested: on the phone, show the payslip as stacked rows (label left, amount right) with the month calendar compact below; keep the A4 layout for the PDF and printing.',
-         row(fig(M + 'B3-SUG_payslip_after_bigfont.png', 'Stacked rows at the largest text', 'suggest'), cls='two')),
-        ('S3 · Help, legal and account in Profile',
-         'There is no help, no Privacy Policy or Terms (the sign-up links do nothing), and no way to delete an account. Google Play requires the policy link and account deletion. Suggested: three short groups at the foot of Profile. <b>Needs your details (D3)</b>: support WhatsApp number, policy text.',
+        ('S1 · Share a payslip on WhatsApp — approved and built',
+         'One bar at the foot of the payslip: <b>Share</b> first, then PDF and Print. Share sends the same PDF that Save makes: through the phone browser\'s share sheet, through Android\'s share sheet inside the app (only files the app saved), or else the PDF downloads and WhatsApp opens with the name, month and net pay as text. <b>Needs a phone test</b> inside the APK.',
+         row(fig('screens/admin_payroll_slip_1.jpg', 'Payslip now, with the bar', 'built'),
+             fig(M + 'B3-SUG_payslip_share_after.png', 'The approved preview', 'preview'), cls='two')),
+        ('S2 · Every screen fits at the largest text — approved and built',
+         'Taken to every screen, not just the payslip. At 150% text: from 15 screens running off the side at the start of the audit to none, and none on a 320 px phone. Printing and the saved PDF are unchanged.',
+         row(fig(M + 'B3-SUG_payslip_built_bigfont.png', 'Payslip at the largest text, as built', 'built'),
+             fig(M + 'B3-SUG_payslip_after_bigfont.png', 'The approved preview', 'preview'), cls='two')),
+        ('S3 · Help, legal and account in Profile — waiting for your details',
+         'There is no help, no Privacy Policy or Terms (the sign-up links do nothing), and no way to delete an account. Google Play requires the policy link and account deletion. <b>Needs your details (D3)</b>: support WhatsApp number, policy text.',
          row(fig('screens/admin_profile.jpg', 'Profile today', 'before'),
              fig(M + 'B3-SUG_profile_help_after.png', 'Help · Legal · Account', 'suggest'), cls='two')),
-        ('S4 · Delete my account',
+        ('S4 · Delete my account — waiting for your details',
          'Says plainly what is deleted now and what must be kept by law, then asks for a typed DELETE and the password, so it cannot happen by accident. A web page with the same form is also required by Play. <b>Needs from you</b>: how many years wage records are kept (the [__] below).',
          row(fig(M + 'B3-SUG_delete_account_after.png', 'Clear before it is final', 'suggest'), cls='two')),
-        ('S5 · Attendance at the largest text: workers first',
-         'At the largest text the first worker is still one scroll down, because the month calendar and day summary sit above the list. Suggested: when a day is open, put the workers still to mark first, with large P / A buttons, and fold the calendar below them.',
-         row(fig(M + 'B2-NAV_attendance_built_bigfont.png', 'Now: calendar first', 'built'),
-             fig(M + 'B3-SUG_attendance_workers_first_bigfont.png', 'Workers first', 'suggest'), cls='two')),
+        ('S5 · Attendance: mark first — approved and built',
+         'Marking (scan or type an ID, all present/absent, the roster with P/L/A) now comes straight after the header, and the month calendar with its day detail after that. The first P/L/A row moved from 1,710 px down the page to 602 px at normal text (onto the first screen), and from 3,348 px to 1,111 px at the largest.',
+         row(fig(M + 'B3-SUG_attendance_built.png', 'Normal text, as built', 'built'),
+             fig(M + 'B3-SUG_attendance_built_bigfont.png', 'Largest text, as built', 'built'), cls='two')),
     ]
     for title, why, figs in sug:
         parts.append(page(title, why, figs, 'suggest-page'))
@@ -156,7 +157,7 @@ def build():
   <h2>What I need from you</h2>
   <table>
     <tr><th>#</th><th>Decision</th><th>My recommendation</th></tr>
-    <tr><td>OK</td><td>Batch 3 (S1–S5 above)</td><td>OK S1, S2, S5 now; S3 and S4 once D3 is answered</td></tr>
+    <tr><td>D3</td><td>S3 and S4 (help, legal, delete account)</td><td>Send the support WhatsApp number, policy text and how many years wage records are kept</td></tr>
     <tr><td>D1</td><td>SMS provider for OTP</td><td>MSG91 or 2Factor with TRAI DLT; sign-up already works without it</td></tr>
     <tr><td>D2</td><td>The public repository held passwords and personal data</td><td>Make it private today, and change the live admin and supervisor passwords</td></tr>
     <tr><td>D3</td><td>Privacy Policy, Terms, deletion rules</td><td>Send business name, contact, grievance officer, years wage records are kept</td></tr>

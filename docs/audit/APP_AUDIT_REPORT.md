@@ -49,7 +49,7 @@ gives away**, and the **Android shell**:
 | 6 | NAT-01 | Inside the Android app, **Save PDF / Excel / CSV probably did nothing**, and Back skipped "press again to exit". The website never loaded Cordova's bridge. | **Fixed in code**; needs a real-phone test |
 | 7 | PERF-01 | Render's free plan sleeps after ~15 min idle, so the first open of the day shows a spinner for up to a minute. | **Needs your decision** (cost) |
 | 8 | COMP-01/02 | No Privacy Policy, no Terms (the two links on sign-up do nothing), no "Delete my account". Play requires the last two. | **Needs your decision** (legal text) |
-| 9 | A11Y-01 | At the large text size many older users choose, 15 screens spill sideways and the bottom tabs shrink to "H…", "Wo…". | **Mostly fixed** (batch 2): attendance, payroll, wages owed, worker report fit; tabs readable. Payslip and ID card (print layouts) still spill |
+| 9 | A11Y-01 | At the large text size many older users choose, 15 screens spill sideways and the bottom tabs shrink to "H…", "Wo…". | **Fixed** (batches 2 and 3): no screen runs off the side at 150% text or at 320px |
 | 10 | AUTH-02 | A number typed as `+91 98765 43210` at sign-up was saved differently from `9876543210`, so OTP login later said "no account". Any 10–15 digits were accepted. | **Fixed** |
 
 ---
@@ -214,7 +214,7 @@ first.
 | ID | Where | Problem | Sev | Fix | Status |
 |---|---|---|---|---|---|
 | NAT-01 | static/js/filesave.js:21–23, 80–86; templates/base.html (no `cordova.js`) | Inside the APK, `window.cordova` never exists on the website's pages, so "Save PDF/Excel/CSV" falls back to a browser download, which Android's WebView ignores. The code's own comment (filesave.js:4–8) describes exactly this "spinner finishes, no file" bug. **Code evidence. Needs real-device test**: please try *Save PDF* on a payslip in your installed app. | P1 | The app now marks its user agent; the server then loads `cordova.js` from the APK, and a 15-line plugin (`cordova-plugins/smartworker-remote-bridge`) lets the live site, and only it, use the bridge. Cordova by default allows only its launch page (`PluginManager.shouldAllowBridgeAccess`). | **Fixed in code**, API 36 build passes; **needs your phone test** |
-| PDF-02 | templates/id_card.html:380–405 | Share uses the web Share feature, which Android's WebView does not support; payslips have no Share at all. WhatsApp is how payslips actually travel. | P2 | Native share (with the file plugin, once NAT-01 is fixed). | Mockup, batch 3 |
+| PDF-02 | templates/id_card.html:380–405 | Share uses the web Share feature, which Android's WebView does not support; payslips have no Share at all. WhatsApp is how payslips actually travel. | P2 | Share bar on the payslip: browser share sheet, Android share sheet in the app (bridge plugin), WhatsApp text otherwise. | **Built** (batch 3, S1); needs a phone test |
 | PDF-01 | templates/payroll_slip.html:965–998 | Payslip PDF is a photo of the screen: not searchable, bigger, slightly soft when zoomed. | P3 | Text PDF later; fine for now. | Backlog |
 | – | – | No PDF is missing, broken or orphaned, because none are stored. | – | – | ✔ |
 
@@ -222,7 +222,7 @@ first.
 
 | ID | Where | Problem | Who | Sev | Fix | Status |
 |---|---|---|---|---|---|---|
-| A11Y-01 | 15 screens (table 2.1) | At 150% text the pages spill sideways (worst: worker profile 143px, attendance 115px). The attendance header fills the whole first screen with no worker visible. Android's WebView follows the phone's font size. **Verified** (simulated in Chromium); **needs real-device test**. | Ramesh ji | P1 | Let headers wrap, shrink fixed widths, cap header height. | **Mostly fixed** (batch 2). Still spilling at 150%: payslip (+72px) and ID card (+46px), which are fixed-width print sheets |
+| A11Y-01 | 15 screens (table 2.1) | At 150% text the pages spill sideways (worst: worker profile 143px, attendance 115px). The attendance header fills the whole first screen with no worker visible. Android's WebView follows the phone's font size. **Verified** (simulated in Chromium); **needs real-device test**. | Ramesh ji | P1 | Let headers wrap, shrink fixed widths, cap header height. | **Fixed** (batch 3, S2): every screen fits; the payslip reads in stacked rows |
 | NAV-01 | templates/base.html:311–360 | **6** bottom tabs; each only 35px wide (minimum is 44–48). At big text the labels become "H…", "Wo…", "P…". **Verified.** | Ramesh ji | P2 | 5 tabs: Home · Workers · Scan (centre) · Attendance · Payroll. Profile is the button in Home's header. | **Fixed** (batch 2) |
 | LAY-01 | templates/worker_profile.html | Worker profile is 336px wide on a 320px phone. **Verified** (also in tests/test_narrow_screens.py). | old phones | P3 | Long words in label/value rows may wrap. Every screen now fits at 320px. | **Fixed** |
 | DARK-01 | templates/base.html | No dark design and no "light only" declaration, so Xiaomi/Redmi force-dark could invert colours unreadably. | Priya | P3 | Declared `color-scheme: light only`. **Needs real-device test** on MIUI. | **Fixed** |

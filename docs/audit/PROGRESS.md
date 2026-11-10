@@ -52,8 +52,8 @@ failures are listed in the report as TEST-02 and LAY-01.
 
 ### Waiting for preview approval
 - [x] Batch 2: 5 tabs, attendance header, Indian dates, large-text tiles: built and screenshot-checked
-- [ ] Payslip and ID card at the largest text (print layouts, +72px / +46px): needs its own preview
-- [ ] Batch 3 (S1–S5): previews ready, in review/SmartWorker_Design_Review.pdf; S3/S4 also need D3
+- [x] Batch 3 S1 (WhatsApp share), S2 (every screen fits at the largest text), S5 (mark first): built, CI APK build passes
+- [ ] Batch 3 S3 (help/legal in Profile), S4 (delete account): need D3 details
 
 ### Waiting for the owner
 - [ ] **D1** SMS provider (interim done: sign-up without OTP)
@@ -64,4 +64,4 @@ failures are listed in the report as TEST-02 and LAY-01.
 - [ ] **D6** Google sign-in
 - [ ] **D7** Render paid plan
 - [ ] **D8** Play release signing and account
-- [ ] **NAT-01** Owner to test *Save PDF* on a payslip in the installed APK
+- [ ] **NAT-01 / S1** Owner to test *Save PDF* and *Share* on a payslip in the installed APK
