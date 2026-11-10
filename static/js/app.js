@@ -851,6 +851,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // (close the app) in charge.
     if (window.cordova) {
         document.addEventListener('deviceready', () => NativeShell.initAndroidBack(), { once: true });
+        // window.print() is a no-op in an Android WebView: every Print button
+        // (payslip, worker report) did nothing in the app. Route it to
+        // Android's print service, which also offers "Save as PDF".
+        document.addEventListener('deviceready', () => {
+            window.print = () => {
+                window.dispatchEvent(new Event('beforeprint'));
+                window.cordova.exec(() => window.dispatchEvent(new Event('afterprint')),
+                    (err) => console.error('Print failed', err),
+                    'RemoteBridge', 'print', [document.title || 'SmartWorker']);
+            };
+        }, { once: true });
     } else {
         NativeShell.initAndroidBack();
     }

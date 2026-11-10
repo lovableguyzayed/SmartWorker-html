@@ -3,6 +3,10 @@ package com.smartworker.bridge;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintManager;
+import android.webkit.WebView;
 
 import androidx.core.content.FileProvider;
 
@@ -25,6 +29,12 @@ import java.io.IOException;
  * 2. "share": hand a file the app has just saved to Android's share sheet,
  *    so a payslip can go straight to WhatsApp. The WebView cannot share
  *    files itself (no Web Share API in an Android WebView).
+ *
+ * 3. "print": window.print() does nothing in an Android WebView, so the
+ *    payslip's and the worker report's Print buttons were dead in the app,
+ *    and the report had no way onto paper at all. This prints the page the
+ *    way Chrome does, with its print stylesheet, through Android's print
+ *    service - which also offers "Save as PDF", giving a real text PDF.
  */
 public class RemoteBridge extends CordovaPlugin {
 
@@ -49,6 +59,24 @@ public class RemoteBridge extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, final CallbackContext callback)
             throws JSONException {
+        if ("print".equals(action)) {
+            final String job = args.optString(0, "SmartWorker");
+            cordova.getActivity().runOnUiThread(() -> {
+                try {
+                    WebView view = (WebView) webView.getView();
+                    PrintManager printer = (PrintManager) cordova.getActivity()
+                            .getSystemService(Context.PRINT_SERVICE);
+                    PrintDocumentAdapter adapter = view.createPrintDocumentAdapter(job);
+                    printer.print(job, adapter, new PrintAttributes.Builder()
+                            .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                            .build());
+                    callback.success();
+                } catch (Exception e) {
+                    callback.error(e.getMessage());
+                }
+            });
+            return true;
+        }
         if (!"share".equals(action)) {
             return false;
         }
