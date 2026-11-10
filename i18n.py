@@ -1440,6 +1440,20 @@ FLASH_MESSAGES = {
         'Invalid attendance date.': 'हाज़िरी की तारीख़ ग़लत है।',
         'Invalid attendance status.': 'हाज़िरी की हालत ग़लत है।',
         'Invalid username or password': 'यूज़रनेम या पासवर्ड ग़लत है',
+        'Please enter a valid 10-digit mobile number.':
+            'कृपया 10 अंकों का सही मोबाइल नंबर डालें।',
+        'OTP has been sent to your mobile number.':
+            'आपके मोबाइल नंबर पर OTP भेज दिया गया है।',
+        'OTP expired. Please request a new OTP.':
+            'OTP की समय-सीमा ख़त्म हो गई। नया OTP मँगाएँ।',
+        'Please verify OTP for the same mobile number.':
+            'उसी मोबाइल नंबर का OTP डालें जिस पर भेजा गया था।',
+        'Invalid OTP. Please try again.': 'OTP ग़लत है। फिर से कोशिश करें।',
+        'No account found with this mobile number.':
+            'इस मोबाइल नंबर से कोई खाता नहीं मिला।',
+        'Account not found for this OTP.': 'इस OTP के लिए खाता नहीं मिला।',
+        'OTP verified. Login successful.': 'OTP सही है। लॉगिन हो गया।',
+        'Mobile number verified successfully.': 'मोबाइल नंबर की पुष्टि हो गई।',
         'Mobile number already registered': 'यह मोबाइल नंबर पहले से रजिस्टर्ड है',
         'Modification note recorded.': 'बदलाव की टिप्पणी दर्ज हो गई।',
         'New QR code generated successfully': 'नया QR कोड बन गया',
@@ -1573,6 +1587,10 @@ _FLASH_PATTERNS_SOURCE = {
         (r'^Attendance is locked for (.+?) on this closure day\.$',
          r'इस छुट्टी के दिन \1 की हाज़िरी बंद है।'),
         (r'^Times updated for (.+?)\.$', r'\1 का समय बदल दिया गया।'),
+        (r'^Too many attempts\. Please try again in (\d+) minutes\.$',
+         r'बहुत ज़्यादा कोशिशें हो गईं। \1 मिनट बाद फिर से कोशिश करें।'),
+        (r'^Please wait (\d+) seconds before asking for a new OTP\.$',
+         r'नया OTP मँगाने से पहले \1 सेकंड रुकें।'),
         (r'^Closure added for (.+?)\.$', r'\1 के लिए छुट्टी जोड़ी गई।'),
         (r'^Login ready for (.+?)\. Username (\S+), password (\S+)\. '
          r'Write it down — it cannot be shown again\.$',

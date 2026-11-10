@@ -4,7 +4,7 @@ import io
 import base64
 import csv
 import json
-import random
+import secrets
 import re
 import calendar as _cal
 from datetime import datetime, date, timedelta
@@ -19,6 +19,7 @@ from app import app, db, csrf
 from timeutil import IST, now_ist, today_ist, ISTDate
 import storage
 import supabase_auth
+import authguard
 import tenancy
 import salary
 import i18n
@@ -96,17 +97,25 @@ def _provision_from_supabase(supa_user, full_name=None, phone=None,
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 WORKER_IMAGE_UPLOAD_DIR = os.path.join(app.static_folder, 'uploads', 'workers')
+# The code itself is never kept here, only a keyed hash of it: the session is
+# a signed cookie the user can read. See authguard.py.
 REGISTER_OTP_SESSION_KEYS = (
-    'register_otp',
+    'register_otp_hash',
+    'register_otp_nonce',
     'register_otp_mobile',
     'register_otp_expires_at',
+    'register_otp_sent_at',
     'register_otp_verified',
+    'register_otp',            # the old plaintext key, cleared on sight
 )
 LOGIN_OTP_SESSION_KEYS = (
-    'login_otp',
+    'login_otp_hash',
+    'login_otp_nonce',
     'login_otp_mobile',
     'login_otp_expires_at',
+    'login_otp_sent_at',
     'login_otp_user_id',
+    'login_otp',               # the old plaintext key, cleared on sight
 )
 
 def allowed_image_file(filename):
@@ -628,10 +637,93 @@ def calculate_delay_penalty(worker, period_start, period_end):
     return round(penalty_total, 2), breakdown
 
 def normalize_mobile_number(value):
-    return ''.join(char for char in (value or '') if char.isdigit())
+    """Ten digits of an Indian mobile, or '' if it is not one. '+91 98765
+    43210', '09876543210' and '919876543210' are all the same person."""
+    return authguard.indian_mobile(value)
 
 def is_valid_mobile_number(value):
-    return 10 <= len(normalize_mobile_number(value)) <= 15
+    return bool(normalize_mobile_number(value))
+
+def user_by_mobile(mobile):
+    """The login holding this number, however an older row stored it."""
+    forms = authguard.stored_forms(mobile)
+    if not forms:
+        return None
+    return User.query.filter(User.phone.in_(forms)).first()
+
+def mobile_taken(mobile):
+    return user_by_mobile(mobile) is not None
+
+def _say(text):
+    """A JSON message in the language the page is showing."""
+    return i18n.translate_flash(text, session.get('lang', i18n.DEFAULT_LANGUAGE))
+
+def _too_many(seconds):
+    return _say('Too many attempts. Please try again in %d minutes.'
+                % authguard.minutes(seconds))
+
+def _issue_otp(purpose, mobile):
+    """Make a code, keep only its hash in the session, hand back the code."""
+    code = f"{secrets.randbelow(1000000):06d}"
+    nonce = secrets.token_urlsafe(12)
+    now = now_ist().timestamp()
+    session[f'{purpose}_otp_hash'] = authguard.otp_digest(purpose, mobile, code, nonce)
+    session[f'{purpose}_otp_nonce'] = nonce
+    session[f'{purpose}_otp_mobile'] = mobile
+    session[f'{purpose}_otp_expires_at'] = now + authguard.OTP_TTL_SECONDS
+    session[f'{purpose}_otp_sent_at'] = now
+    session.modified = True
+    return code
+
+def _otp_send_gate(purpose, mobile):
+    """None if a code may be sent now, else the (json, status) refusal."""
+    sent_at = session.get(f'{purpose}_otp_sent_at')
+    if sent_at and session.get(f'{purpose}_otp_mobile') == mobile:
+        wait = int(float(sent_at) + authguard.OTP_RESEND_SECONDS - now_ist().timestamp())
+        if wait > 0:
+            return jsonify({'success': False, 'retry_after': wait,
+                            'message': _say('Please wait %d seconds before asking for a new OTP.' % wait)}), 429
+    for bucket, key in (('otp_send_mobile', mobile), ('otp_send_ip', authguard.client_ip())):
+        wait = authguard.blocked_for(bucket, key)
+        if wait:
+            return jsonify({'success': False, 'retry_after': wait, 'message': _too_many(wait)}), 429
+    return None
+
+def _otp_check(purpose, mobile, code):
+    """None if the code is right, else the (json, status) refusal. Counts
+    every wrong code against the number and the address, on the server."""
+    ip = authguard.client_ip()
+    for bucket, key in (('otp_fail_mobile', mobile), ('otp_fail_ip', ip)):
+        wait = authguard.blocked_for(bucket, key)
+        if wait:
+            return jsonify({'success': False, 'retry_after': wait, 'message': _too_many(wait)}), 429
+
+    stored_mobile = session.get(f'{purpose}_otp_mobile')
+    digest = session.get(f'{purpose}_otp_hash')
+    nonce = session.get(f'{purpose}_otp_nonce')
+    expires_at = session.get(f'{purpose}_otp_expires_at')
+    if not (stored_mobile and digest and nonce and expires_at) or authguard.was_used(nonce):
+        return jsonify({'success': False,
+                        'message': _say('OTP expired. Please request a new OTP.')}), 400
+    if now_ist().timestamp() > float(expires_at):
+        return jsonify({'success': False,
+                        'message': _say('OTP expired. Please request a new OTP.')}), 400
+    if mobile != stored_mobile:
+        return jsonify({'success': False,
+                        'message': _say('Please verify OTP for the same mobile number.')}), 400
+    if not authguard.otp_matches(purpose, mobile, code, nonce, digest):
+        authguard.record('otp_fail_mobile', mobile)
+        authguard.record('otp_fail_ip', ip)
+        return jsonify({'success': False,
+                        'message': _say('Invalid OTP. Please try again.')}), 400
+    authguard.mark_used(nonce)
+    authguard.clear('otp_fail_mobile', mobile)
+    return None
+
+def _deliver_otp(purpose, mobile, code):
+    # No SMS provider is connected yet (see docs/audit). Until one is, the
+    # code goes to the server log only, which is how it has always worked.
+    app.logger.info("%s OTP for %s: %s", purpose.capitalize(), mobile, code)
 
 def clear_register_otp_session():
     for key in REGISTER_OTP_SESSION_KEYS:
@@ -900,15 +992,25 @@ def login():
         identifier = request.form['username'].strip()
         password = request.form['password']
 
+        # Guessing passwords used to be free: forty wrong tries in a row and
+        # the forty-first still went through. Count them on the server.
+        ip = authguard.client_ip()
+        id_key = identifier.lower()
+        wait = max(authguard.blocked_for('pw_fail_id', id_key),
+                   authguard.blocked_for('pw_fail_ip', ip))
+        if wait:
+            flash('Too many attempts. Please try again in %d minutes.'
+                  % authguard.minutes(wait), 'error')
+            return render_template('login.html'), 429
+
         # Resolve any local user matching the identifier (username/email/phone).
+        # The phone is only compared when the identifier is one: a username
+        # normalises to '', and '' must not match a row with an empty phone.
         normalized_phone = normalize_mobile_number(identifier)
-        local = User.query.filter(
-            db.or_(
-                User.username == identifier,
-                User.email == identifier.lower(),
-                User.phone == normalized_phone,
-            )
-        ).first()
+        clauses = [User.username == identifier, User.email == identifier.lower()]
+        if normalized_phone:
+            clauses.append(User.phone.in_(authguard.stored_forms(normalized_phone)))
+        local = User.query.filter(db.or_(*clauses)).first()
 
         # Supabase is the identity provider for owner/admin accounts (anyone
         # with a Supabase uid) and for logging in by email. Local-only staff
@@ -919,18 +1021,23 @@ def login():
             email = local.email if local else identifier.lower()
             result = supabase_auth.sign_in(email, password)
             if not result['ok']:
+                authguard.record('pw_fail_id', id_key)
+                authguard.record('pw_fail_ip', ip)
                 flash(result.get('error') or 'Invalid email or password', 'error')
                 return render_template('login.html')
             user = _provision_from_supabase(result['user'])
         else:
             user = local if (local and local.check_password(password)) else None
             if not user:
+                authguard.record('pw_fail_id', id_key)
+                authguard.record('pw_fail_ip', ip)
                 flash('Invalid username or password', 'error')
                 return render_template('login.html')
 
         if (user.status or 'active') != 'active':
             flash('This account has been disabled. Please contact the Administrator.', 'error')
             return render_template('login.html')
+        authguard.clear('pw_fail_id', id_key)
         login_user(user, remember=True)
         clear_login_otp_session()
         next_page = safe_redirect_target(request.args.get('next'), home_for(user))
@@ -946,35 +1053,35 @@ def login_send_otp():
     payload = request.get_json(silent=True) or request.form
     mobile = normalize_mobile_number(payload.get('mobile'))
 
-    if not is_valid_mobile_number(mobile):
+    if not mobile:
         return jsonify({
             'success': False,
-            'message': 'Please enter a valid mobile number.'
+            'message': _say('Please enter a valid 10-digit mobile number.')
         }), 400
 
-    user = User.query.filter_by(phone=mobile).first()
+    refused = _otp_send_gate('login', mobile)
+    if refused:
+        return refused
+    authguard.record('otp_send_mobile', mobile)
+    authguard.record('otp_send_ip', authguard.client_ip())
+
+    user = user_by_mobile(mobile)
     if not user:
         return jsonify({
             'success': False,
-            'message': 'No account found with this mobile number.'
+            'message': _say('No account found with this mobile number.')
         }), 404
 
-    otp_code = f"{random.randint(0, 999999):06d}"
-    expires_at = now_ist() + timedelta(minutes=5)
-
     clear_login_otp_session()
-    session['login_otp'] = otp_code
-    session['login_otp_mobile'] = mobile
-    session['login_otp_expires_at'] = expires_at.timestamp()
+    code = _issue_otp('login', mobile)
     session['login_otp_user_id'] = user.id
-    session.modified = True
-
-    app.logger.info("Login OTP for %s: %s", mobile, otp_code)
+    _deliver_otp('login', mobile, code)
 
     return jsonify({
         'success': True,
-        'message': f'OTP has been sent to {mobile}. (Check server logs in demo mode)',
-        'expires_in': 300,
+        'message': _say('OTP has been sent to your mobile number.'),
+        'expires_in': authguard.OTP_TTL_SECONDS,
+        'resend_after': authguard.OTP_RESEND_SECONDS,
     })
 
 @app.route('/login/verify-otp', methods=['POST'])
@@ -984,50 +1091,28 @@ def login_verify_otp():
     mobile = normalize_mobile_number(payload.get('mobile'))
     otp_code = str(payload.get('otp', '')).strip()
 
-    stored_mobile = session.get('login_otp_mobile')
-    stored_otp = session.get('login_otp')
-    expires_at = session.get('login_otp_expires_at')
-    user_id = session.get('login_otp_user_id')
+    refused = _otp_check('login', mobile, otp_code)
+    if refused:
+        return refused
 
-    if not stored_mobile or not stored_otp or not expires_at or not user_id:
-        return jsonify({
-            'success': False,
-            'message': 'OTP expired. Please request a new OTP.'
-        }), 400
-
-    if now_ist().timestamp() > float(expires_at):
-        clear_login_otp_session()
-        return jsonify({
-            'success': False,
-            'message': 'OTP expired. Please request a new OTP.'
-        }), 400
-
-    if mobile != stored_mobile:
-        return jsonify({
-            'success': False,
-            'message': 'Please verify OTP for the same mobile number.'
-        }), 400
-
-    if otp_code != stored_otp:
-        return jsonify({
-            'success': False,
-            'message': 'Invalid OTP. Please try again.'
-        }), 400
-
-    user = User.query.get(user_id)
+    user = db.session.get(User, session.get('login_otp_user_id') or 0)
+    clear_login_otp_session()
     if not user:
-        clear_login_otp_session()
         return jsonify({
             'success': False,
-            'message': 'Account not found for this OTP.'
+            'message': _say('Account not found for this OTP.')
         }), 404
+    if (user.status or 'active') != 'active':
+        return jsonify({
+            'success': False,
+            'message': _say('This account has been disabled. Please contact the Administrator.')
+        }), 403
 
     login_user(user, remember=True)
-    clear_login_otp_session()
 
     return jsonify({
         'success': True,
-        'message': 'OTP verified. Login successful.',
+        'message': _say('OTP verified. Login successful.'),
         'redirect_url': home_for(user),
     })
 
@@ -1037,28 +1122,33 @@ def register_send_otp():
     payload = request.get_json(silent=True) or request.form
     mobile = normalize_mobile_number(payload.get('mobile'))
 
-    if not is_valid_mobile_number(mobile):
+    if not mobile:
         return jsonify({
             'success': False,
-            'message': 'Please enter a valid mobile number.'
+            'message': _say('Please enter a valid 10-digit mobile number.')
         }), 400
+    if mobile_taken(mobile):
+        return jsonify({
+            'success': False,
+            'message': _say('Mobile number already registered')
+        }), 409
 
-    otp_code = f"{random.randint(0, 999999):06d}"
-    expires_at = now_ist() + timedelta(minutes=5)
+    refused = _otp_send_gate('register', mobile)
+    if refused:
+        return refused
+    authguard.record('otp_send_mobile', mobile)
+    authguard.record('otp_send_ip', authguard.client_ip())
 
     clear_register_otp_session()
-    session['register_otp'] = otp_code
-    session['register_otp_mobile'] = mobile
-    session['register_otp_expires_at'] = expires_at.timestamp()
+    code = _issue_otp('register', mobile)
     session['register_otp_verified'] = False
-    session.modified = True
-
-    app.logger.info("Registration OTP for %s: %s", mobile, otp_code)
+    _deliver_otp('register', mobile, code)
 
     return jsonify({
         'success': True,
-        'message': f'OTP has been sent to {mobile}. (Check server logs in demo mode)',
-        'expires_in': 300,
+        'message': _say('OTP has been sent to your mobile number.'),
+        'expires_in': authguard.OTP_TTL_SECONDS,
+        'resend_after': authguard.OTP_RESEND_SECONDS,
     })
 
 @app.route('/register/verify-otp', methods=['POST'])
@@ -1068,41 +1158,16 @@ def register_verify_otp():
     mobile = normalize_mobile_number(payload.get('mobile'))
     otp_code = str(payload.get('otp', '')).strip()
 
-    stored_mobile = session.get('register_otp_mobile')
-    stored_otp = session.get('register_otp')
-    expires_at = session.get('register_otp_expires_at')
-
-    if not stored_mobile or not stored_otp or not expires_at:
-        return jsonify({
-            'success': False,
-            'message': 'OTP expired. Please request a new OTP.'
-        }), 400
-
-    if now_ist().timestamp() > float(expires_at):
-        clear_register_otp_session()
-        return jsonify({
-            'success': False,
-            'message': 'OTP expired. Please request a new OTP.'
-        }), 400
-
-    if mobile != stored_mobile:
-        return jsonify({
-            'success': False,
-            'message': 'Please verify the same mobile number used for OTP.'
-        }), 400
-
-    if otp_code != stored_otp:
-        return jsonify({
-            'success': False,
-            'message': 'Invalid OTP. Please try again.'
-        }), 400
+    refused = _otp_check('register', mobile, otp_code)
+    if refused:
+        return refused
 
     session['register_otp_verified'] = True
     session.modified = True
 
     return jsonify({
         'success': True,
-        'message': 'Mobile number verified successfully.'
+        'message': _say('Mobile number verified successfully.')
     })
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -1124,8 +1189,8 @@ def register():
         if len(password) < 8:
             flash('Password must be at least 8 characters', 'error')
             return render_template('register.html')
-        if not is_valid_mobile_number(mobile):
-            flash('Please enter a valid mobile number', 'error')
+        if not mobile:
+            flash('Please enter a valid 10-digit mobile number.', 'error')
             return render_template('register.html')
 
         # Mobile OTP verification gate (unchanged from the legacy flow).
@@ -1141,7 +1206,7 @@ def register():
             flash('Please verify your mobile number with OTP before registering', 'error')
             return render_template('register.html')
 
-        if User.query.filter_by(phone=mobile).first():
+        if mobile_taken(mobile):
             flash('Mobile number already registered', 'error')
             return render_template('register.html')
 
@@ -3465,7 +3530,7 @@ def worker_create_login(worker_id):
         flash('That mobile number is already used by another login.', 'error')
         return redirect(url_for('worker_profile', worker_id=worker_id))
 
-    password = '%06d' % random.randint(100000, 999999)
+    password = '%06d' % (100000 + secrets.randbelow(900000))
     login = User.query.filter_by(worker_id=worker.id, role='worker').first()
     if not login:
         login = User(
@@ -4451,7 +4516,8 @@ def settings_attendance_user_save():
         flash('Please enter a valid mobile number for the attendance user.', 'error')
         return redirect(url_for('settings'))
 
-    duplicate = User.query.filter(User.phone == mobile, User.id != user_id).first()
+    duplicate = User.query.filter(User.phone.in_(authguard.stored_forms(mobile)),
+                                  User.id != user_id).first()
     if duplicate:
         flash('This mobile number is already registered to another account.', 'error')
         return redirect(url_for('settings'))
