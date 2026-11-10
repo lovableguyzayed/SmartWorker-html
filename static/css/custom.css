@@ -1081,3 +1081,13 @@ header > .flex.justify-between > .flex:last-child:not(:first-child) { flex-shrin
 @media screen {
     .print-frame { table-layout: fixed; width: 100%; }
 }
+
+/* PDFs and images made with html2canvas (payslip, ID card): it finds where
+   text sits by measuring a hidden 1x1 GIF beside a line of text, in the
+   live page. Tailwind's base styles make every img display:block, which
+   spoils that measurement, and every line of text in the export came out a
+   few pixels low - below its own tinted pill on the ID card. This matches
+   only html2canvas's own measuring image, by its fixed data URI. */
+img[src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"] {
+    display: inline !important;
+}
