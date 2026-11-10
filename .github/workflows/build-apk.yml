@@ -25,6 +25,7 @@ on:
       - 'www/**'
       - 'config.xml'
       - 'res/**'
+      - 'cordova-plugins/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/build-apk.yml'
@@ -61,7 +62,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          # cordova-android 15 needs Node 20.17+ or 22.9+.
+          node-version: '22'
 
       - name: Set up Android SDK
         # Still on v3, and still warning that it runs on Node 20. It is a
@@ -80,23 +82,21 @@ jobs:
           packages: 'platform-tools'
 
       - name: Install Android build packages
-        # cordova-android 12 targets SDK 33 and requires build-tools 33.0.2
-        # specifically (its cordova.gradle checks for that exact version).
+        # cordova-android 15 targets SDK 36 and needs build-tools 36.0.0 at
+        # least (framework/cdv-gradle-config-defaults.json). Google Play has
+        # required API 36 for new apps and updates since 31 Aug 2026.
         run: |
-          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
+          yes | sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" >/dev/null || true
 
-      - name: Install Gradle 8.7
-        # cordova-android 12 (AGP 8.0) builds AndroidX appcompat cleanly, but
-        # its cordova.gradle uses groovy.util.XmlParser, which was removed from
-        # the runner's default Gradle 9. Putting Gradle 8.7 on PATH lets the
-        # `gradle wrapper` bootstrap step compile, after which the pinned AGP
-        # 8.0 toolchain builds with an aapt2 that handles appcompat correctly.
+      - name: Install Gradle 8.14.2
+        # The version cordova-android 15 pins (GRADLE_VERSION in its
+        # cdv-gradle-config-defaults.json), on PATH for the wrapper bootstrap.
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.14.2'
 
       - name: Install Cordova
-        run: npm install -g cordova@12
+        run: npm install -g cordova@13
 
       - name: Point the app at the deployed URL (if provided)
         # On a push there are no inputs at all, so this reads as empty and
@@ -116,14 +116,13 @@ jobs:
           grep -n "APP_URL\|allow-navigation\|access origin" www/index.html config.xml | head
 
       - name: Add Android platform
-        # android@12 (AGP 8.0) has the aapt2 that compiles appcompat cleanly;
-        # the Gradle 8.7 step above makes its bootstrap work on this runner.
+        # android@15 targets API 36 (Android 16), which Google Play requires.
         #
         # --verbose because this step was once thought to be hanging and was
         # not: it downloads cordova-android and then bootstraps a Gradle
         # wrapper, and with no output of its own there was nothing to read
         # while it worked. It takes about 40 seconds.
-        run: cordova platform add android@12 --no-telemetry --verbose
+        run: cordova platform add android@15 --no-telemetry --verbose
 
       - name: Build debug APK
         run: cordova build android --debug --no-telemetry
@@ -143,6 +142,9 @@ jobs:
           if-no-files-found: error
 
       - name: Publish the APK at one permanent link
+        # Only from main. A build of any other branch is a test build: it is
+        # in the run's Artifacts, and must not replace the APK people install.
+        if: github.ref == 'refs/heads/main'
         # An artifact is the wrong way to hand somebody an app. GitHub only
         # serves one to a signed-in user, always inside a .zip, and only for
         # 90 days — so installing it on a phone means signing in to GitHub,
