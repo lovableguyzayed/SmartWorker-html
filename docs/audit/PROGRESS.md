@@ -50,6 +50,8 @@ failures are listed in the report as TEST-02 and LAY-01.
 - [x] Batch 1 sign in / sign up, built and screenshot-checked against the mockups
 - [x] Phase 4: MANUAL_TEST_CHECKLIST.md with the Play release list
 
+- [x] Every PDF checked and corrected (PDF-03 to PDF-09): review/SmartWorker_PDF_Corrections.pdf
+
 ### Waiting for preview approval
 - [x] Batch 2: 5 tabs, attendance header, Indian dates, large-text tiles: built and screenshot-checked
 - [x] Batch 3 S1 (WhatsApp share), S2 (every screen fits at the largest text), S5 (mark first): built, CI APK build passes

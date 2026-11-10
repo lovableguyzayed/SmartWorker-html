@@ -218,6 +218,23 @@ first.
 | PDF-01 | templates/payroll_slip.html:965–998 | Payslip PDF is a photo of the screen: not searchable, bigger, slightly soft when zoomed. | P3 | Text PDF later; fine for now. | Backlog |
 | – | – | No PDF is missing, broken or orphaned, because none are stored. | – | – | ✔ |
 
+#### PDF corrections (after "correct every PDF")
+
+Every PDF was generated in English and Hindi and read page by page. The
+before/after is in [review/SmartWorker_PDF_Corrections.pdf](review/SmartWorker_PDF_Corrections.pdf),
+and the corrected samples are in [review/pdfs/](review/pdfs/).
+
+| ID | Problem | Status |
+|---|---|---|
+| PDF-03 | Print did nothing inside the Android app, so the worker report could not be printed or saved on a phone | **Fixed in code**: Android print service with Save as PDF; needs a phone test |
+| PDF-04 | Text in the payslip and ID card PDFs was drawn a few pixels low (labels under their pills; calendar key cut at a page break) | **Fixed** (html2canvas measurement, custom.css) |
+| PDF-05 | Payslip printed "Not Saved" | **Fixed**: DRAFT badge, notice and watermark |
+| PDF-06 | Payslip printed the salary explanation twice | **Fixed** |
+| PDF-07 | ID card: name under the corner badge, footer run together | **Fixed** |
+| PDF-08 | Hindi dates with cut-off months ("अग") | **Fixed**: full months everywhere |
+| PDF-09 | File names could collide between two workers with one name; no PDF title | **Fixed**: worker ID in names; title/author set |
+| PDF-01 | Picture payslip is 3 pages and not searchable | **Kept**: 9 pt legibility floor; Print → Save as PDF gives 2 searchable pages |
+
 ### 3.5 Screen sizes, text size, dark mode
 
 | ID | Where | Problem | Who | Sev | Fix | Status |
