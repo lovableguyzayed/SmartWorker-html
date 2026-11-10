@@ -42,6 +42,14 @@
     <link rel="preload" as="font" type="font/woff2" crossorigin
           href="{{ url_for('static', filename='vendor/inter/inter-latin-var.woff2') }}">
     
+    {% if native_shell %}
+    {# Inside the Android app: cordova.js comes from the APK itself, and the
+       smartworker-remote-bridge plugin lets this site use it. Loaded before
+       app.js so Cordova is in place when app.js registers the Back button.
+       Without it, window.cordova never existed here and file saves fell back
+       to a download the WebView ignores. #}
+    <script src="{{ native_shell_origin }}/cordova.js"></script>
+    {% endif %}
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
 

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lets the live SmartWorker site use the app's native plugins.
+
+     The APK is a shell: it opens the deployed site, and every screen comes
+     from there. Cordova only lets the page it launched use the native
+     bridge (https://localhost/...), so on the site's own pages
+     window.cordova never came to life: Save PDF / Excel / CSV fell back to
+     a browser download the WebView ignores, and the Back button skipped the
+     app's own handling. This plugin allows the bridge for one more origin,
+     the RemoteBridgeOrigin preference in config.xml, and nothing else. -->
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        id="smartworker-remote-bridge" version="1.0.0">
+    <name>SmartWorker remote bridge</name>
+    <engines>
+        <engine name="cordova-android" version=">=12.0.0" />
+    </engines>
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="RemoteBridge">
+                <param name="android-package" value="com.smartworker.bridge.RemoteBridge" />
+                <!-- Must be loaded at start-up: PluginManager only asks
+                     plugins that already exist whether to allow the bridge. -->
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+        <source-file src="src/android/RemoteBridge.java" target-dir="src/com/smartworker/bridge" />
+    </platform>
+</plugin>

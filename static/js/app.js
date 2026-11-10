@@ -431,17 +431,9 @@ const SmartWorker = {
         const theme = this.storage.get('theme', 'light');
         document.documentElement.setAttribute('data-theme', theme);
         
-        // Load other preferences
-        const preferences = this.storage.get('preferences', {});
-        if (preferences.notifications !== false) {
-            this.requestNotificationPermission();
-        }
-    },
-    
-    requestNotificationPermission() {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
+        // Notification permission used to be asked for here, on every
+        // first page view. The app never shows a notification, so the
+        // prompt asked for something it did not use; it is gone.
     }
 };
 
@@ -854,7 +846,14 @@ const NativeShell = {
 document.addEventListener('DOMContentLoaded', () => {
     SmartWorker.init();
     NativeShell.init();
-    NativeShell.initAndroidBack();
+    // Inside the app, Back is only routed to the page once Cordova has
+    // finished starting; registering earlier can leave Android's default
+    // (close the app) in charge.
+    if (window.cordova) {
+        document.addEventListener('deviceready', () => NativeShell.initAndroidBack(), { once: true });
+    } else {
+        NativeShell.initAndroidBack();
+    }
 });
 
 // Expose SmartWorker globally for use in templates
