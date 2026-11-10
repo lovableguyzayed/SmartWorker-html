@@ -26,6 +26,7 @@ during a demo and flip back.
 """
 import argparse
 import os
+import secrets
 import sys
 from datetime import date, datetime, time, timedelta
 
@@ -37,7 +38,11 @@ import models as m
 # ---------------------------------------------------------------- the facts
 COMPANY = 'Uttaranchal Stone Crusher'
 ADMIN_USER = 'Javed'
-ADMIN_PASS = '7906030129'
+# Passwords are not written here: this repository is public, and a demo
+# password in it is a live password for anyone who reads it. Set them in the
+# environment, or a random one is made and printed once at the end.
+ADMIN_PASS = os.environ.get('SEED_ADMIN_PASSWORD') or secrets.token_urlsafe(9)
+SUPERVISOR_PASS = os.environ.get('SEED_SUPERVISOR_PASSWORD') or secrets.token_urlsafe(9)
 ADMIN_EMAIL = 'javed@uttaranchalstonecrusher.in'
 ADMIN_PHONE = '7906030129'
 
@@ -201,7 +206,7 @@ def build():
     sup = m.User(username='imran', email='imran@uttaranchalstonecrusher.in',
                  full_name=mukadam.full_name, role='worker')
     sup.account_id = acct.id
-    sup.set_password('imran12345')
+    sup.set_password(SUPERVISOR_PASS)
     sup.worker_id = mukadam.id
     sup.can_mark_attendance = True
     sup.can_record_transactions = True
@@ -356,7 +361,7 @@ def main():
         acct, admin, me, workers = build()
         print('   company           %s (account %d)' % (COMPANY, acct.id))
         print('   admin login       %s / %s' % (ADMIN_USER, ADMIN_PASS))
-        print('   mukadam login     imran / imran12345')
+        print('   mukadam login     imran / %s' % SUPERVISOR_PASS)
         print('   workers           %d' % m.Worker.query.count())
         print('   attendance rows   %d' % m.AttendanceRecord.query.count())
         print('   transactions      %d' % m.WorkerTransaction.query.count())
