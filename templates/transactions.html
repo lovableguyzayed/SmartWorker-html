@@ -144,7 +144,7 @@
             <i class="fa-solid fa-money-bill-transfer text-3xl text-gray-500"></i>
         </div>
         <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ _('No Transactions') }}</h2>
-        <p class="text-gray-600 mb-6">Record advances, loans, bonuses and deductions for {{ month_name }} {{ year }}.</p>
+        <p class="text-gray-600 mb-6">{{ _('Record advances, loans, bonuses and deductions for %(month)s %(year)s.') % {'month': _(month_name), 'year': year} }}</p>
         <button data-act="openTxnModal" class="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-primary transition-colors">
             <i class="fa-solid fa-plus mr-2"></i>{{ _('Add Transaction') }}
         </button>

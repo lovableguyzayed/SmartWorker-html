@@ -44,7 +44,7 @@
             <div class="flex-1">
                 <div class="text-lg font-bold mb-1">{{ worker.full_name }}</div>
                 <div class="text-sm opacity-90 mb-1">{{ worker.position }} • {{ worker.department }}</div>
-                <div class="text-sm opacity-90">ID: {{ worker.worker_id }}</div>
+                <div class="text-sm opacity-90">{{ _('ID') }}: {{ worker.worker_id }}</div>
             </div>
         </div>
     </div>
@@ -69,10 +69,17 @@
             </div>
         </div>
         
-        <!-- Calendar (shared partial — see templates/_calendar.html) -->
+        {# Calendar (shared partial — see templates/_calendar.html).
+
+           cal_link_search makes every day of this worker's month a way in
+           to it: tapping one opens the attendance screen for that date
+           with this worker's ID already in the search box, which is the
+           screen that marks. The month itself still marks nothing — it was
+           an inert picture before and it is a picture with doors now. #}
         {% with cal_month_start = start_date.replace(day=1),
                 cal_month = start_date.month, cal_year = start_date.year,
                 cal_data = calendar_data, cal_closures = closure_days,
+                cal_today = today, cal_link_search = worker.worker_id,
                 cal_interactive = false %}
             {% include '_calendar.html' %}
         {% endwith %}
@@ -287,7 +294,7 @@
                 {% endif %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">{{ _('Half-Day Grace') }}</span>
-                    <span class="font-semibold text-gray-800">{{ pay_summary.half_day_grace_minutes }} min</span>
+                    <span class="font-semibold text-gray-800">{{ pay_summary.half_day_grace_minutes }} {{ _('min') }}</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">{{ _('Base Wage') }}</span>

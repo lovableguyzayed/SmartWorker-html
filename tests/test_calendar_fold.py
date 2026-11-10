@@ -5,6 +5,11 @@ screen and a half down on the one screen the application exists for. Marking
 today never needs it: the date field and its day arrows in the header
 already move between days. It is for looking back over a month.
 
+It has since moved below the roster as well, under "Look back over the
+month", so what unfolding it pushes down is the day panel beneath it
+rather than the roster above. The fold still has to save that space and
+still has to be remembered, which is what is measured.
+
 The remembering is the part that has to work. The month arrows are ordinary
 links, so stepping back a month reloads the page — and a calendar that
 folded itself shut on every month change would be worse than one that never
@@ -60,7 +65,13 @@ try:
     # _calendar.html renders a div grid, not a table.
     GRID = ("() => { const g = document.querySelector('#cal-fold .cal-grid');"
             " return !!(g && g.checkVisibility && g.checkVisibility()); }")
-    FIRST = ("() => { const n = document.querySelector('.dv-name');"
+    # What sits under the calendar is the day panel. (It used to be the
+    # roster's first worker name, measured through .dv-name — but the
+    # roster is above the calendar now, and .dv-name belongs to the day
+    # panel, which no longer paints itself on a plain visit, so that probe
+    # read -1 whether the fold was open or shut and the check passed on a
+    # pair of equal non-answers.)
+    FIRST = ("() => { const n = document.getElementById('day-panel');"
              " return n ? Math.round(n.getBoundingClientRect().top + window.scrollY) : -1; }")
 
     with sync_playwright() as p:
@@ -94,8 +105,8 @@ try:
         check('unfolds when tapped', pg.evaluate(OPEN), True)
         check('and the grid is on screen', pg.evaluate(GRID), True)
         open_at = pg.evaluate(FIRST)
-        check('unfolding pushes the roster down', open_at > folded_at, True)
-        print('       first worker: %dpx folded, %dpx unfolded (%d saved)'
+        check('unfolding pushes what is under it down', open_at > folded_at, True)
+        print('       day panel at: %dpx folded, %dpx unfolded (%d saved)'
               % (folded_at, open_at, open_at - folded_at))
 
         # Stepping back a month is a link, so this is a real page load.

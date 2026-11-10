@@ -3,9 +3,11 @@ import qrcode
 import io
 import base64
 import csv
+import hmac
 import json
-import secrets
+import logging
 import re
+import secrets
 import calendar as _cal
 from datetime import datetime, date, timedelta
 from functools import wraps
@@ -15,8 +17,11 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload, joinedload
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage, ImageOps as PILImageOps
+from flask_wtf.csrf import CSRFError
+
 from app import app, db, csrf
 from timeutil import IST, now_ist, today_ist, ISTDate
+import sms
 import storage
 import supabase_auth
 import authguard
@@ -26,11 +31,12 @@ import i18n
 import money
 import excel
 import ledger
+import backup
 from models import (
     Account, User, Worker, AttendanceRecord, ClosureDay, PayrollRecord,
     CompanySetting, Department, Site, Project, WorkTask, ProjectAssignment,
     WorkerModification, LeaveAdjustment, WorkerTransaction, Notification,
-    SalaryPolicy, SalaryPolicyAudit,
+    SalaryPolicy, SalaryPolicyAudit, StatutoryDeduction, MinimumWage,
     TRANSACTION_EARNING_TYPES, TRANSACTION_DEDUCTION_TYPES,
     TRANSACTION_SETTLEMENT_TYPES, PAYMENT_MODES,
 )
@@ -117,6 +123,7 @@ LOGIN_OTP_SESSION_KEYS = (
     'login_otp_user_id',
     'login_otp',               # the old plaintext key, cleared on sight
 )
+
 
 def allowed_image_file(filename):
     if not filename or '.' not in filename:
@@ -233,7 +240,6 @@ IFSC_RE = re.compile(r'^[A-Z]{4}0[A-Z0-9]{6}$')
 PAN_RE = re.compile(r'^[A-Z]{5}[0-9]{4}[A-Z]$')
 UPI_RE = re.compile(r'^[\w.\-]{2,60}@[A-Za-z]{2,20}$')
 ACCOUNT_RE = re.compile(r'^\d{9,18}$')
-AADHAAR_RE = re.compile(r'^\d{12}$')
 
 
 def clean_payment_details(form):
@@ -253,7 +259,6 @@ def clean_payment_details(form):
         'bank_account_number': squash('bank_account_number'),
         'bank_ifsc': squash('bank_ifsc', upper=True),
         'upi_id': (form.get('upi_id') or '').strip(),
-        'aadhaar_number': squash('aadhaar_number'),
         'pan_number': squash('pan_number', upper=True),
     }
     errors = []
@@ -261,7 +266,6 @@ def clean_payment_details(form):
         ('bank_account_number', ACCOUNT_RE, 'Bank account number should be 9 to 18 digits.'),
         ('bank_ifsc', IFSC_RE, 'IFSC should look like HDFC0001234.'),
         ('upi_id', UPI_RE, 'UPI id should look like name@bank.'),
-        ('aadhaar_number', AADHAAR_RE, 'Aadhaar number should be 12 digits.'),
         ('pan_number', PAN_RE, 'PAN should look like ABCDE1234F.'),
     )
     for field, pattern, message in checks:
@@ -273,12 +277,45 @@ def clean_payment_details(form):
     return {k: (v or None) for k, v in values.items()}, errors
 
 
+def apply_aadhaar(worker, form):
+    """Keep the last four digits of an Aadhaar, and only those.
+
+    A full Aadhaar number is not needed to pay anybody: a bank account and
+    IFSC, or a UPI id, is what moves the money. It was held only to
+    recognise which card a man showed, and four digits do that, so four is
+    what is stored from here on. Twelve, leaked, are somebody's identity.
+
+    Two things this has to get right, both of them about not losing data:
+
+      * the box on the form is empty, because there is no full number left
+        to show in it. An empty box therefore means "leave what is on
+        file", NOT "delete it" — otherwise an employer who opens a worker
+        to change his wage and presses Save has just erased his Aadhaar.
+      * so there has to be a way to actually remove one, which is the
+        checkbox, said out loud rather than inferred from a blank.
+
+    Returns any errors, like the other payment fields.
+    """
+    raw = ''.join(ch for ch in (form.get('aadhaar_number') or '')
+                  if ch.isdigit())
+    if form.get('aadhaar_remove') == '1' and not raw:
+        worker.aadhaar_number = None
+        return []
+    if not raw:
+        return []
+    # Twelve as printed on the card, or four if that is all he has to hand.
+    if len(raw) not in (4, 12):
+        return ['Aadhaar number should be 12 digits, or just the last 4.']
+    worker.aadhaar_number = raw[-4:]
+    return []
+
+
 def apply_payment_details(worker, form):
     """Copy validated payment details onto a worker. Returns any errors."""
     values, errors = clean_payment_details(form)
     for field, value in values.items():
         setattr(worker, field, value)
-    return errors
+    return errors + apply_aadhaar(worker, form)
 
 
 def clean_rate(value):
@@ -390,6 +427,32 @@ def calculate_overtime_minutes_for_record(worker, attendance_record):
 def get_late_grace_minutes(worker):
     return max(parse_int(getattr(worker, 'late_grace_minutes', 10), 10), 0)
 
+def worked_a_night_shift(attendance_record):
+    """Did this day's shift run past midnight?
+
+    A worker record carries exactly one shift — start_time and end_time —
+    and a crusher runs two. So for anybody on nights, that one shift is the
+    wrong thing to measure against, and the app needs to notice before it
+    measures.
+
+    Two ways to tell, because only one of them is ever filled in. The
+    attendance row has a `shift` column that the seeder writes ('day' or
+    'night') and nothing else in the app does, so a row marked through the
+    screens carries None; a check-out at or before the check-in on the
+    clock means the shift crossed midnight, which is true whoever wrote
+    the row.
+    """
+    if not attendance_record:
+        return False
+    if (attendance_record.shift or '').strip().lower() == 'night':
+        return True
+    check_in = attendance_record.check_in_time
+    check_out = attendance_record.check_out_time
+    if not check_in or not check_out:
+        return False
+    return check_out.time() <= check_in.time()
+
+
 def calculate_late_minutes_for_record(worker, attendance_record):
     if (
         not attendance_record
@@ -399,13 +462,64 @@ def calculate_late_minutes_for_record(worker, attendance_record):
     ):
         return 0
 
+    # A night is not twelve hours of lateness.
+    #
+    # This measured the check-in against worker.start_time whatever shift
+    # was worked. Javed is on 08:00-20:00 and moved to nights on 21
+    # October, clocking in at 20:00 — so every night came out 720 minutes
+    # late, and his October read 2,160. Nothing was deducted only because
+    # his late policy happens to be off; with late deduction set per hour
+    # the same month lost ₹1,800, measured.
+    #
+    # There is no night-shift start anywhere to measure against — a worker
+    # holds one shift — so the honest answer is that lateness is unknown
+    # for that day, not that it was half a day. Giving a worker a second
+    # shift to be judged against is the real fix and is a larger change
+    # than this.
+    if worked_a_night_shift(attendance_record):
+        return 0
+    if started_another_shift(worker, attendance_record.check_in_time):
+        return 0
+
     shift_start = datetime.combine(attendance_record.date, worker.start_time)
     late_minutes = int((attendance_record.check_in_time - shift_start).total_seconds() // 60)
     return max(late_minutes, 0)
 
+
+def started_another_shift(worker, check_in_time):
+    """Is this check-in for a later shift rather than a late arrival?
+
+    Somebody clocking in at 20:00 against an 08:00-20:00 shift has not
+    turned up twelve hours late for the day shift; the day shift is over
+    and they are starting the night one. Lateness is about arriving after
+    your shift began, and this is a check-in after it ended.
+
+    This is the live half of the same problem worked_a_night_shift covers
+    retrospectively: at the gate there is no check-out yet, and nothing in
+    the app writes the shift column, so a tap at 20:00 has only the clock
+    to go on.
+
+    Only for a shift that lies inside one day. A worker whose own shift is
+    the night one (start 20:00, end 08:00) has start after end, and every
+    check-in would look like it came after the end.
+    """
+    if not worker.start_time or not worker.end_time or not check_in_time:
+        return False
+    if worker.end_time <= worker.start_time:
+        return False          # the worker's own shift already crosses midnight
+    return check_in_time.time() >= worker.end_time
+
 def is_late_check_in(worker, attendance_date, check_in_time):
-    """True when a check-in falls after shift start plus grace time."""
+    """True when a check-in falls after shift start plus grace time.
+
+    A check-in that lands after the shift has ended is somebody starting
+    the next shift, not arriving late for the one that finished — see
+    started_another_shift. Without that test, moving a crusher hand onto
+    nights marked them Late every single night.
+    """
     if not worker.start_time or not check_in_time:
+        return False
+    if started_another_shift(worker, check_in_time):
         return False
     shift_start = datetime.combine(attendance_date, worker.start_time)
     return check_in_time > shift_start + timedelta(minutes=get_late_grace_minutes(worker))
@@ -649,7 +763,19 @@ def user_by_mobile(mobile):
     forms = authguard.stored_forms(mobile)
     if not forms:
         return None
-    return User.query.filter(User.phone.in_(forms)).first()
+    user = User.query.filter(User.phone.in_(forms)).first()
+    if user:
+        return user
+    # Rows written with spaces or dashes ('+91 98765 43210'): a short list on
+    # the last four digits, compared properly, so this is no table scan.
+    digits = forms[0]
+    for candidate in (User.query.filter(User.phone.isnot(None))
+                      .filter(User.phone.like('%' + digits[-4:])).limit(50).all()):
+        if normalize_mobile_number(candidate.phone) == digits:
+            return candidate
+    return None
+
+find_user_by_mobile = user_by_mobile
 
 def mobile_taken(mobile):
     return user_by_mobile(mobile) is not None
@@ -734,11 +860,16 @@ def sms_enabled():
     nobody could sign up. SMS_DEV_LOG=1 turns the OTP flow on with codes in
     the log, for trying it out locally - never set it on the live server.
     """
-    return os.environ.get('SMS_DEV_LOG') == '1'
+    return sms.is_configured() or os.environ.get('SMS_DEV_LOG') == '1'
 
 def _deliver_otp(purpose, mobile, code):
-    # Only reached when sms_enabled(); with SMS_DEV_LOG the log is the phone.
-    app.logger.info("%s OTP for %s: %s", purpose.capitalize(), mobile, code)
+    """Send the code through sms.py; True if it reached a provider, or the
+    log with SMS_DEV_LOG (sms.py writes it there only with no provider)."""
+    delivered, detail = sms.send_otp(mobile, code, purpose)
+    if delivered or (not sms.is_configured() and os.environ.get('SMS_DEV_LOG') == '1'):
+        return True
+    app.logger.error('OTP for %s could not be sent: %s', mobile, detail)
+    return False
 
 #: How long a verified number may be used to finish creating an account.
 SIGNUP_WINDOW_SECONDS = 15 * 60
@@ -776,6 +907,7 @@ def clear_register_otp_session():
 def clear_login_otp_session():
     for key in LOGIN_OTP_SESSION_KEYS:
         session.pop(key, None)
+
 
 def generate_unique_username(full_name, email):
     base_source = (email.split('@')[0] if email else full_name or 'user').strip().lower()
@@ -1122,7 +1254,12 @@ def login_send_otp():
     clear_login_otp_session()
     code = _issue_otp('login', mobile)
     session['login_otp_user_id'] = user.id if user else None
-    _deliver_otp('login', mobile, code)
+    if not _deliver_otp('login', mobile, code):
+        clear_login_otp_session()
+        return jsonify({
+            'success': False,
+            'message': _say('The code could not be sent just now. Please try again, or sign in with your password.')
+        }), 503
 
     return jsonify({
         'success': True,
@@ -1487,6 +1624,150 @@ def worker_account(worker_id):
 DUES_WORKER_CAP = 300
 
 
+def _prefetch_dues_months(workers, upto):
+    """Warm the per-month caches for the whole roster, once per month.
+
+    The dues screen walks every worker's whole employment month by month,
+    and each of those months ran calculate_pay_summary, which asks the
+    database for that one worker's transactions and leave counters. Twelve
+    workers over seven months came to 494 queries — 41 each — and only
+    19ms of that was the database. The rest was the round trips.
+
+    prefetch_period_transactions and prefetch_leave_ledgers already load a
+    month for a whole roster in one query each; the payroll screen has
+    called them since it was paged. This screen never did, so it asked for
+    the same month twelve times over. Priming them per month turns
+    workers x months lookups into months, and every later call answers
+    from memory.
+
+    Nothing about the figures changes: the caches are what the per-worker
+    helpers read first, and they hold exactly what those helpers would
+    have fetched.
+    """
+    if not workers:
+        return
+    starts = [w.join_date for w in workers if w.join_date]
+    if not starts:
+        return
+    worker_ids = [w.id for w in workers]
+    span = list(ledger.months_between(min(starts), upto))
+    if not span:
+        return
+    months = [(date(y, mo, 1), date(y, mo, _cal.monthrange(y, mo)[1]))
+              for y, mo in span]
+    earliest, latest = months[0][0], months[-1][1]
+
+    # Three queries for the whole span, not three per month.
+    #
+    # Calling the per-month prefetches in a loop was the first cut and it
+    # halved the screen, but then became the largest thing on it: 31 months
+    # x 4 queries, and the cost was not the database — 14ms of SQL against
+    # 230ms of wall time — it was building 124 SQLAlchemy queries. So the
+    # span is fetched once and bucketed in Python, and the same two caches
+    # are filled for every month, which is all the per-worker helpers read.
+
+    txn_cache = getattr(g, '_txn_period_cache', None)
+    if txn_cache is None:
+        txn_cache = g._txn_period_cache = {}
+    by_month_txns = {key: {wid: [] for wid in worker_ids} for key in months}
+    for txn in WorkerTransaction.query.filter(
+        WorkerTransaction.worker_id.in_(worker_ids),
+        WorkerTransaction.status == 'active',
+        WorkerTransaction.date >= earliest,
+        WorkerTransaction.date <= latest,
+    ).order_by(WorkerTransaction.date).all():
+        key = (date(txn.date.year, txn.date.month, 1),
+               date(txn.date.year, txn.date.month,
+                    _cal.monthrange(txn.date.year, txn.date.month)[1]))
+        if key in by_month_txns:
+            by_month_txns[key][txn.worker_id].append(txn)
+    txn_cache.update(by_month_txns)
+
+    # Leave: one row per adjustment and one per leave day, counted here.
+    # used_before is cumulative, so the months are walked in order and the
+    # running total carried forward rather than re-counted per month.
+    adjustments = db.session.query(
+        LeaveAdjustment.worker_id, LeaveAdjustment.days,
+        LeaveAdjustment.effective_date, LeaveAdjustment.created_at,
+    ).filter(LeaveAdjustment.worker_id.in_(worker_ids)).all()
+
+    leave_days = db.session.query(
+        AttendanceRecord.worker_id, AttendanceRecord.date,
+    ).filter(
+        AttendanceRecord.worker_id.in_(worker_ids),
+        AttendanceRecord.status == 'leave',
+    ).all()
+
+    # Leave taken before the span starts counts towards used_before for
+    # every month in it, so it is seeded rather than ignored.
+    carried = {wid: 0 for wid in worker_ids}
+    in_month = {key: {wid: 0 for wid in worker_ids} for key in months}
+    for worker_id, taken in leave_days:
+        if taken < earliest:
+            carried[worker_id] = carried.get(worker_id, 0) + 1
+            continue
+        key = (date(taken.year, taken.month, 1),
+               date(taken.year, taken.month,
+                    _cal.monthrange(taken.year, taken.month)[1]))
+        if key in in_month:
+            in_month[key][worker_id] = in_month[key].get(worker_id, 0) + 1
+
+    # Closures, for both of the caches that hold them. These are keyed by
+    # period like the others but are not per worker, so they were the one
+    # group left that grew with the length of somebody's employment rather
+    # than with the size of the roster — 31 of the 73 remaining queries.
+    all_closures = ClosureDay.query.filter(
+        ClosureDay.date >= earliest, ClosureDay.date <= latest).all()
+    by_month_closures = {key: [] for key in months}
+    for closure in all_closures:
+        key = (date(closure.date.year, closure.date.month, 1),
+               date(closure.date.year, closure.date.month,
+                    _cal.monthrange(closure.date.year, closure.date.month)[1]))
+        if key in by_month_closures:
+            by_month_closures[key].append(closure)
+
+    closure_cache = getattr(g, '_closure_period_cache', None)
+    if closure_cache is None:
+        closure_cache = g._closure_period_cache = {}
+    all_closure_cache = getattr(g, '_all_closure_period_cache', None)
+    if all_closure_cache is None:
+        all_closure_cache = g._all_closure_period_cache = {}
+    for key, found in by_month_closures.items():
+        # _attendance_closures_in_period holds only the ones that still
+        # allow attendance; _closures_in_period holds every one. Same rows,
+        # two different questions.
+        closure_cache.setdefault(key, [c for c in found if c.allow_attendance])
+        all_closure_cache.setdefault(key, found)
+
+    leave_cache = getattr(g, '_leave_ledger_cache', None)
+    if leave_cache is None:
+        leave_cache = g._leave_ledger_cache = {}
+    running = dict(carried)
+    for key in months:
+        period_start, period_end = key
+        period_end_ts = datetime.combine(period_end, datetime.max.time())
+        ledgers = {}
+        for wid in worker_ids:
+            # The same window _leave_adjustment_window builds in SQL: an
+            # adjustment with no effective date is bounded by when it was
+            # entered, so one typed in later cannot leak into a month that
+            # has already closed.
+            manual = sum(
+                float(days or 0.0) for a_wid, days, eff, created in adjustments
+                if a_wid == wid and (
+                    eff <= period_end if eff is not None
+                    else (created is not None and created <= period_end_ts))
+            )
+            ledgers[wid] = {
+                'manual_adjustment': manual,
+                'used_before': running.get(wid, 0),
+                'used_this_month': in_month[key].get(wid, 0),
+            }
+        leave_cache[key] = ledgers
+        for wid in worker_ids:
+            running[wid] = running.get(wid, 0) + in_month[key].get(wid, 0)
+
+
 def _company_dues(upto=None, allocation=None):
     """Every active worker's arrears, worst first.
 
@@ -1498,11 +1779,30 @@ def _company_dues(upto=None, allocation=None):
     """
     upto = upto or today_ist()
     allocation = allocation or _dues_allocation()
-    workers = (Worker.query.filter_by(status='active')
+
+    # Everybody on the roll, and everybody who has left — not only the
+    # active ones.
+    #
+    # This screen exists to answer "who is still owed money". Listing only
+    # active workers answered a different question, and got the first one
+    # exactly backwards on the case that matters most: a man who is let go
+    # in the middle of a month, holding three months of arrears, is marked
+    # inactive and his debt disappears from the one screen that is supposed
+    # to show debts. Nobody is reminded of it again.
+    #
+    # Someone who has left and is square is dropped below, after the
+    # arithmetic, because there is no cheap way to ask the database for it
+    # — the outstanding figure comes out of the ledger, not a column. So
+    # they cost a statement each and then go. Worth it: the alternative is
+    # a screen that quietly forgets people the day they stop coming in.
+    workers = (Worker.query
+               .filter(Worker.status.in_(('active', 'inactive')))
                .order_by(Worker.join_date, Worker.id)
                .limit(DUES_WORKER_CAP + 1).all())
     capped = len(workers) > DUES_WORKER_CAP
     workers = workers[:DUES_WORKER_CAP]
+
+    _prefetch_dues_months(workers, upto)
 
     rows = []
     for worker in workers:
@@ -1522,7 +1822,16 @@ def _company_dues(upto=None, allocation=None):
             # Where to send it, if anywhere. An amount owed with no way to
             # pay it is the pair of facts an owner needs together.
             'has_payment_details': worker.has_payment_details,
+            # So the screen can say so rather than listing him as though
+            # he turned up this morning.
+            'has_left': worker.status != 'active',
         })
+
+    # A worker who has left and is owed nothing is not news. One who has
+    # left owing nothing to nobody but who is still owed stays, in red,
+    # until he is paid.
+    rows = [r for r in rows
+            if not r['has_left'] or r['outstanding'] > ledger.EPSILON]
 
     # Worst first: the question is who to pay next, and that is whoever is
     # owed most and has been waiting longest.
@@ -1760,6 +2069,67 @@ def _attendance_closures_in_period(period_start, period_end):
     return cache[key]
 
 
+def _closures_in_period(period_start, period_end):
+    """Every closure in the period, cached per request.
+
+    _attendance_closures_in_period above returns only the ones that still
+    allow attendance, because that is what closure bonus pay is about.
+    Counting days nobody marked needs the other kind too — a day the plant
+    was shut is the one day nobody can be charged for.
+    """
+    cache = getattr(g, '_all_closure_period_cache', None)
+    if cache is None:
+        cache = g._all_closure_period_cache = {}
+    key = (period_start, period_end)
+    if key not in cache:
+        cache[key] = ClosureDay.query.filter(
+            ClosureDay.date >= period_start,
+            ClosureDay.date <= period_end,
+        ).all()
+    return cache[key]
+
+
+def count_unmarked_days(worker, records, period_start, period_end):
+    """Days of this period that went by with no attendance row at all.
+
+    Counted here rather than in salary.py because it needs today's date
+    and the closure calendar, and that module is deliberately kept clear
+    of both. What it answers is "how many days did nobody record", which
+    is a fact about the month whatever the employer then does with it.
+
+    Three kinds of day are never counted, and each one would be unfair in
+    a different way:
+
+      * days still to come. Docking somebody on the 12th for the 20th is
+        not a policy, it is a bug. The window stops at today.
+      * days before they joined. They were not employed.
+      * days the plant was shut with attendance locked. Nobody could come
+        in, so nobody can be marked absent for it. A closure that still
+        allows attendance is an ordinary working day here, because work
+        was possible on it.
+    """
+    start = period_start
+    if worker.join_date and worker.join_date > start:
+        start = worker.join_date
+    end = min(period_end, today_ist())
+    if end < start:
+        return 0
+
+    marked = {r.date for r in (records or []) if r.date}
+    shut = {
+        c.date for c in _closures_in_period(period_start, period_end)
+        if not c.allow_attendance and closure_applies_to_worker(c, worker)
+    }
+
+    unmarked = 0
+    day = start
+    while day <= end:
+        if day not in marked and day not in shut:
+            unmarked += 1
+        day += timedelta(days=1)
+    return unmarked
+
+
 def resolve_salary_policy(worker):
     """The salary policy in force for one worker, cached per request.
 
@@ -1799,6 +2169,23 @@ def resolve_salary_policy(worker):
     return salary.resolve_policy(worker, base, override)
 
 
+def _statutory_rules():
+    """The account's statutory deductions, once per request.
+
+    Read through the ordinary query so the tenancy layer scopes them, and
+    cached because payroll asks for them once per worker and the answer is
+    the same for all of them.
+    """
+    if not has_app_context():
+        return []
+    rules = getattr(g, '_statutory_rules', None)
+    if rules is None:
+        rules = g._statutory_rules = (
+            StatutoryDeduction.query.filter_by(enabled=True)
+            .order_by(StatutoryDeduction.id).all())
+    return rules
+
+
 def calculate_pay_summary(worker, attendance_records, period_start=None, period_end=None):
     # Derive the payroll month when the caller doesn't pass it explicitly.
     if period_start is None or period_end is None:
@@ -1809,6 +2196,35 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         period_start = anchor.replace(day=1)
         _, _pdays = _cal.monthrange(period_start.year, period_start.month)
         period_end = period_start.replace(day=_pdays)
+
+    # ---- whole rupees are part of the calculation, not a setting ---------
+    #
+    # Rounding started as a dropdown on the salary policy, and a dropdown
+    # left alone pays people in paise. Worse, it only ever governed the
+    # salary: an hourly worker at ₹118.75 an hour and a daily worker on
+    # ₹512.33 came out with paise whatever the dropdown said, because their
+    # pay never went through the salary engine at all. ₹22,712.50 is not an
+    # amount anybody hands over at a crusher gate.
+    #
+    # So every figure this function WORKS OUT is rounded here, by the same
+    # rule the policy states, and the rounding is no longer optional. What
+    # is NOT rounded is every figure somebody TYPED IN — an advance, a
+    # bonus, a wage payment. Those are records of money that changed hands;
+    # rounding ₹2,250.50 to ₹2,251 would not tidy the books, it would
+    # misstate what was paid.
+    #
+    # 'No rounding' still means no rounding. An employer who picks it is
+    # asking for the paise, and gets them.
+    _round_mode = 'nearest'
+    try:
+        _round_mode = resolve_salary_policy(worker)['rounding']
+    except Exception:                      # no app context, no policy table
+        pass
+
+    def _whole(amount):
+        """One computed amount, rounded by the policy's own rule."""
+        return float(salary.apply_rounding(
+            salary._dec(amount or 0), _round_mode))
 
     attendance_summary = calculate_attendance_summary(attendance_records)
     present_days = attendance_summary['present_days']
@@ -1902,7 +2318,9 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         carried = leave_balance['balance_before'] if leave_balance else 0.0
         salary_breakdown = salary.compute(
             worker, policy, attendance_records, period_start, period_end,
-            carried_leave_balance=carried)
+            carried_leave_balance=carried,
+            unmarked_days=count_unmarked_days(worker, attendance_records,
+                                              period_start, period_end))
 
         base_pay = salary_breakdown['gross_eligible_salary']
         leave_deductions = salary_breakdown['deduction_amount']
@@ -1947,13 +2365,18 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         if closure_day_info:
             pct = float(getattr(worker, 'closure_extra_percentage', 0) or 0) / 100.0
             method = (getattr(worker, 'closure_calculation_method', 'daily_percent') or 'daily_percent')
-            mwd = int(getattr(worker, 'monthly_working_days', 26) or 26) or 26
+            mwd = int(getattr(worker, 'monthly_working_days', 30) or 30) or 30
             swh = int(getattr(worker, 'standard_working_hours', 8) or 8) or 8
 
             if worker.pay_type == 'daily':
                 _daily_base = float(worker.daily_rate or 0)
             elif worker.pay_type == 'monthly':
-                _daily_base = float(worker.monthly_salary or 0) / mwd
+                # The salary policy's basis, not the worker's own field: a
+                # closure day is priced off the same daily rate the salary
+                # is, or the same worker is worth ₹766.67 a day to the
+                # payroll and ₹884.62 a day to a closure bonus.
+                _daily_base = (float(worker.monthly_salary or 0)
+                               / (salary_breakdown['basis_days'] or mwd))
             elif worker.pay_type == 'hourly':
                 _daily_base = float(worker.hourly_rate or 0) * swh
             else:
@@ -1996,6 +2419,7 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
                     f'Closure day extra pay ({getattr(worker, "closure_extra_percentage", 0)}% via {method.replace("_", " ")}) applied.'
                 )
 
+    closure_extra_pay = _whole(closure_extra_pay)
     base_pay += closure_extra_pay
 
     # Transactions (advances, loans, bonuses, recoveries, ...) for this period
@@ -2020,7 +2444,53 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
     if delay_penalty > 0:
         policy_notes.append('Project delay penalty applied.')
 
-    deductions = leave_deductions + late_deductions + delay_penalty
+    # Every computed figure, in whole rupees, before anything is added up:
+    # the total is then the sum of the parts exactly as the payslip prints
+    # them. The transaction amounts are left alone — see _whole above.
+    base_pay = _whole(base_pay)
+    overtime_pay = _whole(overtime_pay)
+    leave_deductions = _whole(leave_deductions)
+    late_deductions = _whole(late_deductions)
+    delay_penalty = _whole(delay_penalty)
+
+    # ---- what the law takes off, if the employer is registered --------
+    #
+    # ESI at ten or more employees, EPF at twenty, a welfare cess in some
+    # states. None of it was here, and it is the first thing an accountant
+    # asks for. The rates are not written into the code: they change by
+    # notification, and an employer who is not registered leaves them off,
+    # which is the default.
+    #
+    # The wage these are taken of is the month's gross before anything the
+    # employer has handed over in advance — an advance is not a reduction
+    # in wages, and treating it as one would understate the contribution.
+    statutory_deductions = 0.0
+    employer_statutory = 0.0
+    statutory_breakdown = []
+    wage_for_statutory = base_pay + overtime_pay
+    for rule in _statutory_rules():
+        if not rule.applies_to(wage_for_statutory):
+            continue
+        rule_base = rule.base_for(wage_for_statutory)
+        own = _whole(rule_base * float(rule.percent or 0) / 100.0)
+        theirs = _whole(rule_base * float(rule.employer_percent or 0) / 100.0)
+        if own <= 0 and theirs <= 0:
+            continue
+        statutory_deductions += own
+        employer_statutory += theirs
+        statutory_breakdown.append({
+            'name': rule.name,
+            'percent': float(rule.percent or 0),
+            'employer_percent': float(rule.employer_percent or 0),
+            'base': rule_base,
+            'amount': own,
+            'employer_amount': theirs,
+        })
+    if statutory_breakdown:
+        policy_notes.append('Statutory deductions applied.')
+
+    deductions = (leave_deductions + late_deductions + delay_penalty
+                  + statutory_deductions)
     estimated_pay = base_pay + overtime_pay + transaction_earnings - deductions - transaction_deductions
     policy_note = ' '.join(policy_notes)
 
@@ -2028,6 +2498,12 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         'pay_type': worker.pay_type,
         'base_pay': round(base_pay, 2),
         'overtime_pay': round(overtime_pay, 2),
+        # What the law took, line by line, and what it cost the employer
+        # on top — which is not deducted from anybody but is money the
+        # business owes and should be able to see.
+        'statutory_deductions': round(statutory_deductions, 2),
+        'statutory_breakdown': statutory_breakdown,
+        'employer_statutory': round(employer_statutory, 2),
         'leave_deductions': round(leave_deductions, 2),
         'late_deductions': round(late_deductions, 2),
         'delay_penalty': delay_penalty,
@@ -2062,6 +2538,116 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         'closure_day_breakdown': closure_day_breakdown,
     }
 
+def warn_if_phone_is_shared(phone, exclude_id=None):
+    """Say so when this number already belongs to somebody else.
+
+    A warning and not a refusal, deliberately. Two labourers on one number
+    is normal on a site — a family has one phone, and the younger brother
+    gives his father's. Blocking it would make an honest employer invent a
+    fake number, which is worse than the truth.
+
+    But it was accepted in silence, and silence is wrong twice over: the
+    number is how an employer rings a man, and it is the username of the
+    worker's own login, so only the first of the two can ever have one —
+    and that only surfaces much later, on a different screen, as a message
+    about a mobile number he thought was free.
+    """
+    digits = normalize_mobile_number(phone)
+    if not digits or not is_valid_mobile_number(digits):
+        return
+    others = Worker.query.filter(Worker.phone == digits)
+    if exclude_id:
+        others = others.filter(Worker.id != exclude_id)
+    other = others.first()
+    if other:
+        flash('This number is already saved for %s (%s). Two workers can '
+              'share a phone, but only one of them can have a login.'
+              % (other.full_name, other.worker_id), 'warning')
+
+
+def wage_floor_for(worker):
+    """The floor that applies to this man: his own position's, else all.
+
+    A floor entered against his position beats the one entered for
+    everybody, because that is what entering it meant.
+    """
+    rules = MinimumWage.query.all()
+    if not rules:
+        return None
+    wanted = MinimumWage.normalize_category(worker.position)
+    general = None
+    for rule in rules:
+        category = MinimumWage.normalize_category(rule.category)
+        if category and category == wanted:
+            return rule
+        if not category:
+            general = rule
+    return general
+
+
+def warn_if_below_minimum_wage(worker):
+    """Say so when a wage is under the floor the employer entered.
+
+    A warning and not a refusal, and the third reason is the real one:
+
+      * a floor the application enforced would be a floor from the wrong
+        year the moment a notification lapsed, and an employer would be
+        locked out of saving a correct wage by a stale figure;
+      * apprentices, part days, piece work and a man kept on his old rate
+        pending arrears are all real, and none of them are a form error;
+      * refused, an employer types in a figure he does not mean in order
+        to get past the screen, and then the rate on record is a lie. A
+        warning he reads and overrides leaves the truth in the database.
+    """
+    rule = wage_floor_for(worker)
+    if rule is None:
+        return
+    found = rule.floor_for(worker)
+    if found is None:
+        return
+    floor, wage, hours = found
+    # No rate at all is a different matter, and already said elsewhere.
+    if wage <= 0 or wage >= floor:
+        return
+    # Three separate sentences rather than one with the day, the month and
+    # the category slotted into it. A flash is translated whole, by its
+    # shape, and whatever sits inside a slot is copied across untouched —
+    # so "a day" or "for Operator" built into a slot would come out as
+    # English in the middle of a Hindi warning.
+    who = _wage_category_label(rule.category)
+    if hours:
+        flash('%s is on %s an hour, which is %s for a day of %s hours, '
+              'below the %s a day minimum wage you have set for %s. Saved '
+              'as entered; change it if that is not what you meant.'
+              % (worker.full_name, money.money0(worker.hourly_rate or 0),
+                 money.money0(wage), ('%g' % hours), money.money0(floor),
+                 who), 'warning')
+    elif (worker.pay_type or '') == 'monthly':
+        flash('%s is on %s a month, below the %s a month minimum wage you '
+              'have set for %s. Saved as entered; change it if that is not '
+              'what you meant.'
+              % (worker.full_name, money.money0(wage), money.money0(floor),
+                 who), 'warning')
+    else:
+        flash('%s is on %s a day, below the %s a day minimum wage you have '
+              'set for %s. Saved as entered; change it if that is not what '
+              'you meant.'
+              % (worker.full_name, money.money0(wage), money.money0(floor),
+                 who), 'warning')
+
+
+def _wage_category_label(category):
+    """'Operator', or 'every worker' in the reader's own language.
+
+    A flash is translated by its shape and whatever sits in a slot is
+    copied across untouched, so this has to be Hindi before it goes in.
+    """
+    category = (category or '').strip()
+    if category:
+        return category
+    return i18n.translate('every worker', _current_lang())
+
+
 @app.route('/add_worker', methods=['GET', 'POST'])
 @admin_required
 def add_worker():
@@ -2073,7 +2659,9 @@ def add_worker():
         worker = Worker()
         worker.worker_id = worker_id
         worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
-        worker.phone = clean_text(request.form.get('phone'), 'phone')
+        worker.phone = (normalize_mobile_number(request.form.get('phone'))
+                        or clean_text(request.form.get('phone'), 'phone'))
+        warn_if_phone_is_shared(worker.phone)
         worker.email = clean_text(request.form.get('email'), 'email') or None
         worker.address = (request.form.get('address') or '').strip() or None
         worker.position = clean_text(request.form.get('position'), 'position')
@@ -2146,7 +2734,7 @@ def add_worker():
             if rate_error:
                 flash(rate_error, 'error')
                 return redirect(request.url)
-            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
+            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 30)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
             if request.form.get('leave_deduction'):
@@ -2215,6 +2803,7 @@ def add_worker():
         if not worker.has_pay_rate:
             flash(f'{worker.full_name} has no pay rate yet, so payroll will '
                   f'show ₹0 for them until one is set.', 'warning')
+        warn_if_below_minimum_wage(worker)
 
         return redirect(url_for('workers'))
     
@@ -2267,7 +2856,9 @@ def edit_worker(worker_id):
         before_values = {field: getattr(worker, field) for field, _ in WORKER_TRACKED_FIELDS}
         # Update worker details
         worker.full_name = clean_text(request.form.get('full_name'), 'full_name')
-        worker.phone = clean_text(request.form.get('phone'), 'phone')
+        worker.phone = (normalize_mobile_number(request.form.get('phone'))
+                        or clean_text(request.form.get('phone'), 'phone'))
+        warn_if_phone_is_shared(worker.phone, exclude_id=worker.id)
         worker.email = clean_text(request.form.get('email'), 'email') or None
         worker.address = (request.form.get('address') or '').strip() or None
         worker.position = clean_text(request.form.get('position'), 'position')
@@ -2340,7 +2931,7 @@ def edit_worker(worker_id):
             if rate_error:
                 flash(rate_error, 'error')
                 return redirect(request.url)
-            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 26)
+            worker.monthly_working_days = parse_int(request.form.get('monthly_working_days'), 30)
             worker.standard_working_hours = parse_int(request.form.get('standard_working_hours'), 8)
             worker.allowed_leaves_per_month = parse_int(request.form.get('allowed_leaves'), 2)
             if request.form.get('leave_deduction'):
@@ -2407,6 +2998,7 @@ def edit_worker(worker_id):
         if not worker.has_pay_rate:
             flash(f'{worker.full_name} has no pay rate yet, so payroll will '
                   f'show ₹0 for them until one is set.', 'warning')
+        warn_if_below_minimum_wage(worker)
 
         return redirect(url_for('worker_profile', worker_id=worker_id))
 
@@ -2470,6 +3062,25 @@ def attendance():
         # roster costs fifty calculations rather than five thousand.
         visible_rows.append((worker, attendance, assignment))
 
+    # Whoever is on site right now goes to the top of the list.
+    #
+    # An open shift — checked in, not yet checked out — is this app's own
+    # word for "currently working", and it is the one group on the roster
+    # that is time-critical: those are the people whose shift has to be
+    # closed before overtime can be banked, and on a two-shift crusher
+    # they are a handful of names inside a roll of hundreds. Sorted here
+    # rather than in the template because the list is paged, and a worker
+    # on site who sorts onto page 3 by name is exactly as lost as before.
+    #
+    # sort() is stable, so inside each group the roster's own ordering
+    # (roster_query) is untouched.
+    def _on_shift(row):
+        rec = row[1]
+        return bool(rec and rec.check_in_time and not rec.check_out_time)
+
+    visible_rows.sort(key=lambda row: 0 if _on_shift(row) else 1)
+    open_count = sum(1 for row in visible_rows if _on_shift(row))
+
     total_rows = len(visible_rows)
     start = (page - 1) * ATTENDANCE_PER_PAGE
     page_rows = visible_rows[start:start + ATTENDANCE_PER_PAGE]
@@ -2493,6 +3104,10 @@ def attendance():
             'attendance': attendance,
             'assignment': assignment,
             'closure': closure_for_worker_on_date(worker, selected_date, closures_today),
+            # Drives the "Currently working" group header; the same test the
+            # sort above used, so the heading can never land on the wrong row.
+            'on_shift': bool(attendance and attendance.check_in_time
+                             and not attendance.check_out_time),
             'wage': wage,
             'pay_mode': pay_mode,
             'overtime_pay': overtime_pay,
@@ -2549,6 +3164,7 @@ def attendance():
                          shown_from=start + 1 if attendance_data else 0,
                          shown_to=start + len(attendance_data),
                          total_rows=total_rows,
+                         open_count=open_count,
                          selected_date=selected_date,
                          today=today_ist(),
                          stats=_scan_stats(selected_date),
@@ -2714,6 +3330,10 @@ def worker_attendance(worker_id):
                          closure_days=closure_days,
                          month=month,
                          year=year,
+                         # The month grid outlines today, like every other
+                         # host of _calendar.html. This screen was the one
+                         # that did not pass it.
+                         today=today,
                          start_date=start_date,
                          end_date=end_date,
                          timedelta=timedelta,
@@ -3162,6 +3782,12 @@ def _build_payroll_rows(month, year):
             record_id = None
             record_settled = 0.0
 
+        # Kept before the freeze below swaps in the stored figures, so a
+        # caller can still ask "what would this month be worth today" of a
+        # row that is showing what it was worth when it was paid. That
+        # difference is what the payroll screen's out-of-date banner counts.
+        fresh_net = net_pay
+
         # A finalised month shows what was actually paid, not what today's
         # rules would produce. Without this, changing a salary policy
         # rewrote the figures on months that had already been settled.
@@ -3196,6 +3822,12 @@ def _build_payroll_rows(month, year):
             'gross_pay': gross_pay,
             'deductions': deductions,
             'net_pay': net_pay,
+            # What today's attendance and transactions make the month worth,
+            # and what is stored against it. Equal on an ordinary row,
+            # because net_pay is the fresh figure; they part company once a
+            # month has been paid out and frozen.
+            'fresh_net': round(fresh_net, 2),
+            'saved_net': float(existing_record.net_pay or 0) if existing_record else None,
             'status': record_status,
             'record_id': record_id,
             'settled': record_settled,
@@ -3244,6 +3876,24 @@ def payroll():
 
     rows, totals, _ = _build_payroll_rows(month, year)
 
+    # Two ways a row can disagree with what is stored against it, counted
+    # over the whole roster rather than the page, because "is this month's
+    # payroll right" is not a question about page 2.
+    #
+    #   stale  — the stored row is behind, and a generate will update it.
+    #            The screen itself already shows the fresh figure, so this
+    #            is about the payslip and the saved record, not the number
+    #            being read. Nothing warned about it before.
+    #   locked — money has gone out against the month, so the figure is
+    #            deliberately held and a generate skips the row. Saying
+    #            "press generate" here would be advice that does nothing.
+    stale = sum(1 for r in rows
+                if r['saved_net'] is not None and r['settled'] <= 0
+                and abs(r['fresh_net'] - r['saved_net']) > 0.009)
+    locked = sum(1 for r in rows
+                 if r['settled'] > 0
+                 and abs(r['fresh_net'] - (r['saved_net'] or 0)) > 0.009)
+
     # The totals stay whole-roster on purpose: "what does this month cost" is
     # the figure an employer needs, and a per-page subtotal would be a
     # different and much less useful number. Computing them is cheap — 341ms
@@ -3281,6 +3931,8 @@ def payroll():
         shown_from=start + 1 if total_rows else 0,
         shown_to=min(start + PAYROLL_PER_PAGE, total_rows),
         total_rows=total_rows,
+        stale_count=stale,
+        locked_count=locked,
     )
 
 
@@ -3368,12 +4020,30 @@ def payroll_toggle_paid(record_id):
     go. Paying part of a month goes through /payroll/<id>/settle.
     """
     record = tenant_get_or_404(PayrollRecord, record_id)
+    due = round(float(record.net_pay or 0), 2)
+    # A month whose wage has already been drawn as advances is not a month
+    # anybody can hand money over for. Marking it paid used to write the
+    # negative net into paid_amount, which the running account reads as
+    # money handed over — so the shortfall was added back and the debt the
+    # man owed disappeared.
+    if due < -0.005 and record.payment_state != 'paid':
+        record.paid_amount = 0.0
+        record.status = record.payment_state
+        db.session.commit()
+        flash('%s has already drawn %s for %s %s, so there is nothing to '
+              'hand over. What is left stands against him in his account '
+              'and comes off next month.'
+              % (record.worker.full_name, money.money(abs(due)),
+                 MONTH_NAMES[record.month - 1], record.year), 'warning')
+        return redirect(url_for('payroll', month=record.month,
+                                year=record.year))
+
     closing = record.payment_state == 'paid'
     if closing:
         record.paid_amount = 0.0
         record.status = 'pending'
     else:
-        record.paid_amount = round(float(record.net_pay or 0), 2)
+        record.paid_amount = max(0.0, due)
         record.status = 'paid'
     # Stamp the moment it became history. Re-opening a record clears the stamp
     # so the next save is free to recalculate it.
@@ -3802,6 +4472,9 @@ def supervisor_transaction():
     ))
     db.session.commit()
     flash(f'{label} of ₹{amount:,.2f} added for {worker.full_name}.', 'success')
+    effect = _payroll_effect_note(worker, on_date)
+    if effect:
+        flash(effect, 'warning')
     return redirect(back)
 
 
@@ -4264,6 +4937,17 @@ def settings():
     # settings screen can say how many people a change will actually affect.
     policy_row = SalaryPolicy.query.filter_by(worker_id=None).first()
     salary_policy = salary.normalise_policy(policy_row)
+    statutory_deductions = (StatutoryDeduction.query
+                            .order_by(StatutoryDeduction.id).all())
+    # The floor for everybody first, then each named category.
+    minimum_wages = sorted(MinimumWage.query.all(),
+                           key=lambda r: ((r.category or '').strip().lower()
+                                          or ''))
+    # Positions he already uses, offered so a floor can be set against one
+    # without his having to remember how he spelt it.
+    known_positions = sorted({
+        (w.position or '').strip() for w in Worker.query.all()
+        if (w.position or '').strip()})
     overridden = SalaryPolicy.query.filter(SalaryPolicy.worker_id.isnot(None)).count()
     monthly_worker_count = Worker.query.filter_by(pay_type='monthly', status='active').count()
     policy_audit = (SalaryPolicyAudit.query
@@ -4293,6 +4977,10 @@ def settings():
                            salary_overrides=overridden,
                            monthly_worker_count=monthly_worker_count,
                            salary_labels=salary.LABELS,
+                           statutory_deductions=statutory_deductions,
+                           minimum_wages=minimum_wages,
+                           known_positions=known_positions,
+                           default_wage_hours=MinimumWage.DEFAULT_HOURS_PER_DAY,
                            policy_audit=policy_audit,
                            dues_allocation=_dues_allocation(),
                            allocation_labels=ALLOCATION_LABELS,
@@ -4788,7 +5476,22 @@ def transactions_save():
     db.session.commit()
 
     label = TRANSACTION_TYPE_LABELS[txn_type]
-    flash(f'{label} of ₹{amount:,.2f} saved for {worker.full_name}. Payroll updates automatically.', 'success')
+    # "Payroll updates automatically" used to be said unconditionally here,
+    # and it is true for every month that has not been paid out — but on a
+    # settled month the figure does not move and saying otherwise is how
+    # somebody records an advance, looks at payroll, and finds nothing.
+    #
+    # Two flashes rather than one built with `+`: tests/test_flash_messages
+    # reads these calls with ast and only follows literals, so a message
+    # assembled around an `or` would quietly stop being checked for a Hindi
+    # translation — which is the exact bug that test was written for.
+    note = _payroll_effect_note(worker, txn_date)
+    if note:
+        flash(f'{label} of ₹{amount:,.2f} saved for {worker.full_name}.', 'success')
+        flash(note, 'warning')
+    else:
+        flash(f'{label} of ₹{amount:,.2f} saved for {worker.full_name}. '
+              f'Payroll updates automatically.', 'success')
     return redirect(redirect_to)
 
 @app.route('/transactions/<int:txn_id>/cancel', methods=['POST'])
@@ -4798,7 +5501,12 @@ def transactions_cancel(txn_id):
     txn.status = 'cancelled' if txn.status == 'active' else 'active'
     db.session.commit()
     state = 'cancelled' if txn.status == 'cancelled' else 'restored'
-    flash(f'Transaction {state}. Payroll updates automatically.', 'success')
+    note = _payroll_effect_note(txn.worker, txn.date) if txn.worker else None
+    if note:
+        flash(f'Transaction {state}.', 'success')
+        flash(note, 'warning')
+    else:
+        flash(f'Transaction {state}. Payroll updates automatically.', 'success')
     return redirect(safe_redirect_target(request.form.get('redirect_to'), url_for('transactions')))
 
 def _ack_describer():
@@ -5235,9 +5943,18 @@ def attendance_row_meta(worker, record):
         CO002 · 9:04 AM → 6:12 PM · +52m
         CO005 · not marked
     """
+    # Built here rather than in the template, so each word has to be
+    # translated on the way out: this line sits under every worker's name
+    # on the screen a mukadam uses most, and "not marked" in the middle of
+    # Hindi is the first thing he sees when he opens the app.
+    lang = _current_lang()
+
+    def word(text):
+        return i18n.translate(text, lang)
+
     parts = [worker.worker_id]
     if not record:
-        parts.append('not marked')
+        parts.append(word('not marked'))
         return ' · '.join(parts)
 
     if record.check_in_time:
@@ -5246,15 +5963,16 @@ def attendance_row_meta(worker, record):
             clock += ' → ' + _fmt_clock(record.check_out_time)
         parts.append(clock)
         if record.late_minutes and record.late_minutes > 0:
-            parts.append(f'{record.late_minutes}m late')
+            parts.append(word('%(count)sm late')
+                         % {'count': record.late_minutes})
         if record.check_out_time:
             if record.overtime_minutes and record.overtime_minutes > 0:
                 parts.append(f'+{record.overtime_minutes}m')
         else:
-            parts.append('shift open')
+            parts.append(word('shift open'))
     else:
         # absent / leave carry no clock times
-        parts.append(record.status)
+        parts.append(word(record.status))
     return ' · '.join(parts)
 
 
@@ -5430,13 +6148,83 @@ def _date_editability(on_date):
     return True, 'ok', ''
 
 
-def _payroll_lock_note(on_date):
-    """Warn when editing a month whose payroll has already been generated."""
-    saved = PayrollRecord.query.filter_by(month=on_date.month, year=on_date.year).first()
-    if not saved:
+def _month_is_settled(record):
+    """Has any money gone out against this saved payroll month?
+
+    The one question that decides whether a later change reaches the pay.
+    payroll_save skips a record whose settled_amount is above zero — once
+    money has been handed over, recalculating could put the net below what
+    was paid and the month would read as overpaid because a rule changed —
+    and _build_payroll_rows shows the saved figures rather than today's for
+    the same reason. Below that line everything recomputes on sight.
+    """
+    return bool(record) and (record.settled_amount or 0) > 0
+
+
+def _payroll_effect_note(worker, on_date):
+    """What recording money or attendance on this date does to the pay.
+
+    None when the month's figure follows the change by itself, which is
+    the ordinary case: the payroll screen recomputes every unsettled row
+    on every visit, so an advance taken on the 15th is on the screen
+    before the page finishes loading. Measured: a pending October row went
+    from ₹1,600 to ₹900 the moment a ₹2,500 advance was saved, with no
+    generate in between.
+
+    A sentence when it does not. That happens only once money has gone out
+    against the month — and then the honest thing to say is not "press
+    generate again", because generate deliberately skips exactly those
+    rows. The amount is not lost: the ledger allocates every advance and
+    every payment against the months they belong to regardless, which is
+    what the worker's account screen shows.
+
+    This replaced a note that fired on *any* saved payroll row and told
+    people to re-generate. For a pending month that was advice to fix
+    something that was not broken, and for a settled one it was advice
+    that does nothing.
+    """
+    record = PayrollRecord.query.filter_by(
+        worker_id=worker.id, month=on_date.month, year=on_date.year).first()
+    if not _month_is_settled(record):
         return None
-    return (f'Payroll for {MONTH_NAMES[on_date.month - 1]} {on_date.year} has already been '
-            f'generated. Re-generate it so this change is reflected in pay.')
+    # Fully paid and part paid are both held against a generate — payroll_save
+    # tests settled_amount, not the status — but they do not look the same on
+    # the screen, and this app part-settles months on purpose.
+    #
+    #   paid     the row is frozen, so the figure does not move at all
+    #   partial  the row still recomputes, so the figure does move; what
+    #            cannot be refreshed is the stored record behind it
+    #
+    # One sentence for both would have to be wrong about one of them.
+    month = f'{MONTH_NAMES[on_date.month - 1]} {on_date.year}'
+    if record.payment_state == 'paid':
+        return (f'{month} has already been paid in full for {worker.full_name}, '
+                f'so that month\'s payroll figure stays as it is. '
+                f'The amount is recorded in their account.')
+    return (f'{month} already has money paid against it for {worker.full_name}, '
+            f'so generating payroll leaves that month\'s saved record alone. '
+            f'The amount is recorded in their account.')
+
+
+def _payroll_lock_note(on_date):
+    """The same warning for a screen that is showing a whole roster.
+
+    The day view covers every worker on a date, so it cannot name one.
+    Fires only when somebody on the roster has been paid for that month,
+    for the reason written up in _payroll_effect_note.
+    """
+    # Counted in Python, not in the WHERE clause: settled_amount is a
+    # property, not a column — it falls back to net_pay for a legacy row
+    # that carries the answer only in its status. A month holds at most one
+    # row per worker, so this is one query either way.
+    settled = sum(1 for record in PayrollRecord.query.filter_by(
+        month=on_date.month, year=on_date.year).all()
+        if _month_is_settled(record))
+    if not settled:
+        return None
+    return (f'{settled} worker(s) already have money paid against '
+            f'{MONTH_NAMES[on_date.month - 1]} {on_date.year}. Their payroll '
+            f'figures stay as they are; everyone else recalculates on sight.')
 
 
 def _log_attendance_edit(worker, on_date, field, old_value, new_value):
@@ -5479,7 +6267,14 @@ def _day_payload(on_date):
             ).all()
         }
 
-    counts = {'present': 0, 'late': 0, 'absent': 0, 'leave': 0, 'not_marked': 0}
+    # 'closed' is not a status anybody can be marked with — it is where the
+    # unmarked go on a day the company was shut. Without it a maintenance
+    # shutdown reported "11 unmarked", which is the same number and the same
+    # red as eleven people nobody got round to marking, on a day when there
+    # was by definition nothing to mark. The panel reads one of the two
+    # counts, never both: locked day, or ordinary day.
+    counts = {'present': 0, 'late': 0, 'absent': 0, 'leave': 0,
+              'not_marked': 0, 'closed': 0}
     rows = []
     for worker in workers:
         record = records.get(worker.id)
@@ -5487,10 +6282,11 @@ def _day_payload(on_date):
         assignment = next(
             (a for a in worker.assignments if assignment_active_on(a, on_date)), None)
 
+        locked = bool(worker_closure and not worker_closure.allow_attendance)
         if record and record.status in counts:
             counts[record.status] += 1
         elif not record:
-            counts['not_marked'] += 1
+            counts['closed' if locked else 'not_marked'] += 1
 
         where = None
         if assignment:
@@ -5516,7 +6312,7 @@ def _day_payload(on_date):
             'overtime_minutes': (record.overtime_minutes or 0) if record else 0,
             'late_minutes': (record.late_minutes or 0) if record else 0,
             'where': where,
-            'locked': bool(worker_closure and not worker_closure.allow_attendance),
+            'locked': locked,
             'meta': attendance_row_meta(worker, record),
         })
 
@@ -5670,7 +6466,9 @@ def api_attendance_times():
     db.session.commit()
 
     messages = [{'category': 'success', 'text': f'Times updated for {worker.full_name}.'}]
-    note = _payroll_lock_note(on_date)
+    # This edit is about one worker, so the note can name them rather than
+    # reporting on the whole roster the way the day panel's banner does.
+    note = _payroll_effect_note(worker, on_date)
     if note:
         messages.append({'category': 'warning', 'text': note})
     return jsonify({'success': True, 'messages': messages, 'day': _day_payload(on_date)})
@@ -5707,7 +6505,7 @@ def api_attendance_transaction():
 
     messages = [{'category': 'success',
                  'text': f'{TRANSACTION_TYPE_LABELS[txn_type]} of ₹{amount:.2f} added for {worker.full_name}.'}]
-    note = _payroll_lock_note(on_date)
+    note = _payroll_effect_note(worker, on_date)
     if note:
         messages.append({'category': 'warning', 'text': note})
     return jsonify({'success': True, 'messages': messages, 'day': _day_payload(on_date)})
@@ -5722,6 +6520,25 @@ def api_attendance_closure():
         return jsonify({'success': False, 'message': 'Invalid date.'}), 400
 
     action = request.form.get('action', 'add')
+    if action == 'allow':
+        # "The plant was shut, but Ramesh came in anyway."
+        #
+        # Until now the only way out of a locked closure was to delete it,
+        # which throws away the fact that the company was closed at all —
+        # and that fact is what pay for the day is worked out from. This
+        # keeps the closure and lifts the lock, which is the thing that
+        # was actually meant.
+        closure = tenant_get(ClosureDay, parse_int(request.form.get('closure_id')))
+        if not closure or closure.date != on_date:
+            return jsonify({'success': False,
+                            'messages': [{'category': 'error', 'text': 'Closure not found for this date.'}],
+                            'day': _day_payload(on_date)}), 200
+        closure.allow_attendance = True
+        db.session.commit()
+        return jsonify({'success': True,
+                        'messages': [{'category': 'success',
+                                      'text': 'Attendance unlocked for this closure day.'}],
+                        'day': _day_payload(on_date)})
     if action == 'remove':
         closure = tenant_get(ClosureDay, parse_int(request.form.get('closure_id')))
         if not closure or closure.date != on_date:
@@ -5917,11 +6734,18 @@ def api_worker_transaction():
         )
 
     db.session.commit()
+    booked = [{'category': 'success',
+               'text': f'{label} {money.money(amount)} recorded for '
+                       f'{worker.full_name}.'}]
+    # At the gate as much as anywhere: if that month has been paid out, the
+    # payroll figure will not move and the person holding the phone should
+    # hear it now rather than wonder later.
+    effect = _payroll_effect_note(worker, on_date)
+    if effect:
+        booked.append({'category': 'warning', 'text': effect})
     return jsonify({
         'success': True,
-        'messages': [{'category': 'success',
-                      'text': f'{label} {money.money(amount)} recorded for '
-                              f'{worker.full_name}.'}],
+        'messages': booked,
         'transaction': {
             'id': txn.id,
             'type': txn_type,
@@ -6078,7 +6902,16 @@ def group_notifications(items, today):
             })
         rows = groups[-1]['rows']
 
-        subject, dash, outcome = (item.title or '').partition(NOTE_DASH)
+        title = (item.title or '').strip()
+        # Rows written before notifications were reworked carry an
+        # "Attendance: " prefix that the writer no longer adds. Left on,
+        # it rides into the subject and shows up as the one piece of
+        # English on an otherwise Hindi screen, in front of a man's name.
+        for stale_prefix in ('Attendance: ', 'Transaction: '):
+            if title.startswith(stale_prefix):
+                title = title[len(stale_prefix):]
+                break
+        subject, dash, outcome = title.partition(NOTE_DASH)
         outcome = outcome.strip()
         key = (item.category, item.body or '', outcome) if dash and outcome else None
 
@@ -6234,12 +7067,14 @@ def _salary_policy_from_form(form, prefix=''):
         'salary_basis': field('salary_basis'),
         'basis_days': field('basis_days'),
         'rounding': field('rounding'),
+        'rounding_stage': field('rounding_stage'),
         'joining_mode': field('joining_mode'),
         'paid_leave_enabled': field('paid_leave_enabled') == 'on',
         'monthly_leave_allowance': field('monthly_leave_allowance'),
         'leave_carry_forward': field('leave_carry_forward') == 'on',
         'absence_deduction_enabled': field('absence_deduction_enabled') == 'on',
         'calculation_method': field('calculation_method'),
+        'unmarked_days': field('unmarked_days'),
     }
     rate = (field('deduction_rate') or '').strip()
     # Blank means "derive it from the salary"; the engine reads None that way.
@@ -6562,6 +7397,63 @@ def _lnotes(value):
     return i18n.translate_notes(value, _current_lang())
 
 
+@app.template_filter('lfield')
+def _lfield(field):
+    """A policy field's name, in the interface language."""
+    return i18n.translate(salary.field_label(field), _current_lang())
+
+
+@app.template_filter('lvalue')
+def _lvalue(value, field=''):
+    """A stored audit value, in words and in the interface language."""
+    return i18n.translate(salary.value_label(field, value), _current_lang())
+
+
+@app.template_filter('lparts')
+def _lparts(value):
+    """A dot-joined line whose pieces are translated one at a time.
+
+    A notification's second line is assembled from whatever applied —
+    "Dwarka Expressway Package 3 · qr scan". The site's name is the
+    employer's own and must not be touched; "qr scan" and "bulk" are
+    interface words and were reaching a Hindi screen in English. Each
+    piece is looked up on its own and anything unknown passes through,
+    which is what keeps the site name intact.
+    """
+    text = (value or '').strip()
+    if not text:
+        return text
+    lang = _current_lang()
+
+    def piece(part):
+        part = part.strip()
+        # An exact word first; failing that, a whole stored sentence, which
+        # is how a notification written before the rework reads.
+        said = i18n.translate(part, lang)
+        return said if said != part else i18n.translate_note(part, lang)
+
+    return ' · '.join(piece(part) for part in text.split('·'))
+
+
+@app.template_filter('lterm')
+def _lterm(value):
+    """One stored keyword — permanent, active, daily — in the reader's words.
+
+    These are columns the application itself wrote: a pay type, a status,
+    an employee category. They were being printed raw, so a man reading
+    the Hindi interface saw "permanent" and "daily" in the middle of his
+    own language on the screens he looks at most.
+
+    Lower-cased before the lookup because the same keyword has been
+    entered with and without a capital over the years, and an unknown one
+    falls through unchanged rather than disappearing.
+    """
+    text = (value or '').strip()
+    if not text:
+        return text
+    return i18n.translate(text.replace('_', ' ').lower(), _current_lang())
+
+
 @app.template_filter('lpolicy')
 def _lpolicy(value):
     """One value out of salary.describe(), translated for display."""
@@ -6767,3 +7659,330 @@ def one_time_setup(token):
                            admin_user=seeder.ADMIN_USER,
                            crew=len(seeder.CREW) + 1,
                            confirm_phrase=SETUP_CONFIRM, done=True)
+
+
+# ---------------------------------------------------------------------------
+# When something goes wrong, say so in the app rather than in Flask's voice
+#
+# There were no error handlers at all. A phone that had been sitting in a
+# pocket came back to Flask's own page —
+#
+#     400 Bad Request
+#     The CSRF token is missing.
+#
+# white, in English, with no bottom bar and no way back to anything. The
+# same for a mistyped URL and for a crash. For a labourer's mukadam
+# holding the phone at a gate, that is the application being broken,
+# whatever it says.
+#
+# Each of these answers in the shape the caller asked in: JSON to a fetch,
+# because the screens paint their own notices from it, and a redirect with
+# a flash to anything else.
+# ---------------------------------------------------------------------------
+
+def _wants_json():
+    """True when the caller is a script rather than a browser address bar."""
+    if request.path.startswith('/api/'):
+        return True
+    if request.is_json:
+        return True
+    accept = request.headers.get('Accept', '')
+    return 'application/json' in accept and 'text/html' not in accept
+
+
+@app.errorhandler(CSRFError)
+def _csrf_expired(error):
+    """The session went while the app was closed.
+
+    Not an attack, in practice: it is an Android WebView that was killed
+    for memory with a page still loaded, and the token in that page signed
+    against a session cookie that no longer exists. The login itself
+    usually survives — Flask-Login's remember cookie is separate — so the
+    honest answer is "try that again", not "you are not allowed".
+    """
+    app.logger.info('CSRF rejected on %s: %s', request.path, error.description)
+    if _wants_json():
+        return jsonify({
+            'success': False,
+            'expired': True,
+            'message': 'The app was asleep too long. Please try that once '
+                       'more.',
+        }), 400
+    flash('The app was asleep too long and that did not save. '
+          'Please try it once more.', 'warning')
+    return redirect(request.referrer or url_for('dashboard'))
+
+
+# A small page, built here rather than from a template: an error handler
+# that renders base.html can fail for the same reason the request did, and
+# then there is nothing at all. Inline and dependency-free, and carrying
+# one control on purpose — this is a dead end, and the only thing on it
+# should be the way out.
+_PLAIN_PAGE = """<!doctype html>
+<html lang="%(lang)s"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%(title)s</title>
+<style>
+ body{margin:0;min-height:100vh;display:flex;align-items:center;
+      justify-content:center;background:#f8fafc;
+      font-family:system-ui,-apple-system,'Noto Sans Devanagari',sans-serif;
+      color:#0f172a}
+ .card{max-width:22rem;margin:1rem;padding:2rem 1.5rem;text-align:center;
+       background:#fff;border-radius:1.25rem;
+       box-shadow:0 10px 30px rgba(15,23,42,.08)}
+ h1{font-size:1.125rem;margin:0 0 .5rem}
+ p{margin:0 0 1.5rem;color:#475569;font-size:.9375rem;line-height:1.5}
+ a{display:block;padding:.875rem 1rem;border-radius:.875rem;
+   background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600}
+</style></head><body><div class="card">
+<h1>%(title)s</h1><p>%(message)s</p><a href="%(href)s">%(action)s</a>
+</div></body></html>"""
+
+
+def _plain_page(title, message, status):
+    """An apology with a door in it."""
+    lang = _current_lang()
+    home = (url_for('dashboard') if current_user.is_authenticated
+            else url_for('login'))
+    body = _PLAIN_PAGE % {
+        'lang': lang,
+        'title': i18n.translate(title, lang),
+        'message': i18n.translate(message, lang),
+        'href': home,
+        'action': i18n.translate('Back to the app', lang),
+    }
+    return body, status, {'Content-Type': 'text/html; charset=utf-8'}
+
+
+@app.errorhandler(404)
+def _not_found(error):
+    """Still a 404, and that matters.
+
+    The first version redirected, which broke two things at once.
+    /__setup/<token> answers 404 on purpose, so a wrong guess cannot tell
+    a stranger that the route exists — tests/test_one_time_setup.py caught
+    that immediately. And a redirect whose destination depends on whether
+    you are signed in tells any passer-by whether somebody is signed in.
+    The status stays; only the page changes.
+    """
+    if _wants_json():
+        return jsonify({'success': False,
+                        'message': 'That is not something this app has.'}), 404
+    return _plain_page('That screen does not exist.',
+                       'The address may be mistyped, or what it pointed at '
+                       'has been removed.', 404)
+
+
+@app.errorhandler(413)
+def _too_large(error):
+    """An upload over the limit. Says which upload, because a photo off a
+    modern phone is the only thing here big enough to hit it."""
+    if _wants_json():
+        return jsonify({'success': False,
+                        'message': 'That file is too big to upload.'}), 413
+    return _plain_page('That photo is too big to upload.',
+                       'Take it again at a lower size, or choose a smaller '
+                       'file.', 413)
+
+
+@app.errorhandler(500)
+def _crashed(error):
+    """Nothing is explained to the user here on purpose — an exception's
+    text is for the log, not for a stranger's screen — but they are told
+    that it was us and not them, and given somewhere to go."""
+    app.logger.exception('Unhandled error on %s', request.path)
+    if _wants_json():
+        return jsonify({'success': False,
+                        'message': 'Something went wrong at our end. '
+                                   'Please try again.'}), 500
+    # A redirect was wrong here too: a 500 carrying a Location header is
+    # not followed by a browser, so it showed nothing at all — an error
+    # handler producing the blank page it exists to prevent.
+    return _plain_page('Something went wrong at our end.',
+                       'Nothing was saved. Please try again in a moment.',
+                       500)
+
+
+@app.route('/settings/statutory/save', methods=['POST'])
+@admin_required
+def settings_statutory_save():
+    """Add, change or remove one statutory deduction.
+
+    Deliberately plain: a name, two percentages and a figure whose meaning
+    is chosen from a list, because the rates and the ceilings change by
+    notification and nothing in this application should pretend to know
+    what they are this year.
+    """
+    row_id = parse_int(request.form.get('id'), 0)
+    row = None
+    if row_id:
+        row = StatutoryDeduction.query.filter_by(id=row_id).first()
+        if row is None:
+            flash('That deduction no longer exists.', 'error')
+            return redirect(url_for('settings') + '#section-salary')
+
+    if request.form.get('delete') == '1' and row is not None:
+        name = row.name
+        db.session.delete(row)
+        db.session.commit()
+        flash('%s will no longer be deducted.' % name, 'success')
+        return redirect(url_for('settings') + '#section-salary')
+
+    name = clean_text(request.form.get('name'), 'full_name')[:40].strip()
+    if not name:
+        flash('Give the deduction a name, as it should read on the payslip.',
+              'error')
+        return redirect(url_for('settings') + '#section-salary')
+
+    percent = max(0.0, min(100.0, parse_float(request.form.get('percent'), 0)))
+    employer = max(0.0, min(100.0,
+                            parse_float(request.form.get('employer_percent'), 0)))
+    ceiling_raw = (request.form.get('ceiling') or '').strip()
+    ceiling = max(0.0, parse_float(ceiling_raw, 0)) if ceiling_raw else None
+    mode = request.form.get('ceiling_mode') or 'none'
+    if mode not in StatutoryDeduction.CEILING_MODES:
+        mode = 'none'
+    # A ceiling with no meaning, or a meaning with no ceiling, is a rule
+    # that will surprise somebody at the end of a month.
+    if mode != 'none' and not ceiling:
+        mode = 'none'
+
+    if row is None:
+        row = StatutoryDeduction(account_id=current_user.account_id)
+        db.session.add(row)
+    row.name = name
+    row.percent = percent
+    row.employer_percent = employer
+    row.ceiling = ceiling
+    row.ceiling_mode = mode
+    row.enabled = 'enabled' in request.form
+    db.session.commit()
+
+    if row.enabled:
+        flash('%s saved. It will be deducted from the next payroll run.'
+              % name, 'success')
+    else:
+        flash('%s saved, switched off. Nothing is being deducted for it.'
+              % name, 'success')
+    return redirect(url_for('settings') + '#section-salary')
+
+
+@app.route('/settings/backup')
+@admin_required
+def settings_backup():
+    """Hand the owner a zip of his own data, on the spot.
+
+    The free Postgres this runs on is deleted thirty days after it is
+    created, with no backup of any kind. He should not have to ask anyone
+    — including whoever wrote this — to get his wage record out.
+
+    Every query here is scoped by hand rather than left to the tenant
+    filter. Most of it would be filtered anyway, but ``users`` and
+    ``accounts`` are deliberately NOT auto-filtered (the login layer
+    scopes them itself), and a backup is exactly the place where that
+    exception would quietly become one employer downloading another
+    employer's workers.
+    """
+    account = current_user.account_id
+
+    def scoped(model):
+        return model.query.filter(model.account_id == account).all()
+
+    tables = [
+        ('workers', Worker, scoped(Worker)),
+        ('attendance', AttendanceRecord, scoped(AttendanceRecord)),
+        ('transactions', WorkerTransaction, scoped(WorkerTransaction)),
+        ('payroll', PayrollRecord, scoped(PayrollRecord)),
+        ('leave_adjustments', LeaveAdjustment, scoped(LeaveAdjustment)),
+        ('closure_days', ClosureDay, scoped(ClosureDay)),
+        ('worker_changes', WorkerModification, scoped(WorkerModification)),
+        ('sites', Site, scoped(Site)),
+        ('projects', Project, scoped(Project)),
+        ('project_assignments', ProjectAssignment,
+         scoped(ProjectAssignment)),
+        ('work_tasks', WorkTask, scoped(WorkTask)),
+        ('departments', Department, scoped(Department)),
+        ('salary_policies', SalaryPolicy, scoped(SalaryPolicy)),
+        ('salary_policy_changes', SalaryPolicyAudit,
+         scoped(SalaryPolicyAudit)),
+        ('statutory_deductions', StatutoryDeduction,
+         scoped(StatutoryDeduction)),
+        ('minimum_wages', MinimumWage, scoped(MinimumWage)),
+        ('company_settings', CompanySetting, scoped(CompanySetting)),
+        ('notifications', Notification, scoped(Notification)),
+        ('logins', User, scoped(User)),
+        ('workspace', Account,
+         Account.query.filter(Account.id == account).all()),
+    ]
+
+    company = CompanySetting.query.first()
+    taken = now_ist()
+    data, counts = backup.build(tables, company.name if company else None,
+                               taken)
+
+    filename = 'smartworker-backup-%s.zip' % taken.strftime('%Y-%m-%d')
+    response = make_response(data)
+    response.headers['Content-Type'] = 'application/zip'
+    response.headers['Content-Disposition'] = (
+        'attachment; filename="%s"' % filename)
+    logging.info('Backup taken for account %s: %d workers, %d attendance '
+                 'rows, %d bytes', account, counts.get('workers', 0),
+                 counts.get('attendance', 0), len(data))
+    return response
+
+
+@app.route('/settings/minimum_wage', methods=['POST'])
+@admin_required
+def settings_minimum_wage_save():
+    """Set, change or remove the floor for one category.
+
+    Keyed on the category and not on a row id, because a second floor for
+    the same category is not a second floor — it is the same one being
+    corrected, which is what happens when a new notification comes out.
+    """
+    category = clean_text(request.form.get('category'), 'position')[:60]
+    category = ' '.join((category or '').split())
+    wanted = MinimumWage.normalize_category(category)
+    existing = None
+    for rule in MinimumWage.query.all():
+        if MinimumWage.normalize_category(rule.category) == wanted:
+            existing = rule
+            break
+
+    label = _wage_category_label(category)
+    if request.form.get('delete') == '1':
+        if existing is not None:
+            db.session.delete(existing)
+            db.session.commit()
+        flash('The minimum wage for %s is no longer set.' % label, 'success')
+        return redirect(url_for('settings') + '#section-salary')
+
+    daily_raw = (request.form.get('daily_amount') or '').strip()
+    monthly_raw = (request.form.get('monthly_amount') or '').strip()
+    hours_raw = (request.form.get('hours_per_day') or '').strip()
+    daily = max(0.0, parse_float(daily_raw, 0)) if daily_raw else None
+    monthly = max(0.0, parse_float(monthly_raw, 0)) if monthly_raw else None
+    hours = max(0.0, min(24.0, parse_float(hours_raw, 0))) if hours_raw else None
+
+    # A floor of zero is no floor. Storing it would warn about every wage
+    # or none, depending on which way the comparison fell.
+    if not daily and not monthly:
+        if existing is not None:
+            db.session.delete(existing)
+            db.session.commit()
+        flash('Enter a daily or a monthly figure, or the floor for %s is '
+              'not set at all.' % label, 'error')
+        return redirect(url_for('settings') + '#section-salary')
+
+    if existing is None:
+        existing = MinimumWage(account_id=current_user.account_id)
+        db.session.add(existing)
+    existing.category = category
+    existing.daily_amount = daily
+    existing.monthly_amount = monthly
+    existing.hours_per_day = hours or None
+    db.session.commit()
+
+    flash('Minimum wage saved for %s. A wage below it is flagged when you '
+          'save a worker, never refused.' % label, 'success')
+    return redirect(url_for('settings') + '#section-salary')

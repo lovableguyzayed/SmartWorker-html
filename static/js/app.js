@@ -458,7 +458,6 @@ function applyLanguage(lang) {
 // changes effectively instant, like a native Android activity switch.
 const NativeShell = {
     loadedAssets: new Set(),
-    progressTimer: null,
     navigating: false,
 
     // The one piece of the document that survives a screen change.
@@ -590,7 +589,6 @@ const NativeShell = {
         if (opts.push !== false) this.saveScroll();
         this.back = opts.push === false;
         document.dispatchEvent(new Event('page:before-swap'));
-        this.showProgress();
         try {
             const res = await fetch(href, {
                 method: opts.method || 'GET',
@@ -603,7 +601,6 @@ const NativeShell = {
             this.render(html, res.url || href, opts.push !== false);
         } catch (err) {
             // No network and no cache — do a real navigation as last resort
-            this.hideProgress();
             this.navigating = false;
             if ((opts.method || 'GET') === 'GET') location.href = href;
             return;
@@ -612,7 +609,6 @@ const NativeShell = {
     },
 
     render(html, url, push) {
-        this.hideProgress();
         const doc = new DOMParser().parseFromString(html, 'text/html');
 
         // Merge page-specific head assets (print styles, jsPDF, QR library…)
@@ -761,37 +757,32 @@ const NativeShell = {
         return s;
     },
 
-    /* "It is coming" — and the screen you are on never goes away.
+    /* Nothing is drawn while a screen is on its way.
      *
-     * There used to be a skeleton behind this: a full-screen grey shimmer
-     * after 150ms. Screens were measured swapping in 106–287ms, so an
-     * ordinary tap covered a perfectly readable screen in placeholder for a
-     * tenth of a second and then showed the next one. That flash IS the
-     * feeling of a page loading.
+     * Two things were tried here and both are gone. First a full-screen
+     * grey skeleton after 150ms, which covered a perfectly readable screen
+     * in placeholder for a tenth of a second — that flash IS the feeling of
+     * a page loading. Then a blue hairline at the top, after 110ms and
+     * later 500ms, as an acknowledgement that the tap had registered.
      *
-     * It is gone entirely rather than merely delayed. Whatever the wait,
-     * the honest thing to show is the screen the reader is already on —
-     * which is what a native app does, and a slow screen is exactly when
-     * replacing real content with grey bars helps least. All that is left
-     * is a hairline at the top, after 110ms so an instant swap stays
-     * silent, because a tap with no acknowledgement at all feels broken.
+     * The hairline had the same fault as the skeleton, just thinner. Every
+     * screen in this app is an HTTP request to the host: the server answers
+     * in 12–141ms measured on localhost and the network adds 300–600ms on
+     * top, so the bar was on screen for most of most navigations. A loading
+     * indicator that is nearly always visible is not an indicator, it is
+     * the app's resting state — and a resting state that looks like
+     * loading is exactly the "buffering" feeling this was meant to avoid.
+     * Raising the delay only made it appear slightly less often.
+     *
+     * So the acknowledgement is the one a native app gives: the control
+     * itself responds under the finger. .app-nav-item:active and
+     * .app-nav-fab:active in custom.css dim and scale on touch, with no
+     * delay at all because they are CSS, and the screen being left stays up
+     * and readable until the next one is ready to replace it.
+     *
+     * If a wait is long enough to need explaining, the honest fix is a
+     * faster host, not a bar that says so.
      */
-    PROGRESS_AFTER: 110,
-
-    showProgress() {
-        this.progressTimer = setTimeout(() => {
-            if (document.getElementById('nav-progress')) return;
-            const bar = document.createElement('div');
-            bar.id = 'nav-progress';
-            document.body.appendChild(bar);
-        }, this.PROGRESS_AFTER);
-    },
-
-    hideProgress() {
-        clearTimeout(this.progressTimer);
-        const bar = document.getElementById('nav-progress');
-        if (bar) bar.remove();
-    },
 
     // Android hardware Back. Cordova's default is to exit the app the moment
     // there is nothing left in history, so one stray tap on the dashboard
@@ -842,6 +833,62 @@ const NativeShell = {
     }
 };
 
+// ---------------------------------------------------------------------------
+// The bottom bar steps aside while the keyboard is up.
+//
+// The bar is position:fixed; bottom:0. Android's WebView opens the keyboard
+// with windowSoftInputMode=adjustResize, which shortens the viewport by the
+// height of the keyboard — so "the bottom" moves up, and the bar rides up
+// with it and parks itself on top of the keys, over the field being typed
+// into. Nothing is animating it; it is sitting exactly where it was told to.
+//
+// So it is hidden while a text field has focus. Nobody needs to change
+// screens mid-word, and this is the one behaviour that is the same in the
+// WebView, in Chrome and on a desktop, without touching the Cordova shell
+// (which would mean a new APK, where this reaches the phone from the server).
+//
+// Listeners are on `document` and delegated: NativeShell.visit() replaces
+// document.body.innerHTML, so anything bound to an element inside it would
+// be gone after the first navigation.
+//
+// The clearance padding on #mobile-app stays as it is. Removing it with the
+// bar would reflow the page underneath the keyboard, moving the field the
+// user is typing into — which is the one thing worse than a misplaced bar.
+const KeyboardAware = {
+    TEXTUAL: new Set(['text', 'password', 'email', 'number', 'tel', 'search',
+                      'url', 'date', 'time', 'datetime-local', 'month']),
+
+    isTextual(el) {
+        if (!el) return false;
+        const tag = el.tagName;
+        if (tag === 'TEXTAREA') return true;
+        if (el.isContentEditable) return true;
+        // A <select> opens a picker, not a keyboard, on both platforms.
+        if (tag !== 'INPUT') return false;
+        return this.TEXTUAL.has((el.type || 'text').toLowerCase());
+    },
+
+    set(open) {
+        document.body.classList.toggle('kb-open', !!open);
+    },
+
+    init() {
+        document.addEventListener('focusin', (e) => {
+            if (this.isTextual(e.target)) this.set(true);
+        });
+        document.addEventListener('focusout', () => {
+            // Deferred, and then asked what actually has focus: tabbing from
+            // one field to the next fires focusout before focusin, so acting
+            // on it directly flickers the bar back for a frame between two
+            // boxes on the same form.
+            setTimeout(() => this.set(this.isTextual(document.activeElement)), 0);
+        });
+        // A screen change ends any typing, and the class lives on <body>,
+        // which survives the innerHTML swap that the rest of it does not.
+        document.addEventListener('page:load', () => this.set(false));
+    },
+};
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     SmartWorker.init();
@@ -855,6 +902,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // (payslip, worker report) did nothing in the app. Route it to
         // Android's print service, which also offers "Save as PDF".
         document.addEventListener('deviceready', () => {
+            // Read by the Print buttons: with this set they call window.print;
+            // without it (an APK built before the bridge's print action) they
+            // open the PDF in a viewer instead.
+            window.SmartWorkerNativePrint = true;
             window.print = () => {
                 window.dispatchEvent(new Event('beforeprint'));
                 window.cordova.exec(() => window.dispatchEvent(new Event('afterprint')),
@@ -865,6 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         NativeShell.initAndroidBack();
     }
+    KeyboardAware.init();
 });
 
 // Expose SmartWorker globally for use in templates
@@ -895,24 +947,9 @@ window.togglePassword = function(fieldId) {
 //  nothing at all once confirm() is dismissed. profile.html owns it now and
 //  routes it through SmartWorkerSave.)
 
-// Print function
-window.printElement = function(elementId) {
-    const element = document.getElementById(elementId);
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>SmartWorker - Print</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    .no-print { display: none !important; }
-                </style>
-            </head>
-            <body>
-                ${element.outerHTML}
-            </body>
-        </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-};
+// (window.printElement lived here and was called from nowhere — grep the
+//  whole repository and this definition is the only hit. It opened a popup
+//  with window.open('', '_blank'), which an Android WebView returns null
+//  for unless the native side implements onCreateWindow, so the next line
+//  would have thrown on the one platform this app ships as. Printing goes
+//  through the 'print' verb in actions.js, which knows about the WebView.)

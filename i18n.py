@@ -57,6 +57,7 @@ TRANSLATIONS = {
         'Sign in with password': 'पासवर्ड से लॉगिन',
         'Sign in with username & password': 'यूज़रनेम और पासवर्ड से लॉगिन',
         'Sign-in by OTP is not available yet. Please use your password.': 'OTP से लॉगिन अभी उपलब्ध नहीं है। कृपया पासवर्ड से लॉगिन करें।',
+        'The code could not be sent just now. Please try again, or sign in with your password.': 'कोड अभी भेजा नहीं जा सका। कृपया फिर कोशिश करें, या पासवर्ड से लॉगिन करें।',
         'Start using SmartWorker': 'SmartWorker शुरू करें',
         'Takes a minute. You can add your workers right after.': 'एक मिनट लगेगा। उसके तुरंत बाद आप अपने मज़दूर जोड़ सकते हैं।',
         'Tell us your name and your business. You can change these later.': 'अपना नाम और कारोबार बताएँ। ये बाद में बदले जा सकते हैं।',
@@ -144,6 +145,20 @@ TRANSLATIONS = {
         'Half Day': 'आधा दिन',
         'Not marked': 'दर्ज नहीं',
         'Unmarked': 'दर्ज नहीं',
+        # A day the company was shut. Deliberately not 'दर्ज नहीं' — the
+        # whole point of the word is that nothing was missed.
+        'Closed': 'बंद',
+        'Nobody is expected on this date, so there is nothing to mark. '
+        'These workers are not counted as missing.':
+            'इस दिन किसी की ड्यूटी नहीं थी, इसलिए कुछ लगाना नहीं है। '
+            'ये मज़दूर ग़ैरहाज़िर नहीं गिने जाएँगे।',
+        'Somebody did work — allow marking on this day':
+            'किसी ने काम किया था — इस दिन हाज़िरी लगाने दें',
+        'Currently working': 'अभी काम पर',
+        'On the roll': 'रजिस्टर में',
+        'Look back over the month': 'पूरे महीने का हिसाब देखें',
+        'Pick a date above to see that day in full.':
+            'ऊपर कोई तारीख़ चुनें, उस दिन का पूरा ब्यौरा यहाँ दिखेगा।',
         'Paid Days': 'वेतन वाले दिन',
         'Mark Attendance': 'हाज़िरी लगाएँ',
         'All present': 'सब हाज़िर',
@@ -156,6 +171,7 @@ TRANSLATIONS = {
         'Check In': 'आने का समय',
         'Check Out': 'जाने का समय',
         'Closure Day': 'छुट्टी का दिन',
+        'open this date': 'यह तारीख़ खोलें',
         'Daily Attendance Management': 'रोज़ की हाज़िरी',
         'Select Date': 'तारीख़ चुनें',
         'Mark': 'लगाएँ',
@@ -303,6 +319,184 @@ TRANSLATIONS = {
         'Actual attendance since joining': 'भर्ती के बाद की असली हाज़िरी',
         'Monthly salary minus deductions': 'महीने की तनख़्वाह में से कटौती',
         'Daily rate x payable days': 'दिहाड़ी × देने योग्य दिन',
+        # Words the Hindi screens were still showing in English. Found by
+        # tools/ux/hindi_gaps.py, which reads every screen in Hindi and
+        # reports the runs of Latin text left on it — 148 of them, of which
+        # 19 already had a Hindi form that the template was not asking for
+        # (it printed the dictionary key instead of looking it up) and the
+        # rest, below, had none.
+        # Half-translated sentences read worse than either language on its
+        # own — "Generate payroll for नवंबर" was the month translated inside
+        # an English sentence. The whole sentence is one unit now, with the
+        # month substituted, so Hindi can put the month where Hindi puts it:
+        # before the verb, not after it.
+        'Generate payroll for %(month)s': '%(month)s की तनख़्वाह बनाएँ',
+        'Record advances, loans, bonuses and deductions for '
+        '%(month)s %(year)s.':
+            '%(month)s %(year)s के लिए पेशगी, क़र्ज़, बोनस और कटौती दर्ज करें।',
+
+        'Reactivate Worker': 'मज़दूर को फिर सक्रिय करें',
+        'Mark as active again': 'फिर से सक्रिय कर दें',
+        'End Assignment': 'तैनाती ख़त्म करें',
+        'Mark Read': 'पढ़ा हुआ चिह्नित करें',
+        'Mark Unread': 'अनपढ़ा चिह्नित करें',
+        'Disable': 'बंद करें',
+        'Generate': 'बनाएँ',
+        'Rounded on': 'पूर्णांकन कहाँ लगे',
+        'Add Worker - SmartWorker': 'मज़दूर जोड़ें - SmartWorker',
+        'Edit Worker - SmartWorker': 'मज़दूर में बदलाव - SmartWorker',
+        'Example: 2 free leaves, then ₹500 per extra leave day':
+            'उदाहरण: 2 छुट्टियाँ मुफ़्त, उसके बाद हर छुट्टी पर ₹500',
+
+        # Statutory deductions — ESI, PF, a welfare fund.
+        'Statutory deductions': 'क़ानूनी कटौतियाँ',
+        'ESI, PF or a welfare fund. Nothing is deducted until you add a '
+        'rule and switch it on.':
+            'ESI, PF या कल्याण कोष। जब तक आप नियम जोड़ कर चालू नहीं करते, '
+            'कोई कटौती नहीं होती।',
+        'Name on the payslip': 'पर्ची पर नाम',
+        "Worker's share %": 'मज़दूर का हिस्सा %',
+        "Employer's share %": 'मालिक का हिस्सा %',
+        'Wage figure (₹)': 'तनख़्वाह की सीमा (₹)',
+        'What that figure means': 'उस सीमा का मतलब',
+        'No limit': 'कोई सीमा नहीं',
+        'Above it, nothing is deducted (ESI)':
+            'उससे ऊपर कुछ नहीं कटेगा (ESI)',
+        'Take the % of this much only (PF)':
+            '% सिर्फ़ इतनी रक़म पर लगेगा (PF)',
+        'Deduct this from pay': 'यह तनख़्वाह से काटें',
+        'Add a deduction': 'कटौती जोड़ें',
+
+        # The minimum wage floor. The employer's own figures, because the
+        # state notifies them by category and they change twice a year.
+        # The owner's own backup. The free database it runs on is deleted
+        # thirty days after it is created, with no backup of any kind.
+        'Take a backup': 'बैकअप लें',
+        'Your whole wage record as spreadsheets you keep yourself — '
+        'workers, attendance, payments, payroll. Take one every month and '
+        'keep it somewhere safe.':
+            'आपकी पूरी मज़दूरी का हिसाब स्प्रेडशीट में, आपके ही पास — '
+            'मज़दूर, हाज़िरी, भुगतान, तनख़्वाह। हर महीने एक लें और '
+            'सुरक्षित जगह रखें।',
+        "It holds your workers' names, phone numbers and bank details, so "
+        'look after the file. Passwords and photographs are not in it.':
+            'इसमें आपके मज़दूरों के नाम, फ़ोन नंबर और बैंक की जानकारी है, '
+            'इसलिए फ़ाइल सँभाल कर रखें। पासवर्ड और फ़ोटो इसमें नहीं हैं।',
+        'Download a backup': 'बैकअप डाउनलोड करें',
+
+        'Minimum wage': 'न्यूनतम मज़दूरी',
+        'Your state notifies these, by category, and they change. Enter '
+        'your own figures. A wage below the floor is flagged when you save '
+        'a worker — never refused.':
+            'ये आपका राज्य श्रेणी के हिसाब से तय करता है और ये बदलती रहती '
+            'हैं। अपने आँकड़े भरें। इससे कम मज़दूरी पर मज़दूर सेव करते वक़्त '
+            'चेतावनी मिलेगी — रोका नहीं जाएगा।',
+        'Every worker': 'हर मज़दूर',
+        'Per day (₹)': 'प्रति दिन (₹)',
+        'Per month (₹)': 'प्रति महीना (₹)',
+        'Hours in your working day': 'आपके काम के दिन में घंटे',
+        'Only used to judge an hourly rate against the daily floor.':
+            'सिर्फ़ घंटे की दर को दिन की न्यूनतम दर से जाँचने के लिए।',
+        'Which workers': 'कौन से मज़दूर',
+        'Leave blank for every worker': 'हर मज़दूर के लिए ख़ाली छोड़ें',
+        'A designation you already use, such as Helper or Operator. A '
+        'floor set for his designation is used instead of the one for '
+        'every worker.':
+            'वही पद जो आप पहले से लिखते हैं, जैसे हेल्पर या ऑपरेटर। जिस पद '
+            'के लिए दर तय है, उसके लिए हर मज़दूर वाली दर की जगह वही लगेगी।',
+        'Set a minimum wage': 'न्यूनतम मज़दूरी तय करें',
+        # Goes inside a warning, so it has to be Hindi before it is slotted
+        # in: a flash is translated by its shape and the slots are copied
+        # across as they stand.
+        'every worker': 'हर मज़दूर',
+
+        # Half-translated sentences: a Hindi month glued to an English
+        # tail, which reads worse than either language on its own.
+        '%(month)s %(year)s — nothing is saved yet':
+            '%(month)s %(year)s — अभी कुछ सेव नहीं हुआ',
+
+        # The change log on the settings screen. Only the names that were
+        # not already in this table: 'Salary basis', 'Absence deduction',
+        # 'Calculation method', 'Mid-month joining', 'Paid leave',
+        # 'Leave carry-forward', 'Rounded on', 'On' and 'Off' are all here
+        # already, from the policy screens that use the same words —
+        # test_i18n refuses a second copy, and it is right to: two
+        # spellings of one setting is how a screen ends up calling the
+        # same thing two things.
+        'Days in a month': 'महीने में दिन',
+        'Paid leave days a month': 'महीने में पेड छुट्टी के दिन',
+        'Deduction per day': 'प्रति दिन कटौती',
+
+        # The scanner, when the camera will not open. Each cause gets the
+        # advice that fits it: "allow camera access" is no use to a phone
+        # with no camera, or one where another app holds it.
+        'Camera permission was refused. Allow the camera in your phone '
+        'settings, or type the ID below.':
+            'कैमरे की इजाज़त नहीं मिली। फ़ोन की सेटिंग्स में कैमरा चालू करें, '
+            'या नीचे ID टाइप करें।',
+        'No camera this app can use. Type the ID below instead.':
+            'इस ऐप के लिए कोई कैमरा नहीं है। नीचे ID टाइप कर दें।',
+        'Another app is using the camera. Close it and try again, or type '
+        'the ID below.':
+            'कैमरा किसी दूसरे ऐप के पास है। उसे बंद करके फिर कोशिश करें, '
+            'या नीचे ID टाइप करें।',
+        'That camera could not be opened. Try the other camera, or type '
+        'the ID below.':
+            'यह कैमरा नहीं खुल सका। दूसरा कैमरा आज़माएँ, या नीचे ID टाइप करें।',
+        'The camera only works on a secure connection. Type the ID below '
+        'instead.':
+            'कैमरा सिर्फ़ सुरक्षित कनेक्शन पर चलता है। नीचे ID टाइप कर दें।',
+        'The camera could not be started. Type the ID below instead.':
+            'कैमरा चालू नहीं हो सका। नीचे ID टाइप कर दें।',
+        'Not reading? Wipe the card and hold it still — or type the ID '
+        'below.':
+            'पढ़ नहीं रहा? कार्ड पोंछें और सीधा पकड़ें — या नीचे ID टाइप करें।',
+
+        # The small page that replaces Flask's white 400/404/500.
+        'That screen does not exist.': 'ऐसा कोई स्क्रीन नहीं है।',
+        'The address may be mistyped, or what it pointed at has been '
+        'removed.':
+            'पता ग़लत लिखा हो सकता है, या जो चीज़ वहाँ थी वो हटा दी गई है।',
+        'That photo is too big to upload.':
+            'यह तस्वीर अपलोड के लिए बहुत बड़ी है।',
+        'Take it again at a lower size, or choose a smaller file.':
+            'छोटे साइज़ में दोबारा लें, या कोई छोटी फ़ाइल चुनें।',
+        'Something went wrong at our end.':
+            'हमारी तरफ़ से कुछ गड़बड़ हो गई।',
+        'Nothing was saved. Please try again in a moment.':
+            'कुछ भी सेव नहीं हुआ। थोड़ी देर बाद दोबारा कोशिश करें।',
+        'Back to the app': 'ऐप पर वापस',
+
+        # The rounding option, which governs every pay type and not only
+        # the monthly salary it used to be filed under.
+        'Applies to every pay type — monthly, daily, hourly and project — '
+        'and to overtime, deductions and closure bonus.':
+            'हर तरह की तनख़्वाह पर लागू — महीना, दिहाड़ी, घंटा और ठेका — और '
+            'ओवरटाइम, कटौती व बंदी के बोनस पर भी।',
+
+        # Whether the rounding lands on the daily rate or on the month.
+        'Round the rate or the month': 'दिहाड़ी गोल करें या महीने का कुल',
+        'Round the daily rate, then multiply':
+            'दिहाड़ी को गोल करके दिनों से गुणा करें',
+        "Round the month's total, not the daily rate":
+            'दिहाड़ी पूरी रखें, महीने का कुल गोल करें',
+        'A whole-rupee daily rate rarely multiplies back to the salary: '
+        '₹885 × 26 is ₹23,010, not ₹23,000. Rounding the month instead keeps '
+        'the days adding up.':
+            'पूरे रुपये की दिहाड़ी को दिनों से गुणा करने पर तनख़्वाह वापस नहीं '
+            'मिलती: ₹885 × 26 = ₹23,010, ₹23,000 नहीं। महीने का कुल गोल करने पर '
+            'दिनों का जोड़ सही बैठता है।',
+
+        # What a day with no attendance entry at all is worth.
+        'Days nobody marked': 'जिन दिनों की हाज़िरी नहीं लगी',
+        'Paid, like a normal working day': 'पूरा पैसा, आम काम के दिन की तरह',
+        'Counted as absent': 'ग़ैरहाज़िर गिने जाएँगे',
+        'A day with no attendance entry at all — neither present nor absent. '
+        'Days still to come, days before joining and days the plant was shut '
+        'are never counted.':
+            'वो दिन जिस पर कोई एंट्री ही नहीं — न हाज़िर, न ग़ैरहाज़िर। आने वाले '
+            'दिन, भर्ती से पहले के दिन, और जिन दिनों प्लांट बंद था, वो कभी नहीं '
+            'गिने जाते।',
 
         # --- worker profile report -----------------------------------------
         'Employee Report': 'मज़दूर की रिपोर्ट',
@@ -448,8 +642,15 @@ TRANSLATIONS = {
         'UPI ID': 'UPI आईडी',
         'Aadhaar Number': 'आधार संख्या',
         'PAN': 'PAN',
-        'Shown masked, and never printed on a payslip.':
-            'ढकी हुई दिखती है, और तनख़्वाह पर्ची पर कभी नहीं छपती।',
+        # Only the last four digits are kept, so the box on the form is
+        # empty and a blank one means "leave it alone".
+        'Only the last 4 digits are kept, and none are printed on a '
+        'payslip.':
+            'सिर्फ़ आख़िरी 4 अंक रखे जाते हैं, और तनख़्वाह पर्ची पर कोई '
+            'नहीं छपता।',
+        'On file:': 'दर्ज है:',
+        'leave blank to keep it.': 'वही रखना है तो ख़ाली छोड़ दें।',
+        'Remove the Aadhaar on file': 'दर्ज आधार हटा दें',
         'No way to pay this worker is recorded yet.':
             'इस मज़दूर को पैसा भेजने का कोई ज़रिया अभी दर्ज नहीं है।',
         'My Attendance & Pay': 'मेरी हाज़िरी और मज़दूरी',
@@ -631,6 +832,20 @@ TRANSLATIONS = {
         'paid': 'दे दिया',
         'pending': 'बाक़ी',
         'Generate / Refresh Payroll': 'वेतन बनाएँ / ताज़ा करें',
+        # The saved record has fallen behind what the month is now worth.
+        'Saved figures are behind for %n worker(s).':
+            '%n मज़दूर के सेव किए हुए आँकड़े पीछे रह गए हैं।',
+        'The amounts below are up to date. Generate payroll again so the '
+        'saved records and payslips match them.':
+            'नीचे दिखाई दे रही रक़में सही हैं। वेतन दोबारा बनाइए ताकि सेव किया '
+            'हुआ रिकॉर्ड और पर्ची भी इन्हीं से मिल जाएँ।',
+        '%n worker(s) already have money paid against this month.':
+            'इस महीने का भुगतान %n मज़दूर को हो चुका है।',
+        "Generating payroll leaves their saved records alone. Anything "
+        "recorded since is in the worker's account.":
+            'वेतन बनाने से उनका सेव किया हुआ रिकॉर्ड नहीं बदलता। उसके बाद का '
+            'हिसाब मज़दूर के खाते में दर्ज है।',
+        'See what would change': 'क्या बदलेगा, देखिए',
         'Saves the latest calculation for every active worker this month. '
         'Months already marked Paid are left untouched.':
             'इस महीने के हर चालू मज़दूर का ताज़ा हिसाब सेव करता है। '
@@ -948,6 +1163,9 @@ TRANSLATIONS = {
             'नियुक्त करें / तबादला',
         'Auto-Generated':
             'अपने आप बनेगा',
+        # On the dues screen: he is listed because he is still owed, not
+        # because he still turns up.
+        'Has left · still owed': 'जा चुका · पैसा बाक़ी',
         'Deactivate':
             'बंद करें',
         'Deactivate Worker':
@@ -962,14 +1180,84 @@ TRANSLATIONS = {
             'देर के मिनट और ओवरटाइम मज़दूर की शिफ़्ट सेटिंग से अपने आप दोबारा गिने जाते हैं।',
         'Mark as inactive — keeps all records':
             'बंद के तौर पर दर्ज करें — सारे रिकॉर्ड रहेंगे',
-        'New Daily Salary / Rate (₹)':
-            'नई दिहाड़ी / रेट (₹)',
         'No modifications yet. Promotions, salary changes and category changes are logged here permanently.':
             'अभी कोई बदलाव नहीं। पदोन्नति, तनख़्वाह और श्रेणी के बदलाव यहाँ हमेशा के लिए दर्ज होते हैं।',
         'These users log in with their mobile number. They can only mark attendance, scan QR codes and view workers on their assigned sites — nothing else.':
             'ये उपयोगकर्ता अपने मोबाइल नंबर से लॉगिन करते हैं। ये सिर्फ़ हाज़िरी लगा सकते हैं, QR स्कैन कर सकते हैं और अपनी दी गई साइटों के मज़दूर देख सकते हैं — इसके अलावा कुछ नहीं।',
+        # Keywords the application stored itself — a pay type, a status, an
+        # employee category — printed through the lterm filter. They were
+        # appearing raw in the middle of Hindi on the worker screens.
         'permanent':
             'पक्का',
+        'contract': 'ठेके पर',
+        'temporary': 'अस्थायी',
+        'active': 'चालू',
+        'inactive': 'बंद',
+        'daily': 'दिहाड़ी',
+        'monthly': 'महीने की',
+        'hourly': 'घंटे की',
+        'project': 'ठेके की',
+        'present': 'हाज़िर',
+        'absent': 'ग़ैरहाज़िर',
+        'late': 'देर से',
+        'half day': 'आधा दिन',
+        'not marked': 'नहीं लगी',
+        'disabled': 'बंद',
+
+        # Composites: a figure and a word side by side. Each needed the word
+        # pulled out of the markup, because a dictionary cannot translate
+        # "₹800/day" as one lump.
+        'month': 'महीना',
+        'hour': 'घंटा',
+        'project rate': 'ठेका',
+        'New %(type)s rate (₹)': 'नई %(type)s दर (₹)',
+        # The one label on the selection bar that had no Hindi. Its
+        # neighbours — Disable, Activate, Restore, Delete — all did, which
+        # is why it sat there alone in English.
+        'Enable': 'चालू करें',
+        # A month whose wage was already taken as peshgi. Nothing is
+        # payable, and saying "pending" would promise a wage that is not
+        # coming.
+        'Already drawn': 'पहले ले लिया',
+        # How a mark got made, written into a notification's second line.
+        'qr scan': 'QR स्कैन',
+        'scanner': 'स्कैनर',
+        'bulk': 'एक साथ कई',
+        'manual': 'हाथ से',
+        '%(count)sm late': '%(count)s मिनट देर',
+        'Enabled': 'चालू',
+        'deadline': 'आख़िरी तारीख़',
+        'worker override': 'मज़दूर का अलग नियम',
+        'company-wide': 'पूरी कंपनी के लिए',
+        'deductions': 'कटौती',
+        'Save Assignment': 'तैनाती सेव करें',
+        'Save Salary Policy': 'तनख़्वाह का नियम सेव करें',
+        '%(count)s day(s) delayed': '%(count)s दिन की देरी',
+        'How a fixed monthly salary becomes a payable amount. It applies '
+        'to the %(count)s worker(s) on a monthly salary.':
+            'तय महीने की तनख़्वाह देने लायक़ रक़म कैसे बनती है। यह महीने की '
+            'तनख़्वाह वाले %(count)s मज़दूरों पर लागू होता है।',
+        'A month already marked Paid keeps the figures it was paid with — '
+        'changing a rule here never rewrites it.':
+            'जो महीना दे दिया गया लग चुका है, उसमें वही आँकड़े रहेंगे जिन '
+            'पर पैसा दिया गया था — यहाँ नियम बदलने से वे कभी नहीं बदलते।',
+        '%(count)s worker(s) have their own override and ignore these '
+        'settings.':
+            '%(count)s मज़दूरों के अपने अलग नियम हैं, वे इन सेटिंग्स को '
+            'नहीं मानते।',
+        'No company policy is saved yet. Each worker is calculated from '
+        'the leave quota and deduction rate already on his own record, '
+        'exactly as before. Saving here switches everyone to these rules.':
+            'अभी कंपनी का कोई नियम सेव नहीं है। हर मज़दूर का हिसाब उसके ही '
+            'रिकॉर्ड में पहले से दर्ज छुट्टी के कोटे और कटौती की दर से हो '
+            'रहा है, बिल्कुल पहले जैसा। यहाँ सेव करने पर सब इन नियमों पर '
+            'आ जाएँगे।',
+        'With the Fixed % method the bonus applies to the half-day base '
+        'amount. With the Hours or Minutes methods only the time actually '
+        'logged is used.':
+            'तय % वाले तरीक़े में बोनस आधे दिन की मूल रक़म पर लगता है। '
+            'घंटे या मिनट वाले तरीक़ों में सिर्फ़ दर्ज हुआ असली समय गिना '
+            'जाता है।',
         'Attendance marked by site users will appear here.':
             'साइट के उपयोगकर्ताओं की लगाई हाज़िरी यहाँ दिखेगी।',
         'Authorized Attendance Users': 'हाज़िरी के अधिकार वाले उपयोगकर्ता',
@@ -1234,6 +1522,8 @@ TRANSLATIONS = {
         'Unspecified': 'तय नहीं',
         'Update profile details': 'प्रोफ़ाइल की जानकारी बदलें',
         'Used to derive daily rate': 'दिहाड़ी निकालने के लिए',
+        'Shift counting only. The salary basis is in Settings.':
+            'सिर्फ़ शिफ़्ट गिनने के लिए। तनख़्वाह का हिसाब सेटिंग्स में है।',
         'Used to derive hourly rate': 'घंटे का रेट निकालने के लिए',
         'Used when worked time is up to 50% of shift hours.':
             'जब काम का समय शिफ़्ट के 50% तक हो तब लगता है।',
@@ -1368,6 +1658,14 @@ def format_date(value, fmt, lang):
 # and the stored audit records are left exactly as they were written.
 _NOTE_PATTERNS_SOURCE = {
     'hi': [
+        # A notification written before notifications were reworked into
+        # grouped rows. The application no longer writes this shape, but a
+        # database seeded before the change still holds them, and they are
+        # the only English left on an otherwise Hindi screen. The names,
+        # the id, the date and the site are the employer's own data and
+        # pass through untouched.
+        (r'^(.+?) marked (.+?) \((\S+?)\) as (\S+) on (.+?) at (.+)$',
+         r'\1 ने \2 (\3) की \5 को \6 पर हाज़िरी लगाई: \4'),
         (r'^Joining date (.+?) falls after this period, so no salary is payable\.$',
          r'भर्ती की तारीख़ \1 इस अवधि के बाद है, इसलिए कोई तनख़्वाह नहीं बनती।'),
         (r'^Joined (.+?)\. Paid for (\S+) attended day\(s\) from the joining date at (\S+)/day\.$',
@@ -1397,6 +1695,8 @@ _NOTE_PATTERNS_SOURCE = {
          r'मज़दूरी आने-जाने के समय के हिसाब से लगी है।'),
         (r'^Overtime policy added extra pay\.$',
          r'ओवरटाइम के नियम से अतिरिक्त रक़म जुड़ी।'),
+        (r'^Statutory deductions applied\.$',
+         r'क़ानूनी कटौतियाँ लगाई गईं।'),
         (r'^Bonus/extra payment transactions added to pay\.$',
          r'इनाम और अतिरिक्त भुगतान रक़म में जोड़े गए।'),
         (r'^Advance/loan/deduction transactions recovered from pay\.$',
@@ -1463,7 +1763,12 @@ def translate_note(text, lang):
             # The replacement supplies a ₹ because a note stored before the
             # engine wrote its own has none. One written since arrives with
             # it already, so the two meet as ₹₹ — collapse it.
-            return new.replace('₹₹', '₹')
+            #
+            # A date inside the stored text is copied across by the pattern
+            # as it stands, so its month is still English: "20 Oct 2026" in
+            # the middle of a Hindi sentence.
+            return _localise_keywords(
+                _localise_months(new.replace('₹₹', '₹'), lang), lang)
     return text
 
 
@@ -1484,6 +1789,41 @@ def translate_notes(text, lang):
 #: already in flight still comes out in the reader's language.
 FLASH_MESSAGES = {
     'hi': {
+        # Statutory deductions, from the settings screen.
+        'That deduction no longer exists.': 'वह कटौती अब मौजूद नहीं है।',
+        'Give the deduction a name, as it should read on the payslip.':
+            'कटौती को नाम दें, जैसा पर्ची पर छपना चाहिए।',
+
+        # Payment-detail errors. These reach the screen through a variable
+        # rather than a literal, so the parser that checks flashes cannot
+        # see them; they are listed here so they are not left in English.
+        'Aadhaar number should be 12 digits, or just the last 4.':
+            'आधार संख्या 12 अंकों की हो, या सिर्फ़ आख़िरी 4 अंक।',
+
+        # What the app says when something goes wrong, instead of Flask's
+        # own white English page. The first pair is the common one: a
+        # WebView killed for memory while the app sat in a pocket, coming
+        # back with a CSRF token signed against a session that is gone.
+        'The app was asleep too long and that did not save. '
+        'Please try it once more.':
+            'ऐप बहुत देर बंद रहा, इसलिए वो सेव नहीं हुआ। एक बार फिर कोशिश करें।',
+        'The app was asleep too long. Please try that once more.':
+            'ऐप बहुत देर बंद रहा। एक बार फिर कोशिश करें।',
+        'That screen does not exist.': 'ऐसा कोई स्क्रीन नहीं है।',
+        'That is not something this app has.':
+            'यह चीज़ इस ऐप में है ही नहीं।',
+        'That photo is too big to upload. Try taking it again at a '
+        'lower size.':
+            'यह तस्वीर अपलोड के लिए बहुत बड़ी है। छोटे साइज़ में दोबारा लें।',
+        'That file is too big to upload.':
+            'यह फ़ाइल अपलोड के लिए बहुत बड़ी है।',
+        'Something went wrong at our end. Nothing was saved. '
+        'Please try again.':
+            'हमारी तरफ़ से कुछ गड़बड़ हो गई। कुछ भी सेव नहीं हुआ। '
+            'दोबारा कोशिश करें।',
+        'Something went wrong at our end. Please try again.':
+            'हमारी तरफ़ से कुछ गड़बड़ हो गई। दोबारा कोशिश करें।',
+
         'Assignment does not belong to this worker.':
             'यह नियुक्ति इस मज़दूर की नहीं है।',
         'Assignment marked as completed.': 'नियुक्ति पूरी हुई के रूप में दर्ज।',
@@ -1645,11 +1985,92 @@ def _hi_money(shape):
 #: match the shape, keep what was interpolated.
 _FLASH_PATTERNS_SOURCE = {
     'hi': [
+        (r'^(.+) will no longer be deducted\.$',
+         r'\1 अब नहीं काटा जाएगा।'),
+        # Nothing to hand over, because the peshgi already exceeded the
+        # month. The shortfall is a debt, not a wage.
+        (r'^(.+?) has already drawn (\S+) for (.+?) (\d{4}), so there is '
+         r'nothing to hand over\. What is left stands against him in his '
+         r'account and comes off next month\.$',
+         r'\1 ने \3 \4 के लिए पहले ही \2 ले लिए हैं, इसलिए अब कुछ देना '
+         r'नहीं है। जो बचा है वह उनके खाते में उनके नाम चढ़ा है और अगले '
+         r'महीने से कटेगा।'),
+        (r'^(\d+) worker\(s\) had already drawn more than the month was '
+         r'worth, so nothing was handed over for them\. It stands in '
+         r'their account\.$',
+         r'\1 मज़दूरों ने महीने की कमाई से ज़्यादा पहले ही ले लिया था, '
+         r'इसलिए उन्हें कुछ नहीं दिया गया। वह उनके खाते में चढ़ा है।'),
+        # The minimum wage floor. Every one of these is a warning or a
+        # receipt, never a refusal to save.
+        (r'^The minimum wage for (.+?) is no longer set\.$',
+         r'\1 के लिए न्यूनतम मज़दूरी अब तय नहीं है।'),
+        (r'^Enter a daily or a monthly figure, or the floor for (.+?) is '
+         r'not set at all\.$',
+         r'दिन या महीने का आँकड़ा भरें, वरना \1 के लिए न्यूनतम मज़दूरी तय '
+         r'ही नहीं होगी।'),
+        (r'^Minimum wage saved for (.+?)\. A wage below it is flagged when '
+         r'you save a worker, never refused\.$',
+         r'\1 के लिए न्यूनतम मज़दूरी सेव हो गई। इससे कम मज़दूरी पर मज़दूर '
+         r'सेव करते वक़्त चेतावनी मिलेगी, रोका नहीं जाएगा।'),
+        (r'^(.+?) is on (.+?) an hour, which is (.+?) for a day of (.+?) '
+         r'hours, below the (.+?) a day minimum wage you have set for '
+         r'(.+?)\. Saved as entered; change it if that is not what you '
+         r'meant\.$',
+         r'\1 को घंटे के \2 मिलते हैं, यानी \4 घंटे के दिन के \3 — जो \6 के '
+         r'लिए आपकी तय की हुई \5 प्रति दिन की न्यूनतम मज़दूरी से कम है। जैसा '
+         r'भरा था वैसा सेव हो गया; अगर मतलब यह नहीं था तो बदल दें।'),
+        (r'^(.+?) is on (.+?) a month, below the (.+?) a month minimum '
+         r'wage you have set for (.+?)\. Saved as entered; change it if '
+         r'that is not what you meant\.$',
+         r'\1 को महीने के \2 मिलते हैं, जो \4 के लिए आपकी तय की हुई \3 '
+         r'प्रति महीना की न्यूनतम मज़दूरी से कम है। जैसा भरा था वैसा सेव हो '
+         r'गया; अगर मतलब यह नहीं था तो बदल दें।'),
+        (r'^(.+?) is on (.+?) a day, below the (.+?) a day minimum wage '
+         r'you have set for (.+?)\. Saved as entered; change it if that '
+         r'is not what you meant\.$',
+         r'\1 को दिन के \2 मिलते हैं, जो \4 के लिए आपकी तय की हुई \3 प्रति '
+         r'दिन की न्यूनतम मज़दूरी से कम है। जैसा भरा था वैसा सेव हो गया; '
+         r'अगर मतलब यह नहीं था तो बदल दें।'),
+        (r'^(.+) saved\. It will be deducted from the next payroll run\.$',
+         r'\1 सेव हो गया। अगली तनख़्वाह से काटा जाएगा।'),
+        (r'^(.+) saved, switched off\. Nothing is being deducted for it\.$',
+         r'\1 सेव हो गया, बंद है। इसके लिए कुछ नहीं कट रहा।'),
+        # One number on two men. Said as a warning, not a refusal — a
+        # family shares a phone and the app should not make somebody
+        # invent a number to get past it.
+        (r'^This number is already saved for (.+?) \((.+?)\)\. Two workers '
+         r'can share a phone, but only one of them can have a login\.$',
+         r'यह नंबर पहले से \1 (\2) के नाम पर है। दो मज़दूर एक ही फ़ोन रख '
+         r'सकते हैं, पर लॉगिन सिर्फ़ एक का बन सकता है।'),
         # Notes the day view paints from JSON rather than raising as a flash.
+        #
+        # The first of these is dead wording kept on purpose: it was the
+        # message a Hindi screen showed in English, which is why this whole
+        # file's flash layer exists. routes.py no longer raises it — a
+        # generated month that nobody has been paid for needs no warning,
+        # because the figure follows the money by itself — but a phone that
+        # has the old page cached still can.
         (r'^Payroll for (.+?) has already been generated\. '
          r'Re-generate it so this change is reflected in pay\.$',
          r'\1 का वेतन पहले ही बन चुका है। यह बदलाव पे में दिखे, '
          r'इसके लिए वेतन दोबारा बनाएँ।'),
+        # What replaced it: said only once money has gone out, because that
+        # is the only case where the pay does not follow by itself.
+        (r'^(.+?) has already been paid in full for (.+?), so that '
+         r"month's payroll figure stays as it is\. "
+         r'The amount is recorded in their account\.$',
+         r'\2 को \1 का पूरा भुगतान हो चुका है, इसलिए उस महीने का वेतन वैसा ही '
+         r'रहेगा। यह रक़म उनके खाते में दर्ज है।'),
+        (r'^(.+?) already has money paid against it for (.+?), so generating '
+         r"payroll leaves that month's saved record alone\. "
+         r'The amount is recorded in their account\.$',
+         r'\2 को \1 का कुछ भुगतान हो चुका है, इसलिए वेतन बनाने से उस महीने का '
+         r'सेव किया हुआ रिकॉर्ड नहीं बदलेगा। यह रक़म उनके खाते में दर्ज है।'),
+        (r'^(\d+) worker\(s\) already have money paid against (.+?)\. '
+         r'Their payroll figures stay as they are; '
+         r'everyone else recalculates on sight\.$',
+         r'\2 का भुगतान \1 मज़दूर को हो चुका है। उनके आँकड़े वैसे ही रहेंगे; '
+         r'बाक़ी सबका हिसाब अपने आप ताज़ा होता रहता है।'),
         (r'^(.+?) had not joined on this date\.$',
          r'\1 इस तारीख़ को भर्ती नहीं हुए थे।'),
         (r'^Attendance is locked for (.+?) on this closure day\.$',
@@ -1687,6 +2108,10 @@ _FLASH_PATTERNS_SOURCE = {
          r'\1 की तनख़्वाह बदल दी गई। वेतन अपने-आप दोबारा जुड़ जाएगा।'),
         (r'^Transaction (.+?)\. Payroll updates automatically\.$',
          r'लेन-देन \1। वेतन अपने-आप बदल जाएगा।'),
+        # Without the promise, for a month that already has money paid
+        # against it: the warning that follows says why, so repeating
+        # "the pay updates by itself" here would contradict it.
+        (r'^Transaction (.+?)\.$', r'लेन-देन \1।'),
         (r'^Worker (.+?) added successfully with ID: (.+)$',
          r'मज़दूर \1 जुड़ गया, आईडी: \2'),
         (r'^Worker (.+?) updated successfully$', r'मज़दूर \1 की जानकारी बदल गई'),
@@ -1704,6 +2129,11 @@ _FLASH_PATTERNS_SOURCE = {
          _hi_money('{2} के लिए {0} {1} दर्ज कर लिया गया।')),
         (r'^(.+?) of ₹(\S+) saved for (.+?)\. Payroll updates automatically\.$',
          _hi_money('{2} के लिए {0} ₹{1} सेव हुआ। वेतन अपने-आप बदल जाएगा।')),
+        # Same message on a month that has money paid against it. The
+        # sentence about the pay is left off, because the warning raised
+        # beside it says what actually happens.
+        (r'^(.+?) of ₹(\S+) saved for (.+?)\.$',
+         _hi_money('{2} के लिए {0} ₹{1} सेव हुआ।')),
         (r'^(.+?) deleted successfully\.$', r'\1 हटा दिया गया।'),
         (r'^(.+?) name is required\.$', r'\1 का नाम ज़रूरी है।'),
         (r'^(.+?) saved successfully\.$', r'\1 सेव हो गया।'),
@@ -1763,10 +2193,42 @@ def _localise_months(text, lang):
     months = MONTHS.get(lang)
     if not months:
         return text
+    # Whole words only. A plain substring swap turned a worker called
+    # Augustine into "अगस्तine" — his own name, half rewritten, on a
+    # screen his employer reads out to him.
     for idx, english in enumerate(_ENGLISH_MONTHS):
-        if english in text:
-            text = text.replace(english, months[idx])
+        text = re.sub(r'\b%s\b' % english, months[idx], text)
+    # And the three-letter forms, which a stored date uses ("20 Oct 2026").
+    # Full names are swapped first, above, so by here "March" can no
+    # longer be mistaken for "Mar".
+    short = MONTHS_SHORT.get(lang)
+    if short:
+        for idx, english in enumerate(_ENGLISH_MONTHS):
+            text = re.sub(r'\b%s\b' % english[:3], short[idx], text)
     return text
+
+#: Words a stored sentence carries that a pattern copies across verbatim,
+#: because they sit inside a captured group. Months have their own swap
+#: above; these are the attendance keywords.
+_STRANDED = ('present', 'absent', 'late', 'half_day', 'leave', 'holiday')
+
+
+def _localise_keywords(text, lang):
+    """Swap a stranded status word inside an already-translated message.
+
+    A pattern can reorder a sentence but it cannot look a captured group
+    up in the dictionary, so "...हाज़िरी लगाई: present" came out with the
+    one word that actually says what happened still in English.
+    """
+    table = TRANSLATIONS.get(lang)
+    if not table:
+        return text
+    for word in _STRANDED:
+        said = table.get(word)
+        if said:
+            text = re.sub(r'\b%s\b' % word, said, text)
+    return text
+
 
 def translate_flash(text, lang):
     """One flash message, translated on its way to the screen.

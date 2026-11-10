@@ -40,7 +40,8 @@ values, errors = R.clean_payment_details(good)
 check('a good set validates', errors, [])
 check('IFSC is upper-cased', values['bank_ifsc'], 'HDFC0001234')
 check('PAN is upper-cased', values['pan_number'], 'ABCDE1234F')
-check('spaces are stripped from Aadhaar', values['aadhaar_number'], '123456789012')
+check('Aadhaar is no longer one of these fields at all',
+      'aadhaar_number' in values, False)
 check('the account holder name keeps its spaces',
       values['bank_account_name'], 'Sunita Devi')
 
@@ -52,21 +53,37 @@ check('a blank field is stored as nothing, not an empty string',
 bad = {'bank_account_number': '12', 'bank_ifsc': 'NOTANIFSC',
        'upi_id': 'no-at-sign', 'aadhaar_number': '123', 'pan_number': '12345'}
 values, errors = R.clean_payment_details(bad)
-check('each bad field is reported', len(errors), 5)
+check('each bad field is reported', len(errors), 4)
 check('a rejected field is not stored', set(values.values()), {None})
 
 # A near-miss must not slip through.
 for field, value in (('bank_ifsc', 'HDFC1001234'),      # 5th char must be 0
                      ('pan_number', 'ABCD12345F'),      # wrong shape
-                     ('aadhaar_number', '12345678901'),  # 11 digits
                      ('bank_account_number', '1234567890123456789')):  # 19
     _v, errs = R.clean_payment_details({field: value})
     check('%s rejects %r' % (field, value), len(errs), 1)
 
+# Aadhaar goes through its own path now, because only the last four digits
+# are kept and a blank box must leave what is on file alone rather than
+# wipe it. tests/test_aadhaar.py covers that in full; these two are here
+# so this file's picture of the payment fields stays honest.
+with app.app_context():
+    w = m.Worker(full_name='x')
+    check('eleven digits are refused',
+          len(R.apply_aadhaar(w, {'aadhaar_number': '12345678901'})), 1)
+    check('and twelve are kept as four',
+          (R.apply_aadhaar(w, {'aadhaar_number': '1234 5678 9012'}),
+           w.aadhaar_number), ([], '9012'))
+
 # --- masking --------------------------------------------------------------
 with app.app_context():
-    w = m.Worker(full_name='x', aadhaar_number='123456789012')
-    check('Aadhaar is masked to the last four', w.masked_aadhaar, 'XXXX XXXX 9012')
+    w = m.Worker(full_name='x', aadhaar_number='9012')
+    check('the four digits kept are shown in the shape of the card',
+          w.masked_aadhaar, 'XXXX XXXX 9012')
+    check('a row saved before this still masks its twelve',
+          m.Worker(full_name='x',
+                   aadhaar_number='123456789012').masked_aadhaar,
+          'XXXX XXXX 9012')
     check('a malformed Aadhaar masks to nothing rather than leaking',
           m.Worker(full_name='x', aadhaar_number='123').masked_aadhaar, None)
     check('no Aadhaar masks to nothing', m.Worker(full_name='x').masked_aadhaar, None)

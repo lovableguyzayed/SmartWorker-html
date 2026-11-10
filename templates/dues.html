@@ -96,6 +96,14 @@
                 <div class="text-xs text-gray-500 truncate">
                     {{ row.worker_id }}{% if row.department %} · {{ row.department }}{% endif %}
                 </div>
+                {# He is on this screen because he is still owed, not
+                   because he is still on the roll — say which, or the
+                   owner rings a man who stopped coming in weeks ago and
+                   asks why he is not at the gate. #}
+                {% if row.has_left %}
+                <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full"
+                      style="background:#fee2e2;color:#b91c1c">{{ _('Has left · still owed') }}</span>
+                {% endif %}
             </div>
             <div class="text-right shrink-0">
                 <div class="text-lg font-bold text-amber-800">{{ row.outstanding|money }}</div>

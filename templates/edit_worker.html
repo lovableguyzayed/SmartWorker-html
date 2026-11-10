@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{% if worker %}Edit Worker{% else %}Add Worker{% endif %} - SmartWorker{% endblock %}
+{% block title %}{{ _('Edit Worker') if worker else _('Add Worker') }} - SmartWorker{% endblock %}
 
 {% block content %}
 <header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
@@ -93,26 +93,26 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Full Name') }}</label>
-                    <input type="text" name="full_name" value="{{ worker.full_name if worker else '' }}" required
+                    <input type="text" name="full_name" value="{{ (worker.full_name if worker else '') or '' }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Phone Number') }}</label>
-                    <input type="tel" name="phone" value="{{ worker.phone if worker else '' }}" required
+                    <input type="tel" name="phone" value="{{ (worker.phone if worker else '') or '' }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Email (Optional)') }}</label>
-                    <input type="email" name="email" value="{{ worker.email if worker else '' }}"
+                    <input type="email" name="email" value="{{ (worker.email if worker else '') or '' }}"
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Address') }}</label>
                     <textarea name="address" rows="3"
-                              class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent h-20 resize-none">{{ worker.address if worker else '' }}</textarea>
+                              class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent h-20 resize-none">{{ (worker.address if worker else '') or '' }}</textarea>
                 </div>
             </div>
         </section>
@@ -151,11 +151,23 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Aadhaar Number') }}</label>
-                        <input type="text" name="aadhaar_number" inputmode="numeric" maxlength="12"
-                               value="{{ worker.aadhaar_number or '' if worker else '' }}"
+                        <label class="block text-sm font-medium text-gray-700 mb-2" for="aadhaar_number">{{ _('Aadhaar Number') }}</label>
+                        {# The box is deliberately empty: only the last four
+                           digits are kept, so there is no full number to put
+                           back in it. An empty box therefore leaves what is
+                           on file alone — removing one is the checkbox. #}
+                        <input type="text" name="aadhaar_number" id="aadhaar_number"
+                               inputmode="numeric" maxlength="12" value=""
                                class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                        <p class="text-[0.65rem] text-gray-500 mt-1">{{ _('Shown masked, and never printed on a payslip.') }}</p>
+                        {% if worker and worker.masked_aadhaar %}
+                        <p class="text-[0.65rem] text-gray-600 mt-1">{{ _('On file:') }} <span class="font-medium">{{ worker.masked_aadhaar }}</span> — {{ _('leave blank to keep it.') }}</p>
+                        <label class="flex items-center gap-2 mt-1 text-[0.65rem] text-gray-600">
+                            <input type="checkbox" name="aadhaar_remove" value="1" class="w-4 h-4">
+                            {{ _('Remove the Aadhaar on file') }}
+                        </label>
+                        {% else %}
+                        <p class="text-[0.65rem] text-gray-500 mt-1">{{ _('Only the last 4 digits are kept, and none are printed on a payslip.') }}</p>
+                        {% endif %}
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('PAN') }}</label>
@@ -174,7 +186,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Position/Role') }}</label>
-                    <input type="text" name="position" value="{{ worker.position if worker else '' }}" required
+                    <input type="text" name="position" value="{{ (worker.position if worker else '') or '' }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
@@ -193,7 +205,7 @@
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Join Date') }}</label>
-                    <input type="date" name="join_date" value="{{ worker.join_date if worker else '' }}" required
+                    <input type="date" name="join_date" value="{{ (worker.join_date if worker else '') or '' }}" required
                            class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                 </div>
                 
@@ -231,7 +243,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Daily Rate') }}</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
-                            <input type="number" name="daily_rate" value="{{ worker.daily_rate if worker else '' }}" step="0.01"
+                            <input type="number" name="daily_rate" value="{{ (worker.daily_rate if worker else '') or '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
                     </div>
@@ -241,7 +253,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Monthly Salary') }}</label>
                             <div class="relative">
                                 <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
-                                <input type="number" name="monthly_salary" value="{{ worker.monthly_salary if worker else '' }}" step="0.01"
+                                <input type="number" name="monthly_salary" value="{{ (worker.monthly_salary if worker else '') or '' }}" step="0.01"
                                        class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                             </div>
                         </div>
@@ -249,10 +261,10 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Monthly Working Days') }}</label>
                                 <input type="number" name="monthly_working_days"
-                                       value="{{ worker.monthly_working_days if worker and worker.monthly_working_days is not none else 26 }}"
+                                       value="{{ worker.monthly_working_days if worker and worker.monthly_working_days is not none else 30 }}"
                                        min="1" max="31"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
-                                <div class="text-xs text-gray-500 mt-1">{{ _('Used to derive daily rate') }}</div>
+                                <div class="text-xs text-gray-500 mt-1">{{ _('Shift counting only. The salary basis is in Settings.') }}</div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Standard Hours / Day') }}</label>
@@ -324,7 +336,7 @@
                                     <div class="text-xs font-medium text-orange-700 mb-1">
                                         <i class="fa-solid fa-circle-info mr-1"></i>{{ _('Half-Day on Closure Day') }}</div>
                                     <div class="text-xs text-gray-500">
-                                        For "Fixed %" method, the bonus applies to the half-day base amount. For "Hours/Minutes" methods, only actual time logged is used.
+                                        {{ _('With the Fixed % method the bonus applies to the half-day base amount. With the Hours or Minutes methods only the time actually logged is used.') }}
                                     </div>
                                 </div>
                             </div>
@@ -335,7 +347,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Hourly Rate') }}</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
-                            <input type="number" name="hourly_rate" value="{{ worker.hourly_rate if worker else '' }}" step="0.01"
+                            <input type="number" name="hourly_rate" value="{{ (worker.hourly_rate if worker else '') or '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
                     </div>
@@ -344,7 +356,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Project Amount') }}</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
-                            <input type="number" name="project_rate" value="{{ worker.project_rate if worker else '' }}" step="0.01"
+                            <input type="number" name="project_rate" value="{{ (worker.project_rate if worker else '') or '' }}" step="0.01"
                                    class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                         </div>
                         <div class="text-xs text-gray-600 mt-1">{{ _('Fixed amount for the project cycle.') }}</div>
@@ -362,7 +374,7 @@
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Allowed Leaves per Month') }}</label>
-                                <input type="number" name="allowed_leaves" value="{{ worker.allowed_leaves_per_month if worker else '2' }}" min="0" max="31"
+                                <input type="number" name="allowed_leaves" value="{{ (worker.allowed_leaves_per_month if worker else '2') or '' }}" min="0" max="31"
                                        class="w-full p-3 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 <div class="text-xs text-gray-600 mt-1">{{ _('Number of leaves without salary deduction') }}</div>
                             </div>
@@ -371,7 +383,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ _('Leave Deduction per Day') }}</label>
                                 <div class="relative">
                                     <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600">₹</span>
-                                    <input type="number" name="leave_deduction" value="{{ worker.leave_deduction_per_day if worker else '500' }}" step="0.01"
+                                    <input type="number" name="leave_deduction" value="{{ (worker.leave_deduction_per_day if worker else '500') or '' }}" step="0.01"
                                            class="w-full p-3 pl-8 border border-lightGray rounded-xl focus:ring-2 focus:ring-accent focus:border-accent">
                                 </div>
                                 <div class="text-xs text-gray-600 mt-1">{{ _('Amount deducted for each extra leave day') }}</div>
@@ -386,7 +398,7 @@
                                     </label>
                                 </div>
                                 <div class="text-xs text-gray-600">
-                                    Example: 2 free leaves, then ₹500 per extra leave day
+                                    {{ _('Example: 2 free leaves, then ₹500 per extra leave day') }}
                                 </div>
                             </div>
                         </div>

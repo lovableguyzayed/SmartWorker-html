@@ -61,7 +61,39 @@
             if (target) target.remove();
         },
 
+        /* Printing, on a platform that cannot print.
+         *
+         * window.print() is the right call in a browser. An Android
+         * WebView does not implement it: printing there goes through the
+         * native PrintManager, and nothing in the page can reach that. So
+         * in the APK this verb did nothing at all — no dialog, no error,
+         * no file — and the worker report's only control is a button
+         * labelled "Save PDF" that calls it. A button that is silent is
+         * indistinguishable from a broken app.
+         *
+         * A screen that can build its own PDF says so by defining
+         * downloadPDF (see static/js/pdfpage.js). Inside the app that is
+         * the route taken: the file is written with cordova-plugin-file
+         * and handed to a viewer, and every Android PDF viewer can print.
+         * A screen that cannot gets told so, rather than nothing. */
         'print': function () {
+            var inApp = !!(window.cordova && window.cordova.file);
+            // With the remote-bridge plugin's print action (app.js sets the
+            // flag), window.print opens Android's print service, which can
+            // also save a text PDF; that is the better route when present.
+            if (inApp && window.SmartWorkerNativePrint) {
+                window.print();
+                return;
+            }
+            if (inApp && typeof window.downloadPDF === 'function') {
+                window.downloadPDF();
+                return;
+            }
+            if (inApp) {
+                window.alert('This device cannot print directly from the app. '
+                           + 'Save the PDF and print it from there.');
+                return;
+            }
             window.print();
         }
     };

@@ -152,9 +152,9 @@ try:
         pg.click('a[href="/payroll"]')
         pg.wait_for_timeout(1500)
         saw = pg.evaluate("() => window.__saw")
-        print('  progress bar appeared  :', saw['bar'], 'time(s)')
         check('an ordinary tap never blanks the screen', saw['skeleton'], 0)
-        check('and nothing is left behind afterwards', pg.evaluate(
+        check('and draws no progress bar either', saw['bar'], 0)
+        check('nothing is left behind afterwards', pg.evaluate(
             "() => !!document.getElementById('nav-progress')"), False)
 
         print('\n--- a slow screen keeps the one you are on ---')
@@ -177,20 +177,38 @@ try:
         # handler above sleeps on the Python side, which blocks this client,
         # so a wait_for_timeout here would run after the screen had already
         # arrived and would report on the wrong moment.
+        # Sampled twice through a 900ms wait. Nothing may be drawn at
+        # either moment: not a skeleton, not a hairline. Both were tried
+        # and both are gone — every screen here is fetched from the host,
+        # so an indicator timed to appear "when it is slow" was on screen
+        # for most of most navigations, and something nearly always
+        # visible is not an indicator but the app's resting state. A
+        # resting state that looks like loading is the buffering feeling
+        # the whole native shell exists to avoid.
         pg.evaluate("""() => {
-            window.__mid = null;
-            setTimeout(() => { window.__mid = {
+            window.__early = null; window.__mid = null;
+            const look = () => ({
                 hairline: !!document.getElementById('nav-progress'),
                 old_screen: !!document.querySelector('nav.app-bottom-nav'),
                 grey: !!document.getElementById('skeleton-overlay'),
-            }; }, 350);
+            });
+            setTimeout(() => { window.__early = look(); }, 200);
+            setTimeout(() => { window.__mid = look(); }, 650);
             NativeShell.visit('/closures');
         }""")
-        pg.wait_for_timeout(2200)
+        pg.wait_for_timeout(2600)
+        early = pg.evaluate("() => window.__early")
         mid = pg.evaluate("() => window.__mid")
-        check('a moment mid-wait was actually captured', bool(mid), True)
+        check('an early moment mid-wait was captured', bool(early), True)
+        check('and a later one', bool(mid), True)
+        check('nothing is drawn early in the wait',
+              early and early['hairline'], False)
+        check('nor later in it', mid and mid['hairline'], False)
+        # What takes their place: the screen being left stays readable
+        # until the next one is ready, and the control that was tapped
+        # responds under the finger through CSS :active, with no delay to
+        # tune because there is no timer involved.
         check('the screen you were on is still up', mid and mid['old_screen'], True)
-        check('the hairline says the tap was heard', mid and mid['hairline'], True)
         check('and nothing grey is over it', mid and mid['grey'], False)
         slow = pg.evaluate("() => window.__slow")
         check('no overlay at any point in the wait', slow['overlay'], 0)

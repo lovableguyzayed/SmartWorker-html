@@ -406,7 +406,12 @@ class Worker(db.Model):
     half_day_grace_minutes = db.Column(db.Integer, default=20)
 
     # Monthly worker rate derivation helpers
-    monthly_working_days = db.Column(db.Integer, default=26)
+    #: Shift counting, not salary pricing. The salary basis is the salary
+    #: policy's `basis_days` — a monthly salary is divided by 30 whatever the
+    #: length of the month — and this field is no longer read as that basis.
+    #: It defaulted to 26 and silently priced every monthly worker's day at
+    #: salary/26.
+    monthly_working_days = db.Column(db.Integer, default=30)
     standard_working_hours = db.Column(db.Integer, default=8)
 
     # Closure day payment settings
@@ -455,13 +460,22 @@ class Worker(db.Model):
 
     @property
     def masked_aadhaar(self):
-        """Aadhaar with all but the last four digits hidden.
+        """The last four digits, written in the shape of the card.
 
-        Aadhaar is sensitive personal data; it is held so a payment can be
-        made and is never shown in full, nor printed on a payslip.
+        Only the last four are kept. A full Aadhaar number is not needed
+        to pay a man — a bank account and IFSC, or a UPI id, is what moves
+        the money — and it was being held only to recognise which card he
+        showed at the gate. Four digits do that. Twelve, if they ever got
+        out, are somebody's identity.
+
+        A row saved before that changed may still hold all twelve, which
+        is why this does not assume a length: it is not this application's
+        place to quietly rewrite data an employer put in. Either way, only
+        four are ever shown, and none are printed on a payslip.
         """
-        value = (self.aadhaar_number or '').strip()
-        if len(value) != 12:
+        value = ''.join(ch for ch in (self.aadhaar_number or '')
+                        if ch.isdigit())
+        if len(value) not in (4, 12):
             return None
         return 'XXXX XXXX ' + value[-4:]
 
@@ -598,10 +612,22 @@ class PayrollRecord(db.Model):
         status, so a legacy 'paid' month means its whole net_pay was handed
         over. Without this fallback, every month settled before the upgrade
         would reopen as unpaid and the outstanding total would jump.
+
+        Never negative. A month where the advances already drawn exceed
+        what the work was worth has a negative net, and "mark this month
+        paid" used to write that negative straight into paid_amount —
+        which the running account then read as money handed over, so
+        ``closing = opening + earned - drawn - settled`` ADDED the
+        shortfall back and the debt disappeared. A man who had drawn
+        ₹12,000 against an ₹8,000 month owed ₹4,000, and one tap made it
+        ₹0. Clamped here as well as refused at the route, so a row already
+        written that way cannot go on corrupting the account.
         """
         if self.paid_amount is not None:
-            return round(float(self.paid_amount), 2)
-        return round(float(self.net_pay or 0), 2) if self.status == 'paid' else 0.0
+            return max(0.0, round(float(self.paid_amount), 2))
+        if self.status == 'paid':
+            return max(0.0, round(float(self.net_pay or 0), 2))
+        return 0.0
 
     @property
     def payment_state(self):
@@ -613,6 +639,17 @@ class PayrollRecord(db.Model):
         """
         settled = self.settled_amount
         due = round(float(self.net_pay or 0), 2)
+        # Below zero, not merely at it: what the work was worth has already
+        # been drawn as advances. Calling that "pending" told an employer a
+        # wage was still waiting to be handed over, and calling it "paid"
+        # would say money changed hands that never did. What is left over is
+        # a debt, and the running account is where a debt belongs — not on
+        # a wage badge.
+        #
+        # A month of exactly zero is a different thing: nobody worked and
+        # nobody drew anything. It keeps the plain reading it always had.
+        if due < -0.005:
+            return 'drawn'
         if settled <= 0.005:
             return 'pending'
         if settled + 0.005 >= due:
@@ -645,18 +682,159 @@ class SalaryPolicy(db.Model):
     salary_basis = db.Column(db.String(12), default='fixed')        # fixed | calendar
     basis_days = db.Column(db.Integer, default=30)
     rounding = db.Column(db.String(10), default='nearest')          # none|nearest|up|down
+    #: WHERE that rounding lands: 'rate' rounds the daily rate and then
+    #: multiplies, 'total' multiplies the exact rate and rounds the month's
+    #: figure once. See salary.ROUNDING_STAGE. 'rate' is what the engine did
+    #: before this column existed.
+    rounding_stage = db.Column(db.String(8), default='rate')        # rate | total
     joining_mode = db.Column(db.String(12), default='calendar')     # calendar | attendance
     paid_leave_enabled = db.Column(db.Boolean, default=True)
     monthly_leave_allowance = db.Column(db.Float, default=0.0)
     leave_carry_forward = db.Column(db.Boolean, default=False)
     absence_deduction_enabled = db.Column(db.Boolean, default=False)
     calculation_method = db.Column(db.String(28), default='salary_minus_deductions')
+    #: What a day with no attendance row at all is worth: 'paid' or
+    #: 'absent'. See salary.UNMARKED_DAYS. Defaults to 'paid', which is what
+    #: the app did before this column existed, so no account's figures move
+    #: until an employer chooses otherwise.
+    unmarked_days = db.Column(db.String(8), default='paid')
 
     created_at = db.Column(db.DateTime, default=now_ist)
     updated_at = db.Column(db.DateTime, default=now_ist, onupdate=now_ist)
     updated_by = db.Column(db.Integer, nullable=True)
 
     worker = db.relationship('Worker', backref='salary_policy_rows')
+
+
+class StatutoryDeduction(db.Model):
+    """A percentage taken off a wage by law — ESI, EPF, a welfare cess.
+
+    There was nothing of the kind in this application, and for an Indian
+    employer that is the first thing an accountant asks for. ESI applies
+    at ten or more employees, EPF at twenty, and both are a percentage of
+    wages with a figure attached that behaves in one of two different
+    ways:
+
+      ceiling_mode 'eligibility'  ESI. Wages up to ₹21,000 a month are
+                                  covered; above that the man is out of
+                                  the scheme and nothing is deducted at
+                                  all.
+      ceiling_mode 'cap'          EPF. 12% of wages, but only of the
+                                  first ₹15,000 — ₹1,800 whatever he
+                                  earns above it.
+
+    Getting those two the same way round is the whole difficulty, and
+    deducting ESI from somebody earning ₹30,000 — or capping it instead of
+    exempting him — is a real amount of somebody's money.
+
+    One row per deduction per account. The rates are not hardcoded
+    anywhere: they change by notification, and an employer who is not
+    registered should be able to turn the whole thing off, which is the
+    default.
+    """
+    __tablename__ = 'statutory_deductions'
+
+    CEILING_MODES = ('eligibility', 'cap', 'none')
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'),
+                           nullable=True, index=True)
+    #: What the payslip calls it: 'ESI', 'EPF', 'Labour welfare fund'.
+    name = db.Column(db.String(40), nullable=False)
+    #: The worker's own share, as a percentage of the wage.
+    percent = db.Column(db.Float, nullable=False, default=0.0)
+    #: The employer's share. Not deducted from the worker — recorded so the
+    #: employer knows the cost and the payslip can be honest about it.
+    employer_percent = db.Column(db.Float, nullable=False, default=0.0)
+    ceiling = db.Column(db.Float, nullable=True)
+    ceiling_mode = db.Column(db.String(12), default='none')
+    enabled = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=now_ist)
+
+    def applies_to(self, wage):
+        """Whether this deduction touches a wage of this size at all."""
+        if not self.enabled or not self.percent:
+            return False
+        if self.ceiling_mode == 'eligibility' and self.ceiling:
+            return float(wage) <= float(self.ceiling) + 0.005
+        return True
+
+    def base_for(self, wage):
+        """The part of the wage the percentage is taken of."""
+        wage = float(wage or 0)
+        if self.ceiling_mode == 'cap' and self.ceiling:
+            return min(wage, float(self.ceiling))
+        return wage
+
+
+class MinimumWage(db.Model):
+    """The floor the law puts under a wage, in the employer's own words.
+
+    Minimum wages in India are notified by the state government, by skill
+    category, and they move twice a year with the variable dearness
+    allowance. Uttarakhand's unskilled daily rate is not a figure this
+    application can know, and it certainly cannot know which category a
+    man at a stone crusher falls into.
+
+    So the figure is the employer's to enter, against the position names
+    he already uses on his own workers, and a blank one checks nothing.
+    The hours a day stands for is his too: eight is the statutory norm,
+    but a crusher that runs a ten-hour shift should be able to say so
+    rather than be measured against somebody else's day.
+
+    One floor per category per account. An empty category is the floor
+    for everybody, and a floor named for his own position beats it.
+    """
+    __tablename__ = 'minimum_wages'
+
+    #: What an hourly rate is multiplied by to reach a day, when the
+    #: employer has not said otherwise. The statutory working day.
+    DEFAULT_HOURS_PER_DAY = 8.0
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'),
+                           nullable=True, index=True)
+    #: Matched against the worker's position, ignoring case and spacing.
+    #: Empty means every worker.
+    category = db.Column(db.String(60), nullable=False, default='')
+    #: Either may be left blank, and a blank one is simply not checked.
+    daily_amount = db.Column(db.Float, nullable=True)
+    monthly_amount = db.Column(db.Float, nullable=True)
+    hours_per_day = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, default=now_ist)
+
+    @staticmethod
+    def normalize_category(text):
+        """'  Senior  Operator ' and 'senior operator' are one category."""
+        return ' '.join((text or '').split()).lower()
+
+    @property
+    def hours(self):
+        return float(self.hours_per_day or self.DEFAULT_HOURS_PER_DAY)
+
+    def floor_for(self, worker):
+        """The floor this man's wage is measured against, and what it is.
+
+        Returns (floor, wage, what the comparison took a day to be), or
+        None when this floor says nothing about a man paid his way.
+        """
+        pay_type = (worker.pay_type or '').strip()
+        if pay_type == 'monthly':
+            if not self.monthly_amount:
+                return None
+            return (float(self.monthly_amount),
+                    float(worker.monthly_salary or 0), None)
+        if not self.daily_amount:
+            return None
+        if pay_type == 'daily':
+            return (float(self.daily_amount),
+                    float(worker.daily_rate or 0), None)
+        if pay_type == 'hourly':
+            return (float(self.daily_amount),
+                    float(worker.hourly_rate or 0) * self.hours, self.hours)
+        # Piece rate. A project figure is not a wage for a day or a month,
+        # so there is nothing here to compare and no warning to give.
+        return None
 
 
 class SalaryPolicyAudit(db.Model):

@@ -10,7 +10,10 @@
         </a>
         <div class="min-w-0">
             <h1 class="text-xl font-bold leading-tight">{{ _('Payroll Preview') }}</h1>
-            <p class="text-sm text-white/90">{{ _(month_name) }} {{ year }} — nothing is saved yet</p>
+            {# One sentence, not a translated month glued to an English tail.
+             Half-translated reads worse than either language: this said
+             "नवंबर 2026 — nothing is saved yet". #}
+            <p class="text-sm text-white/90">{{ _('%(month)s %(year)s — nothing is saved yet') % {'month': _(month_name), 'year': year} }}</p>
         </div>
     </div>
 
@@ -38,8 +41,8 @@
             <span class="text-xl font-bold text-gray-800 amount">{{ totals.total_net|money }}</span>
         </div>
         <div class="flex items-center justify-between mt-1">
-            <span class="text-xs text-gray-500">Gross {{ totals.total_gross|money }}</span>
-            <span class="text-xs text-red-700">Deductions {{ totals.total_deductions|money }}</span>
+            <span class="text-xs text-gray-500">{{ _('Gross') }} {{ totals.total_gross|money }}</span>
+            <span class="text-xs text-red-700">{{ _('Deductions') }} {{ totals.total_deductions|money }}</span>
         </div>
 
         {% if frozen_count %}
@@ -56,7 +59,7 @@
             <button type="submit"
                     class="w-full flex items-center justify-center p-3 bg-accent text-white rounded-2xl font-medium">
                 <i class="fa-solid fa-check mr-2"></i>
-                Generate payroll for {{ _(month_name) }}
+                {{ _('Generate payroll for %(month)s') % {'month': _(month_name)} }}
             </button>
         </form>
     </section>
@@ -122,8 +125,8 @@
             <div class="mt-2 pt-2 border-t border-gray-100 space-y-1">
                 {% for label, value in p.policy_rows %}
                 <div class="flex justify-between text-xs">
-                    <span class="text-gray-500">{{ label }}</span>
-                    <span class="text-gray-600">{{ value }}</span>
+                    <span class="text-gray-500">{{ _(label) }}</span>
+                    <span class="text-gray-600">{{ value|lpolicy }}</span>
                 </div>
                 {% endfor %}
             </div>
@@ -131,7 +134,7 @@
         </details>
         {% else %}
         <div class="mt-2 text-xs text-gray-500">
-            Gross {{ p.gross_pay|money }} · deductions {{ p.deductions|money }}
+            {{ _('Gross') }} {{ p.gross_pay|money }} · {{ _('deductions') }} {{ p.deductions|money }}
         </div>
         {% endif %}
     </section>

@@ -3,7 +3,9 @@ import secrets
 import string
 import hashlib
 import logging
-from flask import Flask, g, request
+from datetime import timedelta
+
+from flask import Flask, g, request, session
 from flask_compress import Compress
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
@@ -301,6 +303,26 @@ def _check_database_driver(url):
 
 _check_database_driver(_db_url)
 
+# The session cookie outlives the app being closed.
+#
+# Flask's session cookie is a BROWSER-SESSION cookie unless it is told
+# otherwise, so it dies when the WebView is killed — which on a phone is
+# every time Android reclaims memory from an app sitting in a pocket. The
+# login survives that, because Flask-Login sets its own remember cookie,
+# but the CSRF token lives in the session. So the man at the gate came
+# back, pressed Save, and got Flask's own "400 Bad Request — The CSRF
+# token is missing", in English, with no way back.
+#
+# Thirty days, which is no wider than the remember cookie already open
+# beside it.
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+
+
+@app.before_request
+def _keep_the_session():
+    session.permanent = True
+
+
 # initialize the app with the extensions
 db.init_app(app)
 csrf.init_app(app)
@@ -330,6 +352,15 @@ SCHEMA_PATCHES = {
         ('assigned_worker_ids', "TEXT"),
         ('can_mark_attendance', "BOOLEAN NOT NULL DEFAULT 0"),
         ('can_record_transactions', "BOOLEAN NOT NULL DEFAULT 0"),
+    ],
+    'salary_policies': [
+        # What a day with no attendance row is worth. 'paid' is what the
+        # engine did before the column existed, so an account that never
+        # opens the setting keeps the figures it already had.
+        ('unmarked_days', "VARCHAR(8) DEFAULT 'paid'"),
+        # Whether the rounding applies to the daily rate or to the month's
+        # total. 'rate' is the old behaviour, for the same reason.
+        ('rounding_stage', "VARCHAR(8) DEFAULT 'rate'"),
     ],
     'closure_days': [
         ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),

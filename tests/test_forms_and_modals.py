@@ -63,8 +63,21 @@ def check(label, got, want):
 
 
 with app.app_context():
-    WID = m.Worker.query.filter_by(pay_type='monthly', status='active').first().id
+    worker = m.Worker.query.filter_by(pay_type='monthly', status='active').first()
+    WID = worker.id
     AWID = m.Worker.query.filter_by(status='active').first().id
+
+    # "Adjust times" only exists on a roster row that HAS a record — on a day
+    # nobody marked there is nothing to adjust, which is right. So the
+    # attendance screen is opened on a day that does have one, instead of on
+    # today and hoping. Picking today made this test pass or fail by the
+    # calendar: green while the demo data happened to reach the current date,
+    # red the morning it stopped.
+    last_marked = (m.AttendanceRecord.query
+                   .filter_by(account_id=worker.account_id)
+                   .order_by(m.AttendanceRecord.date.desc()).first())
+    ADAY = ('/attendance?date=%s' % last_marked.date.isoformat()
+            if last_marked else '/attendance')
 
 # modal id -> the screen it lives on, and the opener: either the marker
 # 'bulkbar' or (function name, arguments). Kept as name-plus-arguments
@@ -73,7 +86,7 @@ with app.app_context():
 MODALS = [
     ('/transactions',               'txn-modal',              ('openTxnModal', [])),
     ('/assignments',                'bulk-assign-picker',     'bulkbar'),
-    ('/attendance',                 'adjust-modal',
+    (ADAY,                          'adjust-modal',
      ('openAdjustModal', [1, 'Test Worker', 'present', '09:00', '18:00', ''])),
     ('/worker/%d' % WID,            'worker-actions-modal',   ('showWorkerActionsModal', [])),
     ('/worker/%d' % WID,            'assign-modal',           ('showAssignModal', [])),

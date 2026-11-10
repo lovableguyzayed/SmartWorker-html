@@ -344,18 +344,34 @@ def _bulk_payroll(action):
         if not rows:
             return _reply([_msg('Those workers have no saved payroll for this month — '
                                 'generate it first.', 'error')], success=False)
+        drawn = 0
         for row in rows:
+            due = round(float(row.net_pay or 0), 2)
+            # A month already drawn as advances has nothing to hand over,
+            # and writing its negative net as money paid would wipe the
+            # debt out of the worker's account. Skipped, and counted, so
+            # selecting the whole month still does the right thing for
+            # everybody else.
+            if action == 'paid' and due < -0.005:
+                drawn += 1
+                continue
             # The money has to move with the status. Setting one without the
             # other leaves a row whose badge says Pending above a figure
             # saying ₹11,500 was paid, and the running account believes the
             # figure.
-            row.paid_amount = (round(float(row.net_pay or 0), 2)
-                               if action == 'paid' else 0.0)
+            row.paid_amount = (max(0.0, due) if action == 'paid' else 0.0)
             row.status = action
             row.finalized_at = now_ist() if action == 'paid' else None
         db.session.commit()
         label = 'paid' if action == 'paid' else 'pending'
-        return _reply([_msg(f'Marked {len(rows)} {_plural(len(rows), "record")} {label}.')])
+        done = len(rows) - drawn
+        messages = [_msg(f'Marked {done} {_plural(done, "record")} {label}.')]
+        if drawn:
+            messages.append(_msg(
+                f'{drawn} {_plural(drawn, "worker")} had already drawn more '
+                f'than the month was worth, so nothing was handed over for '
+                f'them. It stands in their account.', 'warning'))
+        return _reply(messages)
 
     return _reply([_msg('Unknown action.', 'error')], success=False)
 

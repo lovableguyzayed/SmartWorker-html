@@ -127,6 +127,16 @@
                 </button>
             </form>
         </div>
+
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Take a backup') }}</h2>
+            <p class="text-xs text-gray-500 mb-3">{{ _('Your whole wage record as spreadsheets you keep yourself — workers, attendance, payments, payroll. Take one every month and keep it somewhere safe.') }}</p>
+            <p class="text-xs text-gray-500 mb-3">{{ _('It holds your workers\' names, phone numbers and bank details, so look after the file. Passwords and photographs are not in it.') }}</p>
+            <a href="{{ url_for('settings_backup') }}"
+               class="block w-full text-center border border-accent text-accent py-3 rounded-2xl font-semibold">
+                <i class="fa-solid fa-download mr-2"></i>{{ _('Download a backup') }}
+            </a>
+        </div>
     </section>
 
     <!-- ══════════ Sites Section ══════════ -->
@@ -253,10 +263,10 @@
                         <div class="text-xs text-gray-500">
                             {% if project.site %}{{ project.site.name }} • {% endif %}
                             {% if project.start_date %}{{ project.start_date|ldate('%d %b %y') }}{% endif %}
-                            {% if project.deadline %} → deadline {{ project.deadline|ldate('%d %b %y') }}{% endif %}
+                            {% if project.deadline %} → {{ _('deadline') }} {{ project.deadline|ldate('%d %b %y') }}{% endif %}
                         </div>
                         {% if project.deadline and project.delay_days > 0 %}
-                        <div class="text-xs text-red-700 font-medium mt-0.5"><i class="fa-solid fa-clock mr-1"></i>{{ project.delay_days }} day(s) delayed</div>
+                        <div class="text-xs text-red-700 font-medium mt-0.5"><i class="fa-solid fa-clock mr-1"></i>{{ _('%(count)s day(s) delayed') % {'count': project.delay_days} }}</div>
                         {% endif %}
                     </div>
                     <div class="flex items-center space-x-1 ml-2">
@@ -406,20 +416,16 @@
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
             <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Salary Calculation Policy') }}</h2>
             <p class="text-xs text-gray-500 mb-1">
-                How a fixed monthly salary becomes a payable amount. Applies to the
-                {{ monthly_worker_count }} worker(s) on a monthly salary.
+                {{ _('How a fixed monthly salary becomes a payable amount. It applies to the %(count)s worker(s) on a monthly salary.') % {'count': monthly_worker_count} }}
             </p>
             <p class="text-xs text-gray-500 mb-4">
-                Months already marked <b>{{ _('Paid') }}</b> keep the figures they were paid with —
-                changing a rule here never rewrites them.
-                {% if salary_overrides %}{{ salary_overrides }} worker(s) have their own override and ignore these settings.{% endif %}
+                {{ _('A month already marked Paid keeps the figures it was paid with — changing a rule here never rewrites it.') }}
+                {% if salary_overrides %}{{ _('%(count)s worker(s) have their own override and ignore these settings.') % {'count': salary_overrides} }}{% endif %}
             </p>
 
             {% if not salary_policy_saved %}
             <div class="bg-blue-50 border border-blue-100 text-blue-800 text-xs rounded-2xl p-3 mb-4">
-                No company policy saved yet. Each worker is currently calculated from the
-                leave quota and deduction rate already on their own record, exactly as
-                before. Saving here switches everyone to these rules.
+                {{ _('No company policy is saved yet. Each worker is calculated from the leave quota and deduction rate already on his own record, exactly as before. Saving here switches everyone to these rules.') }}
             </div>
             {% endif %}
 
@@ -441,19 +447,30 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Daily salary rounding') }}</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Rounding') }}</label>
                     <select name="rounding" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.rounding.items() %}
-                        <option value="{{ key }}" {{ 'selected' if salary_policy.rounding == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.rounding == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('Applies to every pay type — monthly, daily, hourly and project — and to overtime, deductions and closure bonus.') }}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Round the rate or the month') }}</label>
+                    <select name="rounding_stage" class="w-full p-3 border border-lightGray rounded-xl">
+                        {% for key, label in salary_labels.rounding_stage.items() %}
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.rounding_stage == key }}>{{ _(label) }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('A whole-rupee daily rate rarely multiplies back to the salary: ₹885 × 26 is ₹23,010, not ₹23,000. Rounding the month instead keeps the days adding up.') }}</p>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Mid-month joining') }}</label>
                     <select name="joining_mode" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.joining_mode.items() %}
-                        <option value="{{ key }}" {{ 'selected' if salary_policy.joining_mode == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.joining_mode == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
                     <p class="text-xs text-gray-500 mt-1">{{ _('Days before the joining date are never paid or deducted.') }}</p>
@@ -463,9 +480,19 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Salary calculation method') }}</label>
                     <select name="calculation_method" class="w-full p-3 border border-lightGray rounded-xl">
                         {% for key, label in salary_labels.calculation_method.items() %}
-                        <option value="{{ key }}" {{ 'selected' if salary_policy.calculation_method == key }}>{{ label }}</option>
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.calculation_method == key }}>{{ _(label) }}</option>
                         {% endfor %}
                     </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ _('Days nobody marked') }}</label>
+                    <select name="unmarked_days" class="w-full p-3 border border-lightGray rounded-xl">
+                        {% for key, label in salary_labels.unmarked_days.items() %}
+                        <option value="{{ key }}" {{ 'selected' if salary_policy.unmarked_days == key }}>{{ _(label) }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">{{ _('A day with no attendance entry at all — neither present nor absent. Days still to come, days before joining and days the plant was shut are never counted.') }}</p>
                 </div>
 
                 <div class="border-t border-gray-100 pt-4 space-y-3">
@@ -500,7 +527,172 @@
                 </div>
 
                 <button type="submit" class="w-full bg-accent text-white py-3 rounded-2xl font-semibold">
-                    <i class="fa-solid fa-floppy-disk mr-2"></i>Save Salary Policy
+                    <i class="fa-solid fa-floppy-disk mr-2"></i>{{ _('Save Salary Policy') }}
+                </button>
+            </form>
+        </div>
+
+        {# ESI, EPF, a welfare cess. Off until somebody turns them on: an
+           employer who is not registered must not have money taken off his
+           men's wages because an app assumed he was. #}
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Statutory deductions') }}</h2>
+            <p class="text-xs text-gray-500 mb-3">{{ _('ESI, PF or a welfare fund. Nothing is deducted until you add a rule and switch it on.') }}</p>
+
+            {% for d in statutory_deductions %}
+            <form method="POST" action="{{ url_for('settings_statutory_save') }}"
+                  class="border border-gray-100 rounded-2xl p-3 mb-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" value="{{ d.id }}">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Name on the payslip') }}</label>
+                        <input type="text" name="name" value="{{ d.name }}" maxlength="40" required
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _("Worker's share %") }}</label>
+                        <input type="number" name="percent" value="{{ d.percent }}" step="0.01" min="0" max="100"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _("Employer's share %") }}</label>
+                        <input type="number" name="employer_percent" value="{{ d.employer_percent }}" step="0.01" min="0" max="100"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Wage figure (₹)') }}</label>
+                        <input type="number" name="ceiling" value="{{ (d.ceiling if d.ceiling is not none else '') or '' }}" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('What that figure means') }}</label>
+                        <select name="ceiling_mode" class="w-full p-3 border border-lightGray rounded-xl">
+                            <option value="none" {{ 'selected' if d.ceiling_mode == 'none' }}>{{ _('No limit') }}</option>
+                            <option value="eligibility" {{ 'selected' if d.ceiling_mode == 'eligibility' }}>{{ _('Above it, nothing is deducted (ESI)') }}</option>
+                            <option value="cap" {{ 'selected' if d.ceiling_mode == 'cap' }}>{{ _('Take the % of this much only (PF)') }}</option>
+                        </select>
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 mt-3 text-sm text-gray-700">
+                    <input type="checkbox" name="enabled" {{ 'checked' if d.enabled }} class="w-5 h-5">
+                    {{ _('Deduct this from pay') }}
+                </label>
+                <div class="flex gap-2 mt-3">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-2xl font-semibold">{{ _('Save') }}</button>
+                    <button type="submit" name="delete" value="1"
+                            class="px-4 py-3 rounded-2xl font-semibold text-red-700 border border-red-200">{{ _('Remove') }}</button>
+                </div>
+            </form>
+            {% endfor %}
+
+            <form method="POST" action="{{ url_for('settings_statutory_save') }}"
+                  class="border border-dashed border-gray-200 rounded-2xl p-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Add a deduction') }}</label>
+                        <input type="text" name="name" placeholder="ESI" maxlength="40"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _("Worker's share %") }}</label>
+                        <input type="number" name="percent" step="0.01" min="0" max="100" placeholder="0.75"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _("Employer's share %") }}</label>
+                        <input type="number" name="employer_percent" step="0.01" min="0" max="100" placeholder="3.25"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Wage figure (₹)') }}</label>
+                        <input type="number" name="ceiling" step="1" min="0" placeholder="21000"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('What that figure means') }}</label>
+                        <select name="ceiling_mode" class="w-full p-3 border border-lightGray rounded-xl">
+                            <option value="none">{{ _('No limit') }}</option>
+                            <option value="eligibility">{{ _('Above it, nothing is deducted (ESI)') }}</option>
+                            <option value="cap">{{ _('Take the % of this much only (PF)') }}</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="w-full mt-3 border border-accent text-accent py-3 rounded-2xl font-semibold">
+                    <i class="fa-solid fa-plus mr-2"></i>{{ _('Add a deduction') }}
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-3xl p-4 shadow-card mb-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ _('Minimum wage') }}</h2>
+            <p class="text-xs text-gray-500 mb-3">{{ _('Your state notifies these, by category, and they change. Enter your own figures. A wage below the floor is flagged when you save a worker — never refused.') }}</p>
+
+            {% for w in minimum_wages %}
+            <form method="POST" action="{{ url_for('settings_minimum_wage_save') }}"
+                  class="border border-gray-100 rounded-2xl p-3 mb-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="category" value="{{ w.category or '' }}">
+                <p class="text-sm font-semibold text-gray-800 mb-2">
+                    {{ w.category or _('Every worker') }}
+                </p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Per day (₹)') }}</label>
+                        <input type="number" name="daily_amount" value="{{ (w.daily_amount if w.daily_amount is not none else '') or '' }}" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Per month (₹)') }}</label>
+                        <input type="number" name="monthly_amount" value="{{ (w.monthly_amount if w.monthly_amount is not none else '') or '' }}" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Hours in your working day') }}</label>
+                        <input type="number" name="hours_per_day" value="{{ (w.hours_per_day if w.hours_per_day is not none else '') or '' }}" step="0.5" min="1" max="24"
+                               placeholder="{{ default_wage_hours }}"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                        <p class="text-xs text-gray-500 mt-1">{{ _('Only used to judge an hourly rate against the daily floor.') }}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-2xl font-semibold">{{ _('Save') }}</button>
+                    <button type="submit" name="delete" value="1"
+                            class="px-4 py-3 rounded-2xl font-semibold text-red-700 border border-red-200">{{ _('Remove') }}</button>
+                </div>
+            </form>
+            {% endfor %}
+
+            <form method="POST" action="{{ url_for('settings_minimum_wage_save') }}"
+                  class="border border-dashed border-gray-200 rounded-2xl p-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="min-wage-category">{{ _('Which workers') }}</label>
+                        <input type="text" name="category" id="min-wage-category" maxlength="60" list="min-wage-positions"
+                               placeholder="{{ _('Leave blank for every worker') }}"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                        <datalist id="min-wage-positions">
+                            {% for position in known_positions %}
+                            <option value="{{ position }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        <p class="text-xs text-gray-500 mt-1">{{ _('A designation you already use, such as Helper or Operator. A floor set for his designation is used instead of the one for every worker.') }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Per day (₹)') }}</label>
+                        <input type="number" name="daily_amount" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ _('Per month (₹)') }}</label>
+                        <input type="number" name="monthly_amount" step="1" min="0"
+                               class="w-full p-3 border border-lightGray rounded-xl">
+                    </div>
+                </div>
+                <button type="submit" class="w-full mt-3 border border-accent text-accent py-3 rounded-2xl font-semibold">
+                    <i class="fa-solid fa-plus mr-2"></i>{{ _('Set a minimum wage') }}
                 </button>
             </form>
         </div>
@@ -512,11 +704,18 @@
             <div class="space-y-2">
                 {% for a in policy_audit %}
                 <div class="text-xs text-gray-600 border-b border-gray-50 pb-2 last:border-0">
-                    <b>{{ a.field.replace('_', ' ') }}</b>
-                    {{ a.old_value }} &rarr; <b>{{ a.new_value }}</b>
+                    {# The column name with its underscores removed, and
+                       str(value) straight out of the table, is the
+                       database talking: "absence deduction False -> True",
+                       "0.0 -> 2.0", and "None" where nothing was set
+                       before. In words now, and in Hindi on a Hindi
+                       screen. #}
+                    <b>{{ a.field|lfield }}</b>
+                    {{ a.old_value|lvalue(a.field) }} &rarr;
+                    <b>{{ a.new_value|lvalue(a.field) }}</b>
                     <span class="text-gray-500">
                         · {{ a.created_at|ldate('%d %b %Y, %I:%M %p') if a.created_at }}
-                        {% if a.worker_id %}· worker override{% else %}· company-wide{% endif %}
+                        {% if a.worker_id %}· {{ _('worker override') }}{% else %}· {{ _('company-wide') }}{% endif %}
                     </span>
                 </div>
                 {% endfor %}
@@ -576,10 +775,14 @@
                             <span class="text-xs px-2 py-0.5 rounded-full ml-1 {{ 'bg-green-100 text-green-700' if (auser.status or 'active') == 'active' else 'bg-red-100 text-red-700' }}">
                                 {{ _((auser.status or 'active')|capitalize) }}</span>
                         </div>
+                        {# A login with no number showed the word "None" beside
+                           a telephone icon. No number means no line. #}
+                        {% if auser.phone %}
                         <div class="text-xs text-gray-500"><i class="fa-solid fa-mobile-screen mr-1"></i>{{ auser.phone }}</div>
+                        {% endif %}
                         <div class="text-xs text-gray-500">
-                            Sites: {{ auser.site_id_list|length if auser.site_id_list else 'All' }} •
-                            Projects: {{ auser.project_id_list|length if auser.project_id_list else 'All' }}
+                            {{ _('Sites') }}: {{ auser.site_id_list|length if auser.site_id_list else _('All') }} •
+                            {{ _('Projects') }}: {{ auser.project_id_list|length if auser.project_id_list else _('All') }}
                         </div>
                     </div>
                     <div class="flex items-center space-x-1 ml-2">
