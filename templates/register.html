@@ -95,7 +95,7 @@
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fa-solid fa-mobile-alt text-gray-500"></i>
                         </div>
-                        <input id="mobile" name="mobile" type="tel" required placeholder="{{ _('Enter mobile number') }}" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                        <input id="mobile" name="mobile" type="tel" inputmode="tel" autocomplete="tel-national" required placeholder="{{ _('Enter mobile number') }}" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <button id="send-otp-btn" type="button" class="bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition-all border border-gray-200">
@@ -109,7 +109,7 @@
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fa-solid fa-shield-halved text-gray-500"></i>
                         </div>
-                        <input id="mobile_otp" name="mobile_otp" type="text" maxlength="6" placeholder="{{ _('Enter 6-digit OTP') }}" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
+                        <input id="mobile_otp" name="mobile_otp" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" placeholder="{{ _('Enter 6-digit OTP') }}" class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all">
                     </div>
                     <div id="otp-status" class="text-xs font-medium text-gray-500">{{ _('Mobile number verification is required before signup.') }}</div>
                 </div>
