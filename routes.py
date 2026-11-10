@@ -1293,11 +1293,16 @@ def reset_password_submit():
         return jsonify({'success': False, 'message': result.get('error') or 'Could not reset password. The link may have expired.'}), 400
     return jsonify({'success': True, 'message': 'Password updated. You can now log in.'})
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
+    # Signing out is a POST with the CSRF token. As a plain link, any other
+    # site could sign a user out with an <img src=".../logout">. A GET (an
+    # old bookmark, a stale page) just goes home instead.
+    if request.method != 'POST':
+        return redirect(home_for(current_user))
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('login'), code=303)
 
 # Main Routes
 @app.route('/')

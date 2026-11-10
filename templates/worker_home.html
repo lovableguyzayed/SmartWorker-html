@@ -104,10 +104,13 @@
     </a>
     {% endif %}
 
-    <a href="{{ url_for('logout') }}"
-       class="tap-target w-full flex items-center justify-center p-4 rounded-2xl border-2 border-gray-200 text-gray-600 font-medium">
-        {{ _('Sign Out') }}
-    </a>
+    <form method="POST" action="{{ url_for('logout') }}" data-native>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit"
+           class="tap-target w-full flex items-center justify-center p-4 rounded-2xl border-2 border-gray-200 text-gray-600 font-medium">
+            {{ _('Sign Out') }}
+        </button>
+    </form>
 
     <p class="text-xs text-gray-500 text-center leading-relaxed">
         {{ _('Something wrong with your attendance or pay? Speak to your supervisor — this screen is read-only.') }}

@@ -159,6 +159,15 @@ with app.test_client() as c:
     r = c.post('/login', data={'username': '+91 98765 43210', 'password': 'owner-pass-1'})
     check('signing in with the number typed with +91 works', r.status_code, 303)
 
+print('--- signing out ---')
+authguard.reset_for_tests()
+with app.test_client() as c:
+    c.post('/login', data={'username': 'owner', 'password': 'owner-pass-1'})
+    check('a plain link to /logout does not sign out',
+          (c.get('/logout').status_code, c.get('/dashboard').status_code), (302, 200))
+    check('pressing Sign out (a POST) does', c.post('/logout').status_code, 303)
+    check('and the dashboard is closed after it', c.get('/dashboard').status_code, 302)
+
 os.unlink(_db.name)
 print()
 if failures:
