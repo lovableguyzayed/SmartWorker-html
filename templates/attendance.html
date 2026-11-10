@@ -153,11 +153,13 @@
 /* Five counts share one row until the text is too big for that, then they
    wrap to two rows; they used to push the screen 115px wide instead. */
 .dv-count {
-    flex: 1 1 3rem; min-width: 0; text-align: center; padding: 0.4rem 0.15rem;
+    /* No min-width: 0 - a count is never narrower than its own label, so
+       "PRESENT" stays one word and the row wraps when five do not fit. */
+    flex: 1 1 3rem; text-align: center; padding: 0.4rem 0.15rem;
     border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
 }
 .dv-count b { display: block; font-size: 0.95rem; font-variant-numeric: tabular-nums; color: #111827; }
-.dv-count span { overflow-wrap: anywhere; font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+.dv-count span { overflow-wrap: break-word; font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
 
 .dv-section-label {
     font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
