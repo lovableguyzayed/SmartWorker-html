@@ -760,7 +760,7 @@ def is_valid_mobile_number(value):
 
 def user_by_mobile(mobile):
     """The login holding this number, however an older row stored it."""
-    forms = authguard.stored_forms(mobile)
+    forms = authguard.stored_forms(normalize_mobile_number(mobile))
     if not forms:
         return None
     user = User.query.filter(User.phone.in_(forms)).first()

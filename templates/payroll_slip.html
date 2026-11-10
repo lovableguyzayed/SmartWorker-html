@@ -1012,6 +1012,5 @@ function sharePayslip(el) {
     var done = function () { if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); } };
     buildPayslipPdf(go).then(done, done);
 }
-}
 </script>
 {% endblock %}

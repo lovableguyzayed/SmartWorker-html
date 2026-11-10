@@ -42,7 +42,7 @@ def check(label, got, want):
 
 
 sent = []
-routes._deliver_otp = lambda purpose, mobile, code: sent.append(code)
+routes._deliver_otp = lambda purpose, mobile, code: sent.append(code) or True
 
 
 def cookie_payload(client):

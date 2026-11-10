@@ -146,10 +146,11 @@ def indian_mobile(value):
     '98765 43210' are all '9876543210'. Anything that is not a valid Indian
     mobile comes back as ''."""
     digits = ''.join(ch for ch in (value or '') if ch.isdigit())
-    if len(digits) == 12 and digits.startswith('91'):
-        digits = digits[2:]
-    elif len(digits) == 11 and digits.startswith('0'):
-        digits = digits[1:]
+    # 0091..., 091..., 91..., 0...: all prefixes on a ten-digit number.
+    for prefix in ('0091', '091', '91', '0'):
+        if len(digits) == 10 + len(prefix) and digits.startswith(prefix):
+            digits = digits[len(prefix):]
+            break
     return digits if _INDIAN_MOBILE.match(digits) else ''
 
 

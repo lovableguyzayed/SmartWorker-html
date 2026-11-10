@@ -64,7 +64,8 @@ with app.test_client() as c:
     name = re.search(r'var PAYSLIP_PDF_NAME = "([^"]+)"', slip)
     check('the payslip file name carries the worker ID',
           bool(name and code in name.group(1)), True)
-    check('the PDF has a title', 'pdf.setProperties(PAYSLIP_PDF_META)' in slip, True)
+    check('the PDF has a title', 'properties: PAYSLIP_PDF_META' in slip
+          and 'setProperties(opts.properties)' in read('static', 'js', 'pdfpage.js'), True)
 
     print('--- ID card ---')
     card = c.get('/id_card/%d' % wid).get_data(as_text=True)

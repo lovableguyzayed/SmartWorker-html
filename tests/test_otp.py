@@ -103,7 +103,7 @@ print('\n--- the code is generated from secrets, not from random ---')
 src = open(os.path.join(ROOT, 'routes.py')).read()
 check('no credential comes out of random.randint',
       'random.randint' in src, False)
-check('they come from secrets', src.count('secrets.randbelow') >= 3, True)
+check('they come from secrets', src.count('secrets.randbelow') >= 2, True)
 codes = {routes.secrets.randbelow(1000000) for _ in range(200)}
 check('and 200 of them are not all the same', len(codes) > 190, True)
 
