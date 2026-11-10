@@ -124,37 +124,42 @@
             }
         }
 
+        /* Five equal tabs (docs/audit/mockups, batch 2). There used to be six,
+           35px each - under the 44px a thumb needs - and at the largest text
+           size their labels came out as "H...", "Wo...". Profile left the bar:
+           it is already the round button at the top right of Home. The frame
+           has no fixed height, so a bigger font makes the bar taller instead
+           of cutting its labels off. */
         .app-bottom-nav-frame {
             position: relative;
-            overflow: hidden;
-            height: 5.1rem;
+            min-height: 4.6rem;
             border-radius: 1.75rem;
             border: 1px solid rgba(148, 163, 184, 0.24);
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.95) 100%);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.96) 100%);
             box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.08), 0 12px 28px rgba(15, 23, 42, 0.12);
             backdrop-filter: blur(16px);
         }
 
         .app-nav-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 100%;
-            padding: 0.45rem 0.5rem 0.35rem;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            align-items: end;
+            min-height: 4.6rem;
+            padding: 0.4rem 0.25rem 0.45rem;
         }
 
         .app-nav-item {
-            /* Size to the label, not to an equal share. Six equal slots gave
-               every label 53px, which ellipsed "Attendance" (56px) and
-               "Transactions" (63px) into "Attenda…" and "Transact…". Letting
-               each take what it needs totals ~338px, inside the row, and the
-               shrink factor keeps the bar intact on narrower phones. */
-            flex: 0 1 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.15rem;
             min-width: 0;
+            min-height: 3.5rem;
             text-align: center;
             border-radius: 0.95rem;
-            padding: 0.35rem 0.1rem;
-            color: #6b7280;
+            padding: 0.2rem 0.1rem;
+            color: #64748b;
         }
 
         .app-nav-item:hover {
@@ -162,13 +167,13 @@
         }
 
         .app-nav-icon-wrap {
-            width: 2rem;
+            width: 2.75rem;
             height: 2rem;
-            margin: 0 auto 0.2rem;
             border-radius: 0.75rem;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         .app-nav-item-active {
@@ -176,67 +181,45 @@
         }
 
         .app-nav-item-active .app-nav-icon-wrap {
-            background: linear-gradient(180deg, rgba(0, 123, 255, 0.16) 0%, rgba(0, 123, 255, 0.08) 100%);
-            box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.12);
+            background: #dbeafe;
         }
 
+        /* Labels wrap (and hyphenate) rather than ellipsing: "Attend-ance"
+           on two lines is readable, "Atten..." is not. */
+        /* Grows with the phone's font setting up to the width a fifth of the
+           bar can hold (13px on a 360px phone), so labels never run into
+           each other; the icons above them carry the rest. */
         .app-nav-label {
-            font-size: 0.62rem;
-            line-height: 1;
-            letter-spacing: 0.01em;
+            font-size: min(0.6875rem, 3.6vw);
+            line-height: 1.15;
             font-weight: 600;
-            /* a label that cannot fit its slot ellipses rather than wrapping
-               and making the bar taller than the frame */
-            display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            max-width: 100%;
+            /* Whole words only: "Attendanc / e" is worse than a label that
+               runs a few pixels into its neighbour's padding. "Attendance"
+               carries a soft hyphen, so at large text it becomes Attend-ance. */
+            overflow-wrap: normal;
+            hyphens: manual;
         }
 
-        /* The scanner keeps the centre of the bar, but it no longer wears the
-           filled navy on every screen. It used to, which meant that on the
-           dashboard the Home tab was lit AND the scanner looked filled in —
-           two things both saying "you are here". Tinted when it is not the
-           current screen, filled when it is. #0062cc on #e5f2ff reads
-           5.1:1. */
+        /* Scan sits in the centre, where the thumb rests, raised above the
+           bar the way the approved preview shows it. */
         .app-nav-fab {
-            flex: 0 0 3.7rem;
-            width: 3.7rem;
-            height: 4rem;
-            border-radius: 1rem;
-            /* Neutral, not tinted. The active tab's chip is a blue tint, so a
-               tinted scanner would be the same signal again in a different
-               size. Grey keeps it prominent by shape alone and leaves blue
-               meaning one thing: this is where you are. #4b5563 on #f3f4f6
-               reads 7.2:1. */
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            color: #4b5563;
-            box-shadow: 0 2px 6px rgba(0, 31, 63, 0.08);
+            color: #001f3f;
         }
 
-        .app-nav-fab i {
-            filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
-        }
-
-        .app-nav-fab::after {
-            content: "";
-            position: absolute;
-            inset: 4px;
-            border-radius: 0.8rem;
-            border: 1px solid rgba(255, 255, 255, 0.24);
-            pointer-events: none;
-        }
-
-        .app-nav-fab:hover {
-            transform: translateY(-1px);
-        }
-
-        .app-nav-fab-active {
-            background: linear-gradient(145deg, #001f3f 0%, #0062cc 100%);
-            border-color: rgba(255, 255, 255, 0.9);
+        .app-nav-fab .app-nav-icon-wrap {
+            width: 3.4rem;
+            height: 3.4rem;
+            margin-top: -1.4rem;
+            border-radius: 1.1rem;
+            background: linear-gradient(135deg, #001f3f, #007bff);
             color: #ffffff;
-            box-shadow: 0 10px 20px rgba(0, 31, 63, 0.28);
+            box-shadow: 0 8px 18px rgba(0, 123, 255, 0.3);
+            border: 3px solid #ffffff;
+        }
+
+        .app-nav-fab-active .app-nav-icon-wrap {
+            box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.25), 0 8px 18px rgba(0, 123, 255, 0.3);
         }
         
         ::-webkit-scrollbar {
@@ -307,13 +290,15 @@
     #}
     {% if current_user.is_authenticated and request.endpoint in main_screens
           and not current_user.is_worker %}
-    {# Six tabs for a dozen screens, so every screen lights the section it
+    {# Five tabs for a dozen screens, so every screen lights the section it
        belongs to rather than leaving the bar blank. Payroll has a tab of its
        own now: it is the money screen, it was reachable only through a banner
        on the dashboard, and while you were on it the bar told you that you
        were on Transactions. Transactions sits under it, which is where it
        belongs — both are money, and payroll is the one opened every day. #}
-    {% set home_active = request.endpoint == 'dashboard' %}
+    {# Admins reach Profile, Settings and Notifications from Home's header,
+       so Home is the tab those screens light. Staff keep a Profile tab. #}
+    {% set home_active = request.endpoint == 'dashboard' or (current_user.is_admin and request.endpoint in ['profile', 'settings', 'notifications']) %}
         {% set workers_active = request.endpoint in ['workers', 'add_worker', 'worker_profile', 'edit_worker', 'worker_report', 'id_card', 'assignments', 'worker_login_powers'] %}
         {% set attendance_active = request.endpoint in ['attendance', 'worker_attendance', 'closures'] %}
         {% set payroll_active = request.endpoint in ['payroll', 'payroll_slip', 'payroll_preview', 'transactions'] %}
@@ -333,38 +318,40 @@
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-users text-xl"></i></span>
                         <span class="app-nav-label">{{ _('Workers') }}</span>
                     </a>
-                    {% endif %}
-
-                    {# Attendance is the screen this app exists for, and it had
-                       no button at all — the highlight for it was being
-                       computed and then never used anywhere. #}
+                    {% else %}
                     <a href="{{ url_for('attendance') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if attendance_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
-                        <span class="app-nav-label">{{ _('Attendance') }}</span>
+                        <span class="app-nav-label">{{ _('Attendance')|replace('Attendance', 'Attend\u00adance') }}</span>
                     </a>
+                    {% endif %}
 
-                    <!-- Center button: QR Scanner (scan-to-attend is the primary action) -->
-                    <a href="{{ url_for('scan') }}" class="app-nav-item app-nav-fab flex flex-col items-center justify-center transition-all {{ 'app-nav-fab-active' if scan_active else '' }}">
+                    {# Scan-to-attend is the primary action: the centre slot. #}
+                    <a href="{{ url_for('scan') }}" class="app-nav-item app-nav-fab transition-all {{ 'app-nav-fab-active app-nav-item-active' if scan_active else '' }}" aria-label="{{ _('Scan QR') }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-qrcode text-2xl"></i></span>
-                        <span class="app-nav-label">{{ _('Scan QR') }}</span>
+                        <span class="app-nav-label">{{ _('Scan') }}</span>
                     </a>
 
                     {% if current_user.is_admin %}
+                    <a href="{{ url_for('attendance') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if attendance_active else '' }}">
+                        <span class="app-nav-icon-wrap"><i class="fa-solid fa-calendar-check text-xl"></i></span>
+                        <span class="app-nav-label">{{ _('Attendance')|replace('Attendance', 'Attend\u00adance') }}</span>
+                    </a>
                     <a href="{{ url_for('payroll') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if payroll_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-money-bill-wave text-xl"></i></span>
                         <span class="app-nav-label">{{ _('Payroll') }}</span>
                     </a>
                     {% else %}
+                    {# Staff have no Workers or Payroll, so they keep ID entry and
+                       Profile - still five. #}
                     <a href="{{ url_for('scan') }}?manual=1" class="app-nav-item transition-colors">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-keyboard text-xl"></i></span>
                         <span class="app-nav-label">{{ _('ID Entry') }}</span>
                     </a>
-                    {% endif %}
-
                     <a href="{{ url_for('profile') }}" class="app-nav-item transition-colors {{ 'app-nav-item-active' if profile_active else '' }}">
                         <span class="app-nav-icon-wrap"><i class="fa-solid fa-user text-xl"></i></span>
                         <span class="app-nav-label">{{ _('Profile') }}</span>
                     </a>
+                    {% endif %}
                 </div>
             </div>
         </nav>

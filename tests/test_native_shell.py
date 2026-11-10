@@ -84,8 +84,8 @@ try:
         pg.wait_for_timeout(1200)
         check('on the dashboard', lit(), ['/dashboard'])
         pg.evaluate("() => { document.querySelector('nav').__kept = true; }")
-        for path in ['/workers', '/attendance', '/payroll', '/profile']:
-            pg.click('a[href="%s"]' % path)
+        for path in ['/workers', '/attendance', '/payroll', '/dashboard']:
+            pg.click('nav a[href="%s"]' % path)
             pg.wait_for_timeout(1100)
             check('after going to %s' % path, lit(), [path])
         check('and it was the same bar throughout', pg.evaluate(

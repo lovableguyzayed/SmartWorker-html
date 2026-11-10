@@ -73,6 +73,10 @@ TRANSLATIONS = {
         'optional — for password reset': 'ज़रूरी नहीं — पासवर्ड भूलने पर काम आता है',
         'optional — for reports': 'ज़रूरी नहीं — रिपोर्ट के लिए',
         'or': 'या',
+        'Scan': 'स्कैन',
+        'tap to change': 'बदलने के लिए दबाएँ',
+        'Search name or ID': 'नाम या आईडी खोजें',
+        'Attendance locked': 'हाज़िरी बंद है',
         'verified': 'सत्यापित',
         # --- navigation and chrome ---------------------------------------
         'Home': 'होम',

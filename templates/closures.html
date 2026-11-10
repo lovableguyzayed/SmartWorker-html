@@ -114,7 +114,7 @@
                 <div class="flex-1">
                     <div class="flex items-center space-x-2 mb-1">
                         <div class="text-sm font-semibold {{ 'text-red-800' if not closure.allow_attendance else 'text-green-800' }}">
-                            {{ closure.date|ldate('%b %d, %Y') }}
+                            {{ closure.date|ldate('%d %b %Y') }}
                         </div>
                         <span class="text-xs px-2 py-1 rounded-full {{ 'bg-red-100 text-red-700' if not closure.allow_attendance else 'bg-green-100 text-green-700' }}">
                             {{ _(closure.type|capitalize) }}

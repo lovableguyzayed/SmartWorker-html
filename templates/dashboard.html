@@ -117,7 +117,7 @@
     <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
         <div class="text-center">
             <div class="text-2xl font-bold mb-1">{{ _('Welcome back') }}{% if current_user.is_authenticated %}, {{ current_user.full_name.split()[0] }}{% endif %}!</div>
-            <div class="text-sm opacity-90" id="current-date">{{ today|ldate('%A, %B %d, %Y') }}</div>
+            <div class="text-sm opacity-90" id="current-date">{{ today|dayline }}</div>
         </div>
     </div>
 </header>
@@ -316,7 +316,7 @@
                     </div>
                     <div>
                         <div class="font-medium text-gray-800">{{ closure.reason }}</div>
-                        <div class="text-sm text-gray-600">{{ closure.date|ldate('%B %d, %Y') }}</div>
+                        <div class="text-sm text-gray-600">{{ closure.date|ldate('%d %b %Y') }}</div>
                         <div class="text-xs {{ 'text-green-700' if closure.allow_attendance else 'text-red-700' }}">
                             {{ 'Attendance allowed if present' if closure.allow_attendance else 'Attendance locked for this date' }}
                         </div>

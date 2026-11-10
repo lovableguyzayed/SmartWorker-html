@@ -35,7 +35,7 @@ const SmartWorker = {
                 time: { hour: '2-digit', minute: '2-digit' }
             };
             
-            return new Date(date).toLocaleDateString('en-US', options[format]);
+            return new Date(date).toLocaleDateString('en-IN', options[format]);
         },
         
         // Format currency

@@ -6526,6 +6526,19 @@ def _ldate(value, fmt='%d %b %Y'):
     return i18n.format_date(value, fmt, _current_lang())
 
 
+@app.template_filter('dayline')
+def _dayline(value):
+    """A date as headers show it: "Tue, 10 Nov 2026" / "मंगल, 10 नवंबर 2026".
+
+    Day first, the Indian order. It used to read "Tuesday, November 10,
+    2026", the American one. Hindi keeps the whole month name: the short
+    Hindi forms ("नव") are not how anyone writes a date.
+    """
+    lang = _current_lang()
+    fmt = '%a, %d %b %Y' if lang == i18n.DEFAULT_LANGUAGE else '%a, %d %B %Y'
+    return i18n.format_date(value, fmt, lang).replace(' 0', ' ', 1)
+
+
 # One way to write a rupee, everywhere. See money.py for why there were four.
 app.add_template_filter(money.money, 'money')
 app.add_template_filter(money.money0, 'money0')
