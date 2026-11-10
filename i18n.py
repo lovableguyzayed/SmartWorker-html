@@ -74,6 +74,8 @@ TRANSLATIONS = {
         'optional — for reports': 'ज़रूरी नहीं — रिपोर्ट के लिए',
         'or': 'या',
         'Scan': 'स्कैन',
+        'Payslip actions': 'तनख़्वाह पर्ची के काम',
+        'Payslip ready. Tap Share again to send it.': 'पर्ची तैयार है। भेजने के लिए फिर से Share दबाएँ।',
         'tap to change': 'बदलने के लिए दबाएँ',
         'Search name or ID': 'नाम या आईडी खोजें',
         'Attendance locked': 'हाज़िरी बंद है',

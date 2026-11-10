@@ -88,6 +88,22 @@ plugin = open(os.path.join(ROOT, 'cordova-plugins', 'smartworker-remote-bridge',
 check('the plugin loads at start-up (else it is never asked)',
       '<param name="onload" value="true" />' in plugin, True)
 
+print('--- sharing a payslip ---')
+slip = open(os.path.join(ROOT, 'templates', 'payroll_slip.html')).read()
+check('the payslip offers Share, PDF and Print in one bar',
+      all('data-act="%s"' % act in slip for act in ('sharePayslip', 'downloadPDF', 'printSlip')), True)
+check('Share comes first in that bar',
+      slip.index('data-act="sharePayslip"') < slip.index('data-act="downloadPDF"', slip.index('slip-actions')), True)
+check('the WhatsApp mark is drawn inline, not from the 105 KB brands font',
+      "_icon_whatsapp.svg" in slip and 'fa-brands' not in slip, True)
+check('the plugin can share a file', 'Intent.ACTION_SEND' in java, True)
+check('but only a file inside the app\'s own storage',
+      'insideAppStorage' in java and 'getExternalFilesDir' in java, True)
+saver = open(os.path.join(ROOT, 'static', 'js', 'filesave.js')).read()
+check('native code is handed the file:// path, not the WebView address',
+      'entry.nativeURL || entry.toURL()' in saver, True)
+check('WhatsApp links may leave the app', '<allow-intent href="https://wa.me/*" />' in config, True)
+
 os.unlink(_db.name)
 print()
 if failures:

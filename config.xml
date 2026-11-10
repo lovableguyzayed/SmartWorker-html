@@ -99,6 +99,9 @@
     <allow-navigation href="http://localhost/*" />
     <allow-navigation href="http://127.0.0.1/*" />
     <allow-intent href="tel:*" />
+    <!-- Sharing a payslip to WhatsApp as text, where a file cannot be shared. -->
+    <allow-intent href="https://wa.me/*" />
+    <allow-intent href="whatsapp:*" />
     <allow-intent href="mailto:*" />
 
     <!-- cordova-plugin-whitelist removed: deprecated and built into cordova-android 10+ -->

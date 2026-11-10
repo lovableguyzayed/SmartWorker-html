@@ -45,18 +45,23 @@
         return Promise.resolve({ via: 'browser', name: filename });
     }
 
-    function cordovaSave(blob, filename, mime) {
+    function cordovaSave(blob, filename, mime, openAfter) {
         return new Promise(function (resolve, reject) {
             window.resolveLocalFileSystemURL(targetDir(), function (dir) {
                 dir.getFile(filename, { create: true, exclusive: false }, function (entry) {
                     entry.createWriter(function (writer) {
                         writer.onwriteend = function () {
-                            var path = entry.toURL();
+                            // nativeURL is the file:// path Android code
+                            // understands. toURL() is the WebView's own
+                            // https://localhost/__cdvfile... address, which
+                            // neither the file opener nor the share sheet
+                            // can resolve.
+                            var path = entry.nativeURL || entry.toURL();
                             // Offer to open it. If nothing on the device can
                             // handle the type the file is still saved, so a
                             // failure here is not a failure to export.
                             var opener = window.cordova.plugins && window.cordova.plugins.fileOpener2;
-                            if (opener) {
+                            if (opener && openAfter !== false) {
                                 opener.open(path, mime, {
                                     error: function () { resolve({ via: 'cordova', name: filename, path: path, opened: false }); },
                                     success: function () { resolve({ via: 'cordova', name: filename, path: path, opened: true }); }
@@ -70,6 +75,15 @@
                     }, reject);
                 }, reject);
             }, reject);
+        });
+    }
+
+    /* The phone's own share sheet, from inside the app: the remote-bridge
+     * plugin hands the saved file to Android's ACTION_SEND. */
+    function nativeShare(path, mime, text) {
+        return new Promise(function (resolve, reject) {
+            window.cordova.exec(function () { resolve({ via: 'share' }); }, reject,
+                                'RemoteBridge', 'share', [path, mime, text || '']);
         });
     }
 
@@ -108,6 +122,38 @@
                         return SmartWorkerSave.blob(b, name, res.headers.get('Content-Type'));
                     });
                 });
+        },
+
+        /* Share a file, the best way this device allows:
+         *   phone browser -> the browser's share sheet, with the file
+         *   the Android app -> saved, then Android's share sheet
+         *   anything else -> the file is downloaded and WhatsApp opens with
+         *                    the text, so it can be attached there.
+         * Resolves {via: 'share' | 'cancelled' | 'whatsapp-text'}. Rejects
+         * with err.name === 'NotAllowedError' when the browser wants a fresh
+         * tap first (the PDF took too long to build); call again with the
+         * same blob and it goes straight through. */
+        share: function (blob, filename, mime, text) {
+            mime = mime || blob.type || 'application/octet-stream';
+            var file = null;
+            try { file = new File([blob], filename, { type: mime }); } catch (e) { /* old WebView */ }
+            if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                return navigator.share({ files: [file], text: text }).then(
+                    function () { return { via: 'share' }; },
+                    function (err) {
+                        if (err && err.name === 'AbortError') return { via: 'cancelled' };
+                        throw err;
+                    });
+            }
+            if (inCordova() && window.resolveLocalFileSystemURL && window.cordova.exec) {
+                return cordovaSave(blob, filename, mime, false).then(function (saved) {
+                    return nativeShare(saved.path, mime, text);
+                });
+            }
+            return browserDownload(blob, filename).then(function () {
+                window.open('https://wa.me/?text=' + encodeURIComponent(text || filename), '_blank', 'noopener');
+                return { via: 'whatsapp-text' };
+            });
         },
 
         /* Small confirmation so a save is never silent. */

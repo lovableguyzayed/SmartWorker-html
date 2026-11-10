@@ -7,7 +7,11 @@
      window.cordova never came to life: Save PDF / Excel / CSV fell back to
      a browser download the WebView ignores, and the Back button skipped the
      app's own handling. This plugin allows the bridge for one more origin,
-     the RemoteBridgeOrigin preference in config.xml, and nothing else. -->
+     the RemoteBridgeOrigin preference in config.xml, and nothing else.
+
+     It also shares a file the app has saved (action "share"), through the
+     FileProvider cordova-plugin-file-opener2 declares, so a payslip can go
+     to WhatsApp: an Android WebView has no Web Share API. -->
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
         id="smartworker-remote-bridge" version="1.0.0">
     <name>SmartWorker remote bridge</name>
