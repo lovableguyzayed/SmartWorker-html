@@ -25,6 +25,12 @@ const MOCKS = {
     ['login_after', 'B1-AUTH_login_after_bigfont', true],
     ['otp_after', 'B1-AUTH_otp_after_bigfont', true],
   ],
+  'batch2_nav.html': [
+    ['att_after', 'B2-NAV_attendance_after'],
+    ['att_after_hi', 'B2-NAV_attendance_after_hindi'],
+    ['dash_after', 'B2-NAV_dashboard_after'],
+    ['att_after_bigfont_wrap', 'B2-NAV_attendance_after_bigfont', true],
+  ],
 };
 
 // before shots: [path, output name, full page?, large font?]

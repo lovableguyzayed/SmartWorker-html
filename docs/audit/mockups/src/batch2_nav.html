@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Batch 2 — tabs, large text, dates</title>
+<link rel="stylesheet" href="../../../../static/vendor/fontawesome/css/all.min.css">
+<style>
+@font-face { font-family: Inter; src: url(../../../../static/vendor/inter/inter-latin-var.woff2) format('woff2'); font-weight: 100 900; }
+:root { --navy: #001F3F; --blue: #007BFF; --ink: #0f172a; --muted: #475569; --line: #e2e8f0; --bg: #f8fafc; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Inter, 'Noto Sans Devanagari', system-ui, sans-serif; background: #e5e7eb; color: var(--ink); padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.phone { width: 360px; height: 800px; background: var(--bg); position: relative; overflow: hidden; }
+.phone.tall { height: auto; min-height: 800px; padding-bottom: 110px; }
+
+/* header */
+.hdr { background: linear-gradient(135deg, var(--navy), #1e3a8a 55%, var(--blue)); color: #fff; padding: 14px 16px 18px; border-radius: 0 0 24px 24px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.12); display: grid; place-items: center; flex-shrink: 0; color: #fff; }
+.hdr h1 { font-size: 1.25rem; font-weight: 700; flex: 1; min-width: 0; line-height: 1.2; }
+.datebar { margin-top: 14px; display: flex; align-items: center; gap: 8px; }
+.datebar .day { flex: 1; min-width: 0; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); border-radius: 14px; min-height: 48px; padding: 6px 12px; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1rem; line-height: 1.25; }
+.datebar .day small { display: block; font-weight: 500; opacity: .85; font-size: .75rem; }
+.datebar .step { width: 48px; height: 48px; border-radius: 14px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); display: grid; place-items: center; flex-shrink: 0; }
+.search { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+.search .box { flex: 1 1 180px; min-width: 0; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); border-radius: 14px; min-height: 48px; padding: 0 12px; display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,.75); font-size: .9375rem; }
+.search .sel { flex: 0 0 auto; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); border-radius: 14px; min-height: 48px; padding: 0 12px; display: flex; align-items: center; gap: 8px; font-size: .9375rem; }
+
+/* summary + list */
+.card { background: #fff; margin: 14px 16px 0; border-radius: 20px; border: 1px solid var(--line); padding: 14px; }
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.stats div { border: 1px solid var(--line); border-radius: 12px; text-align: center; padding: 6px 2px; }
+.stats b { display: block; font-size: 1.125rem; }
+.stats span { font-size: .625rem; overflow-wrap: anywhere; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; }
+.worker { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.worker:first-of-type { border-top: 0; }
+.av { width: 40px; height: 40px; border-radius: 50%; background: #dbeafe; color: #1e40af; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+.worker .nm { flex: 1 1 120px; min-width: 0; font-weight: 600; line-height: 1.3; }
+.worker .nm small { display: block; color: var(--muted); font-weight: 500; font-size: .8125rem; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { min-width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--line); display: grid; place-items: center; font-weight: 700; font-size: .9375rem; }
+.pill.p { background: #dcfce7; border-color: #16a34a; color: #166534; }
+
+/* bottom tabs: 5, never 6 */
+.nav { position: absolute; left: 8px; right: 8px; bottom: 8px; background: rgba(255,255,255,.97); border: 1px solid var(--line); border-radius: 26px; box-shadow: 0 10px 30px rgba(0,31,63,.15); display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; padding: 6px 4px 8px; }
+.nav a { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #64748b; font-size: .75rem; font-weight: 600; min-height: 56px; justify-content: center; text-align: center; line-height: 1.15; padding: 0 2px; }
+.nav a i { font-size: 1.25rem; width: 44px; height: 32px; display: grid; place-items: center; border-radius: 12px; }
+.nav a.on { color: var(--navy); }
+.nav a.on i { background: #dbeafe; }
+.nav a.fab i { width: 54px; height: 54px; border-radius: 18px; background: linear-gradient(135deg, var(--navy), var(--blue)); color: #fff; font-size: 1.5rem; box-shadow: 0 8px 18px rgba(0,123,255,.3); margin-top: -18px; }
+.nav a.fab { color: var(--navy); }
+.nav a span { font-family: Inter, 'Noto Sans Devanagari', system-ui, sans-serif; }
+
+/* dashboard header */
+.dash h1 { font-size: 1.25rem; }
+.dash .hello { margin-top: 14px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 18px; padding: 14px; }
+.dash .hello b { font-size: 1.25rem; display: block; }
+.dash .hello span { opacity: .9; font-size: .9375rem; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 16px 0; }
+.tile { border-radius: 18px; color: #fff; padding: 14px; min-height: 92px; }
+.tile b { font-size: 1.5rem; display: block; } .tile span { font-size: .875rem; opacity: .95; }
+.note { position: absolute; top: 8px; right: 8px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+</style>
+</head>
+<body>
+
+<!-- ===== Attendance, normal text ===== -->
+<div class="phone" id="att_after">
+  <header class="hdr">
+    <div class="row">
+      <span class="icon" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></span>
+      <h1>Attendance</h1>
+      <span class="icon" aria-label="Closure days"><i class="fa-solid fa-calendar-times"></i></span>
+    </div>
+    <div class="datebar">
+      <span class="step" aria-label="Previous day"><i class="fa-solid fa-chevron-left"></i></span>
+      <span class="day"><i class="fa-solid fa-calendar-check"></i><span>Tue, 10 Nov 2026<small>Today · tap to pick a date</small></span></span>
+      <span class="step" aria-label="Next day"><i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+    <div class="search">
+      <span class="box"><i class="fa-solid fa-magnifying-glass"></i> Search name or ID</span>
+      <span class="sel">All sites <i class="fa-solid fa-chevron-down" style="font-size:.75rem"></i></span>
+    </div>
+  </header>
+  <div class="card">
+    <div class="stats"><div><b>6</b><span>Present</span></div><div><b>1</b><span>Late</span></div><div><b>1</b><span>Absent</span></div><div><b>0</b><span>Leave</span></div><div><b>2</b><span>Left</span></div></div>
+  </div>
+  <div class="card">
+    <div class="worker"><span class="av">RT</span><span class="nm">Ramesh Thapa<small>USC001 · Crusher</small></span>
+      <span class="pills"><span class="pill p">P</span><span class="pill">L</span><span class="pill">A</span><span class="pill">½</span></span></div>
+    <div class="worker"><span class="av">SD</span><span class="nm">Sunita Devi<small>USC004 · Loading</small></span>
+      <span class="pills"><span class="pill">P</span><span class="pill">L</span><span class="pill">A</span><span class="pill">½</span></span></div>
+  </div>
+  <nav class="nav">
+    <a><i class="fa-solid fa-home"></i><span>Home</span></a>
+    <a><i class="fa-solid fa-users"></i><span>Workers</span></a>
+    <a class="fab"><i class="fa-solid fa-qrcode"></i><span>Scan</span></a>
+    <a class="on"><i class="fa-solid fa-calendar-check"></i><span>Attendance</span></a>
+    <a><i class="fa-solid fa-money-bill-wave"></i><span>Payroll</span></a>
+  </nav>
+</div>
+
+<!-- ===== Attendance, Hindi ===== -->
+<div class="phone" id="att_after_hi">
+  <header class="hdr">
+    <div class="row">
+      <span class="icon"><i class="fa-solid fa-arrow-left"></i></span>
+      <h1>हाज़िरी</h1>
+      <span class="icon"><i class="fa-solid fa-calendar-times"></i></span>
+    </div>
+    <div class="datebar">
+      <span class="step"><i class="fa-solid fa-chevron-left"></i></span>
+      <span class="day"><i class="fa-solid fa-calendar-check"></i><span>मंगल, 10 नवंबर 2026<small>आज · तारीख़ बदलने के लिए दबाएँ</small></span></span>
+      <span class="step"><i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+    <div class="search">
+      <span class="box"><i class="fa-solid fa-magnifying-glass"></i> नाम या आईडी खोजें</span>
+      <span class="sel">सभी साइट <i class="fa-solid fa-chevron-down" style="font-size:.75rem"></i></span>
+    </div>
+  </header>
+  <div class="card">
+    <div class="stats"><div><b>6</b><span>हाज़िर</span></div><div><b>1</b><span>देर</span></div><div><b>1</b><span>ग़ैरहाज़िर</span></div><div><b>0</b><span>छुट्टी</span></div><div><b>2</b><span>बाक़ी</span></div></div>
+  </div>
+  <div class="card">
+    <div class="worker"><span class="av">RT</span><span class="nm">Ramesh Thapa<small>USC001 · Crusher</small></span>
+      <span class="pills"><span class="pill p">P</span><span class="pill">L</span><span class="pill">A</span><span class="pill">½</span></span></div>
+  </div>
+  <nav class="nav">
+    <a><i class="fa-solid fa-home"></i><span>होम</span></a>
+    <a><i class="fa-solid fa-users"></i><span>मज़दूर</span></a>
+    <a class="fab"><i class="fa-solid fa-qrcode"></i><span>स्कैन</span></a>
+    <a class="on"><i class="fa-solid fa-calendar-check"></i><span>हाज़िरी</span></a>
+    <a><i class="fa-solid fa-money-bill-wave"></i><span>वेतन</span></a>
+  </nav>
+</div>
+
+<!-- ===== Dashboard: profile stays in the corner, 5 tabs ===== -->
+<div class="phone" id="dash_after">
+  <header class="hdr dash">
+    <div class="row">
+      <span class="icon" style="background:#fff;color:var(--navy)"><i class="fa-solid fa-user-clock"></i></span>
+      <h1>SmartWorker</h1>
+      <span class="icon"><i class="fa-solid fa-bell"></i></span>
+      <span class="icon" style="border:2px solid rgba(255,255,255,.6)"><i class="fa-solid fa-user"></i></span>
+    </div>
+    <div class="hello"><b>Namaste, Javed</b><span>Tue, 10 Nov 2026</span></div>
+  </header>
+  <div class="tiles">
+    <div class="tile" style="background:#2563eb"><b>10</b><span>Total workers</span></div>
+    <div class="tile" style="background:#15803d"><b>6</b><span>Present today</span></div>
+    <div class="tile" style="background:#7e22ce"><b>60%</b><span>Attendance</span></div>
+    <div class="tile" style="background:#c2410c"><b>2</b><span>Not marked</span></div>
+  </div>
+  <nav class="nav">
+    <a class="on"><i class="fa-solid fa-home"></i><span>Home</span></a>
+    <a><i class="fa-solid fa-users"></i><span>Workers</span></a>
+    <a class="fab"><i class="fa-solid fa-qrcode"></i><span>Scan</span></a>
+    <a><i class="fa-solid fa-calendar-check"></i><span>Attendance</span></a>
+    <a><i class="fa-solid fa-money-bill-wave"></i><span>Payroll</span></a>
+  </nav>
+</div>
+
+<!-- ===== Attendance at the largest text: tall render, nothing cut ===== -->
+<div class="phone tall" id="att_after_bigfont_wrap"><div id="att_after_bigfont">
+  <header class="hdr">
+    <div class="row">
+      <span class="icon"><i class="fa-solid fa-arrow-left"></i></span>
+      <h1>Attendance</h1>
+      <span class="icon"><i class="fa-solid fa-calendar-times"></i></span>
+    </div>
+    <div class="datebar">
+      <span class="step"><i class="fa-solid fa-chevron-left"></i></span>
+      <span class="day"><span>Tue, 10 Nov 2026<small>Today</small></span></span>
+      <span class="step"><i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+    <div class="search">
+      <span class="box"><i class="fa-solid fa-magnifying-glass"></i> Search</span>
+      <span class="sel">All sites <i class="fa-solid fa-chevron-down" style="font-size:.75rem"></i></span>
+    </div>
+  </header>
+  <div class="card">
+    <div class="worker"><span class="av">RT</span><span class="nm">Ramesh Thapa<small>USC001</small></span>
+      <span class="pills"><span class="pill p">P</span><span class="pill">L</span><span class="pill">A</span><span class="pill">½</span></span></div>
+    <div class="worker"><span class="av">MS</span><span class="nm">Mohan Singh Rawat<small>USC003</small></span>
+      <span class="pills"><span class="pill">P</span><span class="pill">L</span><span class="pill">A</span><span class="pill">½</span></span></div>
+  </div>
+  <nav class="nav">
+    <a><i class="fa-solid fa-home"></i><span>Home</span></a>
+    <a><i class="fa-solid fa-users"></i><span>Workers</span></a>
+    <a class="fab"><i class="fa-solid fa-qrcode"></i><span>Scan</span></a>
+    <a class="on"><i class="fa-solid fa-calendar-check"></i><span>Attend&shy;ance</span></a>
+    <a><i class="fa-solid fa-money-bill-wave"></i><span>Payroll</span></a>
+  </nav>
+</div></div>
+
+</body>
+</html>

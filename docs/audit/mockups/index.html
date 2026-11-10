@@ -32,7 +32,7 @@ figcaption { font-size: .8125rem; color: var(--muted); margin-top: 6px; }
 </header>
 
 <section>
-  <h2>Batch 1 — Sign in and sign up <span class="status">· waiting for your OK</span></h2>
+  <h2>Batch 1 — Sign in and sign up <span class="status" style="color:#15803d">· approved and built</span></h2>
   <p class="note"><b>AUTH-01, AUTH-03, AUTH-09, COMP-01.</b> Today: two separate screens. Sign-up has 9 fields, mandatory email, and Send/Verify buttons side by side. After: one screen for everyone. Enter the mobile number (+91 already there), get the code, and a first-timer adds only their name. Password sign-in stays one tap away for staff accounts. Terms, Privacy and WhatsApp help are linked. <b>Depends on D1</b>: OTP sign-in needs an SMS provider.</p>
   <div class="pair">
     <figure><img src="B1-AUTH_login_before.png" alt="Current sign-in screen"><figcaption><span class="tag before">Before</span>Sign in today</figcaption></figure>
@@ -48,11 +48,36 @@ figcaption { font-size: .8125rem; color: var(--muted); margin-top: 6px; }
     <figure><img src="B1-AUTH_otp_after_bigfont.png" alt="New OTP at large text"><figcaption><span class="tag after">After</span>OTP at largest text</figcaption></figure>
     <figure><img src="B1-AUTH_login_after_tablet.png" alt="New sign-in on a tablet"><figcaption><span class="tag after">After</span>10" tablet: a centred card, not a stretched phone</figcaption></figure>
   </div>
+  <h3 style="margin:22px 0 4px;font-size:1rem">As built: screenshots of the real app</h3>
+  <p class="note">Until an SMS provider is connected (D1), the live site shows the password version: the first two below. Setting it up switches the OTP screens on with no code change.</p>
+  <div class="pair">
+    <figure><img src="B1-AUTH_login_built_nosms.png" alt="Built sign-in without SMS"><figcaption><span class="tag after">Built</span>Today, no SMS: password first</figcaption></figure>
+    <figure><img src="B1-AUTH_register_built_nosms.png" alt="Built sign-up without SMS"><figcaption><span class="tag after">Built</span>Sign-up: 5 fields, 2 optional (was 9)</figcaption></figure>
+    <figure><img src="B1-AUTH_register_built_error.png" alt="Sign-up error"><figcaption><span class="tag after">Built</span>A mistake keeps what was typed</figcaption></figure>
+    <figure><img src="B1-AUTH_login_built.png" alt="Built OTP sign-in"><figcaption><span class="tag after">Built</span>With SMS: mobile number</figcaption></figure>
+    <figure><img src="B1-AUTH_otp_built.png" alt="Built code screen"><figcaption><span class="tag after">Built</span>Code boxes</figcaption></figure>
+    <figure><img src="B1-AUTH_otp_wrong_built.png" alt="Built wrong code"><figcaption><span class="tag after">Built</span>Wrong code: tries left</figcaption></figure>
+    <figure><img src="B1-AUTH_newuser_built.png" alt="Built first-time step"><figcaption><span class="tag after">Built</span>First time: a name</figcaption></figure>
+    <figure><img src="B1-AUTH_after_signup_built.png" alt="Signed in after sign-up"><figcaption><span class="tag after">Built</span>…and straight into the app</figcaption></figure>
+    <figure><img src="B1-AUTH_password_built.png" alt="Built password sign-in"><figcaption><span class="tag after">Built</span>Password sign-in</figcaption></figure>
+    <figure><img src="B1-AUTH_login_built_hindi.png" alt="Built in Hindi"><figcaption><span class="tag after">Built</span>Hindi</figcaption></figure>
+    <figure><img src="B1-AUTH_login_built_bigfont.png" alt="Built at largest text"><figcaption><span class="tag after">Built</span>Largest text</figcaption></figure>
+    <figure><img src="B1-AUTH_login_built_tablet.png" alt="Built on a tablet"><figcaption><span class="tag after">Built</span>Tablet</figcaption></figure>
+  </div>
 </section>
 
 <section>
-  <h2>Batch 2 — Bottom tabs, large text, dates <span class="status">· next</span></h2>
-  <p class="note">NAV-01, A11Y-01, DATE-01: 5 tabs instead of 6, and the attendance and worker screens at the largest text.</p>
+  <h2>Batch 2 — Bottom tabs, large text, dates <span class="status">· waiting for your OK</span></h2>
+  <p class="note"><b>NAV-01, A11Y-01, DATE-01.</b> <b>Tabs:</b> 6 tabs at 35px each became 5 at about 70px. Profile leaves the bar, since it is already the round button at the top right of Home. Scan moves to the centre, where the thumb rests. <b>Attendance header:</b> the subtitle goes, and the date picker, arrows and long written-out date become one row: ‹ Tue, 10 Nov 2026 ›. Search and site share a row, so workers show on the first screen even at the largest text. <b>Dates:</b> "Tuesday, November 10, 2026" (US order) becomes "Tue, 10 Nov 2026" / "मंगल, 10 नवंबर 2026" everywhere.</p>
+  <div class="pair">
+    <figure><img src="B2-NAV_attendance_before.png" alt="Attendance today"><figcaption><span class="tag before">Before</span>Attendance today: 6 tabs, the first screen is all header</figcaption></figure>
+    <figure><img src="B2-NAV_attendance_after.png" alt="Attendance after"><figcaption><span class="tag after">After</span>Workers on the first screen, 5 tabs</figcaption></figure>
+    <figure><img src="B2-NAV_attendance_after_hindi.png" alt="Attendance after, Hindi"><figcaption><span class="tag after">After</span>Hindi</figcaption></figure>
+    <figure><img src="B2-NAV_attendance_before_bigfont.png" alt="Attendance at largest text today"><figcaption><span class="tag before">Before</span>Largest text: no worker visible, tabs read "H…", "Wo…"</figcaption></figure>
+    <figure><img src="B2-NAV_attendance_after_bigfont.png" alt="Attendance at largest text after"><figcaption><span class="tag after">After</span>Largest text: workers visible, every tab readable</figcaption></figure>
+    <figure><img src="B2-NAV_dashboard_before.png" alt="Home today"><figcaption><span class="tag before">Before</span>Home today</figcaption></figure>
+    <figure><img src="B2-NAV_dashboard_after.png" alt="Home after"><figcaption><span class="tag after">After</span>Home: Profile stays top-right</figcaption></figure>
+  </div>
 </section>
 <section>
   <h2>Batch 3 — Payslip share, delete account, policy pages <span class="status">· after D3</span></h2>

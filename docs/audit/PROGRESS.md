@@ -24,8 +24,8 @@ failures are listed in the report as TEST-02 and LAY-01.
 - [x] Phase 0: discovery and inventories
 - [x] Phase 1: audit (developer, QA personas, UI/UX)
 - [x] Phase 2: report written
-- [ ] Phase 3: fixes (in progress, below)
-- [ ] Phase 4: verify and hand over (MANUAL_TEST_CHECKLIST.md, Play release list)
+- [x] Phase 3: fixes (everything not waiting on the owner)
+- [x] Phase 4: verify and hand over (MANUAL_TEST_CHECKLIST.md, Play release list)
 
 ## Fixes
 
@@ -40,21 +40,22 @@ failures are listed in the report as TEST-02 and LAY-01.
 - [x] Worker login passwords made with `secrets`, not `random`
 - [x] TEST-01 Tests runnable on a fresh checkout
 
-### Next (no approval needed)
-- [ ] LAY-01 Worker profile fits 320px
-- [ ] AUTH-04 Logout as POST
-- [ ] REL-01 Shell to cordova-android 15 / API 36 (+ remove portrait lock, REL-02)
-- [ ] PERF-02 Remove 500 ms artificial delay in the shell
-- [ ] PERM-01 Camera permission only when Scan is first used
-- [ ] TEST-02 Update the 3 stale test checks
+- [x] LAY-01 Worker profile fits 320px (and every other screen)
+- [x] AUTH-04 Logout as POST
+- [x] REL-01 Shell to cordova-android 15 / API 36: CI build passes (portrait lock kept, REL-02)
+- [x] NAT-01 / NAT-02 Native bridge for the live site (needs phone test)
+- [x] PERF-02 500 ms delay removed
+- [x] PERM-01 Camera asked only when scanning; notification prompt removed
+- [x] TEST-02 Stale checks + fixture; suite green
+- [x] Batch 1 sign in / sign up, built and screenshot-checked against the mockups
+- [x] Phase 4: MANUAL_TEST_CHECKLIST.md with the Play release list
 
 ### Waiting for preview approval
-- [ ] Batch 1: sign in / sign up (AUTH-01, AUTH-03, AUTH-09); also needs D1
-- [ ] Batch 2: 5 tabs, large text, dates (NAV-01, A11Y-01, DATE-01); mockups not made yet
+- [ ] Batch 2: 5 tabs, large text, dates (NAV-01, A11Y-01, DATE-01); mockups ready
 - [ ] Batch 3: payslip share, delete account, policy pages (PDF-02, COMP-01/02); needs D3
 
 ### Waiting for the owner
-- [ ] **D1** SMS provider, or sign-up without OTP for now
+- [ ] **D1** SMS provider (interim done: sign-up without OTP)
 - [ ] **D2** Make repo private / rewrite history; **change live admin and supervisor passwords**
 - [ ] **D3** Legal details for Privacy / Terms / deletion
 - [ ] **D4** Private photo storage

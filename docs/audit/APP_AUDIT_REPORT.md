@@ -42,14 +42,14 @@ gives away**, and the **Android shell**:
 | # | ID | Problem | Status |
 |---|---|---|---|
 | 1 | SEC-01 | Anyone who knew a user's mobile number could sign in as them, admin included. The OTP was readable from the browser's own cookie. | **Fixed** |
-| 2 | AUTH-01 | No SMS is ever sent. OTPs go only to the server log, so **nobody can sign up** on the live site (sign-up requires OTP). | **Needs your decision** |
+| 2 | AUTH-01 | No SMS is ever sent. OTPs went only to the server log, so **nobody could sign up** on the live site (sign-up required OTP). | **Fixed for now**: sign-up works without OTP; real SMS still needs D1 |
 | 3 | SEC-02 | The GitHub repository is **public** and held an old database with real-looking names, phones and password hashes, plus login cookies, plus the demo admin password (which equals a phone number). | **Partly fixed**: removed from the files; still in history |
-| 4 | REL-01 | The app targets Android 14 (API 34). Since 31 Aug 2026 Google Play accepts new apps and updates **only at API 36**. | To do: build upgrade |
+| 4 | REL-01 | The app targeted Android 14 (API 34). Since 31 Aug 2026 Google Play accepts new apps and updates **only at API 36**. | **Fixed**: API 36 build passes in CI |
 | 5 | SEC-03 | Unlimited password guessing: 40 wrong tries, then the right one still worked. | **Fixed** |
-| 6 | NAT-01 | Inside the Android app, **Save PDF / Excel / CSV probably does nothing**, and Back skips "press again to exit". The website never loads Cordova's bridge. | Needs a real-phone test |
+| 6 | NAT-01 | Inside the Android app, **Save PDF / Excel / CSV probably did nothing**, and Back skipped "press again to exit". The website never loaded Cordova's bridge. | **Fixed in code**; needs a real-phone test |
 | 7 | PERF-01 | Render's free plan sleeps after ~15 min idle, so the first open of the day shows a spinner for up to a minute. | **Needs your decision** (cost) |
 | 8 | COMP-01/02 | No Privacy Policy, no Terms (the two links on sign-up do nothing), no "Delete my account". Play requires the last two. | **Needs your decision** (legal text) |
-| 9 | A11Y-01 | At the large text size many older users choose, 15 screens spill sideways and the bottom tabs shrink to "H…", "Wo…". | Mockup to approve |
+| 9 | A11Y-01 | At the large text size many older users choose, 15 screens spill sideways and the bottom tabs shrink to "H…", "Wo…". | Partly fixed (worker profile 143px → 17px); rest is batch 2, waiting for your OK |
 | 10 | AUTH-02 | A number typed as `+91 98765 43210` at sign-up was saved differently from `9876543210`, so OTP login later said "no account". Any 10–15 digits were accepted. | **Fixed** |
 
 ---
@@ -67,7 +67,7 @@ and scrolled sideways.
 |---|---|---|---|---|---|---|---|
 | Splash / welcome | `/` | public | Intro, then Sign in | templates/splash.html | Working | ok | ok |
 | Sign in | `/login` | public | Password or OTP sign-in | templates/login.html | Partly working: OTP has no SMS | ok | ok |
-| Create account | `/register` | public | New business owner sign-up | templates/register.html | **Broken in production** (OTP never arrives) | ok | ok |
+| Create account | `/register` | public | New business owner sign-up | templates/register.html | Was **broken in production** (OTP never arrived). **Fixed**: 5 fields, no OTP until SMS exists | ok | ok |
 | Forgot password | `/forgot-password` | public | Email reset link (Supabase only) | templates/forgot_password.html | Partly working: email only | ok | ok |
 | Reset password | `/reset-password` | public | Set new password from email link | templates/reset_password.html | Working (Supabase only) | – | – |
 | Home / dashboard | `/dashboard` | admin | Today's numbers, quick actions | templates/dashboard.html | Working | ok | spills 30px |
@@ -173,15 +173,15 @@ selected or searched, and the files are larger than a text PDF.
 | SEC-04 | routes.py:980–1030 (before) | Unlimited wrong OTPs and unlimited OTP requests (OTP-bombing; SMS cost once SMS is live). Any counter kept in the cookie could be reset by replaying an older cookie. **Verified.** | Everyone | P1 | Server-side limits: 5 wrong OTPs/number/15 min, 3 sends/number/15 min, 30 s resend timer, per-IP caps. | S | **Fixed** |
 | SEC-03 | routes.py:897–941 | Unlimited password guessing. **Verified:** 40 wrong, then right → signed in. | Everyone | P1 | 8 wrong per login / 30 per IP per 15 min, then "try again in N minutes" (Hindi too). | S | **Fixed** |
 | AUTH-02 | routes.py:630–634 (before) | Numbers saved exactly as typed (10–15 digits). `+91 98765 43210` at sign-up, then `9876543210` at login → "No account found". Also accepted numbers that cannot be Indian mobiles. **Verified.** | Ramesh ji, shared phone | P1 | Every form becomes 10 digits starting 6–9; old rows saved with 91/0 still match. | S | **Fixed** |
-| AUTH-01 | routes.py `_deliver_otp` | **No SMS provider.** The OTP only goes to the server log, and sign-up refuses to continue without OTP, so **no new business can sign up** on the live site unless someone reads them the code from Render's logs. **Verified** (no SMS code anywhere). | Every new customer | P0 | Choose an SMS provider (with TRAI DLT registration), **or** make phone verification optional until then. | M | **Needs decision D1** |
-| AUTH-03 | templates/register.html:88; routes.py forgot_password | Email is **required** to sign up, and "Forgot password" works **only by email** (and only when Supabase is configured). | Ramesh ji (rarely uses email) | P1 | Email optional; reset by mobile OTP (needs D1). | M | Needs D1 + mockup |
-| AUTH-04 | routes.py:1296 `/logout` | Logout is a plain link (GET), so any other website can sign the user out. | All | P3 | Make logout a POST. | S | To do |
+| AUTH-01 | routes.py `_deliver_otp`, `sms_enabled` | **No SMS provider.** The OTP only goes to the server log, and sign-up refuses to continue without OTP, so **no new business can sign up** on the live site unless someone reads them the code from Render's logs. **Verified** (no SMS code anywhere). | Every new customer | P0 | Choose an SMS provider (with TRAI DLT registration), **or** make phone verification optional until then. | M | **Interim fix done**: OTP turns itself off without a provider; password sign-up needs no OTP. SMS provider: **D1** |
+| AUTH-03 | templates/register.html:88; routes.py forgot_password | Email is **required** to sign up, and "Forgot password" works **only by email** (and only when Supabase is configured). | Ramesh ji (rarely uses email) | P1 | Email optional; reset by mobile OTP (needs D1). | M | **Email optional: done.** Reset by OTP comes with D1 |
+| AUTH-04 | routes.py:1296 `/logout` | Logout is a plain link (GET), so any other website can sign the user out. | All | P3 | Make logout a POST. | S | **Fixed** |
 | AUTH-05 | – | No Google sign-in. | Priya, Amit | P3 | Needs Google Cloud project, OAuth client and SHA-1 + SHA-256 fingerprints. For a business tool, mobile OTP matters more. | M | **Needs decision D6** |
-| AUTH-06 | routes.py `_deliver_otp` | Until SMS exists, every OTP is written to the server log in plain text. | All | P2 | Goes away with D1. | S | Tied to D1 |
+| AUTH-06 | routes.py `_deliver_otp` | Until SMS exists, every OTP is written to the server log in plain text. | All | P2 | OTP is off on the live server until SMS exists, so no codes are logged. | S | **Fixed** |
 | AUTH-07 | authguard.py | The new limits live in server memory: two Render workers ⇒ up to 2× the allowance, and a restart clears them. | All | P3 | A small `otp_attempts` table makes it exact (database change). | S | **Needs decision D5** |
 | AUTH-08 | templates/login.html:143–170, register.html:98–112 | OTP boxes opened the full letter keyboard; no SMS autofill. | Ramesh ji | P3 | Number pad + `autocomplete="one-time-code"` (Android/iOS offer the code from the SMS). | S | **Fixed** |
 | COMP-02 | – | No **Delete my account**, in the app or on the web. Google Play requires both for apps with accounts. | – | P1 | Delete screen (with clear notice of what is kept for wage records) + public web form. | M | **Needs decision D3** + mockup |
-| AUTH-09 | templates/login.html | OTP screen has no resend countdown, no "change number", and two buttons (Send / Verify) side by side. | Ramesh ji | P2 | One field at a time, 30 s countdown, change-number link. | M | Mockup, batch 1 |
+| AUTH-09 | templates/login.html | OTP screen has no resend countdown, no "change number", and two buttons (Send / Verify) side by side. | Ramesh ji | P2 | One field at a time, 30 s countdown, change-number link, tries left. | M | **Built** (batch 1, approved); switches on with D1 |
 
 ### 3.2 Repository and data exposure
 
@@ -213,7 +213,7 @@ first.
 
 | ID | Where | Problem | Sev | Fix | Status |
 |---|---|---|---|---|---|
-| NAT-01 | static/js/filesave.js:21–23, 80–86; templates/base.html (no `cordova.js`) | Inside the APK, `window.cordova` never exists on the website's pages, so "Save PDF/Excel/CSV" falls back to a browser download, which Android's WebView ignores. The code's own comment (filesave.js:4–8) describes exactly this "spinner finishes, no file" bug. **Code evidence. Needs real-device test**: please try *Save PDF* on a payslip in your installed app. | P1 | Either serve the matching `cordova.js` to the app, or add a small native download handler to the shell. | Needs your test result |
+| NAT-01 | static/js/filesave.js:21–23, 80–86; templates/base.html (no `cordova.js`) | Inside the APK, `window.cordova` never exists on the website's pages, so "Save PDF/Excel/CSV" falls back to a browser download, which Android's WebView ignores. The code's own comment (filesave.js:4–8) describes exactly this "spinner finishes, no file" bug. **Code evidence. Needs real-device test**: please try *Save PDF* on a payslip in your installed app. | P1 | The app now marks its user agent; the server then loads `cordova.js` from the APK, and a 15-line plugin (`cordova-plugins/smartworker-remote-bridge`) lets the live site, and only it, use the bridge. Cordova by default allows only its launch page (`PluginManager.shouldAllowBridgeAccess`). | **Fixed in code**, API 36 build passes; **needs your phone test** |
 | PDF-02 | templates/id_card.html:380–405 | Share uses the web Share feature, which Android's WebView does not support; payslips have no Share at all. WhatsApp is how payslips actually travel. | P2 | Native share (with the file plugin, once NAT-01 is fixed). | Mockup, batch 3 |
 | PDF-01 | templates/payroll_slip.html:965–998 | Payslip PDF is a photo of the screen: not searchable, bigger, slightly soft when zoomed. | P3 | Text PDF later; fine for now. | Backlog |
 | – | – | No PDF is missing, broken or orphaned, because none are stored. | – | – | ✔ |
@@ -224,20 +224,20 @@ first.
 |---|---|---|---|---|---|---|
 | A11Y-01 | 15 screens (table 2.1) | At 150% text the pages spill sideways (worst: worker profile 143px, attendance 115px). The attendance header fills the whole first screen with no worker visible. Android's WebView follows the phone's font size. **Verified** (simulated in Chromium); **needs real-device test**. | Ramesh ji | P1 | Let headers wrap, shrink fixed widths, cap header height. | Mockup, batch 2 |
 | NAV-01 | templates/base.html:311–360 | **6** bottom tabs; each only 35px wide (minimum is 44–48). At big text the labels become "H…", "Wo…", "P…". **Verified.** | Ramesh ji | P2 | 5 tabs: Home · Workers · Scan (centre) · Attendance · More (Payroll, Profile…). | Mockup, batch 2 |
-| LAY-01 | templates/worker_profile.html | Worker profile is 336px wide on a 320px phone. **Verified** (also in tests/test_narrow_screens.py). | old phones | P3 | Small fix, allowed without approval. | To do |
+| LAY-01 | templates/worker_profile.html | Worker profile is 336px wide on a 320px phone. **Verified** (also in tests/test_narrow_screens.py). | old phones | P3 | Long words in label/value rows may wrap. Every screen now fits at 320px. | **Fixed** |
 | DARK-01 | templates/base.html | No dark design and no "light only" declaration, so Xiaomi/Redmi force-dark could invert colours unreadably. | Priya | P3 | Declared `color-scheme: light only`. **Needs real-device test** on MIUI. | **Fixed** |
 | DATE-01 | dashboard.html:120, attendance.html:327, supervisor_team.html:13 | Dates read "Tuesday, November 10, 2026" (US order). | everyone | P4 | "Tue, 10 Nov 2026" / "मंगलवार, 10 नवंबर 2026". | Mockup, batch 2 |
-| REL-02 | config.xml:61 | Portrait lock. Android 16 ignores it on tablets/foldables once the app targets API 36. Layouts already reach 1024px (tests/test_wide_screens.py passes). | tablet users | P3 | Remove the lock with REL-01. | With REL-01 |
+| REL-02 | config.xml:61 | Portrait lock. Android 16 ignores it on tablets/foldables once the app targets API 36. Layouts already reach 1024px (tests/test_wide_screens.py passes). | tablet users | P3 | Kept for phones; Android 16 already ignores it on large screens, and the layouts reach 1024px. Re-check on a tablet (checklist). | Kept, on purpose |
 
 ### 3.6 Native feel and speed
 
 | ID | Where | Problem | Sev | Fix | Status |
 |---|---|---|---|---|---|
-| REL-01 | config.xml:43; build-apk.yml (cordova-android@12) | targetSdk 34. Play needs **API 36** for new apps and updates since 31 Aug 2026; existing apps need 35+ to stay visible to new users on new phones. cordova-android **15** targets 36. | P0 (for Play) | Upgrade the shell to cordova-android 15, build tools 36. Edge-to-edge then needs checking on a phone. | To do (can be done on this branch; CI builds it) |
+| REL-01 | config.xml:43; build-apk.yml (cordova-android@12) | targetSdk 34. Play needs **API 36** for new apps and updates since 31 Aug 2026; existing apps need 35+ to stay visible to new users on new phones. cordova-android **15** targets 36. | P0 (for Play) | cordova-android 15.1, SDK 36, build-tools 36, Gradle 8.14.2. The old status-bar plugin is dropped (Cordova 15 does it itself). Test builds of a branch no longer replace the public APK link. | **Fixed**: CI build passes; edge-to-edge needs a phone check |
 | PERF-01 | render.yaml:5 `plan: free` | Free Render services sleep when idle; the first visit wakes them (often 30–60 s). The shell waits up to 60 s (config.xml `LoadUrlTimeoutValue`). | P1 | Paid plan (about $7/month), or a keep-awake ping. | **D7** |
-| PERF-02 | www/index.html:92 | An artificial 500 ms wait before loading. | P3 | Remove. | To do (APK change) |
-| PERM-01 | www/index.html:80–86 | Camera permission is asked the moment the app first opens, with no reason given. | P2 | Ask only when *Scan QR* is first tapped, with one line of why. | To do (APK change) |
-| NAT-02 | static/js/app.js:805–850 | The custom Back handling (close dialog first, "press back again to exit") never runs in the APK for the same reason as NAT-01. Android falls back to "go back a page, or close the app". | P2 | Fixed together with NAT-01. | Needs your test |
+| PERF-02 | www/index.html:92 | An artificial 500 ms wait before loading. | P3 | Removed. | **Fixed** |
+| PERM-01 | www/index.html:80–86 | Camera permission is asked the moment the app first opens, with no reason given. | P2 | Cordova 15.1 asks when the scanner first opens the camera, so the start-up request and its plugin are gone. The web app's notification-permission prompt (static/js/app.js, it never sends notifications) is gone too. | **Fixed**; needs a phone check |
+| NAT-02 | static/js/app.js:805–850 | The custom Back handling (close dialog first, "press back again to exit") never runs in the APK for the same reason as NAT-01. Android falls back to "go back a page, or close the app". | P2 | Fixed together with NAT-01; Back is taken over after `deviceready`. | **Fixed in code**; needs your test |
 | REL-03 | build-apk.yml | Only a **debug** APK is built. Play needs a signed release bundle (AAB), and the 16 KB page-size rule applies (this shell has no native .so files of its own; plugins need checking). | P1 (for Play) | Release signing in CI with a key you keep. | **D8** |
 | – | static/js/app.js | Screen changes without a white flash, tab bar kept, scroll restored, no zoom/selection on UI. | – | ✔ Good (tests/test_native_shell.py passes) |
 
@@ -260,7 +260,7 @@ first.
 | ID | Problem | Sev | Status |
 |---|---|---|---|
 | TEST-01 | The 40 test scripts expected a database that only ever existed on one machine, and a browser path that is not there on a fresh checkout. **No browser test could run on a fresh clone.** | P2 | **Fixed**: `tools/make_test_fixture.py`; browser path via `UX_CHROME` |
-| TEST-02 | 3 pre-existing test failures: `test_bulk_actions` (seed has no active assignment to end), `test_forms_and_modals` (stale check, see 2.1), `test_printable_pdfs` (2 checks expect IDs from the old fixture: `CI002…`). | P3 | To do |
+| TEST-02 | 3 pre-existing test failures: `test_bulk_actions` (seed has no active assignment to end), `test_forms_and_modals` (stale check, see 2.1), `test_printable_pdfs` (2 checks expect IDs from the old fixture: `CI002…`). | P3 | **Fixed**: fixture builder adds today's attendance and an assignment; two stale checks updated |
 
 ---
 
@@ -330,5 +330,21 @@ account switcher for shared phones · rate-the-app prompt.
 | Force-dark | `color-scheme: light only` |
 | Tests runnable anywhere | tools/make_test_fixture.py; tools/audit/actions.js |
 
+### Round 2 (after "OK, do the remaining")
+
+| Commit | What |
+|---|---|
+| Sign out only on a real button press | AUTH-04 |
+| Let long emails and names wrap | LAY-01; worker profile at largest text 143px → 17px over |
+| Test fixture + two stale checks | TEST-02; the whole suite passes on a fresh fixture |
+| Android shell | NAT-01 bridge plugin, API 36, camera asked only when scanning, notification prompt removed, 500 ms delay removed |
+| APK build with cordova-android 15 | REL-01; CI build passes; publishing only from `main` |
+| New sign-in and sign-up (batch 1) | AUTH-01 interim, AUTH-03, AUTH-06, AUTH-09; OTP switches on by itself once an SMS provider is set (`SMS_DEV_LOG=1` tries it locally) |
+
+Interpretation used: "Ok" was taken as approval of batch 1 and of the
+recommended interim for D1 (sign-up without OTP until SMS exists). It is a
+code-only switch and can be reversed. No other decision was assumed.
+
 Before/after previews for the visual changes are in
-[mockups/index.html](mockups/index.html), batch by batch.
+[mockups/index.html](mockups/index.html), batch by batch. What still has
+to be checked by hand is in [MANUAL_TEST_CHECKLIST.md](MANUAL_TEST_CHECKLIST.md).
