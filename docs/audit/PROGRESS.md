@@ -51,7 +51,8 @@ failures are listed in the report as TEST-02 and LAY-01.
 - [x] Phase 4: MANUAL_TEST_CHECKLIST.md with the Play release list
 
 ### Waiting for preview approval
-- [ ] Batch 2: 5 tabs, large text, dates (NAV-01, A11Y-01, DATE-01); mockups ready
+- [x] Batch 2: 5 tabs, attendance header, Indian dates, large-text tiles: built and screenshot-checked
+- [ ] Payslip and ID card at the largest text (print layouts, +72px / +46px): needs its own preview
 - [ ] Batch 3: payslip share, delete account, policy pages (PDF-02, COMP-01/02); needs D3
 
 ### Waiting for the owner
