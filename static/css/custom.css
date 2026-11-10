@@ -1011,3 +1011,14 @@ body.ms-active nav.app-bottom-nav { display: none; }
         max-width: 44rem;
     }
 }
+
+/* Label / value rows ("Email   javed@uttaranchalstonecrusher.in").
+   A flex child will not shrink below its longest unbreakable word by
+   default, so one long email pushed the worker profile 16px past a 320px
+   screen, and at large text sizes long names did the same on most screens.
+   Let the row's children shrink, and let the value break inside a word only
+   when it has no other way to fit. */
+/* Only plain text items: a child that is itself a row (a group of icon
+   buttons, an avatar beside a name) or an icon button keeps its own size. */
+.flex.justify-between > :not(.flex):not(.icon-btn):not(button):not(a) { min-width: 0; }
+.flex.justify-between > :last-child:not(.flex):not(.icon-btn) { overflow-wrap: anywhere; }
