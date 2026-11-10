@@ -78,6 +78,16 @@ def record(bucket, key):
         stamps.append(now)
 
 
+def remaining(bucket, key):
+    """How many more tries `key` has in `bucket` before it must wait."""
+    limit, window = LIMITS[bucket]
+    now = _now()
+    with _lock:
+        stamps = _hits.get((bucket, key), [])
+        _prune(stamps, window, now)
+        return max(0, limit - len(stamps))
+
+
 def clear(bucket, key):
     with _lock:
         _hits.pop((bucket, key), None)

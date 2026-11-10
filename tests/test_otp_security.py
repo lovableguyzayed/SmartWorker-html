@@ -21,6 +21,8 @@ _db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
 os.environ['DATABASE_URL'] = 'sqlite:///' + _db.name
 os.environ.setdefault('SESSION_SECRET', 'otp-test')
 os.environ.setdefault('ADMIN_DEFAULT_PASSWORD', 'otp-test-admin')
+# The OTP flow only runs with a way to deliver codes; this is the local one.
+os.environ['SMS_DEV_LOG'] = '1'
 
 from app import app, db  # noqa: E402
 import routes  # noqa: E402
@@ -114,8 +116,11 @@ with app.test_client() as c:
     code = sent[-1]
     before = c.get_cookie('session').value
     wrong = '000000' if code != '000000' else '111111'
-    codes = [post(c, '/login/verify-otp', mobile='9876543210', otp=wrong)[0] for _ in range(5)]
-    check('five wrong codes are each refused', codes, [400] * 5)
+    tries = [post(c, '/login/verify-otp', mobile='9876543210', otp=wrong) for _ in range(5)]
+    check('four wrong codes are refused, each saying how many tries are left',
+          [(st, b.get('tries_left')) for st, b in tries[:4]], [(400, 4), (400, 3), (400, 2), (400, 1)])
+    check('the fifth locks the number and says how long to wait',
+          (tries[4][0], tries[4][1].get('retry_after', 0) > 0), (429, True))
     status, _ = post(c, '/login/verify-otp', mobile='9876543210', otp=code)
     check('then even the right code waits', status, 429)
     c.set_cookie('session', before)
@@ -139,10 +144,61 @@ with app.test_client() as c:       # ...but not the per-number count
 print('--- older rows still match ---')
 authguard.reset_for_tests()
 with app.test_client() as c:
-    status, body = post(c, '/login/send-otp', mobile='98123 45678')
-    check('a number stored as 91XXXXXXXXXX is found from ten digits', status, 200)
-    status, body = post(c, '/register/send-otp', mobile='09812345678')
-    check('and cannot be registered a second time', status, 409)
+    post(c, '/login/send-otp', mobile='98123 45678')
+    status, body = post(c, '/login/verify-otp', mobile='9812345678', otp=sent[-1])
+    check('a number stored as 91XXXXXXXXXX signs in from ten digits',
+          (status, body.get('new_user')), (200, None))
+
+print('--- a new number signs up through the same screen ---')
+authguard.reset_for_tests()
+with app.test_client() as c:
+    status, body = post(c, '/register/details', full_name='Sneaky')
+    check('no account without a verified number first', status, 400)
+    post(c, '/login/send-otp', mobile='+91 70000 11111')
+    status, body = post(c, '/login/verify-otp', mobile='7000011111', otp=sent[-1])
+    check('the code for an unknown number leads to the details step',
+          (status, body.get('new_user')), (200, True))
+    check('and signs nobody in yet', c.get('/dashboard').status_code, 302)
+    status, body = post(c, '/register/details', full_name='   ')
+    check('a name is required', (status, body.get('field')), (400, 'full_name'))
+    status, body = post(c, '/register/details', full_name='Ramesh  Kumar', business_name='')
+    check('a name is all it takes', status, 200)
+    check('and they are in, on their own dashboard', c.get('/dashboard').status_code, 200)
+    with app.app_context():
+        u = m.User.query.filter_by(phone='7000011111').first()
+        check('as the admin of a new workspace', (u.full_name, u.role, bool(u.account_id)),
+              ('Ramesh Kumar', 'admin', True))
+        check('with a stand-in email that can reach nobody', u.email, '7000011111@phone.invalid')
+with app.test_client() as c:
+    post(c, '/login/send-otp', mobile='7000011111')
+    status, body = post(c, '/login/verify-otp', mobile='7000011111', otp=sent[-1])
+    check('next time the same number simply signs in',
+          (status, body.get('new_user'), bool(body.get('redirect_url'))), (200, None, True))
+
+print('--- without SMS: password sign-up, and no codes offered ---')
+authguard.reset_for_tests()
+os.environ.pop('SMS_DEV_LOG')
+with app.test_client() as c:
+    status, body = post(c, '/login/send-otp', mobile='9000022222')
+    check('asking for a code says it is not available', status, 503)
+    page = c.get('/login').get_data(as_text=True)
+    check('the sign-in screen offers no OTP', 'otp-start' in page, False)
+    check('and leads with the password', 'id="signin-form"' in page, True)
+    r = c.post('/register', data={'full_name': 'Priya', 'mobile': '09000022222',
+                                  'password': 'short'})
+    check('a short password is refused, and what was typed is kept',
+          (r.status_code, 'value="Priya"' in r.get_data(as_text=True)), (400, True))
+    r = c.post('/register', data={'full_name': 'Priya', 'mobile': '09000022222',
+                                  'password': 'priya-pass-1', 'business_name': 'Priya Tailors'})
+    check('name, number and password are enough - no email', r.status_code, 303)
+    check('and she is signed in', c.get('/dashboard').status_code, 200)
+with app.test_client() as c:
+    r = c.post('/register', data={'full_name': 'Again', 'mobile': '9000022222',
+                                  'password': 'again-pass-1'})
+    check('the same number cannot sign up twice', r.status_code, 400)
+    r = c.post('/login', data={'username': '90000 22222', 'password': 'priya-pass-1'})
+    check('she signs in with her number and password', r.status_code, 303)
+os.environ['SMS_DEV_LOG'] = '1'
 
 print('--- passwords ---')
 authguard.reset_for_tests()

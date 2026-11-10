@@ -1,319 +1,162 @@
 {% extends "base.html" %}
 
 {% block title %}{{ _('Login') }} - SmartWorker{% endblock %}
+{% block app_width %}{% endblock %}
 
 {% block head %}
-<style>
-.signin-orb {
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.32), transparent 66%);
-}
-
-.signin-shell {
-    background: linear-gradient(180deg, #eef3fb 0%, #f8fafc 45%, #f8fafc 100%);
-}
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/signin.css') }}">
 {% endblock %}
 
+{#
+  One screen for signing in and signing up (docs/audit/mockups, batch 1).
+
+  With SMS connected (otp_signin): mobile number -> 6-digit code -> a name,
+  only for a number that has no account yet. Password sign-in is one tap
+  away for staff accounts.
+
+  Without SMS (today): the password form leads, and "Create account" goes to
+  the short sign-up form. The OTP panels are not rendered at all, so nobody
+  is offered a code that will never arrive.
+#}
 {% block content %}
-<div id="mobile-signin" class="signin-shell max-w-sm mx-auto min-h-screen">
-    <section id="signin-hero" class="bg-gradient-to-br from-primary to-accent text-white p-8 h-[370px] flex flex-col justify-center items-center relative overflow-hidden rounded-b-[2.2rem]">
-        <div class="absolute top-0 left-0 w-full h-full opacity-10">
-            <div class="absolute top-16 left-6 w-20 h-20 border-2 border-white/20 rounded-xl rotate-12"></div>
-            <div class="absolute top-24 right-8 w-16 h-16 bg-white/10 rounded-full"></div>
-            <div class="absolute bottom-24 left-8 w-14 h-14 bg-white/15 rounded-lg rotate-45"></div>
-            <div class="absolute bottom-16 right-12 w-10 h-10 border border-white/25 rounded-full"></div>
-        </div>
-
-        <div id="app-logo" class="relative z-10 text-center">
-            <div class="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-2xl mx-auto mb-6 relative transform hover:scale-105 transition-transform duration-300">
-                <div class="w-24 h-24 bg-gradient-to-br from-primary via-accent to-blue-600 rounded-full flex items-center justify-center relative overflow-hidden shadow-inner">
-                    <div class="absolute inset-0 signin-orb"></div>
-                    <div class="relative z-10 flex flex-col items-center justify-center">
-                        <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg mb-2">
-                            <div class="relative">
-                                <i class="fa-solid fa-user-clock text-primary text-2xl"></i>
-                                <div class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border border-white flex items-center justify-center">
-                                    <i class="fa-solid fa-check text-white text-[10px]"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex space-x-1">
-                            <div class="w-2 h-2 bg-white rounded-full opacity-90"></div>
-                            <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                            <div class="w-2 h-2 bg-green-400 rounded-full"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <h1 class="text-3xl font-bold mb-2 tracking-wide">SmartWorker</h1>
-            <p class="text-base opacity-90 font-medium">{{ _('Professional Attendance Management') }}</p>
-
-            {# The language chooser has to be reachable before login, or a
-               supervisor who only reads Hindi cannot read the screen that
-               would let them change it. #}
-            <div class="flex items-center justify-center gap-2 mt-4">
+<div class="sw-auth">
+<div class="sw-wrap">
+    <section class="sw-hero">
+        <div class="top">
+            <div class="sw-brand"><span class="mark"><i class="fa-solid fa-user-clock"></i></span>SmartWorker</div>
+            {# Reachable before signing in: someone who only reads Hindi has
+               to be able to switch before they can read anything else. #}
+            <div class="sw-lang">
                 {% for code, label in languages.items() %}
-                <form method="POST" action="{{ url_for('set_language', lang=code) }}">
+                <form method="POST" action="{{ url_for('set_language', lang=code) }}" data-native>
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="redirect_to" value="{{ url_for('login') }}">
-                    <button type="submit" class="tap-target px-4 py-2 rounded-xl text-sm font-semibold border
-                           {{ 'bg-white/25 border-white/60 text-white' if current_lang == code
-                              else 'bg-white/10 border-white/25 text-white/90' }}">
-                        {{ label }}
-                    </button>
+                    <button type="submit" class="{{ 'on' if current_lang == code }}" lang="{{ code }}"
+                            aria-pressed="{{ 'true' if current_lang == code else 'false' }}">{{ label }}</button>
                 </form>
                 {% endfor %}
             </div>
         </div>
+        <h1>{{ _('Attendance and wages, without the register') }}</h1>
+        <p>{{ _('Sign in or create your account with your mobile number.') if otp_signin else _('Sign in to your account.') }}</p>
     </section>
 
-    <main id="signin-content" class="p-6 -mt-16 relative z-10">
-        <div id="signin-card" class="bg-white rounded-3xl shadow-2xl p-8 mb-6 border border-gray-100">
-            <div class="text-center mb-8">
-                <h2 class="text-2xl font-bold text-primary mb-2">{{ _('Welcome Back') }}</h2>
-                <p class="text-gray-600">{{ _('Access your attendance dashboard') }}</p>
+    <div class="sw-sheet">
+        {% if otp_signin %}
+        {# ---------- 1. mobile number ---------- #}
+        <form id="otp-start" data-native novalidate
+              data-send="{{ url_for('login_send_otp') }}"
+              data-verify="{{ url_for('login_verify_otp') }}"
+              data-details="{{ url_for('register_details') }}"
+              data-msg-invalid="{{ _('Please enter a valid 10-digit mobile number.') }}"
+              data-msg-network="{{ _('No internet. Check your connection and try again.') }}"
+              data-msg-resend="{{ _('Resend in') }}"
+              data-msg-code="{{ _('Enter all 6 digits of the code.') }}">
+            <label for="otp-mobile">{{ _('Your mobile number') }}</label>
+            <div class="sw-phone">
+                <span class="cc">+91</span>
+                <input id="otp-mobile" name="mobile" type="tel" inputmode="numeric"
+                       autocomplete="tel-national" maxlength="16" required
+                       placeholder="98765 43210" aria-describedby="otp-start-help">
             </div>
+            <div id="otp-start-help" class="sw-help">{{ _("We'll send a 6-digit code by SMS. New here? Your account is created after the code.") }}</div>
+            <div class="sw-msg bad" id="otp-start-msg" role="alert" hidden></div>
+            <button type="submit" class="sw-btn primary" id="otp-send-btn">
+                <span class="spin" aria-hidden="true"></span>{{ _('Get OTP') }} <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            </button>
+            <div class="sw-or">{{ _('or') }}</div>
+            <button type="button" class="sw-btn ghost" data-show="signin-form">
+                <i class="fa-solid fa-lock" aria-hidden="true"></i> {{ _('Sign in with username & password') }}
+            </button>
+        </form>
 
-            <form id="signin-form" method="POST" class="space-y-6">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div id="username-input" class="space-y-2">
-                    <label for="username" class="text-sm font-semibold text-gray-700 block">{{ _('Username or Email') }}</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-user text-gray-500"></i>
-                        </div>
-                        <input
-                            id="username"
-                            name="username"
-                            type="text"
-                            required
-                            placeholder="{{ _('Enter username or email') }}"
-                            class="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
-                        >
-                    </div>
-                </div>
-
-                <div id="password-input" class="space-y-2">
-                    <label for="password" class="text-sm font-semibold text-gray-700 block">{{ _('Password') }}</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-lock text-gray-500"></i>
-                        </div>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            placeholder="{{ _('Enter your password') }}"
-                            class="w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
-                        >
-                        <button aria-label="{{ _('Show password') }}" id="password-toggle" type="button" class="absolute inset-y-0 right-0 pr-4 flex items-center">
-                            <i class="fa-solid fa-eye text-gray-500 hover:text-gray-600 transition-colors"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div id="options-row" class="flex items-center justify-between">
-                    <label class="flex items-center space-x-2">
-                        <input type="checkbox" class="w-4 h-4 text-accent border border-gray-300 rounded focus:ring-2 focus:ring-accent">
-                        <span class="text-gray-600 text-sm">{{ _('Remember me') }}</span>
-                    </label>
-                    <a href="{{ url_for('forgot_password') }}" class="text-accent text-sm font-semibold hover:text-primary transition-colors">{{ _('Forgot Password?') }}</a>
-                </div>
-
-                <button id="signin-btn" type="submit" class="w-full bg-gradient-to-r from-primary to-accent text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
-                    {{ _('Sign In to Dashboard') }}
-                </button>
-            </form>
-
-            <div id="divider" class="flex items-center my-6">
-                <div class="flex-1 border-t-2 border-gray-200"></div>
-                <span class="px-4 text-sm text-gray-500 font-medium">{{ _('OR') }}</span>
-                <div class="flex-1 border-t-2 border-gray-200"></div>
+        {# ---------- 2. the code ---------- #}
+        <form id="otp-code" data-native novalidate hidden>
+            <button type="button" class="sw-back" data-show="otp-start" aria-label="{{ _('Change number') }}"><i class="fa-solid fa-arrow-left"></i></button>
+            <h2>{{ _('Enter the code') }}</h2>
+            <p class="sw-sub">{{ _('Sent by SMS to') }} <b id="otp-sent-to"></b> · <button type="button" class="sw-link" data-show="otp-start">{{ _('Change number') }}</button></p>
+            <div class="sw-code" id="otp-boxes">
+                <div class="boxes" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <input id="otp-input" name="otp" type="text" inputmode="numeric" pattern="[0-9]*"
+                       autocomplete="one-time-code" maxlength="6" aria-label="{{ _('6-digit code') }}">
             </div>
+            <div class="sw-msg bad" id="otp-code-msg" role="alert" hidden></div>
+            <button type="submit" class="sw-btn primary" id="otp-verify-btn">
+                <span class="spin" aria-hidden="true"></span>{{ _('Verify & continue') }}
+            </button>
+            <p class="sw-center"><span id="otp-wait">{{ _("Didn't get it?") }} {{ _('Resend in') }} <b id="otp-timer">0:30</b></span>
+                <button type="button" class="sw-link" id="otp-resend" hidden>{{ _('Send a new code') }}</button></p>
+        </form>
 
-            <div id="otp-login-section" class="space-y-3">
-                <div class="space-y-2">
-                    <label for="login_mobile" class="text-sm font-semibold text-gray-700 block">{{ _('Mobile Number for OTP Login') }}</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-mobile-alt text-gray-500"></i>
-                        </div>
-                        <input
-                            id="login_mobile"
-                            type="tel"
-                            inputmode="tel"
-                            autocomplete="tel-national"
-                            placeholder="{{ _('Enter registered mobile number') }}"
-                            class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
-                        >
-                    </div>
-                </div>
+        {# ---------- 3. first time only ---------- #}
+        <form id="otp-details" data-native novalidate hidden>
+            <h2>{{ _('Welcome! One last step') }}</h2>
+            <p class="sw-sub">{{ _('Tell us your name and your business. You can change these later.') }}</p>
+            <div class="sw-chip"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <span id="otp-verified-number"></span> {{ _('verified') }}</div>
+            <div class="sw-field">
+                <label for="d-name">{{ _('Your name') }}</label>
+                <input id="d-name" name="full_name" class="sw-input" autocomplete="name" maxlength="100" required>
+            </div>
+            <div class="sw-field">
+                <label for="d-business">{{ _('Business name') }} <span class="sw-opt">({{ _('optional') }})</span></label>
+                <input id="d-business" name="business_name" class="sw-input" autocomplete="organization" maxlength="120" placeholder="{{ _('e.g. Sharma Stone Crusher') }}">
+            </div>
+            <div class="sw-field">
+                <label for="d-email">{{ _('Email') }} <span class="sw-opt">({{ _('optional — for reports') }})</span></label>
+                <input id="d-email" name="email" type="email" class="sw-input" autocomplete="email" maxlength="120" placeholder="name@example.com">
+            </div>
+            <div class="sw-msg bad" id="otp-details-msg" role="alert" hidden></div>
+            <button type="submit" class="sw-btn primary" id="otp-details-btn">
+                <span class="spin" aria-hidden="true"></span>{{ _('Start using SmartWorker') }}
+            </button>
+            <p class="sw-help" style="text-align:center">{{ _('No password needed — you sign in with an OTP. You can set a password later in Profile.') }}</p>
+        </form>
+        {% endif %}
 
-                <div class="grid grid-cols-2 gap-2">
-                    <button id="login-send-otp-btn" type="button" class="bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition-all border border-gray-200">
-                        {{ _('Send OTP') }}
-                    </button>
-                    <button id="login-verify-otp-btn" type="button" class="bg-accent text-white py-2.5 rounded-xl font-semibold hover:bg-primary transition-all">
-                        {{ _('Verify & Login') }}
-                    </button>
-                </div>
-
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-shield-halved text-gray-500"></i>
-                    </div>
-                    <input
-                        id="login_otp"
-                        type="text"
-                        inputmode="numeric"
-                        pattern="[0-9]*"
-                        autocomplete="one-time-code"
-                        maxlength="6"
-                        placeholder="{{ _('Enter 6-digit OTP') }}"
-                        class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-gray-800 transition-all"
-                    >
-                </div>
-
-                <div id="login-otp-status" class="text-xs font-medium text-gray-500">
-                    {{ _('Enter mobile number and use OTP to login.') }}
+        {# ---------- password ---------- #}
+        <form id="signin-form" method="POST" action="{{ url_for('login', next=request.args.get('next')) }}" {{ 'hidden' if otp_signin }}>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if otp_signin %}
+            <button type="button" class="sw-back" data-show="otp-start" aria-label="{{ _('Back') }}"><i class="fa-solid fa-arrow-left"></i></button>
+            <h2>{{ _('Sign in with password') }}</h2>
+            <p class="sw-sub">{{ _('For staff accounts made by your admin, and owners who set one.') }}</p>
+            {% endif %}
+            <div class="sw-field">
+                <label for="username">{{ _('Mobile number, username or email') }}</label>
+                <input id="username" name="username" class="sw-input" required autocomplete="username"
+                       autocapitalize="none" spellcheck="false">
+            </div>
+            <div class="sw-field">
+                <label for="password">{{ _('Password') }}</label>
+                <div class="sw-pass">
+                    <input id="password" name="password" type="password" class="sw-input" required autocomplete="current-password">
+                    <button type="button" class="sw-eye" id="password-toggle" aria-label="{{ _('Show password') }}"
+                            data-label-show="{{ _('Show password') }}" data-label-hide="{{ _('Hide password') }}"><i class="fa-solid fa-eye"></i></button>
                 </div>
             </div>
-        </div>
-
-        <div id="signup-link" class="text-center mb-8">
-            <p class="text-gray-600 text-sm">
-                {{ _('Don\'t have an account?') }}
-                <a href="{{ url_for('register') }}" class="text-accent font-bold hover:text-blue-700 transition-colors">{{ _('Create Account') }}</a>
+            <button id="signin-btn" type="submit" class="sw-btn primary">
+                <span class="spin" aria-hidden="true"></span>{{ _('Sign in') }}
+            </button>
+            <p class="sw-center">
+                {% if otp_signin %}
+                <button type="button" class="sw-link" data-show="otp-start">{{ _('Forgot password? Sign in with OTP instead') }}</button>
+                {% else %}
+                <a class="sw-link" href="{{ url_for('forgot_password') }}">{{ _('Forgot Password?') }}</a>
+                {% endif %}
             </p>
-        </div>
+            {% if not otp_signin %}
+            <div class="sw-or">{{ _('New business?') }}</div>
+            <a class="sw-btn ghost" href="{{ url_for('register') }}">{{ _('Create account') }}</a>
+            {% endif %}
+        </form>
+    </div>
 
-        <div class="text-center text-xs text-gray-500 pb-6">
-            &copy; 2024 SmartWorker. All rights reserved.
-        </div>
-    </main>
+    <div class="sw-foot">
+        {% if support_whatsapp %}
+        {{ _('Need help?') }} <a class="wa" href="https://wa.me/{{ support_whatsapp }}" target="_blank" rel="noopener"><i class="fa-solid fa-phone" aria-hidden="true"></i> {{ _('WhatsApp us') }}</a>
+        {% endif %}
+    </div>
 </div>
-
-<script nonce="{{ csp_nonce }}">
-document.addEventListener('DOMContentLoaded', function() {
-    const signinForm = document.getElementById('signin-form');
-    const signinBtn = document.getElementById('signin-btn');
-    const loginMobileInput = document.getElementById('login_mobile');
-    const loginOtpInput = document.getElementById('login_otp');
-    const loginSendOtpBtn = document.getElementById('login-send-otp-btn');
-    const loginVerifyOtpBtn = document.getElementById('login-verify-otp-btn');
-    const loginOtpStatus = document.getElementById('login-otp-status');
-    const passwordInput = document.getElementById('password');
-    const passwordToggle = document.getElementById('password-toggle');
-    const eyeIcon = passwordToggle ? passwordToggle.querySelector('i') : null;
-
-    function setLoginOtpStatus(message, state) {
-        if (!loginOtpStatus) return;
-        loginOtpStatus.textContent = message;
-        loginOtpStatus.classList.remove('text-gray-500', 'text-green-700', 'text-red-700');
-        if (state === 'success') {
-            loginOtpStatus.classList.add('text-green-700');
-        } else if (state === 'error') {
-            loginOtpStatus.classList.add('text-red-700');
-        } else {
-            loginOtpStatus.classList.add('text-gray-500');
-        }
-    }
-
-    if (signinForm && signinBtn) {
-        signinForm.addEventListener('submit', function() {
-            signinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Signing In...';
-            signinBtn.disabled = true;
-        });
-    }
-
-    if (loginMobileInput) {
-        loginMobileInput.addEventListener('input', function() {
-            setLoginOtpStatus('Enter mobile number and use OTP to login.', 'default');
-        });
-    }
-
-    if (loginSendOtpBtn && loginMobileInput) {
-        loginSendOtpBtn.addEventListener('click', async function() {
-            const mobile = loginMobileInput.value.trim();
-            if (!mobile) {
-                setLoginOtpStatus('Enter mobile number first.', 'error');
-                return;
-            }
-
-            const originalText = loginSendOtpBtn.innerHTML;
-            loginSendOtpBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Sending...';
-            loginSendOtpBtn.disabled = true;
-
-            try {
-                const response = await fetch('{{ url_for("login_send_otp") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mobile }),
-                });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    setLoginOtpStatus(result.message || 'OTP sent successfully.', 'success');
-                } else {
-                    setLoginOtpStatus(result.message || 'Failed to send OTP.', 'error');
-                }
-            } catch (error) {
-                setLoginOtpStatus('Failed to send OTP. Please try again.', 'error');
-            } finally {
-                loginSendOtpBtn.innerHTML = originalText;
-                loginSendOtpBtn.disabled = false;
-            }
-        });
-    }
-
-    if (loginVerifyOtpBtn && loginMobileInput && loginOtpInput) {
-        loginVerifyOtpBtn.addEventListener('click', async function() {
-            const mobile = loginMobileInput.value.trim();
-            const otp = loginOtpInput.value.trim();
-            if (!mobile || !otp) {
-                setLoginOtpStatus('Enter mobile number and OTP.', 'error');
-                return;
-            }
-
-            const originalText = loginVerifyOtpBtn.innerHTML;
-            loginVerifyOtpBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Verifying...';
-            loginVerifyOtpBtn.disabled = true;
-
-            try {
-                const response = await fetch('{{ url_for("login_verify_otp") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mobile, otp }),
-                });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    setLoginOtpStatus(result.message || 'OTP verified. Login successful.', 'success');
-                    window.location.href = result.redirect_url || '{{ url_for("dashboard") }}';
-                } else {
-                    setLoginOtpStatus(result.message || 'OTP verification failed.', 'error');
-                }
-            } catch (error) {
-                setLoginOtpStatus('OTP verification failed. Please try again.', 'error');
-            } finally {
-                loginVerifyOtpBtn.innerHTML = originalText;
-                loginVerifyOtpBtn.disabled = false;
-            }
-        });
-    }
-
-    if (passwordInput && eyeIcon && passwordToggle) {
-        passwordToggle.addEventListener('click', function() {
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                eyeIcon.classList.remove('fa-eye');
-                eyeIcon.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                eyeIcon.classList.remove('fa-eye-slash');
-                eyeIcon.classList.add('fa-eye');
-            }
-        });
-    }
-});
-</script>
+</div>
+<script src="{{ url_for('static', filename='js/signin.js') }}"></script>
 {% endblock %}

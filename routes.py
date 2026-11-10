@@ -714,19 +714,63 @@ def _otp_check(purpose, mobile, code):
     if not authguard.otp_matches(purpose, mobile, code, nonce, digest):
         authguard.record('otp_fail_mobile', mobile)
         authguard.record('otp_fail_ip', ip)
-        return jsonify({'success': False,
-                        'message': _say('Invalid OTP. Please try again.')}), 400
+        left = authguard.remaining('otp_fail_mobile', mobile)
+        if not left:
+            wait = authguard.blocked_for('otp_fail_mobile', mobile)
+            return jsonify({'success': False, 'retry_after': wait, 'message': _too_many(wait)}), 429
+        # Say what to do and how many goes are left, not just "invalid".
+        return jsonify({'success': False, 'tries_left': left,
+                        'message': _say('That code is not right. Check the SMS and try again - %d tries left.' % left)}), 400
     authguard.mark_used(nonce)
     authguard.clear('otp_fail_mobile', mobile)
     return None
 
+def sms_enabled():
+    """Whether a one-time code can actually reach a phone.
+
+    No SMS provider is connected yet (audit decision D1). Until one is, OTP
+    sign-in is off and the sign-in screen leads with the password; it used
+    to offer OTP anyway and write the codes to the server log, which meant
+    nobody could sign up. SMS_DEV_LOG=1 turns the OTP flow on with codes in
+    the log, for trying it out locally - never set it on the live server.
+    """
+    return os.environ.get('SMS_DEV_LOG') == '1'
+
 def _deliver_otp(purpose, mobile, code):
-    # No SMS provider is connected yet (see docs/audit). Until one is, the
-    # code goes to the server log only, which is how it has always worked.
+    # Only reached when sms_enabled(); with SMS_DEV_LOG the log is the phone.
     app.logger.info("%s OTP for %s: %s", purpose.capitalize(), mobile, code)
 
+#: How long a verified number may be used to finish creating an account.
+SIGNUP_WINDOW_SECONDS = 15 * 60
+
+def placeholder_email(mobile):
+    """users.email is required and unique, and not everybody has one. The
+    .invalid domain is reserved (RFC 2606) so it can never reach anyone;
+    worker logins already use the same pattern."""
+    return '%s@phone.invalid' % mobile
+
+def create_owner(full_name, mobile, business_name=None, email=None, password=None):
+    """A new business: its workspace and its admin login, in one place for
+    both ways of signing up."""
+    acc = Account(name=business_name or f"{full_name}'s Workspace")
+    db.session.add(acc)
+    db.session.flush()
+    user = User()
+    user.email = email or placeholder_email(mobile)
+    user.username = generate_unique_username(full_name, email)
+    user.phone = mobile
+    user.full_name = full_name
+    user.role = 'admin'
+    user.account_id = acc.id
+    # Signed up by OTP: no password until they set one in Profile. An
+    # unguessable one stands in, because the column means "has a password".
+    user.set_password(password or secrets.token_urlsafe(24))
+    db.session.add(user)
+    db.session.commit()
+    return user
+
 def clear_register_otp_session():
-    for key in REGISTER_OTP_SESSION_KEYS:
+    for key in REGISTER_OTP_SESSION_KEYS + ('signup_mobile', 'signup_verified_at'):
         session.pop(key, None)
 
 def clear_login_otp_session():
@@ -1059,22 +1103,25 @@ def login_send_otp():
             'message': _say('Please enter a valid 10-digit mobile number.')
         }), 400
 
+    if not sms_enabled():
+        return jsonify({
+            'success': False,
+            'message': _say('Sign-in by OTP is not available yet. Please use your password.')
+        }), 503
+
     refused = _otp_send_gate('login', mobile)
     if refused:
         return refused
     authguard.record('otp_send_mobile', mobile)
     authguard.record('otp_send_ip', authguard.client_ip())
 
+    # One way in for everyone: a number with no account gets a code too, and
+    # becomes a new business once it is verified. Nobody has to know in
+    # advance whether to "sign in" or "sign up".
     user = user_by_mobile(mobile)
-    if not user:
-        return jsonify({
-            'success': False,
-            'message': _say('No account found with this mobile number.')
-        }), 404
-
     clear_login_otp_session()
     code = _issue_otp('login', mobile)
-    session['login_otp_user_id'] = user.id
+    session['login_otp_user_id'] = user.id if user else None
     _deliver_otp('login', mobile, code)
 
     return jsonify({
@@ -1095,8 +1142,20 @@ def login_verify_otp():
     if refused:
         return refused
 
-    user = db.session.get(User, session.get('login_otp_user_id') or 0)
+    user_id = session.get('login_otp_user_id')
     clear_login_otp_session()
+    if not user_id:
+        # A new number, now proven to belong to whoever holds the phone.
+        # They have a few minutes to give a name; nothing is created before.
+        session['signup_mobile'] = mobile
+        session['signup_verified_at'] = now_ist().timestamp()
+        session.modified = True
+        return jsonify({
+            'success': True,
+            'new_user': True,
+            'message': _say('Mobile number verified successfully.'),
+        })
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({
             'success': False,
@@ -1116,146 +1175,97 @@ def login_verify_otp():
         'redirect_url': home_for(user),
     })
 
-@app.route('/register/send-otp', methods=['POST'])
+@app.route('/register/details', methods=['POST'])
 @csrf.exempt
-def register_send_otp():
+def register_details():
+    """The last step of OTP sign-up: a verified number gives its name."""
     payload = request.get_json(silent=True) or request.form
-    mobile = normalize_mobile_number(payload.get('mobile'))
-
-    if not mobile:
-        return jsonify({
-            'success': False,
-            'message': _say('Please enter a valid 10-digit mobile number.')
-        }), 400
+    mobile = session.get('signup_mobile')
+    verified_at = session.get('signup_verified_at')
+    if not mobile or not verified_at or \
+            now_ist().timestamp() - float(verified_at) > SIGNUP_WINDOW_SECONDS:
+        return jsonify({'success': False,
+                        'message': _say('OTP expired. Please request a new OTP.')}), 400
+    full_name = ' '.join((payload.get('full_name') or '').split())
+    business = ' '.join((payload.get('business_name') or '').split())
+    email = (payload.get('email') or '').strip().lower()
+    if not full_name:
+        return jsonify({'success': False, 'field': 'full_name',
+                        'message': _say('Please enter your name.')}), 400
+    if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return jsonify({'success': False, 'field': 'email',
+                        'message': _say('That email does not look right. Leave it empty if you have none.')}), 400
+    if email and User.query.filter_by(email=email).first():
+        return jsonify({'success': False, 'field': 'email',
+                        'message': _say('Email already registered')}), 409
     if mobile_taken(mobile):
-        return jsonify({
-            'success': False,
-            'message': _say('Mobile number already registered')
-        }), 409
+        return jsonify({'success': False,
+                        'message': _say('Mobile number already registered')}), 409
 
-    refused = _otp_send_gate('register', mobile)
-    if refused:
-        return refused
-    authguard.record('otp_send_mobile', mobile)
-    authguard.record('otp_send_ip', authguard.client_ip())
-
+    user = create_owner(full_name[:100], mobile, business[:120] or None, email or None)
     clear_register_otp_session()
-    code = _issue_otp('register', mobile)
-    session['register_otp_verified'] = False
-    _deliver_otp('register', mobile, code)
+    login_user(user, remember=True)
+    return jsonify({'success': True, 'redirect_url': home_for(user)})
 
-    return jsonify({
-        'success': True,
-        'message': _say('OTP has been sent to your mobile number.'),
-        'expires_in': authguard.OTP_TTL_SECONDS,
-        'resend_after': authguard.OTP_RESEND_SECONDS,
-    })
-
-@app.route('/register/verify-otp', methods=['POST'])
-@csrf.exempt
-def register_verify_otp():
-    payload = request.get_json(silent=True) or request.form
-    mobile = normalize_mobile_number(payload.get('mobile'))
-    otp_code = str(payload.get('otp', '')).strip()
-
-    refused = _otp_check('register', mobile, otp_code)
-    if refused:
-        return refused
-
-    session['register_otp_verified'] = True
-    session.modified = True
-
-    return jsonify({
-        'success': True,
-        'message': _say('Mobile number verified successfully.')
-    })
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """Sign-up with a password, for while OTP sign-in is off.
+
+    Five fields, two of them optional. It used to be nine: confirm-password
+    is replaced by a show-password eye, and email is optional because many
+    of the people this is for do not use one.
+    """
+    if sms_enabled() and request.method == 'GET':
+        # With SMS on, the sign-in screen signs people up too.
+        return redirect(url_for('login'))
+
     if request.method == 'POST':
-        email = request.form['email'].strip().lower()
-        password = request.form['password']
-        confirm_password = request.form.get('confirm_password', '')
-        full_name = request.form['full_name'].strip()
-        workspace = request.form.get('business_name', '').strip()
+        full_name = ' '.join((request.form.get('full_name') or '').split())
         mobile = normalize_mobile_number(request.form.get('mobile'))
+        password = request.form.get('password') or ''
+        workspace = ' '.join((request.form.get('business_name') or '').split())
+        email = (request.form.get('email') or '').strip().lower()
+
+        def again(message):
+            flash(message, 'error')
+            return render_template('register.html', form=request.form), 400
 
         if not full_name:
-            flash('Please enter your full name', 'error')
-            return render_template('register.html')
-        if password != confirm_password:
-            flash('Passwords do not match', 'error')
-            return render_template('register.html')
-        if len(password) < 8:
-            flash('Password must be at least 8 characters', 'error')
-            return render_template('register.html')
+            return again('Please enter your name.')
         if not mobile:
-            flash('Please enter a valid 10-digit mobile number.', 'error')
-            return render_template('register.html')
-
-        # Mobile OTP verification gate (unchanged from the legacy flow).
-        otp_verified = session.get('register_otp_verified')
-        otp_mobile = session.get('register_otp_mobile')
-        otp_expiry = session.get('register_otp_expires_at')
-        if (
-            not otp_verified
-            or otp_mobile != mobile
-            or not otp_expiry
-            or now_ist().timestamp() > float(otp_expiry)
-        ):
-            flash('Please verify your mobile number with OTP before registering', 'error')
-            return render_template('register.html')
-
+            return again('Please enter a valid 10-digit mobile number.')
+        if len(password) < 8:
+            return again('Password must be at least 8 characters')
+        if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+            return again('That email does not look right. Leave it empty if you have none.')
         if mobile_taken(mobile):
-            flash('Mobile number already registered', 'error')
-            return render_template('register.html')
+            return again('Mobile number already registered')
+        if email and User.query.filter_by(email=email).first():
+            return again('Email already registered')
 
-        account_name = workspace or f"{full_name}'s Workspace"
-
-        if supabase_auth.enabled():
-            # Supabase owns credentials, email verification and recovery.
+        if supabase_auth.enabled() and email:
+            # With an email, Supabase keeps the password and can send a
+            # reset link. Without one, the account is local, like staff.
             result = supabase_auth.sign_up(email, password, full_name)
             if not result['ok']:
-                flash(result.get('error') or 'Could not complete registration. Please try again.', 'error')
-                return render_template('register.html')
-
-            # Create the local workspace + owner/admin row (idempotent).
+                return again(result.get('error') or 'Could not complete registration. Please try again.')
             user = _provision_from_supabase(
-                result['user'], full_name=full_name, phone=mobile or None,
-                make_account=True, account_name=account_name,
+                result['user'], full_name=full_name, phone=mobile,
+                make_account=True, account_name=workspace or f"{full_name}'s Workspace",
             )
-            clear_register_otp_session()
-
             if result.get('needs_confirmation'):
                 flash('Registration successful! Check your email to confirm your account, then log in.', 'success')
                 return redirect(url_for('login'))
-            # Confirmation disabled → Supabase returned a session; log in now.
-            login_user(user, remember=True)
-            return redirect(home_for(user), code=303)
+        else:
+            user = create_owner(full_name[:100], mobile, workspace[:120] or None,
+                                email or None, password)
 
-        # ---- Legacy local fallback (Supabase Auth not configured) ----
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered', 'error')
-            return render_template('register.html')
-        acc = Account(name=account_name)
-        db.session.add(acc)
-        db.session.flush()
-        user = User()
-        user.username = generate_unique_username(full_name, email)
-        user.email = email
-        user.phone = mobile or None
-        user.full_name = full_name
-        user.role = 'admin'
-        user.account_id = acc.id
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
         clear_register_otp_session()
-        flash('Registration successful! Please login using your email.', 'success')
-        return redirect(url_for('login'))
+        login_user(user, remember=True)
+        return redirect(home_for(user), code=303)
 
-    clear_register_otp_session()
-    return render_template('register.html')
+    return render_template('register.html', form={})
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
@@ -2738,7 +2748,15 @@ def profile():
         
         if action == 'update_profile':
             current_user.full_name = request.form['full_name']
-            current_user.email = request.form['email']
+            # Left empty by someone who signed up without an email: keep the
+            # stand-in address rather than storing nothing (the column is
+            # required). Another login's address is refused, not stolen.
+            email = (request.form.get('email') or '').strip().lower()
+            if email and email != current_user.email:
+                if User.query.filter(User.email == email, User.id != current_user.id).first():
+                    flash('Email already registered', 'error')
+                    return redirect(url_for('profile'))
+                current_user.email = email
             db.session.commit()
             flash('Profile updated successfully', 'success')
             
@@ -6495,6 +6513,10 @@ def _inject_language():
         'current_lang': lang,
         'languages': i18n.LANGUAGES,
         'weekdays_short': i18n.weekday_names(lang, short=True),
+        'otp_signin': sms_enabled(),
+        # Shown on the sign-in screens only when set: a help number nobody
+        # answers is worse than none.
+        'support_whatsapp': ''.join(ch for ch in os.environ.get('SUPPORT_WHATSAPP', '') if ch.isdigit()),
     }
 
 
