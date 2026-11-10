@@ -62,10 +62,37 @@
     .slip-wrapper .cal-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
     .slip-wrapper .cal-cell { min-width: 0; overflow: hidden; }
     .slip-wrapper h2 { overflow-wrap: anywhere; }
-    .pay-row { gap: 0.75rem; }
-    .pay-row > :first-child { min-width: 0; overflow-wrap: anywhere; }
-    .pay-row > .amount { min-width: 0; }
+    /* Words stay whole ("Monthly", not "Monthl-y"); a label and its amount
+       sit side by side while they fit, and the amount drops to its own
+       line, right-aligned, when they do not - the stacked rows of the
+       approved preview. */
+    .slip-wrapper, .slip-wrapper .pay-row { overflow-wrap: break-word; }
+    .pay-row,
+    .slip-wrapper [data-pdf-split].flex.justify-between { flex-wrap: wrap; column-gap: 0.75rem; }
+    .pay-row > :first-child { min-width: 0; }
+    .pay-row > .amount,
+    .slip-wrapper [data-pdf-split].flex.justify-between > .amount { min-width: 0; margin-left: auto; }
+    .slip-wrapper .grid.grid-cols-4 { grid-template-columns: repeat(auto-fit, minmax(4.75rem, 1fr)); }
+    .slip-net { flex-wrap: wrap; gap: 0.5rem 1rem; }
+    .slip-net .text-2xl { white-space: nowrap; }
+    /* Company name and "PAYSLIP / month" side by side while they fit; the
+       month drops below the name when they do not, so the name is never
+       broken inside a word ("Uttaran-chal"). */
+    .slip-head-row { flex-wrap: wrap; gap: 0.25rem 1rem; }
+    .slip-head-row > .min-w-0 { flex: 1 1 12rem; }
+    .slip-head-row .text-lg { overflow-wrap: normal; }
+    /* Photo, name and the paid/pending badge: the badge moves under the
+       name when the three do not fit, rather than squeezing the name to a
+       letter per line. */
+    .slip-identity { flex-wrap: wrap; row-gap: 0.5rem; }
+    .slip-identity > .flex-1 { flex: 1 1 8rem; overflow-wrap: normal; }
 }
+/* When Share, PDF and Print no longer fit on one row (large text), PDF
+   and Print become icon-only so the bar stays one row tall instead of
+   covering half the screen. Set from the script below. */
+.slip-actions.compact .slip-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.slip-actions.compact .slip-btn { flex: 0 0 min(3.25rem, 52px); width: min(3.25rem, 52px); padding: 0; }
+.slip-actions.compact .slip-share { flex: 1 1 0; }
 
 @media print {
     .no-print { display: none !important; }
@@ -249,7 +276,7 @@
 
         <!-- Slip Top Bar -->
         <div class="bg-gradient-to-r from-primary to-accent p-5 text-white">
-            <div class="flex items-center justify-between mb-3">
+            <div class="slip-head-row flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2 min-w-0">
                     {% if company and company.logo %}
                     <img src="{{ company.logo }}" alt="logo" class="w-9 h-9 rounded-lg object-contain bg-white/10 p-0.5 shrink-0">
@@ -273,7 +300,7 @@
             </div>
 
             <!-- Worker Identity -->
-            <div class="flex items-center space-x-3 bg-white/10 rounded-2xl p-3 border border-white/20">
+            <div class="slip-identity flex items-center space-x-3 bg-white/10 rounded-2xl p-3 border border-white/20">
                 {% if worker.profile_image %}
                 <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}"
                      class="w-14 h-14 rounded-xl object-cover shrink-0 border-2 border-white/30">
@@ -662,7 +689,7 @@
                 {% endif %}
 
                 <!-- Net Payable box -->
-                <div class="mt-3 bg-gradient-to-r from-primary to-accent rounded-2xl p-4 text-white flex items-center justify-between" data-pdf-block>
+                <div class="slip-net mt-3 bg-gradient-to-r from-primary to-accent rounded-2xl p-4 text-white flex items-center justify-between" data-pdf-block>
                     <div>
                         <div class="text-xs opacity-90 uppercase tracking-wider">{{ _('Net Payable') }}</div>
                         <div class="text-2xl font-bold mt-0.5 leading-snug">{{ pay_summary.estimated_pay|money2 }}</div>
@@ -720,7 +747,7 @@
         <button type="button" data-act="sharePayslip" class="slip-share">
             {% include '_icon_whatsapp.svg' %}<span>{{ _('Share') }}</span>
         </button>
-        <button type="button" data-act="downloadPDF" class="slip-btn">
+        <button type="button" data-act="downloadPDF" class="slip-btn" aria-label="{{ _('Save PDF') }}">
             <i class="fa-solid fa-download" aria-hidden="true"></i><span>PDF</span>
         </button>
         <button type="button" data-act="printSlip" class="slip-btn slip-btn-icon" aria-label="{{ _('Print') }}">
@@ -1064,6 +1091,22 @@ function downloadPDF() {
 // The PDF last built, kept so a second tap can share it at once: a phone
 // browser only shares straight after a tap, and building takes seconds.
 var payslipPdfReady = null;
+
+// Keep the action bar one row tall (see .slip-actions.compact).
+(function () {
+    var bar = document.querySelector('.slip-actions');
+    if (!bar) return;
+    function fit() {
+        bar.classList.remove('compact');
+        var kids = bar.children;
+        if (kids.length && kids[kids.length - 1].offsetTop > kids[0].offsetTop + 4) {
+            bar.classList.add('compact');
+        }
+    }
+    fit();
+    window.addEventListener('resize', fit);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
 
 function sharePayslip(el) {
     var btn = el && el.closest ? el.closest('button') : null;
