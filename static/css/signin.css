@@ -1,0 +1,93 @@
+/* Sign in and sign up — the screens approved in docs/audit/mockups (batch 1).
+ *
+ * Sizes are in rem so the phone's font setting reaches them, and nothing
+ * here has a fixed height: at the largest text the hero grows and the form
+ * wraps instead of anything being cut off. */
+.sw-auth {
+    --navy: #001F3F; --blue: #007BFF; --ink: #0f172a; --muted: #475569;
+    --line: #e2e8f0; --bg: #f8fafc; --bad: #b91c1c;
+    min-height: 100vh; min-height: 100dvh; background: var(--bg); color: var(--ink);
+    display: flex; flex-direction: column;
+}
+.sw-auth [hidden] { display: none !important; }
+
+.sw-hero {
+    background: linear-gradient(150deg, var(--navy) 0%, #003a7a 60%, var(--blue) 100%);
+    color: #fff; padding: 1.25rem 1.25rem 3.5rem; border-radius: 0 0 1.75rem 1.75rem;
+    padding-top: calc(1.25rem + env(safe-area-inset-top, 0px));
+}
+.sw-hero .top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .625rem; }
+.sw-brand { display: flex; align-items: center; gap: .625rem; font-weight: 700; font-size: 1.125rem; }
+.sw-brand .mark { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #fff; display: grid; place-items: center; color: var(--navy); font-size: 1.1rem; box-shadow: 0 4px 12px rgba(0,0,0,.2); flex-shrink: 0; }
+.sw-lang { display: flex; background: rgba(255,255,255,.14); border-radius: 999px; padding: 3px; }
+.sw-lang form { margin: 0; }
+.sw-lang button { min-height: 2.25rem; min-width: 2.75rem; padding: 0 .8rem; border-radius: 999px; font-size: .8125rem; font-weight: 600; color: #fff; background: transparent; border: 0; }
+.sw-lang button.on { background: #fff; color: var(--navy); }
+.sw-hero h1 { font-size: 1.5rem; line-height: 1.25; margin-top: 1.6rem; font-weight: 700; }
+.sw-hero p { margin-top: .4rem; opacity: .88; font-size: .9375rem; line-height: 1.45; }
+
+.sw-sheet { background: #fff; margin: -2.25rem 1rem 0; border-radius: 1.375rem; padding: 1.375rem 1.125rem; box-shadow: 0 10px 30px rgba(0,31,63,.10); position: relative; }
+.sw-sheet h2 { font-size: 1.25rem; line-height: 1.3; font-weight: 700; margin-bottom: .25rem; }
+.sw-sub { color: var(--muted); font-size: .9375rem; line-height: 1.5; margin-bottom: 1rem; }
+.sw-sub b { color: var(--ink); }
+
+.sw-auth label { display: block; font-weight: 600; font-size: .9375rem; margin-bottom: .5rem; }
+.sw-opt { color: var(--muted); font-weight: 500; font-size: .8125rem; }
+.sw-field + .sw-field { margin-top: 1rem; }
+.sw-help { color: var(--muted); font-size: .8125rem; margin-top: .5rem; line-height: 1.45; }
+.sw-input { width: 100%; border: 2px solid var(--line); border-radius: .875rem; padding: .85rem .9rem; font-size: 1.0625rem; background: #fff; color: var(--ink); min-height: 3.25rem; }
+.sw-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 4px rgba(0,123,255,.12); }
+.sw-input[aria-invalid="true"] { border-color: var(--bad); }
+
+/* +91 and the ten digits. The digits size to the field, not to the text
+   setting: at the largest font a mobile number still fits on one line. */
+.sw-phone { container-type: inline-size; display: flex; border: 2px solid var(--line); border-radius: .875rem; overflow: hidden; background: #fff; }
+.sw-phone:focus-within { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(0,123,255,.12); }
+.sw-phone .cc { background: #f1f5f9; padding: 0 .625rem; display: flex; align-items: center; font-weight: 700; font-size: min(1.0625rem, 6.5cqi); border-right: 1px solid var(--line); white-space: nowrap; }
+.sw-phone input { flex: 1; min-width: 0; border: 0; outline: none; padding: .85rem .6rem; font-size: min(1.25rem, 8.2cqi); letter-spacing: .04em; font-weight: 600; background: transparent; color: var(--ink); min-height: 3.25rem; }
+
+.sw-pass { position: relative; }
+.sw-pass .sw-input { padding-right: 3.25rem; }
+.sw-eye { position: absolute; right: .25rem; top: 50%; transform: translateY(-50%); width: 2.75rem; height: 2.75rem; border: 0; background: transparent; color: #64748b; border-radius: 50%; }
+
+.sw-btn { display: flex; align-items: center; justify-content: center; gap: .625rem; width: 100%; min-height: 3.375rem; border-radius: .875rem; font-weight: 700; font-size: 1.0625rem; border: 0; margin-top: 1.125rem; text-align: center; padding: .75rem 1rem; line-height: 1.3; text-decoration: none; }
+.sw-btn.primary { background: linear-gradient(135deg, var(--navy), var(--blue)); color: #fff; box-shadow: 0 8px 18px rgba(0,123,255,.25); }
+.sw-btn.primary:active { transform: translateY(1px); }
+.sw-btn.ghost { background: #fff; color: var(--navy); border: 2px solid var(--line); margin-top: .75rem; }
+.sw-btn[disabled], .sw-btn[aria-busy="true"] { opacity: .65; }
+.sw-btn .spin { display: none; width: 1.1rem; height: 1.1rem; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: sw-spin .8s linear infinite; }
+.sw-btn[aria-busy="true"] .spin { display: inline-block; }
+@keyframes sw-spin { to { transform: rotate(360deg); } }
+.sw-or { display: flex; align-items: center; gap: .625rem; color: #94a3b8; font-size: .8125rem; margin-top: 1.125rem; }
+.sw-or::before, .sw-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+.sw-link { color: var(--blue); font-weight: 600; text-decoration: none; background: none; border: 0; padding: .6rem .25rem; font-size: inherit; display: inline-block; }
+.sw-center { text-align: center; margin-top: .75rem; color: var(--muted); font-size: .9375rem; }
+.sw-back { width: 2.75rem; height: 2.75rem; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 1px solid var(--line); color: var(--navy); margin-bottom: .75rem; }
+
+/* Six boxes, one real input laid over them: paste, SMS autofill and the
+   keyboard's own backspace all work because there is only one field. */
+.sw-code { position: relative; margin-top: .25rem; }
+.sw-code .boxes { display: grid; grid-template-columns: repeat(6, 1fr); gap: .5rem; pointer-events: none; }
+.sw-code .boxes span { aspect-ratio: 5 / 6; border: 2px solid var(--line); border-radius: .75rem; display: grid; place-items: center; font-size: 1.5rem; font-weight: 700; background: #fff; }
+.sw-code .boxes span.f { border-color: #94a3b8; }
+.sw-code .boxes span.cur { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(0,123,255,.12); }
+.sw-code.bad .boxes span { border-color: var(--bad); }
+.sw-code input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 1rem; border: 0; color: transparent; caret-color: transparent; }
+
+.sw-msg { margin-top: .875rem; display: flex; gap: .625rem; align-items: flex-start; border-radius: .75rem; padding: .625rem .75rem; font-size: .875rem; line-height: 1.45; }
+.sw-msg.bad { background: #fef2f2; color: #991b1b; }
+.sw-msg.ok { background: #ecfdf5; color: #065f46; }
+.sw-msg.info { background: #eff6ff; color: #1e3a8a; }
+.sw-chip { display: inline-flex; align-items: center; gap: .5rem; background: #ecfdf5; color: #065f46; font-weight: 600; font-size: .875rem; border-radius: 999px; padding: .5rem .875rem; margin-bottom: 1rem; }
+
+.sw-foot { text-align: center; color: var(--muted); font-size: .8125rem; padding: 1.125rem 1.25rem 1.5rem; line-height: 1.6; margin-top: auto; padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)); }
+.sw-foot .wa { color: #15803d; font-weight: 600; text-decoration: none; padding: .4rem .25rem; display: inline-flex; gap: .375rem; align-items: center; }
+
+/* Tablets and desktop: a centred card, not a stretched phone. */
+@media (min-width: 600px) {
+    .sw-auth { justify-content: center; align-items: center; background: linear-gradient(160deg, var(--navy), #0b4ea2 70%, var(--blue)); padding: 2rem 1rem; }
+    .sw-wrap { width: 100%; max-width: 28rem; background: var(--bg); border-radius: 1.75rem; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.25); }
+    .sw-foot { color: rgba(255,255,255,.85); }
+    .sw-foot .wa { color: #bbf7d0; }
+}

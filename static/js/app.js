@@ -35,7 +35,7 @@ const SmartWorker = {
                 time: { hour: '2-digit', minute: '2-digit' }
             };
             
-            return new Date(date).toLocaleDateString('en-US', options[format]);
+            return new Date(date).toLocaleDateString('en-IN', options[format]);
         },
         
         // Format currency
@@ -431,17 +431,9 @@ const SmartWorker = {
         const theme = this.storage.get('theme', 'light');
         document.documentElement.setAttribute('data-theme', theme);
         
-        // Load other preferences
-        const preferences = this.storage.get('preferences', {});
-        if (preferences.notifications !== false) {
-            this.requestNotificationPermission();
-        }
-    },
-    
-    requestNotificationPermission() {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
+        // Notification permission used to be asked for here, on every
+        // first page view. The app never shows a notification, so the
+        // prompt asked for something it did not use; it is gone.
     }
 };
 
@@ -901,7 +893,29 @@ const KeyboardAware = {
 document.addEventListener('DOMContentLoaded', () => {
     SmartWorker.init();
     NativeShell.init();
-    NativeShell.initAndroidBack();
+    // Inside the app, Back is only routed to the page once Cordova has
+    // finished starting; registering earlier can leave Android's default
+    // (close the app) in charge.
+    if (window.cordova) {
+        document.addEventListener('deviceready', () => NativeShell.initAndroidBack(), { once: true });
+        // window.print() is a no-op in an Android WebView: every Print button
+        // (payslip, worker report) did nothing in the app. Route it to
+        // Android's print service, which also offers "Save as PDF".
+        document.addEventListener('deviceready', () => {
+            // Read by the Print buttons: with this set they call window.print;
+            // without it (an APK built before the bridge's print action) they
+            // open the PDF in a viewer instead.
+            window.SmartWorkerNativePrint = true;
+            window.print = () => {
+                window.dispatchEvent(new Event('beforeprint'));
+                window.cordova.exec(() => window.dispatchEvent(new Event('afterprint')),
+                    (err) => console.error('Print failed', err),
+                    'RemoteBridge', 'print', [document.title || 'SmartWorker']);
+            };
+        }, { once: true });
+    } else {
+        NativeShell.initAndroidBack();
+    }
     KeyboardAware.init();
 });
 

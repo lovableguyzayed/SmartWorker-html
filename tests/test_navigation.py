@@ -32,13 +32,15 @@ EXPECTED = {
     '/assignments':      'Workers',
     '/attendance':       'Attendance',
     '/closures':         'Attendance',
-    '/scan':             'Scan QR',
+    '/scan':             'Scan',
     '/payroll':          'Payroll',
     '/payroll/preview':  'Payroll',
     '/transactions':     'Payroll',
-    '/profile':          'Profile',
-    '/settings':         'Profile',
-    '/notifications':    'Profile',
+    # Five tabs since the batch 2 redesign: Profile left the bar for the
+    # button in Home's header, so these three light Home.
+    '/profile':          'Home',
+    '/settings':         'Home',
+    '/notifications':    'Home',
 }
 
 with app.app_context():
@@ -63,6 +65,7 @@ with app.test_client() as c:
         for cls, body in ITEM.findall(html):
             label = LABEL.search(body)
             label = re.sub(r'<[^>]+>', '', label.group(1)).strip() if label else '?'
+            label = label.replace('\u00ad', '')   # "Attend-ance" may break
             labels.append(label)
             if 'app-nav-item-active' in cls or 'app-nav-fab-active' in cls:
                 lit.append(label)

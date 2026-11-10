@@ -78,6 +78,13 @@
          * A screen that cannot gets told so, rather than nothing. */
         'print': function () {
             var inApp = !!(window.cordova && window.cordova.file);
+            // With the remote-bridge plugin's print action (app.js sets the
+            // flag), window.print opens Android's print service, which can
+            // also save a text PDF; that is the better route when present.
+            if (inApp && window.SmartWorkerNativePrint) {
+                window.print();
+                return;
+            }
             if (inApp && typeof window.downloadPDF === 'function') {
                 window.downloadPDF();
                 return;

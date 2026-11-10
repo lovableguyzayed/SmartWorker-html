@@ -1,0 +1,194 @@
+[
+ {
+  "who": "public",
+  "path": "/",
+  "title": "SmartWorker",
+  "img": "screens/public_.jpg"
+ },
+ {
+  "who": "public",
+  "path": "/login",
+  "title": "Attendance and wages, without the register",
+  "img": "screens/public_login.jpg"
+ },
+ {
+  "who": "public",
+  "path": "/register",
+  "title": "Create your account",
+  "img": "screens/public_register.jpg"
+ },
+ {
+  "who": "public",
+  "path": "/forgot-password",
+  "title": "Reset Your Password",
+  "img": "screens/public_forgot-password.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/",
+  "title": "SmartWorker",
+  "img": "screens/admin_.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/dashboard",
+  "title": "SmartWorker",
+  "img": "screens/admin_dashboard.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/workers",
+  "title": "Workers",
+  "img": "screens/admin_workers.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/attendance",
+  "title": "Attendance",
+  "img": "screens/admin_attendance.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/payroll",
+  "title": "Payroll",
+  "img": "screens/admin_payroll.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/payroll/preview",
+  "title": "Payroll Preview",
+  "img": "screens/admin_payroll_preview.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/transactions",
+  "title": "Transactions",
+  "img": "screens/admin_transactions.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/closures",
+  "title": "Closure Days",
+  "img": "screens/admin_closures.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/assignments",
+  "title": "Assignments",
+  "img": "screens/admin_assignments.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/profile",
+  "title": "Profile",
+  "img": "screens/admin_profile.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/settings",
+  "title": "Settings",
+  "img": "screens/admin_settings.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/scan",
+  "title": "SmartWorker",
+  "img": "screens/admin_scan.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/notifications",
+  "title": "Notifications",
+  "img": "screens/admin_notifications.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/add_worker",
+  "title": "Add Worker",
+  "img": "screens/admin_add_worker.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/dues",
+  "title": "Wages Owed",
+  "img": "screens/admin_dues.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/worker/1",
+  "title": "Worker Profile",
+  "img": "screens/admin_worker_1.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/worker_attendance/1",
+  "title": "Attendance Calendar",
+  "img": "screens/admin_worker_attendance_1.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/worker/1/report",
+  "title": "Profile Report",
+  "img": "screens/admin_worker_1_report.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/payroll/slip/1",
+  "title": "Payroll Slip",
+  "img": "screens/admin_payroll_slip_1.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/worker/1/account",
+  "title": "Account",
+  "img": "screens/admin_worker_1_account.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/edit_worker/1",
+  "title": "Edit Worker",
+  "img": "screens/admin_edit_worker_1.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/id_card/1",
+  "title": "Employee ID Card",
+  "img": "screens/admin_id_card_1.jpg"
+ },
+ {
+  "who": "admin",
+  "path": "/worker/7/login/powers",
+  "title": "Imran Ali",
+  "img": "screens/admin_worker_7_login_powers.jpg"
+ },
+ {
+  "who": "sup",
+  "path": "/me",
+  "title": "Imran Ali",
+  "img": "screens/sup_me.jpg"
+ },
+ {
+  "who": "sup",
+  "path": "/me/team",
+  "title": "My Team",
+  "img": "screens/sup_me_team.jpg"
+ },
+ {
+  "who": "sup",
+  "path": "/scan",
+  "title": "SmartWorker",
+  "img": "screens/sup_scan.jpg"
+ },
+ {
+  "who": "sup",
+  "path": "/me/payslip",
+  "title": "Payroll Slip",
+  "img": "screens/sup_me_payslip.jpg"
+ },
+ {
+  "who": "sup",
+  "path": "/worker/7/account",
+  "title": "Account",
+  "img": "screens/sup_worker_7_account.jpg"
+ }
+]

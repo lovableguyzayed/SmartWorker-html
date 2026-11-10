@@ -24,6 +24,7 @@ from timeutil import IST, now_ist, today_ist, ISTDate
 import sms
 import storage
 import supabase_auth
+import authguard
 import tenancy
 import salary
 import i18n
@@ -102,32 +103,27 @@ def _provision_from_supabase(supa_user, full_name=None, phone=None,
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 WORKER_IMAGE_UPLOAD_DIR = os.path.join(app.static_folder, 'uploads', 'workers')
+# The code itself is never kept here, only a keyed hash of it: the session is
+# a signed cookie the user can read. See authguard.py.
 REGISTER_OTP_SESSION_KEYS = (
-    'register_otp',
+    'register_otp_hash',
+    'register_otp_nonce',
     'register_otp_mobile',
     'register_otp_expires_at',
-    'register_otp_verified',
-    'register_otp_attempts',
     'register_otp_sent_at',
+    'register_otp_verified',
+    'register_otp',            # the old plaintext key, cleared on sight
 )
 LOGIN_OTP_SESSION_KEYS = (
-    'login_otp',
+    'login_otp_hash',
+    'login_otp_nonce',
     'login_otp_mobile',
     'login_otp_expires_at',
-    'login_otp_user_id',
-    'login_otp_attempts',
     'login_otp_sent_at',
+    'login_otp_user_id',
+    'login_otp',               # the old plaintext key, cleared on sight
 )
 
-#: A six-digit code has a million values, which is plenty against five
-#: guesses and nothing at all against unlimited ones: a script can walk the
-#: whole range inside the five minutes the code is valid. So the guesses are
-#: counted, and the code is thrown away after this many.
-OTP_MAX_ATTEMPTS = 5
-
-#: And one code per minute per session, so nobody can be made to pay for a
-#: thousand text messages by somebody holding down a button.
-OTP_RESEND_SECONDS = 60
 
 def allowed_image_file(filename):
     if not filename or '.' not in filename:
@@ -755,125 +751,163 @@ def calculate_delay_penalty(worker, period_start, period_end):
     return round(penalty_total, 2), breakdown
 
 def normalize_mobile_number(value):
-    """An Indian mobile number as its ten digits, however it was typed.
-
-    This used to be "keep the digits and stop", which quietly broke
-    signing in for anybody who writes their number the way most people
-    actually write it:
-
-        +91 98765 43210  ->  919876543210   looked up, not found
-        09876543210      ->  09876543210    looked up, not found
-        98765 43210      ->  9876543210     found
-
-    The number is stored as ten digits, so the first two never matched a
-    row and the screen said "No account found with this mobile number" to
-    somebody whose account was right there. A '+91' or a leading zero is
-    not a typo to be rejected either — it is the same number — so both are
-    taken off rather than refused.
-
-    Anything that is not ten digits after that is returned as it is, for
-    is_valid_mobile_number to turn down with a message.
-    """
-    digits = ''.join(char for char in (value or '') if char.isdigit())
-    # 0091..., 91..., 0... — all prefixes on a ten-digit number.
-    for prefix in ('0091', '091', '91', '0'):
-        if len(digits) == 10 + len(prefix) and digits.startswith(prefix):
-            return digits[len(prefix):]
-    return digits
-
+    """Ten digits of an Indian mobile, or '' if it is not one. '+91 98765
+    43210', '09876543210' and '919876543210' are all the same person."""
+    return authguard.indian_mobile(value)
 
 def is_valid_mobile_number(value):
-    """Ten digits beginning 6, 7, 8 or 9 — the whole Indian mobile range.
+    return bool(normalize_mobile_number(value))
 
-    The old rule was "between ten and fifteen digits", which accepted a
-    landline (0135 2345678), a number starting with 5 that cannot exist,
-    and 1234567890. Letting those through does not help anybody: the
-    number is what an OTP is sent to, and what a worker is called on.
-    """
-    digits = normalize_mobile_number(value)
-    return len(digits) == 10 and digits[0] in '6789'
-
-def find_user_by_mobile(mobile):
-    """The account for this mobile number, however the number was stored.
-
-    New rows store ten digits, but a row written before
-    normalize_mobile_number was fixed can hold '+91 98765 43210' or
-    '09876543210', and an exact match on ten digits would miss it — the
-    same "No account found" for an account that is right there. So: exact
-    first, then a short list filtered on the last four digits and compared
-    properly. The filter is there to keep this off a full table scan.
-    """
-    digits = normalize_mobile_number(mobile)
-    if not digits:
+def user_by_mobile(mobile):
+    """The login holding this number, however an older row stored it."""
+    forms = authguard.stored_forms(normalize_mobile_number(mobile))
+    if not forms:
         return None
-    user = User.query.filter_by(phone=digits).first()
+    user = User.query.filter(User.phone.in_(forms)).first()
     if user:
         return user
-    for candidate in (User.query
-                      .filter(User.phone.isnot(None))
-                      .filter(User.phone.like('%' + digits[-4:]))
-                      .limit(50).all()):
+    # Rows written with spaces or dashes ('+91 98765 43210'): a short list on
+    # the last four digits, compared properly, so this is no table scan.
+    digits = forms[0]
+    for candidate in (User.query.filter(User.phone.isnot(None))
+                      .filter(User.phone.like('%' + digits[-4:])).limit(50).all()):
         if normalize_mobile_number(candidate.phone) == digits:
             return candidate
     return None
 
+find_user_by_mobile = user_by_mobile
+
+def mobile_taken(mobile):
+    return user_by_mobile(mobile) is not None
+
+def _say(text):
+    """A JSON message in the language the page is showing."""
+    return i18n.translate_flash(text, session.get('lang', i18n.DEFAULT_LANGUAGE))
+
+def _too_many(seconds):
+    return _say('Too many attempts. Please try again in %d minutes.'
+                % authguard.minutes(seconds))
+
+def _issue_otp(purpose, mobile):
+    """Make a code, keep only its hash in the session, hand back the code."""
+    code = f"{secrets.randbelow(1000000):06d}"
+    nonce = secrets.token_urlsafe(12)
+    now = now_ist().timestamp()
+    session[f'{purpose}_otp_hash'] = authguard.otp_digest(purpose, mobile, code, nonce)
+    session[f'{purpose}_otp_nonce'] = nonce
+    session[f'{purpose}_otp_mobile'] = mobile
+    session[f'{purpose}_otp_expires_at'] = now + authguard.OTP_TTL_SECONDS
+    session[f'{purpose}_otp_sent_at'] = now
+    session.modified = True
+    return code
+
+def _otp_send_gate(purpose, mobile):
+    """None if a code may be sent now, else the (json, status) refusal."""
+    sent_at = session.get(f'{purpose}_otp_sent_at')
+    if sent_at and session.get(f'{purpose}_otp_mobile') == mobile:
+        wait = int(float(sent_at) + authguard.OTP_RESEND_SECONDS - now_ist().timestamp())
+        if wait > 0:
+            return jsonify({'success': False, 'retry_after': wait,
+                            'message': _say('Please wait %d seconds before asking for a new OTP.' % wait)}), 429
+    for bucket, key in (('otp_send_mobile', mobile), ('otp_send_ip', authguard.client_ip())):
+        wait = authguard.blocked_for(bucket, key)
+        if wait:
+            return jsonify({'success': False, 'retry_after': wait, 'message': _too_many(wait)}), 429
+    return None
+
+def _otp_check(purpose, mobile, code):
+    """None if the code is right, else the (json, status) refusal. Counts
+    every wrong code against the number and the address, on the server."""
+    ip = authguard.client_ip()
+    for bucket, key in (('otp_fail_mobile', mobile), ('otp_fail_ip', ip)):
+        wait = authguard.blocked_for(bucket, key)
+        if wait:
+            return jsonify({'success': False, 'retry_after': wait, 'message': _too_many(wait)}), 429
+
+    stored_mobile = session.get(f'{purpose}_otp_mobile')
+    digest = session.get(f'{purpose}_otp_hash')
+    nonce = session.get(f'{purpose}_otp_nonce')
+    expires_at = session.get(f'{purpose}_otp_expires_at')
+    if not (stored_mobile and digest and nonce and expires_at) or authguard.was_used(nonce):
+        return jsonify({'success': False,
+                        'message': _say('OTP expired. Please request a new OTP.')}), 400
+    if now_ist().timestamp() > float(expires_at):
+        return jsonify({'success': False,
+                        'message': _say('OTP expired. Please request a new OTP.')}), 400
+    if mobile != stored_mobile:
+        return jsonify({'success': False,
+                        'message': _say('Please verify OTP for the same mobile number.')}), 400
+    if not authguard.otp_matches(purpose, mobile, code, nonce, digest):
+        authguard.record('otp_fail_mobile', mobile)
+        authguard.record('otp_fail_ip', ip)
+        left = authguard.remaining('otp_fail_mobile', mobile)
+        if not left:
+            wait = authguard.blocked_for('otp_fail_mobile', mobile)
+            return jsonify({'success': False, 'retry_after': wait, 'message': _too_many(wait)}), 429
+        # Say what to do and how many goes are left, not just "invalid".
+        return jsonify({'success': False, 'tries_left': left,
+                        'message': _say('That code is not right. Check the SMS and try again - %d tries left.' % left)}), 400
+    authguard.mark_used(nonce)
+    authguard.clear('otp_fail_mobile', mobile)
+    return None
+
+def sms_enabled():
+    """Whether a one-time code can actually reach a phone.
+
+    No SMS provider is connected yet (audit decision D1). Until one is, OTP
+    sign-in is off and the sign-in screen leads with the password; it used
+    to offer OTP anyway and write the codes to the server log, which meant
+    nobody could sign up. SMS_DEV_LOG=1 turns the OTP flow on with codes in
+    the log, for trying it out locally - never set it on the live server.
+    """
+    return sms.is_configured() or os.environ.get('SMS_DEV_LOG') == '1'
+
+def _deliver_otp(purpose, mobile, code):
+    """Send the code through sms.py; True if it reached a provider, or the
+    log with SMS_DEV_LOG (sms.py writes it there only with no provider)."""
+    delivered, detail = sms.send_otp(mobile, code, purpose)
+    if delivered or (not sms.is_configured() and os.environ.get('SMS_DEV_LOG') == '1'):
+        return True
+    app.logger.error('OTP for %s could not be sent: %s', mobile, detail)
+    return False
+
+#: How long a verified number may be used to finish creating an account.
+SIGNUP_WINDOW_SECONDS = 15 * 60
+
+def placeholder_email(mobile):
+    """users.email is required and unique, and not everybody has one. The
+    .invalid domain is reserved (RFC 2606) so it can never reach anyone;
+    worker logins already use the same pattern."""
+    return '%s@phone.invalid' % mobile
+
+def create_owner(full_name, mobile, business_name=None, email=None, password=None):
+    """A new business: its workspace and its admin login, in one place for
+    both ways of signing up."""
+    acc = Account(name=business_name or f"{full_name}'s Workspace")
+    db.session.add(acc)
+    db.session.flush()
+    user = User()
+    user.email = email or placeholder_email(mobile)
+    user.username = generate_unique_username(full_name, email)
+    user.phone = mobile
+    user.full_name = full_name
+    user.role = 'admin'
+    user.account_id = acc.id
+    # Signed up by OTP: no password until they set one in Profile. An
+    # unguessable one stands in, because the column means "has a password".
+    user.set_password(password or secrets.token_urlsafe(24))
+    db.session.add(user)
+    db.session.commit()
+    return user
 
 def clear_register_otp_session():
-    for key in REGISTER_OTP_SESSION_KEYS:
+    for key in REGISTER_OTP_SESSION_KEYS + ('signup_mobile', 'signup_verified_at'):
         session.pop(key, None)
 
 def clear_login_otp_session():
     for key in LOGIN_OTP_SESSION_KEYS:
         session.pop(key, None)
 
-
-def otp_resend_wait(kind):
-    """Seconds left before another code may be sent, 0 when it may."""
-    sent_at = session.get('%s_otp_sent_at' % kind)
-    if not sent_at:
-        return 0
-    elapsed = now_ist().timestamp() - float(sent_at)
-    return max(0, int(OTP_RESEND_SECONDS - elapsed))
-
-
-def otp_delivery_result(kind, mobile, code):
-    """Send the code and return the JSON body and status for the caller.
-
-    One place decides what the screen is told, because the three answers are
-    easy to get wrong in three different ways:
-
-      * it was sent — say so, and say nothing else.
-      * nothing was sent and this is a development server — the code is in
-        the log, which is the only way to test the flow without a phone, and
-        the screen says exactly that instead of "check your messages".
-      * nothing was sent on a real server — say the message could not be
-        sent. The old code claimed delivery either way, so an employer
-        signing up waited for a text that was never going to arrive and had
-        no way of knowing it.
-    """
-    delivered, detail = sms.send_otp(mobile, code, kind)
-    if delivered:
-        return {'success': True,
-                'message': 'OTP has been sent to %s.' % mobile,
-                'expires_in': 300}, 200
-    if app.debug or app.testing:
-        return {'success': True,
-                'message': ('No SMS provider is set up on this server, so '
-                            'the code is in the server log.'),
-                'expires_in': 300, 'delivered': False}, 200
-    app.logger.error('OTP for %s could not be sent: %s', mobile, detail)
-    return {'success': False,
-            'message': ('The code could not be sent just now. Please try '
-                        'again, or sign in with your password.')}, 503
-
-
-def otp_attempt_failed(kind):
-    """Count a wrong guess; True when the code has been spent."""
-    key = '%s_otp_attempts' % kind
-    used = int(session.get(key) or 0) + 1
-    session[key] = used
-    session.modified = True
-    return used >= OTP_MAX_ATTEMPTS
 
 def generate_unique_username(full_name, email):
     base_source = (email.split('@')[0] if email else full_name or 'user').strip().lower()
@@ -1134,15 +1168,25 @@ def login():
         identifier = request.form['username'].strip()
         password = request.form['password']
 
+        # Guessing passwords used to be free: forty wrong tries in a row and
+        # the forty-first still went through. Count them on the server.
+        ip = authguard.client_ip()
+        id_key = identifier.lower()
+        wait = max(authguard.blocked_for('pw_fail_id', id_key),
+                   authguard.blocked_for('pw_fail_ip', ip))
+        if wait:
+            flash('Too many attempts. Please try again in %d minutes.'
+                  % authguard.minutes(wait), 'error')
+            return render_template('login.html'), 429
+
         # Resolve any local user matching the identifier (username/email/phone).
+        # The phone is only compared when the identifier is one: a username
+        # normalises to '', and '' must not match a row with an empty phone.
         normalized_phone = normalize_mobile_number(identifier)
-        local = User.query.filter(
-            db.or_(
-                User.username == identifier,
-                User.email == identifier.lower(),
-                User.phone == normalized_phone,
-            )
-        ).first()
+        clauses = [User.username == identifier, User.email == identifier.lower()]
+        if normalized_phone:
+            clauses.append(User.phone.in_(authguard.stored_forms(normalized_phone)))
+        local = User.query.filter(db.or_(*clauses)).first()
 
         # Supabase is the identity provider for owner/admin accounts (anyone
         # with a Supabase uid) and for logging in by email. Local-only staff
@@ -1153,18 +1197,23 @@ def login():
             email = local.email if local else identifier.lower()
             result = supabase_auth.sign_in(email, password)
             if not result['ok']:
+                authguard.record('pw_fail_id', id_key)
+                authguard.record('pw_fail_ip', ip)
                 flash(result.get('error') or 'Invalid email or password', 'error')
                 return render_template('login.html')
             user = _provision_from_supabase(result['user'])
         else:
             user = local if (local and local.check_password(password)) else None
             if not user:
+                authguard.record('pw_fail_id', id_key)
+                authguard.record('pw_fail_ip', ip)
                 flash('Invalid username or password', 'error')
                 return render_template('login.html')
 
         if (user.status or 'active') != 'active':
             flash('This account has been disabled. Please contact the Administrator.', 'error')
             return render_template('login.html')
+        authguard.clear('pw_fail_id', id_key)
         login_user(user, remember=True)
         clear_login_otp_session()
         next_page = safe_redirect_target(request.args.get('next'), home_for(user))
@@ -1180,45 +1229,44 @@ def login_send_otp():
     payload = request.get_json(silent=True) or request.form
     mobile = normalize_mobile_number(payload.get('mobile'))
 
-    if not is_valid_mobile_number(mobile):
+    if not mobile:
         return jsonify({
             'success': False,
-            'message': 'Please enter a valid mobile number.'
+            'message': _say('Please enter a valid 10-digit mobile number.')
         }), 400
 
-    wait = otp_resend_wait('login')
-    if wait:
+    if not sms_enabled():
         return jsonify({
             'success': False,
-            'message': 'A code was just sent. Please wait %d seconds.' % wait,
-            'retry_after': wait,
-        }), 429
+            'message': _say('Sign-in by OTP is not available yet. Please use your password.')
+        }), 503
 
-    user = find_user_by_mobile(mobile)
-    if not user:
-        return jsonify({
-            'success': False,
-            'message': 'No account found with this mobile number.'
-        }), 404
+    refused = _otp_send_gate('login', mobile)
+    if refused:
+        return refused
+    authguard.record('otp_send_mobile', mobile)
+    authguard.record('otp_send_ip', authguard.client_ip())
 
-    otp_code = '%06d' % secrets.randbelow(1000000)
-    expires_at = now_ist() + timedelta(minutes=5)
-
+    # One way in for everyone: a number with no account gets a code too, and
+    # becomes a new business once it is verified. Nobody has to know in
+    # advance whether to "sign in" or "sign up".
+    user = user_by_mobile(mobile)
     clear_login_otp_session()
-    session['login_otp'] = otp_code
-    session['login_otp_mobile'] = mobile
-    session['login_otp_expires_at'] = expires_at.timestamp()
-    session['login_otp_user_id'] = user.id
-    session['login_otp_attempts'] = 0
-    session['login_otp_sent_at'] = now_ist().timestamp()
-    session.modified = True
-
-    # sms.py decides where the code goes and never logs it when a provider
-    # is configured. The code is not in this function's log line either.
-    body, status = otp_delivery_result('login', mobile, otp_code)
-    if not body['success']:
+    code = _issue_otp('login', mobile)
+    session['login_otp_user_id'] = user.id if user else None
+    if not _deliver_otp('login', mobile, code):
         clear_login_otp_session()
-    return jsonify(body), status
+        return jsonify({
+            'success': False,
+            'message': _say('The code could not be sent just now. Please try again, or sign in with your password.')
+        }), 503
+
+    return jsonify({
+        'success': True,
+        'message': _say('OTP has been sent to your mobile number.'),
+        'expires_in': authguard.OTP_TTL_SECONDS,
+        'resend_after': authguard.OTP_RESEND_SECONDS,
+    })
 
 @app.route('/login/verify-otp', methods=['POST'])
 @csrf.exempt
@@ -1227,238 +1275,134 @@ def login_verify_otp():
     mobile = normalize_mobile_number(payload.get('mobile'))
     otp_code = str(payload.get('otp', '')).strip()
 
-    stored_mobile = session.get('login_otp_mobile')
-    stored_otp = session.get('login_otp')
-    expires_at = session.get('login_otp_expires_at')
+    refused = _otp_check('login', mobile, otp_code)
+    if refused:
+        return refused
+
     user_id = session.get('login_otp_user_id')
-
-    if not stored_mobile or not stored_otp or not expires_at or not user_id:
+    clear_login_otp_session()
+    if not user_id:
+        # A new number, now proven to belong to whoever holds the phone.
+        # They have a few minutes to give a name; nothing is created before.
+        session['signup_mobile'] = mobile
+        session['signup_verified_at'] = now_ist().timestamp()
+        session.modified = True
         return jsonify({
-            'success': False,
-            'message': 'OTP expired. Please request a new OTP.'
-        }), 400
-
-    if now_ist().timestamp() > float(expires_at):
-        clear_login_otp_session()
-        return jsonify({
-            'success': False,
-            'message': 'OTP expired. Please request a new OTP.'
-        }), 400
-
-    if mobile != stored_mobile:
-        return jsonify({
-            'success': False,
-            'message': 'Please verify OTP for the same mobile number.'
-        }), 400
-
-    # compare_digest, not !=, so the time taken says nothing about how many
-    # leading digits were right.
-    if not hmac.compare_digest(str(otp_code), str(stored_otp)):
-        if otp_attempt_failed('login'):
-            clear_login_otp_session()
-            return jsonify({
-                'success': False,
-                'message': ('Too many wrong attempts. Please request a new '
-                            'code.')
-            }), 429
-        left = OTP_MAX_ATTEMPTS - int(session.get('login_otp_attempts') or 0)
-        return jsonify({
-            'success': False,
-            'message': 'Invalid OTP. %d attempt(s) left.' % left
-        }), 400
-
-    user = User.query.get(user_id)
+            'success': True,
+            'new_user': True,
+            'message': _say('Mobile number verified successfully.'),
+        })
+    user = db.session.get(User, user_id)
     if not user:
-        clear_login_otp_session()
         return jsonify({
             'success': False,
-            'message': 'Account not found for this OTP.'
+            'message': _say('Account not found for this OTP.')
         }), 404
+    if (user.status or 'active') != 'active':
+        return jsonify({
+            'success': False,
+            'message': _say('This account has been disabled. Please contact the Administrator.')
+        }), 403
 
     login_user(user, remember=True)
-    clear_login_otp_session()
 
     return jsonify({
         'success': True,
-        'message': 'OTP verified. Login successful.',
+        'message': _say('OTP verified. Login successful.'),
         'redirect_url': home_for(user),
     })
 
-@app.route('/register/send-otp', methods=['POST'])
+@app.route('/register/details', methods=['POST'])
 @csrf.exempt
-def register_send_otp():
+def register_details():
+    """The last step of OTP sign-up: a verified number gives its name."""
     payload = request.get_json(silent=True) or request.form
-    mobile = normalize_mobile_number(payload.get('mobile'))
+    mobile = session.get('signup_mobile')
+    verified_at = session.get('signup_verified_at')
+    if not mobile or not verified_at or \
+            now_ist().timestamp() - float(verified_at) > SIGNUP_WINDOW_SECONDS:
+        return jsonify({'success': False,
+                        'message': _say('OTP expired. Please request a new OTP.')}), 400
+    full_name = ' '.join((payload.get('full_name') or '').split())
+    business = ' '.join((payload.get('business_name') or '').split())
+    email = (payload.get('email') or '').strip().lower()
+    if not full_name:
+        return jsonify({'success': False, 'field': 'full_name',
+                        'message': _say('Please enter your name.')}), 400
+    if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return jsonify({'success': False, 'field': 'email',
+                        'message': _say('That email does not look right. Leave it empty if you have none.')}), 400
+    if email and User.query.filter_by(email=email).first():
+        return jsonify({'success': False, 'field': 'email',
+                        'message': _say('Email already registered')}), 409
+    if mobile_taken(mobile):
+        return jsonify({'success': False,
+                        'message': _say('Mobile number already registered')}), 409
 
-    if not is_valid_mobile_number(mobile):
-        return jsonify({
-            'success': False,
-            'message': 'Please enter a valid mobile number.'
-        }), 400
-
-    wait = otp_resend_wait('register')
-    if wait:
-        return jsonify({
-            'success': False,
-            'message': 'A code was just sent. Please wait %d seconds.' % wait,
-            'retry_after': wait,
-        }), 429
-
-    otp_code = '%06d' % secrets.randbelow(1000000)
-    expires_at = now_ist() + timedelta(minutes=5)
-
+    user = create_owner(full_name[:100], mobile, business[:120] or None, email or None)
     clear_register_otp_session()
-    session['register_otp'] = otp_code
-    session['register_otp_mobile'] = mobile
-    session['register_otp_expires_at'] = expires_at.timestamp()
-    session['register_otp_verified'] = False
-    session['register_otp_attempts'] = 0
-    session['register_otp_sent_at'] = now_ist().timestamp()
-    session.modified = True
+    login_user(user, remember=True)
+    return jsonify({'success': True, 'redirect_url': home_for(user)})
 
-    body, status = otp_delivery_result('register', mobile, otp_code)
-    if not body['success']:
-        clear_register_otp_session()
-    return jsonify(body), status
-
-@app.route('/register/verify-otp', methods=['POST'])
-@csrf.exempt
-def register_verify_otp():
-    payload = request.get_json(silent=True) or request.form
-    mobile = normalize_mobile_number(payload.get('mobile'))
-    otp_code = str(payload.get('otp', '')).strip()
-
-    stored_mobile = session.get('register_otp_mobile')
-    stored_otp = session.get('register_otp')
-    expires_at = session.get('register_otp_expires_at')
-
-    if not stored_mobile or not stored_otp or not expires_at:
-        return jsonify({
-            'success': False,
-            'message': 'OTP expired. Please request a new OTP.'
-        }), 400
-
-    if now_ist().timestamp() > float(expires_at):
-        clear_register_otp_session()
-        return jsonify({
-            'success': False,
-            'message': 'OTP expired. Please request a new OTP.'
-        }), 400
-
-    if mobile != stored_mobile:
-        return jsonify({
-            'success': False,
-            'message': 'Please verify the same mobile number used for OTP.'
-        }), 400
-
-    if not hmac.compare_digest(str(otp_code), str(stored_otp)):
-        if otp_attempt_failed('register'):
-            clear_register_otp_session()
-            return jsonify({
-                'success': False,
-                'message': ('Too many wrong attempts. Please request a new '
-                            'code.')
-            }), 429
-        left = OTP_MAX_ATTEMPTS - int(session.get('register_otp_attempts') or 0)
-        return jsonify({
-            'success': False,
-            'message': 'Invalid OTP. %d attempt(s) left.' % left
-        }), 400
-
-    session['register_otp_verified'] = True
-    session.modified = True
-
-    return jsonify({
-        'success': True,
-        'message': 'Mobile number verified successfully.'
-    })
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """Sign-up with a password, for while OTP sign-in is off.
+
+    Five fields, two of them optional. It used to be nine: confirm-password
+    is replaced by a show-password eye, and email is optional because many
+    of the people this is for do not use one.
+    """
+    if sms_enabled() and request.method == 'GET':
+        # With SMS on, the sign-in screen signs people up too.
+        return redirect(url_for('login'))
+
     if request.method == 'POST':
-        email = request.form['email'].strip().lower()
-        password = request.form['password']
-        confirm_password = request.form.get('confirm_password', '')
-        full_name = request.form['full_name'].strip()
-        workspace = request.form.get('business_name', '').strip()
+        full_name = ' '.join((request.form.get('full_name') or '').split())
         mobile = normalize_mobile_number(request.form.get('mobile'))
+        password = request.form.get('password') or ''
+        workspace = ' '.join((request.form.get('business_name') or '').split())
+        email = (request.form.get('email') or '').strip().lower()
+
+        def again(message):
+            flash(message, 'error')
+            return render_template('register.html', form=request.form), 400
 
         if not full_name:
-            flash('Please enter your full name', 'error')
-            return render_template('register.html')
-        if password != confirm_password:
-            flash('Passwords do not match', 'error')
-            return render_template('register.html')
+            return again('Please enter your name.')
+        if not mobile:
+            return again('Please enter a valid 10-digit mobile number.')
         if len(password) < 8:
-            flash('Password must be at least 8 characters', 'error')
-            return render_template('register.html')
-        if not is_valid_mobile_number(mobile):
-            flash('Please enter a valid mobile number', 'error')
-            return render_template('register.html')
+            return again('Password must be at least 8 characters')
+        if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+            return again('That email does not look right. Leave it empty if you have none.')
+        if mobile_taken(mobile):
+            return again('Mobile number already registered')
+        if email and User.query.filter_by(email=email).first():
+            return again('Email already registered')
 
-        # Mobile OTP verification gate (unchanged from the legacy flow).
-        otp_verified = session.get('register_otp_verified')
-        otp_mobile = session.get('register_otp_mobile')
-        otp_expiry = session.get('register_otp_expires_at')
-        if (
-            not otp_verified
-            or otp_mobile != mobile
-            or not otp_expiry
-            or now_ist().timestamp() > float(otp_expiry)
-        ):
-            flash('Please verify your mobile number with OTP before registering', 'error')
-            return render_template('register.html')
-
-        if User.query.filter_by(phone=mobile).first():
-            flash('Mobile number already registered', 'error')
-            return render_template('register.html')
-
-        account_name = workspace or f"{full_name}'s Workspace"
-
-        if supabase_auth.enabled():
-            # Supabase owns credentials, email verification and recovery.
+        if supabase_auth.enabled() and email:
+            # With an email, Supabase keeps the password and can send a
+            # reset link. Without one, the account is local, like staff.
             result = supabase_auth.sign_up(email, password, full_name)
             if not result['ok']:
-                flash(result.get('error') or 'Could not complete registration. Please try again.', 'error')
-                return render_template('register.html')
-
-            # Create the local workspace + owner/admin row (idempotent).
+                return again(result.get('error') or 'Could not complete registration. Please try again.')
             user = _provision_from_supabase(
-                result['user'], full_name=full_name, phone=mobile or None,
-                make_account=True, account_name=account_name,
+                result['user'], full_name=full_name, phone=mobile,
+                make_account=True, account_name=workspace or f"{full_name}'s Workspace",
             )
-            clear_register_otp_session()
-
             if result.get('needs_confirmation'):
                 flash('Registration successful! Check your email to confirm your account, then log in.', 'success')
                 return redirect(url_for('login'))
-            # Confirmation disabled → Supabase returned a session; log in now.
-            login_user(user, remember=True)
-            return redirect(home_for(user), code=303)
+        else:
+            user = create_owner(full_name[:100], mobile, workspace[:120] or None,
+                                email or None, password)
 
-        # ---- Legacy local fallback (Supabase Auth not configured) ----
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered', 'error')
-            return render_template('register.html')
-        acc = Account(name=account_name)
-        db.session.add(acc)
-        db.session.flush()
-        user = User()
-        user.username = generate_unique_username(full_name, email)
-        user.email = email
-        user.phone = mobile or None
-        user.full_name = full_name
-        user.role = 'admin'
-        user.account_id = acc.id
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
         clear_register_otp_session()
-        flash('Registration successful! Please login using your email.', 'success')
-        return redirect(url_for('login'))
+        login_user(user, remember=True)
+        return redirect(home_for(user), code=303)
 
-    clear_register_otp_session()
-    return render_template('register.html')
+    return render_template('register.html', form={})
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
@@ -1496,11 +1440,16 @@ def reset_password_submit():
         return jsonify({'success': False, 'message': result.get('error') or 'Could not reset password. The link may have expired.'}), 400
     return jsonify({'success': True, 'message': 'Password updated. You can now log in.'})
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
+    # Signing out is a POST with the CSRF token. As a plain link, any other
+    # site could sign a user out with an <img src=".../logout">. A GET (an
+    # old bookmark, a stale page) just goes home instead.
+    if request.method != 'POST':
+        return redirect(home_for(current_user))
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('login'), code=303)
 
 # Main Routes
 @app.route('/')
@@ -3419,7 +3368,15 @@ def profile():
         
         if action == 'update_profile':
             current_user.full_name = request.form['full_name']
-            current_user.email = request.form['email']
+            # Left empty by someone who signed up without an email: keep the
+            # stand-in address rather than storing nothing (the column is
+            # required). Another login's address is refused, not stolen.
+            email = (request.form.get('email') or '').strip().lower()
+            if email and email != current_user.email:
+                if User.query.filter(User.email == email, User.id != current_user.id).first():
+                    flash('Email already registered', 'error')
+                    return redirect(url_for('profile'))
+                current_user.email = email
             db.session.commit()
             flash('Profile updated successfully', 'success')
             
@@ -4266,7 +4223,7 @@ def worker_create_login(worker_id):
         flash('That mobile number is already used by another login.', 'error')
         return redirect(url_for('worker_profile', worker_id=worker_id))
 
-    password = '%06d' % secrets.randbelow(1000000)
+    password = '%06d' % (100000 + secrets.randbelow(900000))
     login = User.query.filter_by(worker_id=worker.id, role='worker').first()
     if not login:
         login = User(
@@ -5270,7 +5227,8 @@ def settings_attendance_user_save():
         flash('Please enter a valid mobile number for the attendance user.', 'error')
         return redirect(url_for('settings'))
 
-    duplicate = User.query.filter(User.phone == mobile, User.id != user_id).first()
+    duplicate = User.query.filter(User.phone.in_(authguard.stored_forms(mobile)),
+                                  User.id != user_id).first()
     if duplicate:
         flash('This mobile number is already registered to another account.', 'error')
         return redirect(url_for('settings'))
@@ -7390,6 +7348,10 @@ def _inject_language():
         'current_lang': lang,
         'languages': i18n.LANGUAGES,
         'weekdays_short': i18n.weekday_names(lang, short=True),
+        'otp_signin': sms_enabled(),
+        # Shown on the sign-in screens only when set: a help number nobody
+        # answers is worse than none.
+        'support_whatsapp': ''.join(ch for ch in os.environ.get('SUPPORT_WHATSAPP', '') if ch.isdigit()),
     }
 
 
@@ -7397,6 +7359,19 @@ def _inject_language():
 def _ldate(value, fmt='%d %b %Y'):
     """strftime with the day and month names in the interface language."""
     return i18n.format_date(value, fmt, _current_lang())
+
+
+@app.template_filter('dayline')
+def _dayline(value):
+    """A date as headers show it: "Tue, 10 Nov 2026" / "मंगल, 10 नवंबर 2026".
+
+    Day first, the Indian order. It used to read "Tuesday, November 10,
+    2026", the American one. Hindi keeps the whole month name: the short
+    Hindi forms ("नव") are not how anyone writes a date.
+    """
+    lang = _current_lang()
+    fmt = '%a, %d %b %Y' if lang == i18n.DEFAULT_LANGUAGE else '%a, %d %B %Y'
+    return i18n.format_date(value, fmt, lang).replace(' 0', ' ', 1)
 
 
 # One way to write a rupee, everywhere. See money.py for why there were four.

@@ -290,7 +290,7 @@ try:
         tabs = pg.evaluate(
             """() => [...document.querySelectorAll('.app-bottom-nav a')]
                  .map(a => ({t:a.textContent.trim(), h:a.getAttribute('href')}))""")
-        check('six tabs', len(tabs), 6)
+        check('five tabs', len(tabs), 5)
         for t in tabs:
             truthy('tab %-11s -> %s' % (t['t'], t['h']), t['h'] and t['h'] != '#')
 

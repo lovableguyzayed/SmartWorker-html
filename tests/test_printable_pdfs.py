@@ -223,7 +223,13 @@ def check_report_and_card():
                    'छुट्टी का हिसाब', 'प्रोजेक्ट और साइट का इतिहास',
                    'तनख़्वाह का हिसाब', 'यह हिसाब कैसे लगा',
                    'लागू नियम', 'लेन-देन का इतिहास'):
-        check('[report] contains %r' % phrase, flatten(phrase) in flat, True)
+        # PyMuPDF drops the reph (र्) from text it extracts under
+        # letter-spacing: the sheet shows रिपोर्ट, extraction says रिपोट.
+        # Checked by eye at 300 dpi. Compare without it.
+        def _no_reph(t):
+            return t.replace('र्', '')
+        check('[report] contains %r' % phrase,
+              _no_reph(flatten(phrase)) in _no_reph(flat), True)
     leftovers = [w for w in ('Final net payable salary', 'Leave Balance',
                              'Current Assignment', 'Transaction History',
                              'Policy in force', 'Salary basis',
@@ -244,7 +250,10 @@ def check_report_and_card():
     # Translating the interface must never touch the scanner payload.
     print('   QR line:', qr)
     check('[card] QR payload is untouched by translation',
-          bool(qr and re.search(r'CI002QR\d{4}', qr)), True)
+          # Any employee ID, in Latin letters and ASCII digits: the fixture
+          # this used to name (CI002) no longer exists, and what matters is
+          # that Hindi never reaches the payload, not whose card it is.
+          bool(qr and re.search(r'[A-Z]{2,}\d{3,}QR\d{4}', qr)), True)
 
 
 try:

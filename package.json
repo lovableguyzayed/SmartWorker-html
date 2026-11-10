@@ -3,7 +3,7 @@
   "version": "1.1.0",
   "description": "SmartWorker Employee Management App (Cordova wrapper)",
   "devDependencies": {
-    "cordova": "^12.0.0"
+    "cordova": "^13.0.0"
   },
   "cordova": {
     "platforms": [
@@ -11,10 +11,9 @@
     ],
     "plugins": {
       "cordova-plugin-network-information": {},
-      "cordova-plugin-statusbar": {},
-      "cordova-plugin-android-permissions": {},
       "cordova-plugin-file": {},
-      "cordova-plugin-file-opener2": {}
+      "cordova-plugin-file-opener2": {},
+      "smartworker-remote-bridge": {}
     }
   }
 }

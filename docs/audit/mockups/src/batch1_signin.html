@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Batch 1 — sign in, mockups</title>
+<!-- The app's own fonts and icons, so the mockup is the real thing. -->
+<link rel="stylesheet" href="../../../../static/vendor/fontawesome/css/all.min.css">
+<style>
+@font-face { font-family: Inter; src: url(../../../../static/vendor/inter/inter-latin-var.woff2) format('woff2'); font-weight: 100 900; }
+:root { --navy: #001F3F; --blue: #007BFF; --ink: #0f172a; --muted: #475569; --line: #e2e8f0; --bg: #f8fafc; --ok: #15803d; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Inter, 'Noto Sans Devanagari', system-ui, sans-serif; background: #e5e7eb; color: var(--ink); padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; }
+/* One phone. Height is fixed for the 360x800 render and lets go for the
+   large-font render, where the point is to show that nothing is cut off. */
+.phone { width: 360px; min-height: 800px; background: var(--bg); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.phone.tablet { width: 768px; min-height: 1024px; align-items: center; justify-content: center; background: linear-gradient(160deg, var(--navy), #0b4ea2 70%, var(--blue)); }
+.tablet .sheet { width: 440px; border-radius: 28px; margin: 0; box-shadow: 0 30px 80px rgba(0,0,0,.25); }
+
+.hero { background: linear-gradient(150deg, var(--navy) 0%, #003a7a 60%, var(--blue) 100%); color: #fff; padding: 20px 20px 56px; border-radius: 0 0 28px 28px; }
+.hero .top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.125rem; }
+.brand .mark { width: 40px; height: 40px; border-radius: 50%; background: #fff; display: grid; place-items: center; color: var(--navy); font-size: 1.1rem; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.lang { display: flex; background: rgba(255,255,255,.14); border-radius: 999px; padding: 3px; }
+.lang span { padding: 8px 12px; min-height: 36px; border-radius: 999px; font-size: .8125rem; font-weight: 600; display: inline-flex; align-items: center; }
+.lang .on { background: #fff; color: var(--navy); }
+.hero h1 { font-size: 1.5rem; line-height: 1.25; margin-top: 26px; font-weight: 700; }
+.hero p { margin-top: 6px; opacity: .85; font-size: .9375rem; line-height: 1.45; }
+
+.sheet { background: #fff; margin: -36px 16px 0; border-radius: 22px; padding: 22px 18px; box-shadow: 0 10px 30px rgba(0,31,63,.10); }
+label { display: block; font-weight: 600; font-size: .9375rem; margin-bottom: 8px; }
+.help { color: var(--muted); font-size: .8125rem; margin-top: 8px; line-height: 1.45; }
+.phonefield { container-type: inline-size; display: flex; border: 2px solid var(--blue); border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 4px rgba(0,123,255,.12); }
+.phonefield .cc { background: #f1f5f9; padding: 0 14px; display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 1.0625rem; border-right: 1px solid var(--line); white-space: nowrap; }
+.phonefield .num { flex: 1; white-space: nowrap; overflow: hidden; padding: 14px 12px; font-size: 1.25rem; letter-spacing: .04em; font-weight: 600; min-width: 0; }
+.phonefield .num .caret { display: inline-block; width: 2px; height: 1.1em; background: var(--blue); vertical-align: -3px; margin-left: 1px; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; border-radius: 14px; font-weight: 700; font-size: 1.0625rem; border: 0; margin-top: 18px; text-align: center; padding: 12px 16px; line-height: 1.3; }
+.btn.primary { background: linear-gradient(135deg, var(--navy), var(--blue)); color: #fff; box-shadow: 0 8px 18px rgba(0,123,255,.25); }
+.btn.ghost { background: #fff; color: var(--navy); border: 2px solid var(--line); margin-top: 12px; }
+.or { display: flex; align-items: center; gap: 10px; color: #94a3b8; font-size: .8125rem; margin: 18px 0 0; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.foot { text-align: center; color: var(--muted); font-size: .8125rem; padding: 18px 20px 24px; line-height: 1.6; margin-top: auto; }
+.foot a { color: var(--blue); font-weight: 600; text-decoration: none; padding: 6px 2px; }
+.wa { display: inline-flex; align-items: center; gap: 6px; color: #15803d !important; }
+
+/* OTP */
+.bar { display: flex; align-items: center; gap: 8px; padding: 14px 12px; }
+.icon-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 1px solid var(--line); color: var(--navy); }
+.otp-head { padding: 6px 20px 0; }
+.otp-head h2 { font-size: 1.375rem; line-height: 1.3; }
+.otp-head p { color: var(--muted); margin-top: 8px; font-size: .9375rem; line-height: 1.5; }
+.otp-head p b { color: var(--ink); }
+.otp-head a { color: var(--blue); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.boxes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 22px 20px 0; }
+.boxes span { aspect-ratio: 5/6; border: 2px solid var(--line); border-radius: 12px; display: grid; place-items: center; font-size: 1.5rem; font-weight: 700; background: #fff; }
+.boxes span.f { border-color: #94a3b8; }
+.boxes span.cur { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(0,123,255,.12); }
+.auto { margin: 14px 20px 0; display: flex; gap: 10px; align-items: flex-start; background: #ecfdf5; color: #065f46; border-radius: 12px; padding: 10px 12px; font-size: .8125rem; line-height: 1.45; }
+.pad { padding: 0 20px; }
+.resend { text-align: center; margin-top: 18px; color: var(--muted); font-size: .9375rem; }
+.resend b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.err { margin: 14px 20px 0; display: flex; gap: 10px; background: #fef2f2; color: #991b1b; border-radius: 12px; padding: 10px 12px; font-size: .875rem; line-height: 1.45; }
+
+/* New user */
+.verified { display: inline-flex; align-items: center; gap: 8px; background: #ecfdf5; color: #065f46; font-weight: 600; font-size: .875rem; border-radius: 999px; padding: 8px 14px; margin: 4px 20px 0; }
+.field { margin-top: 16px; }
+.input { border: 2px solid var(--line); border-radius: 14px; padding: 14px; font-size: 1.0625rem; background: #fff; }
+.input.ph { color: #94a3b8; }
+.opt { color: var(--muted); font-weight: 500; font-size: .8125rem; }
+
+/* Before: a caption so the before shots read as evidence */
+.cap { position: absolute; left: 0; right: 0; bottom: 0; }
+/* Digits size to the field, not to the text setting: at the largest font a
+   ten-digit number must still fit on one line. */
+.phonefield .num { font-size: min(1.25rem, 8.2cqi); padding-left: 10px; padding-right: 8px; }
+.phonefield .cc { font-size: min(1.0625rem, 6.5cqi); padding: 0 10px; }
+</style>
+</head>
+<body>
+
+<!-- ============ A. Sign in: one way in ============ -->
+<div class="phone" id="login_after">
+  <div class="hero">
+    <div class="top">
+      <div class="brand"><span class="mark"><i class="fa-solid fa-user-clock"></i></span>SmartWorker</div>
+      <div class="lang"><span class="on">English</span><span>हिन्दी</span></div>
+    </div>
+    <h1>Attendance and wages,<br>without the register</h1>
+    <p>Sign in or create your account with your mobile number.</p>
+  </div>
+  <div class="sheet">
+    <label for="m">Your mobile number</label>
+    <div class="phonefield"><span class="cc">🇮🇳 +91</span><span class="num">98765 43210<span class="caret"></span></span></div>
+    <div class="help">We'll send a 6-digit code by SMS. New here? Your account is created after the code.</div>
+    <div class="btn primary">Get OTP <i class="fa-solid fa-chevron-right"></i></div>
+    <div class="or">or</div>
+    <div class="btn ghost"><i class="fa-solid fa-lock"></i> Sign in with username &amp; password</div>
+  </div>
+  <div class="foot">
+    By continuing you agree to our <a>Terms</a> and <a>Privacy Policy</a><br>
+    Need help? <a class="wa"><i class="fa-brands fa-whatsapp"></i> WhatsApp us</a>
+  </div>
+</div>
+
+<!-- ============ A-hi. The same, in Hindi ============ -->
+<div class="phone" id="login_after_hi">
+  <div class="hero">
+    <div class="top">
+      <div class="brand"><span class="mark"><i class="fa-solid fa-user-clock"></i></span>SmartWorker</div>
+      <div class="lang"><span>English</span><span class="on">हिन्दी</span></div>
+    </div>
+    <h1>हाज़िरी और तनख़्वाह,<br>बिना रजिस्टर के</h1>
+    <p>अपने मोबाइल नंबर से लॉगिन करें या नया खाता बनाएँ।</p>
+  </div>
+  <div class="sheet">
+    <label>आपका मोबाइल नंबर</label>
+    <div class="phonefield"><span class="cc">🇮🇳 +91</span><span class="num">98765 43210<span class="caret"></span></span></div>
+    <div class="help">हम SMS से 6 अंकों का कोड भेजेंगे। नए हैं? कोड डालने के बाद आपका खाता बन जाएगा।</div>
+    <div class="btn primary">OTP भेजें <i class="fa-solid fa-chevron-right"></i></div>
+    <div class="or">या</div>
+    <div class="btn ghost"><i class="fa-solid fa-lock"></i> यूज़रनेम और पासवर्ड से लॉगिन</div>
+  </div>
+  <div class="foot">
+    आगे बढ़कर आप हमारी <a>शर्तें</a> और <a>गोपनीयता नीति</a> मानते हैं<br>
+    मदद चाहिए? <a class="wa"><i class="fa-brands fa-whatsapp"></i> WhatsApp करें</a>
+  </div>
+</div>
+
+<!-- ============ B. OTP ============ -->
+<div class="phone" id="otp_after">
+  <div class="bar"><span class="icon-btn" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></span></div>
+  <div class="otp-head">
+    <h2>Enter the code</h2>
+    <p>Sent by SMS to <b>+91 98765 43210</b> · <a>Change number</a></p>
+  </div>
+  <div class="boxes"><span class="f">4</span><span class="f">8</span><span class="f">2</span><span class="cur"></span><span></span><span></span></div>
+  <div class="auto"><i class="fa-solid fa-mobile-screen"></i><span>Your phone will offer the code from the SMS above the keyboard — one tap fills it.</span></div>
+  <div class="pad"><div class="btn primary">Verify &amp; continue</div></div>
+  <div class="resend">Didn't get it? Resend in <b>0:24</b></div>
+  <div class="foot">Still nothing after 2 tries? <a class="wa"><i class="fa-brands fa-whatsapp"></i> WhatsApp support</a></div>
+</div>
+
+<!-- ============ B2. OTP, wrong code ============ -->
+<div class="phone" id="otp_wrong_after">
+  <div class="bar"><span class="icon-btn" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></span></div>
+  <div class="otp-head">
+    <h2>Enter the code</h2>
+    <p>Sent by SMS to <b>+91 98765 43210</b> · <a>Change number</a></p>
+  </div>
+  <div class="boxes"><span class="f" style="border-color:#dc2626">4</span><span class="f" style="border-color:#dc2626">8</span><span class="f" style="border-color:#dc2626">2</span><span class="f" style="border-color:#dc2626">9</span><span class="f" style="border-color:#dc2626">1</span><span class="f" style="border-color:#dc2626">7</span></div>
+  <div class="err"><i class="fa-solid fa-circle-exclamation"></i><span>That code is not right. Check the SMS and try again — <b>3 tries left</b>.</span></div>
+  <div class="pad"><div class="btn primary">Verify &amp; continue</div></div>
+  <div class="resend"><a style="color:var(--blue);font-weight:700;text-decoration:none;padding:12px;display:inline-block">Send a new code</a></div>
+</div>
+
+<!-- ============ C. First time: three fields ============ -->
+<div class="phone" id="newuser_after">
+  <div class="bar"><span class="icon-btn" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></span></div>
+  <div class="otp-head">
+    <h2>Welcome! One last step</h2>
+    <p>Tell us your name and your business. You can change these later.</p>
+  </div>
+  <div class="verified"><i class="fa-solid fa-circle-check"></i> +91 98765 43210 verified</div>
+  <div class="pad">
+    <div class="field"><label>Your name</label><div class="input">Ramesh Kumar</div></div>
+    <div class="field"><label>Business name <span class="opt">(optional)</span></label><div class="input ph">e.g. Sharma Stone Crusher</div></div>
+    <div class="field"><label>Email <span class="opt">(optional — for reports)</span></label><div class="input ph">name@example.com</div></div>
+    <div class="btn primary">Start using SmartWorker</div>
+  </div>
+  <div class="foot">No password needed — you sign in with an OTP.<br>You can set a password later in Profile.</div>
+</div>
+
+<!-- ============ D. Password, the second way ============ -->
+<div class="phone" id="password_after">
+  <div class="bar"><span class="icon-btn" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></span></div>
+  <div class="otp-head"><h2>Sign in with password</h2><p>For staff accounts made by your admin, and owners who set one.</p></div>
+  <div class="pad">
+    <div class="field"><label>Mobile number, username or email</label><div class="input">imran</div></div>
+    <div class="field"><label>Password</label><div class="input" style="display:flex;justify-content:space-between;align-items:center"><span>••••••••••</span><i class="fa-solid fa-eye" style="color:#64748b;padding:4px"></i></div></div>
+    <div class="btn primary">Sign in</div>
+    <div class="resend"><a style="color:var(--blue);font-weight:600;text-decoration:none;padding:12px;display:inline-block">Forgot password? Sign in with OTP instead</a></div>
+  </div>
+</div>
+
+<!-- ============ A on a 10" tablet ============ -->
+<div class="phone tablet" id="login_after_tablet">
+  <div class="sheet" style="padding:28px">
+    <div class="brand" style="color:var(--navy);margin-bottom:18px"><span class="mark" style="background:var(--navy);color:#fff"><i class="fa-solid fa-user-clock"></i></span>SmartWorker</div>
+    <h1 style="font-size:1.5rem;line-height:1.3;margin-bottom:6px">Attendance and wages, without the register</h1>
+    <p class="help" style="margin:0 0 20px">Sign in or create your account with your mobile number.</p>
+    <label>Your mobile number</label>
+    <div class="phonefield"><span class="cc">🇮🇳 +91</span><span class="num">98765 43210<span class="caret"></span></span></div>
+    <div class="help">We'll send a 6-digit code by SMS.</div>
+    <div class="btn primary">Get OTP <i class="fa-solid fa-chevron-right"></i></div>
+    <div class="or">or</div>
+    <div class="btn ghost"><i class="fa-solid fa-lock"></i> Sign in with username &amp; password</div>
+  </div>
+</div>
+
+</body>
+</html>

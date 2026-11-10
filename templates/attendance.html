@@ -28,7 +28,10 @@
     border-radius: 0.85rem;
     background: #f3f4f6;
     color: #4b5563;
-    font-size: 0.95rem; font-weight: 600;
+    /* Sized to a third of the phone at most, so "Transaction" stays one
+       word at the largest text rather than losing its last letters. */
+    font-size: min(0.95rem, 4.2vw); font-weight: 600;
+    text-align: center; line-height: 1.2; padding: 0.25rem 0.35rem;
 }
 .ep-tab-active { background: #001F3F; color: #fff; }
 
@@ -57,7 +60,7 @@
 
 .ep-bulk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 0.7rem; }
 .ep-bulk button {
-    min-height: 2.9rem; padding: 0 0.3rem;
+    min-height: 2.9rem; padding: 0.25rem 0.3rem; line-height: 1.2;
     border: 1px solid #e5e7eb; border-radius: 0.8rem;
     background: #fff; color: #374151;
     font-size: 0.85rem; font-weight: 500;
@@ -65,9 +68,9 @@
 .ep-bulk button:disabled { opacity: 0.45; }
 .ep-hint { font-size: 0.85rem; color: #6b7280; margin-top: 0.7rem; line-height: 1.45; }
 
-.ep-stats { display: flex; gap: 0.4rem; margin-top: 0.9rem; }
+.ep-stats { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.9rem; }
 .ep-stat {
-    flex: 1; text-align: center; padding: 0.4rem 0.2rem;
+    flex: 1 1 3rem; min-width: 0; text-align: center; padding: 0.4rem 0.2rem;
     border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
 }
 .ep-stat b { display: block; font-size: 1rem; font-variant-numeric: tabular-nums; color: #111827; }
@@ -180,13 +183,17 @@
 .dv-banner-warn  { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 .dv-banner-info  { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
 
-.dv-counts { display: flex; gap: 0.35rem; margin-top: 0.85rem; }
+.dv-counts { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.85rem; }
+/* Five counts share one row until the text is too big for that, then they
+   wrap to two rows; they used to push the screen 115px wide instead. */
 .dv-count {
-    flex: 1; text-align: center; padding: 0.4rem 0.15rem;
+    /* No min-width: 0 - a count is never narrower than its own label, so
+       "PRESENT" stays one word and the row wraps when five do not fit. */
+    flex: 1 1 3rem; text-align: center; padding: 0.4rem 0.15rem;
     border-radius: 0.6rem; background: #f9fafb; border: 1px solid #f3f4f6;
 }
 .dv-count b { display: block; font-size: 0.95rem; font-variant-numeric: tabular-nums; color: #111827; }
-.dv-count span { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+.dv-count span { overflow-wrap: break-word; font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
 
 .dv-section-label {
     font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
@@ -277,110 +284,82 @@
 {% endblock %}
 
 {% block content %}
-<header class="bg-gradient-to-br from-primary via-blue-900 to-accent text-white p-4 rounded-b-3xl shadow-xl">
-    <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center space-x-4">
-            <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
-                <i class="fa-solid fa-arrow-left text-lg"></i>
-            </a>
-            <div>
-                <h1 class="text-xl font-semibold">{{ _('Attendance') }}</h1>
-                <div class="text-sm opacity-90">{{ _('Daily Attendance Management') }}</div>
-            </div>
-        </div>
-        <div class="flex items-center space-x-3">
-            <a href="{{ url_for('scan') }}" class="icon-btn bg-white/10 backdrop-blur-sm" title="{{ _('QR Scanner') }}">
-                <i class="fa-solid fa-qrcode text-lg"></i>
-            </a>
-            {% if current_user.is_admin %}
-            <a aria-label="{{ _('Closure days') }}" href="{{ url_for('closures') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
-                <i class="fa-solid fa-calendar-times text-lg"></i>
-            </a>
-            {% endif %}
-        </div>
+{#
+  Header (docs/audit/mockups, batch 2). It used to fill the whole first
+  screen at the largest text size, with no worker visible: a subtitle, a
+  date box, two arrows, a search box, filters and the date written out a
+  second time. Now: one title row, one date row (the date itself is the
+  picker), one row of search and filters. Scan is the centre tab, so it no
+  longer needs a button up here as well.
+#}
+<header class="att-head bg-gradient-to-br from-primary via-blue-900 to-accent text-white rounded-b-3xl shadow-xl">
+    <div class="att-row">
+        <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <i class="fa-solid fa-arrow-left text-lg"></i>
+        </a>
+        <h1>{{ _('Attendance') }}</h1>
+        {% if current_user.is_admin %}
+        <a aria-label="{{ _('Closure days') }}" href="{{ url_for('closures') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
+            <i class="fa-solid fa-calendar-times text-lg"></i>
+        </a>
+        {% endif %}
     </div>
-    
-    <!-- Date Selection -->
-    <div class="bg-white/15 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
-        <form method="GET" id="attendance-filter-form">
-        <div class="flex items-center space-x-3">
-            {# min-w-0: a flex item will not shrink below its content's
-               intrinsic width without it, and a date input's intrinsic
-               width is wider than what is left beside the two arrows on a
-               320px phone. #}
-            <div class="flex-1 min-w-0">
-                <label class="block text-xs text-white/90 mb-1">{{ _('Select Date') }}</label>
-                {# No decorative calendar glyph in front of this field.
-                   <input type="date"> draws its own picker icon, so there
-                   were two calendars on one box — ours on the left, the
-                   browser's on the right — and only the right-hand one did
-                   anything. Reported as "calendar me do do icon". The
-                   padding went with it. #}
-                <input type="date" name="date" value="{{ selected_date }}"
-                       class="w-full px-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50"
-                       data-act="submit-form">
-            </div>
-            <div class="flex items-end space-x-2">
-                <a aria-label="{{ _('Previous day') }}" href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
-                   class="tap-target w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
-                    <i class="fa-solid fa-chevron-left text-white"></i>
-                </a>
-                <a aria-label="{{ _('Next day') }}" href="{{ url_for('attendance', date=(selected_date + timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}"
-                   class="tap-target w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
-                    <i class="fa-solid fa-chevron-right text-white"></i>
-                </a>
-            </div>
+
+    <form method="GET" id="attendance-filter-form">
+        <div class="att-datebar">
+            <a aria-label="{{ _('Previous day') }}" class="att-step"
+               href="{{ url_for('attendance', date=(selected_date - timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}">
+                <i class="fa-solid fa-chevron-left"></i>
+            </a>
+            {# The whole box is the date picker: a real <input type="date">
+               lies over it, transparent, so a tap anywhere opens the phone's
+               own calendar. #}
+            <label class="att-day">
+                <span>
+                    {{ selected_date|dayline }}
+                    <small>{% if selected_date == today %}{{ _('Today') }} · {% endif %}{{ _('tap to change') }}</small>
+                </span>
+                <input type="date" name="date" value="{{ selected_date }}" max="{{ today }}"
+                       aria-label="{{ _('Select Date') }}" data-act="submit-form">
+            </label>
+            <a aria-label="{{ _('Next day') }}" class="att-step"
+               href="{{ url_for('attendance', date=(selected_date + timedelta(days=1)).isoformat(), site=site_filter or None, marked_by=marker_filter or None, search=search or None) }}">
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
         </div>
 
-        <!-- Search + filters -->
-        <div class="mt-3 space-y-2">
-            <div class="relative">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm"></i>
-                <input type="search" name="search" value="{{ search }}" placeholder="{{ _('Search name or employee ID…') }}"
-                       class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 text-sm focus:ring-2 focus:ring-white/50">
+        <div class="att-filters">
+            <div class="att-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input type="search" name="search" value="{{ search }}" placeholder="{{ _('Search name or ID') }}"
+                       aria-label="{{ _('Search name or employee ID…') }}">
             </div>
-            <div class="grid grid-cols-2 gap-2">
-                {% if sites %}
-                <select name="site" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                    <option value="0" class="text-gray-800">{{ _('All sites') }}</option>
-                    {% for site in sites %}
-                    <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
-                    {% endfor %}
-                </select>
-                {% endif %}
-                {% if current_user.is_admin and attendance_users %}
-                <select name="marked_by" data-act="submit-form" class="p-2.5 bg-white/20 border border-white/30 rounded-xl text-white text-sm">
-                    <option value="0" class="text-gray-800">{{ _('All markers') }}</option>
-                    {% for auser in attendance_users %}
-                    <option value="{{ auser.id }}" {{ 'selected' if auser.id == marker_filter }} class="text-gray-800">{{ auser.full_name }}</option>
-                    {% endfor %}
-                </select>
-                {% endif %}
-            </div>
-        </div>
-        </form>
-        
-        <div class="mt-3 text-center">
-            <div class="text-sm text-white">{{ selected_date|ldate('%A, %B %d, %Y') }}</div>
-            {% if closure %}
-                {% if closure.allow_attendance %}
-                    <div class="bg-orange-500/20 border border-orange-400/30 rounded-lg px-3 py-2 mt-2">
-                        <div class="text-sm text-orange-100">
-                            <i class="fa-solid fa-exclamation-triangle mr-2"></i>
-                            {{ closure.reason }} - {{ _(closure.type|capitalize) }} (Attendance allowed if present)
-                        </div>
-                    </div>
-                {% else %}
-                    <div class="bg-red-500/20 border border-red-400/30 rounded-lg px-3 py-2 mt-2">
-                        <div class="text-sm text-red-200">
-                            <i class="fa-solid fa-calendar-times mr-2"></i>
-                            {{ closure.reason }} - {{ _(closure.type|capitalize) }} (Attendance locked)
-                        </div>
-                    </div>
-                {% endif %}
+            {% if sites %}
+            <select name="site" data-act="submit-form" aria-label="{{ _('All sites') }}">
+                <option value="0" class="text-gray-800">{{ _('All sites') }}</option>
+                {% for site in sites %}
+                <option value="{{ site.id }}" {{ 'selected' if site.id == site_filter }} class="text-gray-800">{{ site.name }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            {% if current_user.is_admin and attendance_users %}
+            <select name="marked_by" data-act="submit-form" aria-label="{{ _('All markers') }}">
+                <option value="0" class="text-gray-800">{{ _('All markers') }}</option>
+                {% for auser in attendance_users %}
+                <option value="{{ auser.id }}" {{ 'selected' if auser.id == marker_filter }} class="text-gray-800">{{ auser.full_name }}</option>
+                {% endfor %}
+            </select>
             {% endif %}
         </div>
+    </form>
+
+    {% if closure %}
+    <div class="att-closure {{ 'open' if closure.allow_attendance else 'locked' }}">
+        <i class="fa-solid {{ 'fa-exclamation-triangle' if closure.allow_attendance else 'fa-calendar-times' }}" aria-hidden="true"></i>
+        <span>{{ closure.reason }} — {{ _(closure.type|capitalize) }}
+            ({{ _('Attendance allowed if present') if closure.allow_attendance else _('Attendance locked') }})</span>
     </div>
+    {% endif %}
 </header>
 
 <main class="p-4 pb-8">
@@ -423,76 +402,6 @@
         </form>
     </section>
     {% endif %}
-
-    {# ──────────────────────────────────────────────────────────────
-       Looking back: the month, and one day of it in full.
-
-       Directly under the quick-mark box, which is where it was asked
-       for. It has moved twice: it used to sit above the roster, so every
-       visit began by scrolling past a calendar to reach the pills, and
-       it then went to the foot of the screen, which put it out of reach
-       of the one hand holding the phone.
-
-       The marking panel is split around it rather than pushed below it
-       — the label, the employee-ID box and this, then the bulk buttons
-       and the counters. Splitting keeps the calendar where it was asked
-       for without the day's three most-pressed buttons moving to the
-       far side of it.
-       ────────────────────────────────────────────────────────────── #}
-    <h2 class="ep-section-label mt-5">{{ _('Look back over the month') }}</h2>
-    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
-        <details id="cal-fold">
-            <summary class="cal-summary">
-                <span class="cal-summary-label">
-                    <i class="fa-solid fa-calendar-days"></i>
-                    {{ _('Calendar') }}
-                </span>
-                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
-                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
-            </summary>
-            <div class="flex items-center justify-between mb-2 mt-3 px-1">
-                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
-                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
-                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
-                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
-                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
-            </div>
-            {% with cal_month_start = month_start,
-                    cal_month = selected_date.month, cal_year = selected_date.year,
-                    cal_data = calendar_data, cal_closures = closure_days,
-                    cal_selected = selected_date, cal_today = today,
-                    cal_interactive = true %}
-                {% include '_calendar.html' %}
-            {% endwith %}
-        </details>
-    </section>
-    <script nonce="{{ csp_nonce }}">
-    /* The month arrows are links, so changing month reloads the page. Without
-       remembering the fold, the calendar would snap shut under the person
-       every time they stepped back a month. Runs here, during parse, so it
-       does not open with a visible jump.
-
-       Browser storage can throw outright in a private window or with site
-       data blocked, so a failure to remember must never stop the page. */
-    (function () {
-        var fold = document.getElementById('cal-fold');
-        if (!fold) return;
-        try {
-            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
-        } catch (e) { /* not remembered; the calendar simply starts folded */ }
-        fold.addEventListener('toggle', function () {
-            try {
-                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
-            } catch (e) { /* nothing to do: the fold still works for this visit */ }
-        });
-    })();
-    </script>
-
-    <!-- Day detail — filled from /api/attendance/day/<date> -->
-    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
-             tabindex="-1" aria-live="polite">
-        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Pick a date above to see that day in full.') }}</div></div>
-    </section>
 
     {% if not (closure and not closure.allow_attendance) %}
     <section class="mb-5">
@@ -652,6 +561,70 @@
         </a>
     </div>
     {% endif %}
+
+    {# ──────────────────────────────────────────────────────────────
+       Looking back: the month, and one day of it in full.
+
+       After the roster (design review S5, approved by the owner): the
+       people still to mark are why this screen is opened, so the day's
+       marking comes first and the calendar is where you go deliberately.
+       Folded by default, so it costs one row until it is wanted.
+       ────────────────────────────────────────────────────────────── #}
+    <h2 class="ep-section-label mt-5">{{ _('Look back over the month') }}</h2>
+    <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-3 mb-4">
+        <details id="cal-fold">
+            <summary class="cal-summary">
+                <span class="cal-summary-label">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    {{ _('Calendar') }}
+                </span>
+                <span class="cal-summary-month">{{ selected_date|ldate('%B %Y') }}</span>
+                <i class="fa-solid fa-chevron-down cal-summary-chevron"></i>
+            </summary>
+            <div class="flex items-center justify-between mb-2 mt-3 px-1">
+                <a href="{{ url_for('attendance', date=(month_start - timedelta(days=1)).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Previous month') }}"><i class="fa-solid fa-chevron-left"></i></a>
+                <div class="text-sm font-semibold text-gray-800">{{ selected_date|ldate('%B %Y') }}</div>
+                <a href="{{ url_for('attendance', date=(month_start + timedelta(days=32)).replace(day=1).isoformat()) }}"
+                   class="dv-navbtn" aria-label="{{ _('Next month') }}"><i class="fa-solid fa-chevron-right"></i></a>
+            </div>
+            {% with cal_month_start = month_start,
+                    cal_month = selected_date.month, cal_year = selected_date.year,
+                    cal_data = calendar_data, cal_closures = closure_days,
+                    cal_selected = selected_date, cal_today = today,
+                    cal_interactive = true %}
+                {% include '_calendar.html' %}
+            {% endwith %}
+        </details>
+    </section>
+    <script nonce="{{ csp_nonce }}">
+    /* The month arrows are links, so changing month reloads the page. Without
+       remembering the fold, the calendar would snap shut under the person
+       every time they stepped back a month. Runs here, during parse, so it
+       does not open with a visible jump.
+
+       Browser storage can throw outright in a private window or with site
+       data blocked, so a failure to remember must never stop the page. */
+    (function () {
+        var fold = document.getElementById('cal-fold');
+        if (!fold) return;
+        try {
+            if (localStorage.getItem('sw-calendar-open') === '1') fold.open = true;
+        } catch (e) { /* not remembered; the calendar simply starts folded */ }
+        fold.addEventListener('toggle', function () {
+            try {
+                localStorage.setItem('sw-calendar-open', fold.open ? '1' : '0');
+            } catch (e) { /* nothing to do: the fold still works for this visit */ }
+        });
+    })();
+    </script>
+
+    <!-- Day detail — filled from /api/attendance/day/<date> -->
+    <section id="day-panel" class="bg-white rounded-3xl shadow-lg border border-gray-100 mb-4"
+             tabindex="-1" aria-live="polite">
+        <div id="day-panel-body" class="p-4"><div class="dv-muted">{{ _('Pick a date above to see that day in full.') }}</div></div>
+    </section>
+
 </main>
 
 {% if current_user.is_admin %}

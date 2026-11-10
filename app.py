@@ -110,9 +110,22 @@ def _csp_nonce():
     g.csp_nonce = secrets.token_urlsafe(16)
 
 
+# The Android app appends this to its user agent (config.xml AppendUserAgent).
+NATIVE_SHELL_MARK = 'SmartWorkerApp/'
+# Where the app serves its own files, cordova.js among them. Only ever
+# referenced for a request that carries the mark above.
+NATIVE_SHELL_ORIGIN = 'https://localhost'
+
+
+def in_native_shell():
+    return NATIVE_SHELL_MARK in (request.headers.get('User-Agent') or '')
+
+
 @app.context_processor
 def _expose_csp_nonce():
-    return {'csp_nonce': getattr(g, 'csp_nonce', '')}
+    return {'csp_nonce': getattr(g, 'csp_nonce', ''),
+            'native_shell': in_native_shell(),
+            'native_shell_origin': NATIVE_SHELL_ORIGIN}
 
 
 # The policy, assembled once. Every library the app uses is vendored under
@@ -165,9 +178,15 @@ def _security_headers(response):
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
     response.headers.setdefault('Referrer-Policy', 'same-origin')
-    response.headers.setdefault(
-        'Content-Security-Policy',
-        _CSP.format(nonce=getattr(g, 'csp_nonce', '')))
+    csp = _CSP.format(nonce=getattr(g, 'csp_nonce', ''))
+    if in_native_shell():
+        # Inside the APK the page loads cordova.js and its plugins from the
+        # app itself; the plugins talk to it with fetch for file access.
+        csp = (csp.replace("script-src 'self'", "script-src 'self' " + NATIVE_SHELL_ORIGIN)
+                  .replace("connect-src 'self'", "connect-src 'self' " + NATIVE_SHELL_ORIGIN))
+    response.headers.setdefault('Content-Security-Policy', csp)
+    # The same URL answers differently inside and outside the app.
+    response.vary.add('User-Agent')
     # Nothing in the application uses a camera beyond the QR scanner, which is
     # same-origin, and nothing uses the rest at all.
     response.headers.setdefault(

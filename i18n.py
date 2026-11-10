@@ -24,6 +24,67 @@ DEFAULT_LANGUAGE = 'en'
 #: does not know the translation layer exists.
 TRANSLATIONS = {
     'hi': {
+        # Sign in / sign up (docs/audit/mockups, batch 1)
+        '6-digit code': '6 अंकों का कोड',
+        'Already have an account?': 'पहले से खाता है?',
+        'At least 8 letters or numbers. Tap the eye to check it.': 'कम से कम 8 अक्षर या अंक। जाँचने के लिए आँख वाले बटन को दबाएँ।',
+        'Attendance and wages, without the register': 'हाज़िरी और तनख़्वाह, बिना रजिस्टर के',
+        'Business name': 'कारोबार का नाम',
+        'Change number': 'नंबर बदलें',
+        'Create a password': 'पासवर्ड बनाएँ',
+        'Create account': 'खाता बनाएँ',
+        'Create your account': 'अपना खाता बनाएँ',
+        "Didn't get it?": 'नहीं मिला?',
+        'Enter all 6 digits of the code.': 'कोड के सभी 6 अंक डालें।',
+        'Enter the code': 'कोड डालें',
+        'For staff accounts made by your admin, and owners who set one.': 'एडमिन के बनाए स्टाफ़ खातों के लिए, और उन मालिकों के लिए जिन्होंने पासवर्ड रखा है।',
+        'Forgot password? Sign in with OTP instead': 'पासवर्ड भूल गए? OTP से लॉगिन करें',
+        'Get OTP': 'OTP भेजें',
+        'Hide password': 'पासवर्ड छिपाएँ',
+        'Mobile number': 'मोबाइल नंबर',
+        'Mobile number, username or email': 'मोबाइल नंबर, यूज़रनेम या ईमेल',
+        'Need help?': 'मदद चाहिए?',
+        'New business?': 'नया कारोबार?',
+        'No internet. Check your connection and try again.': 'इंटरनेट नहीं है। कनेक्शन देखें और फिर से कोशिश करें।',
+        'No password needed — you sign in with an OTP. You can set a password later in Profile.': 'पासवर्ड की ज़रूरत नहीं — आप OTP से लॉगिन करेंगे। चाहें तो बाद में प्रोफ़ाइल में पासवर्ड रख सकते हैं।',
+        'Please enter your name.': 'कृपया अपना नाम डालें।',
+        'Resend in': 'दोबारा भेजें',
+        'Send a new code': 'नया कोड भेजें',
+        'Sent by SMS to': 'SMS भेजा गया',
+        'Sign in': 'लॉगिन करें',
+        'Sign in or create your account with your mobile number.': 'अपने मोबाइल नंबर से लॉगिन करें या नया खाता बनाएँ।',
+        'Sign in to your account.': 'अपने खाते में लॉगिन करें।',
+        'Sign in with password': 'पासवर्ड से लॉगिन',
+        'Sign in with username & password': 'यूज़रनेम और पासवर्ड से लॉगिन',
+        'Sign-in by OTP is not available yet. Please use your password.': 'OTP से लॉगिन अभी उपलब्ध नहीं है। कृपया पासवर्ड से लॉगिन करें।',
+        'The code could not be sent just now. Please try again, or sign in with your password.': 'कोड अभी भेजा नहीं जा सका। कृपया फिर कोशिश करें, या पासवर्ड से लॉगिन करें।',
+        'Start using SmartWorker': 'SmartWorker शुरू करें',
+        'Takes a minute. You can add your workers right after.': 'एक मिनट लगेगा। उसके तुरंत बाद आप अपने मज़दूर जोड़ सकते हैं।',
+        'Tell us your name and your business. You can change these later.': 'अपना नाम और कारोबार बताएँ। ये बाद में बदले जा सकते हैं।',
+        'That email does not look right. Leave it empty if you have none.': 'यह ईमेल सही नहीं लग रहा। ईमेल नहीं है तो ख़ाली छोड़ दें।',
+        'Verify & continue': 'जाँचें और आगे बढ़ें',
+        "We'll send a 6-digit code by SMS. New here? Your account is created after the code.": 'हम SMS से 6 अंकों का कोड भेजेंगे। नए हैं? कोड डालने के बाद आपका खाता बन जाएगा।',
+        'Welcome! One last step': 'स्वागत है! बस एक क़दम और',
+        'WhatsApp us': 'WhatsApp करें',
+        'You will sign in with this number.': 'इसी नंबर से आप लॉगिन करेंगे।',
+        'Your mobile number': 'आपका मोबाइल नंबर',
+        'Your name': 'आपका नाम',
+        'e.g. Sharma Stone Crusher': 'जैसे: शर्मा स्टोन क्रशर',
+        'optional': 'ज़रूरी नहीं',
+        'optional — for password reset': 'ज़रूरी नहीं — पासवर्ड भूलने पर काम आता है',
+        'optional — for reports': 'ज़रूरी नहीं — रिपोर्ट के लिए',
+        'or': 'या',
+        'Scan': 'स्कैन',
+        'ID card ready. Tap Share again to send it.': 'पहचान पत्र तैयार है। भेजने के लिए फिर से Share दबाएँ।',
+        'DRAFT': 'ड्राफ़्ट',
+        'Draft: payroll for this month has not been generated yet, so these figures may still change.':
+            'ड्राफ़्ट: इस महीने का वेतन अभी बना नहीं है, इसलिए ये आँकड़े अभी बदल सकते हैं।',
+        'Payslip actions': 'तनख़्वाह पर्ची के काम',
+        'Payslip ready. Tap Share again to send it.': 'पर्ची तैयार है। भेजने के लिए फिर से Share दबाएँ।',
+        'tap to change': 'बदलने के लिए दबाएँ',
+        'Search name or ID': 'नाम या आईडी खोजें',
+        'Attendance locked': 'हाज़िरी बंद है',
+        'verified': 'सत्यापित',
         # --- navigation and chrome ---------------------------------------
         'Home': 'होम',
         'Workers': 'मज़दूर',
@@ -1543,6 +1604,10 @@ DATE_PATTERNS = {
 }
 
 
+#: Languages whose dates always spell the month out.
+FULL_MONTH_ONLY = frozenset({'hi'})
+
+
 def format_date(value, fmt, lang):
     """strftime with localised day and month names.
 
@@ -1559,7 +1624,11 @@ def format_date(value, fmt, lang):
         '%A': WEEKDAYS[lang][value.weekday()],
         '%a': WEEKDAYS_SHORT[lang][value.weekday()],
         '%B': MONTHS[lang][value.month - 1],
-        '%b': MONTHS_SHORT[lang][value.month - 1],
+        # Hindi has no short month forms in everyday use: "अग" and "नव"
+        # printed on ID cards read as typos, and the full names (अगस्त,
+        # नवंबर) are short anyway. Only the date formatter changes; any
+        # other use of MONTHS_SHORT keeps its own forms.
+        '%b': (MONTHS if lang in FULL_MONTH_ONLY else MONTHS_SHORT)[lang][value.month - 1],
     }
     # Walk the format so a literal %% is never mistaken for a directive.
     out, i = [], 0
@@ -1779,6 +1848,20 @@ FLASH_MESSAGES = {
         'Invalid attendance date.': 'हाज़िरी की तारीख़ ग़लत है।',
         'Invalid attendance status.': 'हाज़िरी की हालत ग़लत है।',
         'Invalid username or password': 'यूज़रनेम या पासवर्ड ग़लत है',
+        'Please enter a valid 10-digit mobile number.':
+            'कृपया 10 अंकों का सही मोबाइल नंबर डालें।',
+        'OTP has been sent to your mobile number.':
+            'आपके मोबाइल नंबर पर OTP भेज दिया गया है।',
+        'OTP expired. Please request a new OTP.':
+            'OTP की समय-सीमा ख़त्म हो गई। नया OTP मँगाएँ।',
+        'Please verify OTP for the same mobile number.':
+            'उसी मोबाइल नंबर का OTP डालें जिस पर भेजा गया था।',
+        'Invalid OTP. Please try again.': 'OTP ग़लत है। फिर से कोशिश करें।',
+        'No account found with this mobile number.':
+            'इस मोबाइल नंबर से कोई खाता नहीं मिला।',
+        'Account not found for this OTP.': 'इस OTP के लिए खाता नहीं मिला।',
+        'OTP verified. Login successful.': 'OTP सही है। लॉगिन हो गया।',
+        'Mobile number verified successfully.': 'मोबाइल नंबर की पुष्टि हो गई।',
         'Mobile number already registered': 'यह मोबाइल नंबर पहले से रजिस्टर्ड है',
         'Modification note recorded.': 'बदलाव की टिप्पणी दर्ज हो गई।',
         'New QR code generated successfully': 'नया QR कोड बन गया',
@@ -1993,6 +2076,12 @@ _FLASH_PATTERNS_SOURCE = {
         (r'^Attendance is locked for (.+?) on this closure day\.$',
          r'इस छुट्टी के दिन \1 की हाज़िरी बंद है।'),
         (r'^Times updated for (.+?)\.$', r'\1 का समय बदल दिया गया।'),
+        (r'^Too many attempts\. Please try again in (\d+) minutes\.$',
+         r'बहुत ज़्यादा कोशिशें हो गईं। \1 मिनट बाद फिर से कोशिश करें।'),
+        (r'^That code is not right\. Check the SMS and try again - (\d+) tries left\.$',
+         r'यह कोड सही नहीं है। SMS देखकर फिर से डालें — \1 कोशिशें बाक़ी हैं।'),
+        (r'^Please wait (\d+) seconds before asking for a new OTP\.$',
+         r'नया OTP मँगाने से पहले \1 सेकंड रुकें।'),
         (r'^Closure added for (.+?)\.$', r'\1 के लिए छुट्टी जोड़ी गई।'),
         (r'^Login ready for (.+?)\. Username (\S+), password (\S+)\. '
          r'Write it down — it cannot be shown again\.$',

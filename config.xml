@@ -40,7 +40,9 @@
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/android/splash-icon.png" />
 
         <preference name="android-minSdkVersion" value="24" />
-        <preference name="android-targetSdkVersion" value="34" />
+        <!-- Google Play: new apps and updates must target API 36 (Android 16)
+             from 31 Aug 2026. cordova-android 15 builds for it. -->
+        <preference name="android-targetSdkVersion" value="36" />
         <preference name="AndroidXEnabled" value="true" />
         <!-- Production WebView performance -->
         <preference name="AndroidInsecureFileModeEnabled" value="false" />
@@ -97,9 +99,19 @@
          app_url input rewrites all four at once.
          Keep localhost for development builds. -->
     <allow-navigation href="https://smartworker.onrender.com/*" />
+    <!-- The site's own pages may use the native plugins (file save, Back
+         button, camera permission): see cordova-plugins/smartworker-remote-bridge.
+         Same URL as allow-navigation; the build's app_url rewrite covers it. -->
+    <preference name="RemoteBridgeOrigin" value="https://smartworker.onrender.com" />
+    <!-- Tells the server a page is being opened inside the app, so it adds
+         the <script> that loads cordova.js from the APK (templates/base.html). -->
+    <preference name="AppendUserAgent" value="SmartWorkerApp/1" />
     <allow-navigation href="http://localhost/*" />
     <allow-navigation href="http://127.0.0.1/*" />
     <allow-intent href="tel:*" />
+    <!-- Sharing a payslip to WhatsApp as text, where a file cannot be shared. -->
+    <allow-intent href="https://wa.me/*" />
+    <allow-intent href="whatsapp:*" />
     <allow-intent href="mailto:*" />
 
     <!-- cordova-plugin-whitelist removed: deprecated and built into cordova-android 10+ -->
@@ -107,18 +119,22 @@
     <!-- cordova-plugin-splashscreen removed: it requires cordova-android
          <11.0.0, so the build skipped it every time. The splash now comes
          from the Android 12+ system API (see the platform block above). -->
-    <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
-    <!-- Requests the Android runtime CAMERA permission so the in-app QR scanner
-         (getUserMedia in the WebView) can open the camera. cordova-android
-         already grants the WebView's permission request, but the OS still
-         requires the app to hold the runtime permission. -->
-    <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
+    <!-- cordova-plugin-statusbar removed: cordova-android 15 colours the
+         status bar itself from StatusBarBackgroundColor and picks light or
+         dark icons from it, and the plugin predates Android 15/16's
+         edge-to-edge rules. -->
+    <!-- cordova-plugin-android-permissions removed: it only asked for the
+         camera at first launch. cordova-android 15.1 asks when the scanner
+         opens the camera (apache/cordova-android#1895). The CAMERA
+         uses-permission above stays: Android needs it declared. -->
 
     <!-- Android WebView has no download manager and ignores <a download>,
          so every export (PDF, PNG, CSV) is written with the file plugin and
          handed to a viewer. Without these the export buttons do nothing. -->
     <plugin name="cordova-plugin-file" spec="^8.0.0" />
     <plugin name="cordova-plugin-file-opener2" spec="^4.0.0" />
+    <!-- Ours, in this repository: lets the deployed site use the plugins above. -->
+    <plugin name="smartworker-remote-bridge" spec="./cordova-plugins/smartworker-remote-bridge" />
 
     <!-- Restrict network access to only the backend API domain for security.
          Must match <allow-navigation> above and APP_URL in www/index.html. -->

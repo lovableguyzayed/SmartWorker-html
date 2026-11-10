@@ -27,6 +27,87 @@
     flex: 0 0 auto;
 }
 .pay-row > .amount { min-width: 7.5rem; }
+/* A payslip whose month has no payroll yet is a draft, and says so. */
+.slip-wrapper { position: relative; }
+.slip-watermark {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 6rem; font-weight: 800; letter-spacing: 0.1em; color: rgba(194, 65, 12, 0.07);
+    transform: rotate(-30deg); pointer-events: none; z-index: 5; user-select: none;
+}
+.slip-draft-note {
+    display: flex; gap: 0.5rem; align-items: flex-start;
+    background: #fff7ed; color: #9a3412; border-bottom: 1px solid #fed7aa;
+    padding: 0.6rem 1rem; font-size: 0.8rem; line-height: 1.45; font-weight: 600;
+}
+@media print { .slip-watermark { color: rgba(194, 65, 12, 0.10); } }
+
+/* Share / PDF / Print, held just above the tab bar. */
+.slip-actions {
+    position: sticky;
+    bottom: calc(6.2rem + env(safe-area-inset-bottom));
+    z-index: 30;
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    padding: 0.625rem;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid #e2e8f0; border-radius: 1.25rem;
+    box-shadow: 0 -6px 20px rgba(0, 31, 63, 0.08);
+}
+.slip-actions button {
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    min-height: 3.25rem; border-radius: 0.875rem; font-weight: 700; font-size: 1rem;
+    padding: 0 0.875rem; line-height: 1.2;
+}
+.slip-share { flex: 1 1 9rem; min-width: 0; background: #15803d; color: #fff; border: 2px solid #15803d; }
+.slip-share svg { width: 1.375rem; height: 1.375rem; flex-shrink: 0; }
+.slip-btn { flex: 1 0 auto; background: #fff; color: #001f3f; border: 2px solid #e2e8f0; }
+.slip-btn-icon { flex: 0 0 3.25rem; width: 3.25rem; padding: 0; }
+.slip-actions button[aria-busy="true"] { opacity: 0.6; }
+
+/* The payslip on a phone at the largest text size (docs/audit/mockups,
+   batch 3, S2). It is laid out as an A4 sheet inside a print table, and a
+   table grows to fit its widest child - so a long heading, the five
+   attendance boxes and the calendar's day names together pushed the
+   screen 72px wide. On screen only: the table keeps to the screen, the
+   boxes wrap to two rows, labels wrap but amounts never do. Print and the
+   saved PDF are unchanged (the PDF is captured at A4 width, where all of
+   this already fits). */
+@media screen {
+    .print-frame { table-layout: fixed; }
+    .slip-wrapper .grid.grid-cols-5 { grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr)); }
+    .slip-wrapper .cal-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .slip-wrapper .cal-cell { min-width: 0; overflow: hidden; }
+    .slip-wrapper h2 { overflow-wrap: anywhere; }
+    /* Words stay whole ("Monthly", not "Monthl-y"); a label and its amount
+       sit side by side while they fit, and the amount drops to its own
+       line, right-aligned, when they do not - the stacked rows of the
+       approved preview. */
+    .slip-wrapper, .slip-wrapper .pay-row { overflow-wrap: break-word; }
+    .pay-row,
+    .slip-wrapper [data-pdf-split].flex.justify-between { flex-wrap: wrap; column-gap: 0.75rem; }
+    .pay-row > :first-child { min-width: 0; }
+    .pay-row > .amount,
+    .slip-wrapper [data-pdf-split].flex.justify-between > .amount { min-width: 0; margin-left: auto; }
+    .slip-wrapper .grid.grid-cols-4 { grid-template-columns: repeat(auto-fit, minmax(4.75rem, 1fr)); }
+    .slip-net { flex-wrap: wrap; gap: 0.5rem 1rem; }
+    .slip-net .text-2xl { white-space: nowrap; }
+    /* Company name and "PAYSLIP / month" side by side while they fit; the
+       month drops below the name when they do not, so the name is never
+       broken inside a word ("Uttaran-chal"). */
+    .slip-head-row { flex-wrap: wrap; gap: 0.25rem 1rem; }
+    .slip-head-row > .min-w-0 { flex: 1 1 12rem; }
+    .slip-head-row .text-lg { overflow-wrap: normal; }
+    /* Photo, name and the paid/pending badge: the badge moves under the
+       name when the three do not fit, rather than squeezing the name to a
+       letter per line. */
+    .slip-identity { flex-wrap: wrap; row-gap: 0.5rem; }
+    .slip-identity > .flex-1 { flex: 1 1 8rem; overflow-wrap: normal; }
+}
+/* When Share, PDF and Print no longer fit on one row (large text), PDF
+   and Print become icon-only so the bar stays one row tall instead of
+   covering half the screen. Set from the script below. */
+.slip-actions.compact .slip-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.slip-actions.compact .slip-btn { flex: 0 0 min(3.25rem, 52px); width: min(3.25rem, 52px); padding: 0; }
+.slip-actions.compact .slip-share { flex: 1 1 0; }
 
 @media print {
     .no-print { display: none !important; }
@@ -152,16 +233,6 @@
                 <div class="text-sm opacity-90">{{ worker.full_name }} · {{ _(month_name) }} {{ year }}</div>
             </div>
         </div>
-        <div class="flex items-center space-x-2">
-            <button aria-label="{{ _('Print') }}" data-act="printSlip"
-                    class="icon-btn bg-white/10 backdrop-blur-sm">
-                <i class="fa-solid fa-print text-lg"></i>
-            </button>
-            <button aria-label="{{ _('Download PDF') }}" data-act="downloadPDF"
-                    class="icon-btn bg-white/10 backdrop-blur-sm">
-                <i class="fa-solid fa-file-pdf text-lg"></i>
-            </button>
-        </div>
     </div>
 </header>
 
@@ -216,11 +287,21 @@
     <tbody><tr><td>
 
     <!-- ===== SLIP CARD (captured for PDF) ===== -->
-    <div id="payroll-slip-content" class="slip-wrapper bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+    <div id="payroll-slip-content" class="slip-wrapper bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden{{ ' slip-draft' if not payroll_record }}">
+        {% if not payroll_record %}
+        {# Until the month's payroll is generated these figures can still
+           change. Said in words at the top and as a watermark, on screen,
+           on paper and in the PDF, so a draft is never taken as final. #}
+        <div class="slip-watermark" aria-hidden="true">{{ _('DRAFT') }}</div>
+        <div class="slip-draft-note" data-pdf-block>
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            {{ _('Draft: payroll for this month has not been generated yet, so these figures may still change.') }}
+        </div>
+        {% endif %}
 
         <!-- Slip Top Bar -->
         <div class="bg-gradient-to-r from-primary to-accent p-5 text-white">
-            <div class="flex items-center justify-between mb-3">
+            <div class="slip-head-row flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2 min-w-0">
                     {% if company and company.logo %}
                     <img src="{{ company.logo }}" alt="logo" class="w-9 h-9 rounded-lg object-contain bg-white/10 p-0.5 shrink-0">
@@ -244,7 +325,7 @@
             </div>
 
             <!-- Worker Identity -->
-            <div class="flex items-center space-x-3 bg-white/10 rounded-2xl p-3 border border-white/20">
+            <div class="slip-identity flex items-center space-x-3 bg-white/10 rounded-2xl p-3 border border-white/20">
                 {% if worker.profile_image %}
                 <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}"
                      class="w-14 h-14 rounded-xl object-cover shrink-0 border-2 border-white/30">
@@ -265,7 +346,9 @@
                     <span class="bg-yellow-400/30 border border-yellow-300/40 text-white text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap">{{ _('PENDING') }}</span>
                     {% endif %}
                 {% else %}
-                <span class="bg-white/10 border border-white/20 text-white/90 text-xs px-2 py-1 rounded-lg whitespace-nowrap">{{ _('Not Saved') }}</span>
+                {# Was "Not Saved": app jargon for "payroll not generated yet",
+                   printed on the document a worker keeps. #}
+                <span class="bg-orange-400/30 border border-orange-300/50 text-white text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap">{{ _('DRAFT') }}</span>
                 {% endif %}
             </div>
         </div>
@@ -645,7 +728,7 @@
                 {% endif %}
 
                 <!-- Net Payable box -->
-                <div class="mt-3 bg-gradient-to-r from-primary to-accent rounded-2xl p-4 text-white flex items-center justify-between" data-pdf-block>
+                <div class="slip-net mt-3 bg-gradient-to-r from-primary to-accent rounded-2xl p-4 text-white flex items-center justify-between" data-pdf-block>
                     <div>
                         <div class="text-xs opacity-90 uppercase tracking-wider">{{ _('Net Payable') }}</div>
                         <div class="text-2xl font-bold mt-0.5 leading-snug">{{ pay_summary.estimated_pay|money2 }}</div>
@@ -663,7 +746,9 @@
                     {% endif %}
                 </div>
 
-                {% if pay_summary.policy_note %}
+                {# Printed only where the salary calculation above is not: when it
+                   is, its "How this was calculated" lines are this same note. #}
+                {% if pay_summary.policy_note and not sb %}
                 {# The four screens that show this note all run it through
                    lnotes; this one did not, so a Hindi payslip printed the
                    bullet list in Hindi and then repeated it underneath in
@@ -695,15 +780,19 @@
     </td></tr></tbody>
     </table>
 
-    <!-- Action buttons (hidden on print) -->
-    <div class="grid grid-cols-2 gap-3 no-print">
-        <button data-act="printSlip"
-                class="flex items-center justify-center p-4 bg-primary text-white rounded-2xl font-medium shadow-lg hover:bg-accent transition-colors">
-            <i class="fa-solid fa-print mr-2"></i>{{ _('Print Slip') }}
+    {# One bar for what happens to a payslip, held above the tab bar while the
+       slip scrolls (docs/audit/mockups, batch 3, S1). Share comes first:
+       payslips travel by WhatsApp. Print and PDF used to sit in the header
+       and again at the foot. #}
+    <div class="slip-actions no-print" role="group" aria-label="{{ _('Payslip actions') }}">
+        <button type="button" data-act="sharePayslip" class="slip-share">
+            {% include '_icon_whatsapp.svg' %}<span>{{ _('Share') }}</span>
         </button>
-        <button data-act="downloadPDF"
-                class="flex items-center justify-center p-4 bg-red-600 text-white rounded-2xl font-medium shadow-lg hover:bg-red-700 transition-colors">
-            <i class="fa-solid fa-file-pdf mr-2"></i>{{ _('Save PDF') }}
+        <button type="button" data-act="downloadPDF" class="slip-btn" aria-label="{{ _('Save PDF') }}">
+            <i class="fa-solid fa-download" aria-hidden="true"></i><span>PDF</span>
+        </button>
+        <button type="button" data-act="printSlip" class="slip-btn slip-btn-icon" aria-label="{{ _('Print') }}">
+            <i class="fa-solid fa-print" aria-hidden="true"></i>
         </button>
     </div>
 
@@ -716,6 +805,13 @@
 {% endblock %}
 
 {% block scripts %}
+{# Sent with the shared PDF, or alone where a file cannot be shared. Built
+   here, outside the script, so each translated piece is plain text. #}
+{% set payslip_pdf_meta = {'title': _('Payslip') ~ ' — ' ~ worker.full_name ~ ' (' ~ worker.worker_id ~ ') — ' ~ _(month_name) ~ ' ' ~ year|string,
+                            'subject': _('Payslip'),
+                            'author': company.name if company else 'SmartWorker',
+                            'creator': 'SmartWorker'} %}
+{% set payslip_share_text = _('Payslip') ~ ' — ' ~ worker.full_name ~ ', ' ~ _(month_name) ~ ' ' ~ year|string ~ '\n' ~ _('Net Payable') ~ ': ' ~ (pay_summary.estimated_pay|money2) ~ '\n' ~ (company.name if company else 'SmartWorker') %}
 <script nonce="{{ csp_nonce }}">
 /* ------------------------------------------------------------------ *
  * PDF export
@@ -832,10 +928,22 @@ function pdfDrawChrome(pdf, geom, pageNo, pageCount) {
     pdf.text('Page ' + pageNo + ' of ' + pageCount, geom.pageW / 2, 290, { align: 'center' });
 }
 
-function downloadPDF() {
+// Worker ID in the name: two workers called Javed must not overwrite each
+// other's payslips in the Downloads folder.
+var PAYSLIP_PDF_NAME = {{ ("Payslip_" ~ worker.worker_id ~ "_" ~ worker.full_name|replace(" ", "_") ~ "_" ~ month_name[:3] ~ "-" ~ year ~ ".pdf")|tojson }};
+// What goes with the file - or alone, where a file cannot be shared.
+var PAYSLIP_SHARE_TEXT = {{ payslip_share_text|tojson }};
+// Shown as the document's title in PDF viewers and file managers.
+var PAYSLIP_PDF_META = {{ payslip_pdf_meta|tojson }};
+
+/* One builder for Save and Share, so the file shared is the file saved.
+   `deliver` decides what happens to it; the default saves it. */
+function buildPayslipPdf(deliver) {
     return SmartWorkerPDF.build({
         root: document.getElementById('payroll-slip-content'),
-        filename: '{{ worker.full_name | replace(" ", "_") }}_Payslip_{{ month_name }}_{{ year }}.pdf',
+        filename: PAYSLIP_PDF_NAME,
+        properties: PAYSLIP_PDF_META,
+        deliver: deliver,
         geom: PDF_GEOM,
         busyId: 'pdf-busy',
         prepareChrome: pdfPrepareChrome,
@@ -843,21 +951,66 @@ function downloadPDF() {
         onError: function () {
             alert({{ _('PDF generation failed. Use Print instead.')|tojson }});
         }
-    }).catch(function () { /* already reported */ });
+    });
+}
+
+function downloadPDF() {
+    return buildPayslipPdf().catch(function () { /* already reported */ });
 }
 
 /* Print.
  *
- * window.print() is the right thing in a browser and is not implemented at
- * all in an Android WebView — no dialog, no error, nothing. This screen
- * already builds a proper PDF and hands it to a viewer through
- * SmartWorkerSave, and every Android PDF viewer can print, so inside the
- * app that is the route taken. See the 'print' verb in actions.js, which
- * does the same for screens that declare a downloadPDF of their own.
+ * window.print() does nothing in an Android WebView. Inside the app the
+ * remote-bridge plugin replaces it with Android's print service (printers,
+ * and "Save as PDF" with real text) and sets SmartWorkerNativePrint. An
+ * app without that (an older APK) gets the PDF opened in a viewer instead,
+ * since every Android PDF viewer can print.
  */
 function printSlip() {
-    if (window.cordova && window.cordova.file) return downloadPDF();
+    if (window.cordova && window.cordova.file && !window.SmartWorkerNativePrint) return downloadPDF();
     window.print();
+}
+
+// The PDF last built, kept so a second tap can share it at once: a phone
+// browser only shares straight after a tap, and building takes seconds.
+var payslipPdfReady = null;
+
+// Keep the action bar one row tall (see .slip-actions.compact).
+(function () {
+    var bar = document.querySelector('.slip-actions');
+    if (!bar) return;
+    function fit() {
+        bar.classList.remove('compact');
+        var kids = bar.children;
+        if (kids.length && kids[kids.length - 1].offsetTop > kids[0].offsetTop + 4) {
+            bar.classList.add('compact');
+        }
+    }
+    fit();
+    window.addEventListener('resize', fit);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
+
+function sharePayslip(el) {
+    var btn = el && el.closest ? el.closest('button') : null;
+    var go = function (blob, name) {
+        return SmartWorkerSave.share(blob, name, 'application/pdf', PAYSLIP_SHARE_TEXT)
+            .then(function (r) { payslipPdfReady = null; return r; })
+            .catch(function (err) {
+                if (err && err.name === 'NotAllowedError') {
+                    payslipPdfReady = { blob: blob, name: name };
+                    if (window.MultiSelect && typeof window.MultiSelect.toast === 'function') {
+                        window.MultiSelect.toast({{ _('Payslip ready. Tap Share again to send it.')|tojson }}, 'info');
+                    }
+                    return;
+                }
+                SmartWorkerSave.fail(err);
+            });
+    };
+    if (payslipPdfReady) { go(payslipPdfReady.blob, payslipPdfReady.name); return; }
+    if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+    var done = function () { if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); } };
+    buildPayslipPdf(go).then(done, done);
 }
 </script>
 {% endblock %}

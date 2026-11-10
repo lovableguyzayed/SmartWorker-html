@@ -148,8 +148,11 @@
      *   prepareChrome fn(pageCount) -> Promise, run once before the pages
      *   drawChrome    fn(pdf, geom, pageNo, pageCount), run per page
      *   onError       fn(err); the default alerts
+     *   properties    PDF metadata for jsPDF's setProperties (title, author...)
+     *   deliver       fn(blob, filename) -> Promise, what to do with the
+     *                 finished PDF; the default saves it (Share passes its own)
      *
-     * Resolves with what SmartWorkerSave.blob resolved with.
+     * Resolves with what deliver resolved with.
      */
     function build(opts) {
         var root = opts.root;
@@ -210,6 +213,7 @@
                     var scale = canvas.width / widthPx;
                     var jsPDF = window.jspdf.jsPDF;
                     var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                    if (opts.properties) pdf.setProperties(opts.properties);
 
                     pages.forEach(function (p, i) {
                         if (i > 0) pdf.addPage();
@@ -236,6 +240,7 @@
                     });
 
                     restore();
+                    if (opts.deliver) return opts.deliver(pdf.output('blob'), opts.filename);
                     // pdf.save() ends in an <a download>, which the Android
                     // WebView ignores — the file never reached the device.
                     // Hand the blob to the shared saver instead.

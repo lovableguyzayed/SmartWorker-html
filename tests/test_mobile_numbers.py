@@ -108,6 +108,8 @@ print('\n--- the OTP screen finds the account, old row or new ---')
 
 app.config['TESTING'] = True
 app.config['WTF_CSRF_ENABLED'] = False
+# OTP sign-in runs only with a way to deliver codes; this is the local one.
+os.environ['SMS_DEV_LOG'] = '1'
 
 STORED_SHAPES = [
     (TEN, 'ten digits, as written today'),
