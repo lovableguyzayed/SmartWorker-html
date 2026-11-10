@@ -80,7 +80,11 @@ check('English dates are untouched',
       i18n.format_date(d, '%A, %B %d, %Y', 'en'), 'Tuesday, October 20, 2026')
 check('Hindi dates use Hindi names and Hindi word order',
       i18n.format_date(d, '%A, %B %d, %Y', 'hi'), '20 अक्टूबर 2026, मंगलवार')
-check('short Hindi dates work', i18n.format_date(d, '%d %b %Y', 'hi'), '20 अक्तू 2026')
+# Hindi spells the month out even where English abbreviates it: the short
+# forms ("अक्तू", "अग", "नव") read as typos on an ID card or a payslip.
+check('short Hindi dates spell the month out',
+      i18n.format_date(d, '%d %b %Y', 'hi'), '20 अक्टूबर 2026')
+check('English short dates stay short', i18n.format_date(d, '%d %b %Y', 'en'), '20 Oct 2026')
 check('a format with no names is unchanged',
       i18n.format_date(d, '%Y-%m-%d', 'hi'), '2026-10-20')
 check('None formats to empty', i18n.format_date(None, '%d %b', 'hi'), '')

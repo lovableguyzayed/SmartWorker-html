@@ -26,6 +26,20 @@
     flex: 0 0 auto;
 }
 .pay-row > .amount { min-width: 7.5rem; }
+/* A payslip whose month has no payroll yet is a draft, and says so. */
+.slip-wrapper { position: relative; }
+.slip-watermark {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 6rem; font-weight: 800; letter-spacing: 0.1em; color: rgba(194, 65, 12, 0.07);
+    transform: rotate(-30deg); pointer-events: none; z-index: 5; user-select: none;
+}
+.slip-draft-note {
+    display: flex; gap: 0.5rem; align-items: flex-start;
+    background: #fff7ed; color: #9a3412; border-bottom: 1px solid #fed7aa;
+    padding: 0.6rem 1rem; font-size: 0.8rem; line-height: 1.45; font-weight: 600;
+}
+@media print { .slip-watermark { color: rgba(194, 65, 12, 0.10); } }
+
 /* Share / PDF / Print, held just above the tab bar. */
 .slip-actions {
     position: sticky;
@@ -272,7 +286,17 @@
     <tbody><tr><td>
 
     <!-- ===== SLIP CARD (captured for PDF) ===== -->
-    <div id="payroll-slip-content" class="slip-wrapper bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+    <div id="payroll-slip-content" class="slip-wrapper bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden{{ ' slip-draft' if not payroll_record }}">
+        {% if not payroll_record %}
+        {# Until the month's payroll is generated these figures can still
+           change. Said in words at the top and as a watermark, on screen,
+           on paper and in the PDF, so a draft is never taken as final. #}
+        <div class="slip-watermark" aria-hidden="true">{{ _('DRAFT') }}</div>
+        <div class="slip-draft-note" data-pdf-block>
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            {{ _('Draft: payroll for this month has not been generated yet, so these figures may still change.') }}
+        </div>
+        {% endif %}
 
         <!-- Slip Top Bar -->
         <div class="bg-gradient-to-r from-primary to-accent p-5 text-white">
@@ -321,7 +345,9 @@
                     <span class="bg-yellow-400/30 border border-yellow-300/40 text-white text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap">{{ _('PENDING') }}</span>
                     {% endif %}
                 {% else %}
-                <span class="bg-white/10 border border-white/20 text-white/90 text-xs px-2 py-1 rounded-lg whitespace-nowrap">{{ _('Not Saved') }}</span>
+                {# Was "Not Saved": app jargon for "payroll not generated yet",
+                   printed on the document a worker keeps. #}
+                <span class="bg-orange-400/30 border border-orange-300/50 text-white text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap">{{ _('DRAFT') }}</span>
                 {% endif %}
             </div>
         </div>
@@ -707,7 +733,9 @@
                     {% endif %}
                 </div>
 
-                {% if pay_summary.policy_note %}
+                {# Printed only where the salary calculation above is not: when it
+                   is, its "How this was calculated" lines are this same note. #}
+                {% if pay_summary.policy_note and not sb %}
                 {# The four screens that show this note all run it through
                    lnotes; this one did not, so a Hindi payslip printed the
                    bullet list in Hindi and then repeated it underneath in
@@ -766,6 +794,10 @@
 {% block scripts %}
 {# Sent with the shared PDF, or alone where a file cannot be shared. Built
    here, outside the script, so each translated piece is plain text. #}
+{% set payslip_pdf_meta = {'title': _('Payslip') ~ ' — ' ~ worker.full_name ~ ' (' ~ worker.worker_id ~ ') — ' ~ _(month_name) ~ ' ' ~ year|string,
+                            'subject': _('Payslip'),
+                            'author': company.name if company else 'SmartWorker',
+                            'creator': 'SmartWorker'} %}
 {% set payslip_share_text = _('Payslip') ~ ' — ' ~ worker.full_name ~ ', ' ~ _(month_name) ~ ' ' ~ year|string ~ '\n' ~ _('Net Payable') ~ ': ' ~ (pay_summary.estimated_pay|money2) ~ '\n' ~ (company.name if company else 'SmartWorker') %}
 <script nonce="{{ csp_nonce }}">
 function printSlip() {
@@ -1036,6 +1068,7 @@ function buildPayslipPdf() {
                 var scale = canvas.width / widthPx;
                 var jsPDF = window.jspdf.jsPDF;
                 var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                pdf.setProperties(PAYSLIP_PDF_META);
 
                 pages.forEach(function (p, i) {
                     if (i > 0) pdf.addPage();
@@ -1069,9 +1102,14 @@ function buildPayslipPdf() {
   });
 }
 
-var PAYSLIP_PDF_NAME = {{ (worker.full_name|replace(" ", "_") ~ "_Payslip_" ~ month_name ~ "_" ~ year ~ ".pdf")|tojson }};
+// Worker ID in the name: two workers called Javed must not overwrite each
+// other's payslips in the Downloads folder.
+var PAYSLIP_PDF_NAME = {{ ("Payslip_" ~ worker.worker_id ~ "_" ~ worker.full_name|replace(" ", "_") ~ "_" ~ month_name[:3] ~ "-" ~ year ~ ".pdf")|tojson }};
 // What goes with the file - or alone, where a file cannot be shared.
 var PAYSLIP_SHARE_TEXT = {{ payslip_share_text|tojson }};
+
+// Shown as the document's title in PDF viewers and file managers.
+var PAYSLIP_PDF_META = {{ payslip_pdf_meta|tojson }};
 
 function pdfFailed(err) {
     console.error('Payslip PDF export failed', err);

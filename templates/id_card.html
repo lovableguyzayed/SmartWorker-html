@@ -3,6 +3,18 @@
 {% block title %}{{ worker.full_name }} {{ _('ID Card') }} - SmartWorker{% endblock %}
 
 {% block head %}
+<style>
+/* The ID card is photographed into PNG and PDF by html2canvas, which draws
+   text lower than the browser does inside an inline pill with the default
+   line-height: the pill's tinted box came out above its own text. Centring
+   the text with flex and a fixed line-height puts both in the same place. */
+#employee-id-card .idc-pill { display: inline-flex; align-items: center; line-height: 1.25; }
+/* Written here, not as Tailwind classes: the shipped tailwind.min.css only
+   holds the classes the app already used, so new ones do nothing. */
+#employee-id-card .idc-head { padding-left: 3.5rem; padding-right: 3.5rem; }   /* clear of the corner badge */
+#employee-id-card .idc-foot { gap: 0.25rem 1rem; }                             /* never run together */
+#employee-id-card .idc-tick { line-height: 1; }
+</style>
 <!-- Additional libraries for ID card generation -->
 <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/html2canvas.min.js') }}"></script>
@@ -80,12 +92,14 @@
             
             <div class="relative z-10">
                 <!-- Header -->
-                <div class="text-center mb-6">
+                {# px-14 keeps a long company name clear of the building badge
+                   in the top-right corner; it used to run underneath it. #}
+                <div class="idc-head text-center mb-6">
                     {% if company and company.logo %}
                     <img src="{{ company.logo }}" alt="logo" class="w-10 h-10 mx-auto mb-1 rounded-lg object-contain bg-white/10 p-0.5">
                     {% endif %}
                     <div class="text-xl font-bold text-white mb-1">{{ company.name if company else 'SmartWorker' }}</div>
-                    <div class="text-sm text-white/90 bg-white/10 px-3 py-1 rounded-full inline-block">{{ _('Employee ID Card') }}</div>
+                    <div class="idc-pill text-sm text-white/90 bg-white/10 px-3 py-1 rounded-full">{{ _('Employee ID Card') }}</div>
                 </div>
                 
                 <!-- Employee Info -->
@@ -99,15 +113,15 @@
                             </div>
                         {% endif %}
                         <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
-                            <i class="fa-solid fa-check text-xs text-white"></i>
+                            <i class="fa-solid fa-check text-xs text-white idc-tick"></i>
                         </div>
                     </div>
-                    <div class="flex-1">
+                    <div class="flex-1 min-w-0">
                         <div class="text-xl font-bold mb-1">{{ worker.full_name }}</div>
                         <div class="text-sm text-white/90 mb-1">{{ worker.position }}</div>
-                        <div class="flex items-center space-x-2 mb-2">
-                            <div class="text-xs text-white/90 bg-white/10 px-2 py-1 rounded-lg">{{ _('Worker ID') }}: {{ worker.worker_id }}</div>
-                            <div class="text-xs text-white/90 bg-white/10 px-2 py-1 rounded-lg">{{ _(worker.status|capitalize) }}</div>
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <div class="idc-pill text-xs text-white/90 bg-white/10 px-2 py-1 rounded-lg">{{ _('Worker ID') }}: {{ worker.worker_id }}</div>
+                            <div class="idc-pill text-xs text-white/90 bg-white/10 px-2 py-1 rounded-lg">{{ _(worker.status|capitalize) }}</div>
                         </div>
                     </div>
                 </div>
@@ -128,8 +142,8 @@
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex-1">
                         <div class="text-xs text-white/90 mb-2">{{ _('QR Code for Attendance') }}</div>
-                        <div class="text-sm font-medium text-white/90 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
-                            QR ID: {{ worker.worker_id }}QR{{ worker.join_date.strftime('%Y') }}
+                        <div class="idc-pill text-sm font-medium text-white/90 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
+                            QR ID: {{ worker.worker_id }}QR{{ worker.join_date.strftime('%Y') if worker.join_date else '' }}
                         </div>
                     </div>
                     <div class="ml-4">
@@ -145,7 +159,7 @@
                 
                 <!-- Footer -->
                 <div class="border-t border-white/20 pt-4">
-                    <div class="flex items-center justify-between text-xs text-white/90">
+                    <div class="idc-foot flex flex-wrap items-center justify-between text-xs text-white/90">
                         <span>{{ _('Valid for attendance marking') }}</span>
                         <span>{{ _('Generated') }}: {{ worker.updated_at|ldate('%d %b %Y') if worker.updated_at else _('Today') }}</span>
                     </div>
@@ -261,6 +275,8 @@
     </div>
 </div>
 
+{% set card_share_text = _('Employee ID Card') ~ ' — ' ~ worker.full_name ~ ' (' ~ worker.worker_id ~ ')' %}
+{% set card_pdf_meta = {'title': _('Employee ID Card') ~ ' — ' ~ worker.full_name ~ ' (' ~ worker.worker_id ~ ')', 'subject': _('Employee ID Card'), 'author': company.name if company else 'SmartWorker', 'creator': 'SmartWorker'} %}
 <script nonce="{{ csp_nonce }}">
 function showDownloadModal() {
     document.getElementById('download-options-modal').classList.remove('hidden');
@@ -273,7 +289,12 @@ function hideDownloadModal() {
 /* Filenames are built from a JSON-encoded name, so apostrophes and other
    punctuation survive instead of arriving as HTML entities. */
 var CARD_NAME = {{ worker.full_name | tojson }};
-var CARD_FILE = CARD_NAME.replace(/\s+/g, '_') + '_ID_Card';
+var CARD_PDF_META = {{ card_pdf_meta|tojson }};
+var CARD_SHARE_TEXT = {{ card_share_text|tojson }};
+var CARD_READY_TEXT = {{ _('ID card ready. Tap Share again to send it.')|tojson }};
+// Worker ID first: two workers with the same name must not overwrite each
+// other's cards in the Downloads folder.
+var CARD_FILE = 'ID_Card_' + {{ worker.worker_id|tojson }} + '_' + CARD_NAME.replace(/\s+/g, '_');
 
 /* html2canvas snapshots whatever is painted at the moment it runs. Without
    waiting for webfonts (Inter is fetched from a CDN, asynchronously) and for
@@ -352,6 +373,7 @@ function downloadPDF() {
         var imgData = flat.toDataURL('image/jpeg', 0.94);
         var jsPDF = window.jspdf.jsPDF;
         var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        pdf.setProperties(CARD_PDF_META);
 
         // Fit inside the printable area on BOTH axes, then centre. Driving the
         // fit from height first stops the card silently shrinking below the
@@ -377,11 +399,30 @@ function downloadPDF() {
     }).catch(cardExportFailed);
 }
 
+// The card image last made, so a second tap can share it at once: a phone
+// browser only shares straight after a tap.
+var cardPngReady = null;
+
+/* Same route as the payslip's Share: the browser's share sheet, Android's
+   share sheet inside the app, or else the image downloads and WhatsApp
+   opens. It used to call navigator.share only, which an Android WebView
+   does not have, so in the app it just said "not supported". */
 function shareIDCard() {
-    if (!navigator.share) {
-        alert('Sharing not supported on this device. Use download instead.');
-        return;
-    }
+    var go = function (blob) {
+        return SmartWorkerSave.share(blob, CARD_FILE + '.png', 'image/png', CARD_SHARE_TEXT)
+            .then(function () { cardPngReady = null; })
+            .catch(function (err) {
+                if (err && err.name === 'NotAllowedError') {
+                    cardPngReady = blob;
+                    if (window.MultiSelect && typeof window.MultiSelect.toast === 'function') {
+                        window.MultiSelect.toast(CARD_READY_TEXT, 'info');
+                    }
+                    return;
+                }
+                cardExportFailed(err);
+            });
+    };
+    if (cardPngReady) { go(cardPngReady); return; }
     captureCard().then(function (canvas) {
         return new Promise(function (resolve, reject) {
             canvas.toBlob(function (blob) {
@@ -390,17 +431,10 @@ function shareIDCard() {
             }, 'image/png');
         });
     }).then(function (blob) {
-        var file = new File([blob], CARD_FILE + '.png', { type: 'image/png' });
         cardBusy(false);
-        return navigator.share({
-            title: CARD_NAME + ' - SmartWorker ID Card',
-            text: 'Employee ID Card for ' + CARD_NAME,
-            files: [file]
-        });
+        return go(blob);
     }).catch(function (err) {
         cardBusy(false);
-        // A user dismissing the share sheet rejects too — that is not an error.
-        if (err && err.name === 'AbortError') return;
         cardExportFailed(err);
     });
 }

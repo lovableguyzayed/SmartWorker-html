@@ -74,6 +74,10 @@ TRANSLATIONS = {
         'optional — for reports': 'ज़रूरी नहीं — रिपोर्ट के लिए',
         'or': 'या',
         'Scan': 'स्कैन',
+        'ID card ready. Tap Share again to send it.': 'पहचान पत्र तैयार है। भेजने के लिए फिर से Share दबाएँ।',
+        'DRAFT': 'ड्राफ़्ट',
+        'Draft: payroll for this month has not been generated yet, so these figures may still change.':
+            'ड्राफ़्ट: इस महीने का वेतन अभी बना नहीं है, इसलिए ये आँकड़े अभी बदल सकते हैं।',
         'Payslip actions': 'तनख़्वाह पर्ची के काम',
         'Payslip ready. Tap Share again to send it.': 'पर्ची तैयार है। भेजने के लिए फिर से Share दबाएँ।',
         'tap to change': 'बदलने के लिए दबाएँ',
@@ -1310,6 +1314,10 @@ DATE_PATTERNS = {
 }
 
 
+#: Languages whose dates always spell the month out.
+FULL_MONTH_ONLY = frozenset({'hi'})
+
+
 def format_date(value, fmt, lang):
     """strftime with localised day and month names.
 
@@ -1326,7 +1334,11 @@ def format_date(value, fmt, lang):
         '%A': WEEKDAYS[lang][value.weekday()],
         '%a': WEEKDAYS_SHORT[lang][value.weekday()],
         '%B': MONTHS[lang][value.month - 1],
-        '%b': MONTHS_SHORT[lang][value.month - 1],
+        # Hindi has no short month forms in everyday use: "अग" and "नव"
+        # printed on ID cards read as typos, and the full names (अगस्त,
+        # नवंबर) are short anyway. Only the date formatter changes; any
+        # other use of MONTHS_SHORT keeps its own forms.
+        '%b': (MONTHS if lang in FULL_MONTH_ONLY else MONTHS_SHORT)[lang][value.month - 1],
     }
     # Walk the format so a literal %% is never mistaken for a directive.
     out, i = [], 0
