@@ -562,6 +562,10 @@ class ClosureDay(db.Model):
     site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
     allow_attendance = db.Column(db.Boolean, nullable=False, default=True)
+    # The office works half the day and shuts. Attendance stays open, a
+    # monthly salary is not cut for that day whether the person came or
+    # not, and a daily-wage worker who came is paid the full day.
+    half_day = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=now_ist)
 
     site = db.relationship('Site', backref='closures')

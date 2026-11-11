@@ -293,7 +293,7 @@
   longer needs a button up here as well.
 #}
 <header class="att-head bg-gradient-to-br from-primary via-blue-900 to-accent text-white rounded-b-3xl shadow-xl">
-    <div class="att-row">
+    <div class="att-toprow">
         <a aria-label="{{ _('Back') }}" href="{{ url_for('dashboard') }}" class="icon-btn bg-white/10 backdrop-blur-sm">
             <i class="fa-solid fa-arrow-left text-lg"></i>
         </a>
@@ -357,7 +357,7 @@
     <div class="att-closure {{ 'open' if closure.allow_attendance else 'locked' }}">
         <i class="fa-solid {{ 'fa-exclamation-triangle' if closure.allow_attendance else 'fa-calendar-times' }}" aria-hidden="true"></i>
         <span>{{ closure.reason }} — {{ _(closure.type|capitalize) }}
-            ({{ _('Attendance allowed if present') if closure.allow_attendance else _('Attendance locked') }})</span>
+            ({{ _('Half day - no salary cut') if closure.half_day else (_('Attendance allowed if present') if closure.allow_attendance else _('Attendance locked')) }})</span>
     </div>
     {% endif %}
 </header>
@@ -1033,7 +1033,7 @@ function dvRender(day) {
     (day.closures || []).forEach(function (c) {
         h += '<div class="dv-banner ' + (c.allow_attendance ? 'dv-banner-warn' : 'dv-banner-block') + '">' +
              '<b>Closure — ' + dvEsc(c.reason) + '</b> (' + dvEsc(c.type) + ', ' + dvEsc(c.scope) + '). ' +
-             (c.allow_attendance ? 'Attendance is still allowed.' : 'Attendance is locked for this date.') +
+             (c.half_day ? 'Half day. No salary cut for this date.' : (c.allow_attendance ? 'Attendance is still allowed.' : 'Attendance is locked for this date.')) +
              (DV_IS_ADMIN ? ' <button type="button" class="dv-adjust" style="color:#0062CC;font-weight:600" data-act="dvRemoveClosure" data-act-args="[' + c.id + ']">Remove</button>' : '') +
              '</div>';
     });
@@ -1183,10 +1183,13 @@ function dvAddTxn() {
 function dvAddClosure() {
     var reason = prompt('Closure reason for ' + (dvDay ? dvDay.date_label : DV_SELECTED));
     if (!reason) return;
-    var allow = confirm('Allow attendance to still be marked on this closure day?\n' +
-                        'OK = allowed, Cancel = locked');
+    var half = confirm('Is the office closed for HALF the day only?\n' +
+                       'OK = half day (no salary cut), Cancel = full day');
+    var allow = half || confirm('Allow attendance to still be marked on this closure day?\n' +
+                                'OK = allowed, Cancel = locked');
     dvPost('/api/attendance/closure',
-           { action: 'add', reason: reason, type: 'holiday', allow_attendance: allow ? 'true' : 'false' }, null);
+           { action: 'add', reason: reason, type: 'holiday', allow_attendance: allow ? 'true' : 'false',
+             half_day: half ? 'true' : 'false' }, null);
 }
 
 function dvRemoveClosure(id) {

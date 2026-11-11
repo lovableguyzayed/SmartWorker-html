@@ -46,6 +46,8 @@ can disagree with the numbers printed beside it is worse than no badge.
 import calendar as _cal
 from datetime import date
 
+from timeutil import today_ist
+
 from models import (AttendanceRecord, PayrollRecord, WorkerTransaction,
                     TRANSACTION_DEDUCTION_TYPES, TRANSACTION_SETTLEMENT_TYPES)
 
@@ -93,7 +95,9 @@ def build(worker, upto=None, compute_month=None, allocation='month'):
         # An unreadable setting must not change anybody's figures.
         allocation = 'month'
 
-    upto = upto or date.today()
+    # IST, not the server's clock: a server on UTC is still on yesterday
+    # until 5:30 in the morning here.
+    upto = upto or today_ist()
     if worker.join_date > upto:
         return dict(_empty(), allocation=allocation)
 

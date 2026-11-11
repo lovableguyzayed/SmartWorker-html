@@ -364,6 +364,7 @@ SCHEMA_PATCHES = {
     ],
     'closure_days': [
         ('allow_attendance', "BOOLEAN NOT NULL DEFAULT 1"),
+        ('half_day', "BOOLEAN NOT NULL DEFAULT 0"),
         ('scope', "VARCHAR(20) DEFAULT 'company'"),
         ('site_id', "INTEGER"),
         ('project_id', "INTEGER"),

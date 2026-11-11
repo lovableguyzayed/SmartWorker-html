@@ -1041,9 +1041,9 @@ body.kb-open nav.app-bottom-nav { display: none; }
 /* Attendance header (docs/audit/mockups, batch 2). Sizes in rem so the
    phone's font setting reaches them; nothing has a fixed height. */
 .att-head { padding: 0.875rem 1rem 1rem; }
-.att-row { display: flex; align-items: center; gap: 0.625rem; }
-.att-row h1 { flex: 1; min-width: 0; font-size: min(1.25rem, 6.5vw); font-weight: 700; line-height: 1.2; }
-.att-row .icon-btn { flex-shrink: 0; }
+.att-toprow { display: flex; align-items: center; gap: 0.625rem; }
+.att-toprow h1 { flex: 1; min-width: 0; font-size: min(1.25rem, 6.5vw); font-weight: 700; line-height: 1.2; }
+.att-toprow .icon-btn { flex-shrink: 0; }
 .att-datebar { display: flex; align-items: stretch; gap: 0.5rem; margin-top: 0.875rem; }
 .att-step, .att-day, .att-filters select, .att-search {
     background: rgba(255, 255, 255, 0.16);

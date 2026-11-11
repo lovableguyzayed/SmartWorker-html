@@ -444,6 +444,21 @@ finally:
         db.session.commit()
     print('\n  demo data restored')
 
+# Pages change without a reload, so a <style> in one template is still on
+# the page when the next one is shown. The Home screen had its own .att-row
+# (a table grid) which landed on this screen's header row and pushed the
+# closure-days button on top of the title.
+print('\n--- no other screen restyles this one ---')
+import re as _re
+_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+_shared = set(_re.findall(r'\.(att-[a-z-]+)', open(os.path.join(_root, 'static', 'css', 'custom.css')).read()))
+_clash = []
+for _name in sorted(os.listdir(os.path.join(_root, 'templates'))):
+    _html = open(os.path.join(_root, 'templates', _name)).read()
+    for _block in _re.findall(r'<style[^>]*>(.*?)</style>', _html, _re.S):
+        _clash += ['%s: .%s' % (_name, c) for c in set(_re.findall(r'\.(att-[a-z-]+)', _block)) & _shared]
+check('no template style reuses a header class name', _clash, [])
+
 print()
 if fails:
     print('FAILED %d of the checks above:' % len(fails))

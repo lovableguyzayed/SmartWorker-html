@@ -189,31 +189,31 @@
             <div class="flex items-start justify-between mb-1">
                 <h2 class="text-lg font-semibold text-gray-800">{{ _('Salary Calculation') }}</h2>
                 <span class="text-xs px-2 py-1 rounded-lg {{ 'bg-amber-50 text-amber-700' if salary_override else 'bg-gray-100 text-gray-500' }}">
-                    {{ 'Own policy' if salary_override else 'Company policy' }}
+                    {{ _('Own policy') if salary_override else _('Company policy') }}
                 </span>
             </div>
-            <p class="text-xs text-gray-500 mb-3">{{ salary_preview.period if salary_preview.period else 'This month' }} — preview, nothing is saved until payroll is generated.</p>
+            <p class="text-xs text-gray-500 mb-3">{{ salary_preview.period if salary_preview.period else _('This month') }} — {{ _('preview, nothing is saved until payroll is generated.') }}</p>
 
             <div class="grid grid-cols-2 gap-2 mb-3">
                 <div class="bg-gray-50 rounded-2xl p-3">
                     <div class="text-xs text-gray-500">{{ _('Daily salary') }}</div>
                     <div class="text-lg font-bold text-gray-800">{{ salary_preview.daily_rate|money }}</div>
-                    <div class="text-xs text-gray-500">exact {{ salary_preview.daily_rate_exact|money2 }} · {{ salary_preview.basis_days }}-day basis</div>
+                    <div class="text-xs text-gray-500">{{ _('exact') }} {{ salary_preview.daily_rate_exact|money2 }} · {{ _('%s-day basis') % salary_preview.basis_days }}</div>
                 </div>
                 <div class="bg-gray-50 rounded-2xl p-3">
                     <div class="text-xs text-gray-500">{{ _('Eligible days') }}</div>
                     <div class="text-lg font-bold text-gray-800">{{ salary_preview.eligible_days }}</div>
-                    <div class="text-xs text-gray-500">of {{ salary_preview.total_calendar_days }} calendar days</div>
+                    <div class="text-xs text-gray-500">{{ _('of %s calendar days') % salary_preview.total_calendar_days }}</div>
                 </div>
                 <div class="bg-red-50 rounded-2xl p-3">
                     <div class="text-xs text-red-700">{{ _('Deduction') }}</div>
                     <div class="text-lg font-bold text-red-700">{{ salary_preview.deduction_amount|money }}</div>
-                    <div class="text-xs text-red-700">{{ salary_preview.deduction_days }} day(s)</div>
+                    <div class="text-xs text-red-700">{{ salary_preview.deduction_days }} {{ _('day(s)') }}</div>
                 </div>
                 <div class="bg-green-50 rounded-2xl p-3">
                     <div class="text-xs text-green-700">{{ _('Net payable') }}</div>
                     <div class="text-lg font-bold text-green-700">{{ salary_preview.net_payable|money }}</div>
-                    <div class="text-xs text-green-700">gross {{ salary_preview.gross_eligible_salary|money }}</div>
+                    <div class="text-xs text-green-700">{{ _('gross') }} {{ salary_preview.gross_eligible_salary|money }}</div>
                 </div>
             </div>
 
@@ -242,7 +242,7 @@
                 <summary class="text-sm font-medium text-accent cursor-pointer">{{ _('Override for this worker') }}</summary>
                 <form method="POST" action="{{ url_for('worker_salary_policy', worker_id=worker.id) }}" class="mt-3 space-y-3">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <p class="text-xs text-gray-500">Departs from the company policy for {{ worker.full_name }} only.</p>
+                    <p class="text-xs text-gray-500">{{ _('Departs from the company policy for %s only.') % worker.full_name }}</p>
 
                     <select name="salary_basis" class="w-full p-3 border border-lightGray rounded-xl">
                         <option value="fixed" {{ 'selected' if effective_policy.salary_basis == 'fixed' }}>{{ _('Fixed number of days') }}</option>
@@ -296,7 +296,7 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="clear_override" value="1">
                     <button type="submit" class="w-full border border-gray-200 text-gray-600 py-3 rounded-2xl font-medium">
-                        Remove override and follow company policy
+                        {{ _('Remove override and follow company policy') }}
                     </button>
                 </form>
                 {% endif %}
@@ -329,9 +329,9 @@
             </div>
         </div>
         <div class="text-xs text-gray-500">
-            Unused monthly leaves ({{ leave_balance.monthly_quota }}/month) accumulate automatically since joining.
-            Extra leaves consume this balance before any salary deduction.
-            {% if leave_balance.manual_adjustment %}Includes {{ leave_balance.manual_adjustment }} day(s) manual adjustment.{% endif %}
+            {{ _('Unused monthly leaves (%s/month) accumulate automatically since joining.') % leave_balance.monthly_quota }}
+            {{ _('Extra leaves consume this balance before any salary deduction.') }}
+            {% if leave_balance.manual_adjustment %}{{ _('Includes %s day(s) manual adjustment.') % leave_balance.manual_adjustment }}{% endif %}
         </div>
     </section>
     {% endif %}

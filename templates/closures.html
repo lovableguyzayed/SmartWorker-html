@@ -83,6 +83,15 @@
                 </select>
             </div>
 
+            <div>
+                <label for="closure-duration" class="text-sm font-medium text-gray-700 mb-2 block">{{ _('Closed for') }}</label>
+                <select name="duration" id="closure-duration" class="w-full p-3 border border-lightGray rounded-2xl focus:border-accent focus:outline-none">
+                    <option value="full">{{ _('Full day') }}</option>
+                    <option value="half">{{ _('Half day') }}</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-2">{{ _('Half day: attendance stays open, monthly salary is not cut for that day, and daily-wage workers who come are paid the full day.') }}</p>
+            </div>
+
             <div class="flex items-center justify-between p-3 bg-orange-50 rounded-2xl border border-orange-200">
                 <div class="flex items-center space-x-3">
                     <i class="fa-solid fa-exclamation-triangle text-orange-500"></i>
@@ -130,7 +139,10 @@
                     </div>
                     <div class="text-xs {{ 'text-red-700' if not closure.allow_attendance else 'text-green-700' }}">{{ closure.reason }}</div>
                     <div class="flex items-center space-x-1 mt-1">
-                        {% if closure.allow_attendance %}
+                        {% if closure.half_day %}
+                            <i class="fa-solid fa-adjust text-green-700 text-xs"></i>
+                            <span class="text-xs text-gray-500">{{ _('Half day - no salary cut') }}</span>
+                        {% elif closure.allow_attendance %}
                             <i class="fa-solid fa-check-circle text-green-700 text-xs"></i>
                             <span class="text-xs text-gray-500">{{ _('Attendance allowed if present') }}</span>
                         {% else %}
