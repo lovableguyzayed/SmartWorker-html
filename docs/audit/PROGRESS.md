@@ -67,3 +67,24 @@ failures are listed in the report as TEST-02 and LAY-01.
 - [ ] **D7** Render paid plan
 - [ ] **D8** Play release signing and account
 - [ ] **NAT-01 / S1** Owner to test *Save PDF* and *Share* on a payslip in the installed APK
+
+## Round 2 (11 Nov 2026): the audit run again on the merged app
+
+Report: [APP_AUDIT_REPORT.md](APP_AUDIT_REPORT.md) (round 1 kept as
+APP_AUDIT_REPORT_ROUND1.md).
+
+- [x] Phase 0 re-counted: 31 screens, 636 controls, 96 links, 8 documents
+- [x] Phase 1 re-run: cross-business / role / CSRF / redirect probes, 336
+      size-and-language loads, Hindi gaps, contrast, documents, page weight
+- [x] R2-01 screens no longer restyle each other (attendance header)
+- [x] R2-02 half-day closing (closure_days.half_day)
+- [x] R2-03 Workers fits at the largest text
+- [x] R2-04 Hindi on worker profile and month view
+- [x] R2-05 IST in ledger fallback · R2-06 Save PDF tap size · R2-07 comment
+- [ ] R2-08 owner to confirm SETUP_TOKEN is not set on Render
+- [ ] R2-09 dues name link height · R2-11 no-store header · R2-12 contrast · R2-13 small text
+- [ ] R2-10 three tests that also fail on main (departed_dues, dues_queries, whole_rupees)
+- [ ] Pull request for round 2 (not opened; owner to say)
+
+Test data: `python tools/make_test_fixture.py` with DATABASE_URL set; do
+not set SEED_ADMIN_PASSWORD shorter than 8 characters or the seed is skipped.
