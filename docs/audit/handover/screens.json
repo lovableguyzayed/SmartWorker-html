@@ -1,0 +1,302 @@
+{
+"public|/": {
+"before": {
+"file": "before_public_home.jpg",
+"cut": true
+},
+"after": {
+"file": "after_public_home.jpg",
+"cut": true
+}
+},
+"public|/login": {
+"before": {
+"file": "before_public_login.jpg",
+"cut": true
+},
+"after": {
+"file": "after_public_login.jpg",
+"cut": false
+}
+},
+"public|/register": {
+"before": {
+"file": "before_public_register.jpg",
+"cut": true
+},
+"after": {
+"file": "after_public_register.jpg",
+"cut": false
+}
+},
+"public|/forgot-password": {
+"before": {
+"file": "before_public_forgot-password.jpg",
+"cut": false
+},
+"after": {
+"file": "after_public_forgot-password.jpg",
+"cut": false
+}
+},
+"admin|/dashboard": {
+"before": {
+"file": "before_admin_dashboard.jpg",
+"cut": false
+},
+"after": {
+"file": "after_admin_dashboard.jpg",
+"cut": false
+}
+},
+"admin|/workers": {
+"before": {
+"file": "before_admin_workers.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_workers.jpg",
+"cut": true
+}
+},
+"admin|/attendance": {
+"before": {
+"file": "before_admin_attendance.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_attendance.jpg",
+"cut": true
+}
+},
+"admin|/payroll": {
+"before": {
+"file": "before_admin_payroll.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_payroll.jpg",
+"cut": true
+}
+},
+"admin|/payroll/preview": {
+"before": {
+"file": "before_admin_payroll_preview.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_payroll_preview.jpg",
+"cut": true
+}
+},
+"admin|/transactions": {
+"before": {
+"file": "before_admin_transactions.jpg",
+"cut": false
+},
+"after": {
+"file": "after_admin_transactions.jpg",
+"cut": false
+}
+},
+"admin|/closures": {
+"before": {
+"file": "before_admin_closures.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_closures.jpg",
+"cut": true
+}
+},
+"admin|/assignments": {
+"before": {
+"file": "before_admin_assignments.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_assignments.jpg",
+"cut": true
+}
+},
+"admin|/profile": {
+"before": {
+"file": "before_admin_profile.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_profile.jpg",
+"cut": true
+}
+},
+"admin|/settings": {
+"before": {
+"file": "before_admin_settings.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_settings.jpg",
+"cut": true
+}
+},
+"admin|/scan": {
+"before": {
+"file": "before_admin_scan.jpg",
+"cut": false
+},
+"after": {
+"file": "after_admin_scan.jpg",
+"cut": false
+}
+},
+"admin|/notifications": {
+"before": {
+"file": "before_admin_notifications.jpg",
+"cut": false
+},
+"after": {
+"file": "after_admin_notifications.jpg",
+"cut": false
+}
+},
+"admin|/add_worker": {
+"before": {
+"file": "before_admin_add_worker.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_add_worker.jpg",
+"cut": true
+}
+},
+"admin|/dues": {
+"before": {
+"file": "before_admin_dues.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_dues.jpg",
+"cut": true
+}
+},
+"admin|/worker/1": {
+"before": {
+"file": "before_admin_worker_1.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_worker_1.jpg",
+"cut": true
+}
+},
+"admin|/worker_attendance/1": {
+"before": {
+"file": "before_admin_worker_attendance_1.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_worker_attendance_1.jpg",
+"cut": true
+}
+},
+"admin|/worker/1/report": {
+"before": {
+"file": "before_admin_worker_1_report.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_worker_1_report.jpg",
+"cut": true
+}
+},
+"admin|/payroll/slip/1": {
+"before": {
+"file": "before_admin_payroll_slip_1.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_payroll_slip_1.jpg",
+"cut": true
+}
+},
+"admin|/worker/1/account": {
+"before": {
+"file": "before_admin_worker_1_account.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_worker_1_account.jpg",
+"cut": true
+}
+},
+"admin|/edit_worker/1": {
+"before": {
+"file": "before_admin_edit_worker_1.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_edit_worker_1.jpg",
+"cut": true
+}
+},
+"admin|/id_card/1": {
+"before": {
+"file": "before_admin_id_card_1.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_id_card_1.jpg",
+"cut": true
+}
+},
+"admin|/worker/7/login/powers": {
+"before": {
+"file": "before_admin_worker_7_login_powers.jpg",
+"cut": true
+},
+"after": {
+"file": "after_admin_worker_7_login_powers.jpg",
+"cut": true
+}
+},
+"sup|/me": {
+"before": {
+"file": "before_sup_me.jpg",
+"cut": true
+},
+"after": {
+"file": "after_sup_me.jpg",
+"cut": true
+}
+},
+"sup|/me/team": {
+"before": {
+"file": "before_sup_me_team.jpg",
+"cut": false
+},
+"after": {
+"file": "after_sup_me_team.jpg",
+"cut": false
+}
+},
+"sup|/me/payslip": {
+"before": {
+"file": "before_sup_me_payslip.jpg",
+"cut": true
+},
+"after": {
+"file": "after_sup_me_payslip.jpg",
+"cut": true
+}
+},
+"sup|/worker/7/account": {
+"before": {
+"file": "before_sup_worker_7_account.jpg",
+"cut": true
+},
+"after": {
+"file": "after_sup_worker_7_account.jpg",
+"cut": true
+}
+}
+}
