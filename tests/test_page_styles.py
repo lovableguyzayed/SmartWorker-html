@@ -31,7 +31,7 @@ from playwright.sync_api import sync_playwright  # noqa: E402
 
 EXE = os.environ.get('UX_CHROME',
                      '/opt/pw-browsers/chromium-1194/chrome-linux/chrome')
-PORT = 5131
+PORT = 5133
 B = 'http://127.0.0.1:%d' % PORT
 fails = []
 
