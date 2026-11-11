@@ -928,7 +928,7 @@ function pdfDrawChrome(pdf, geom, pageNo, pageCount) {
     pdf.text('Page ' + pageNo + ' of ' + pageCount, geom.pageW / 2, 290, { align: 'center' });
 }
 
-// Worker ID in the name: two workers called Javed must not overwrite each
+// Worker ID in the name: two workers with one name must not overwrite each
 // other's payslips in the Downloads folder.
 var PAYSLIP_PDF_NAME = {{ ("Payslip_" ~ worker.worker_id ~ "_" ~ worker.full_name|replace(" ", "_") ~ "_" ~ month_name[:3] ~ "-" ~ year ~ ".pdf")|tojson }};
 // What goes with the file - or alone, where a file cannot be shared.

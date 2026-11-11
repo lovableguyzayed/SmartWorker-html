@@ -36,7 +36,7 @@
                        class="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/70 focus:ring-2 focus:ring-white/50">
             </div>
             <div class="flex space-x-2">
-                <select name="department" class="flex-1 p-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50">
+                <select name="department" style="min-width: 0" class="flex-1 p-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-white/50">
                     <option value="">{{ _('All Departments') }}</option>
                     {% for dept in departments %}
                     <option value="{{ dept }}" {{ 'selected' if dept == selected_department }} style="color: black;">{{ dept }}</option>

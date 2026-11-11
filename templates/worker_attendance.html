@@ -177,10 +177,10 @@
                                 </div>
                             {% endif %}
                             {% if record.check_in_time %}
-                                <div class="text-sm text-gray-600">Check-in: {{ record.check_in_time.strftime('%H:%M') }}</div>
+                                <div class="text-sm text-gray-600">{{ _('Check-in') }}: {{ record.check_in_time.strftime('%H:%M') }}</div>
                             {% endif %}
                             {% if record.check_out_time %}
-                                <div class="text-sm text-gray-600">Check-out: {{ record.check_out_time.strftime('%H:%M') }}</div>
+                                <div class="text-sm text-gray-600">{{ _('Check-out') }}: {{ record.check_out_time.strftime('%H:%M') }}</div>
                             {% endif %}
                         </div>
                     </div>
