@@ -473,6 +473,12 @@ const NativeShell = {
             this.loadedAssets.add(new URL(s.src, location.href).pathname));
         document.querySelectorAll('link[rel="stylesheet"]').forEach((l) =>
             this.loadedAssets.add(new URL(l.href, location.href).pathname));
+        // The <style> blocks this page came with. render() keeps this set in
+        // step with each screen; a style a library adds later is not ours
+        // and is left alone.
+        document.querySelectorAll('head style').forEach((st) => {
+            st.setAttribute('data-page-style', '');
+        });
 
         document.addEventListener('click', (e) => this.onClick(e));
         document.addEventListener('submit', (e) => this.onSubmit(e));
@@ -611,8 +617,8 @@ const NativeShell = {
     render(html, url, push) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
 
-        // Merge page-specific head assets (print styles, jsPDF, QR library…)
-        doc.querySelectorAll('head link[rel="stylesheet"], head style, head script[src]').forEach((node) => {
+        // Merge page-specific head assets (jsPDF, QR library…)
+        doc.querySelectorAll('head link[rel="stylesheet"], head script[src]').forEach((node) => {
             const key = node.src || node.href;
             if (key) {
                 const path = new URL(key, location.href).pathname;
@@ -620,6 +626,24 @@ const NativeShell = {
                 this.loadedAssets.add(path);
             }
             document.head.appendChild(this.executable(node));
+        });
+
+        // A screen's own <style> leaves with it. They used to be added and
+        // never removed, so every screen visited went on styling every
+        // screen after it: Home's .att-row (a table grid) landed on the
+        // Attendance header and put the closure-days button on top of the
+        // title. The head now holds exactly the styles the incoming screen
+        // was written with, as it would after a full load.
+        const wanted = new Map();
+        doc.querySelectorAll('head style').forEach((st) => wanted.set(st.textContent, st));
+        document.querySelectorAll('head style[data-page-style]').forEach((st) => {
+            if (wanted.has(st.textContent)) wanted.delete(st.textContent);
+            else st.remove();
+        });
+        wanted.forEach((st) => {
+            const copy = this.executable(st);
+            copy.setAttribute('data-page-style', '');
+            document.head.appendChild(copy);
         });
 
         document.title = doc.title;
