@@ -84,6 +84,11 @@ TRANSLATIONS = {
         'tap to change': 'बदलने के लिए दबाएँ',
         'Search name or ID': 'नाम या आईडी खोजें',
         'Attendance locked': 'हाज़िरी बंद है',
+        'Closed for': 'कितने समय बंद',
+        'Full day': 'पूरा दिन',
+        'Half day': 'आधा दिन',
+        'Half day - no salary cut': 'आधा दिन - वेतन नहीं कटेगा',
+        'Half day: attendance stays open, monthly salary is not cut for that day, and daily-wage workers who come are paid the full day.': 'आधा दिन: हाज़िरी खुली रहती है, उस दिन मासिक वेतन नहीं कटता, और जो दिहाड़ी मज़दूर आते हैं उन्हें पूरे दिन की मज़दूरी मिलती है।',
         'verified': 'सत्यापित',
         # --- navigation and chrome ---------------------------------------
         'Home': 'होम',
@@ -1691,6 +1696,8 @@ _NOTE_PATTERNS_SOURCE = {
         # Notes added by the payroll route rather than the engine.
         (r'^No-work-no-pay applied for absent days\.$',
          r'ग़ैरहाज़िर दिनों की मज़दूरी नहीं जोड़ी गई।'),
+        (r'^No salary cut for (\d+) absent day\(s\) when the office closed at half day\.$',
+         r'जिन \1 दिन दफ़्तर आधे दिन बंद रहा, उन ग़ैरहाज़िर दिनों का वेतन नहीं काटा गया।'),
         (r'^Hourly wage is based on check-in/check-out duration\.$',
          r'मज़दूरी आने-जाने के समय के हिसाब से लगी है।'),
         (r'^Overtime policy added extra pay\.$',

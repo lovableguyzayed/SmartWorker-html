@@ -387,6 +387,11 @@ def calculate_daily_wage_for_record(worker, attendance_record):
     if not attendance_record or attendance_record.status not in ('present', 'late'):
         return 0.0, 'none'
 
+    # The office shut at half day: whoever came is paid the day, not the
+    # half-day rate their short hours would otherwise earn.
+    if on_half_day_closure(worker, attendance_record.date):
+        return daily_rate, 'full_day'
+
     scheduled_minutes = calculate_scheduled_minutes_for_day(worker, attendance_record.date)
     worked_minutes = calculate_worked_minutes_for_record(attendance_record)
 
@@ -2089,6 +2094,30 @@ def _closures_in_period(period_start, period_end):
     return cache[key]
 
 
+def half_day_closure_dates(worker, period_start, period_end):
+    """The days in this period the office shut at half day for this worker.
+
+    A half-day closure is the employer sending everybody home early. Nobody
+    is charged for it: a monthly salary is not cut for the day, marked
+    absent or not marked at all, and a daily-wage worker who came in is
+    paid the full day rather than the half-day rate their hours would give.
+    """
+    if not has_app_context():
+        return set()
+    return {
+        c.date for c in _closures_in_period(period_start, period_end)
+        if getattr(c, 'half_day', False) and closure_applies_to_worker(c, worker)
+    }
+
+
+def on_half_day_closure(worker, on_date):
+    if not on_date:
+        return False
+    start = on_date.replace(day=1)
+    end = start.replace(day=_cal.monthrange(start.year, start.month)[1])
+    return on_date in half_day_closure_dates(worker, start, end)
+
+
 def count_unmarked_days(worker, records, period_start, period_end):
     """Days of this period that went by with no attendance row at all.
 
@@ -2120,6 +2149,8 @@ def count_unmarked_days(worker, records, period_start, period_end):
         c.date for c in _closures_in_period(period_start, period_end)
         if not c.allow_attendance and closure_applies_to_worker(c, worker)
     }
+    # A half-day closure is not charged either: the employer shut early.
+    shut |= half_day_closure_dates(worker, period_start, period_end)
 
     unmarked = 0
     day = start
@@ -2316,8 +2347,14 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         # worker's pay changes until an employer turns a rule on.
         policy = resolve_salary_policy(worker)
         carried = leave_balance['balance_before'] if leave_balance else 0.0
+        # Absent on a day the office shut at half day is not an absence to
+        # charge for: those rows are left out of the salary calculation.
+        half_days = half_day_closure_dates(worker, period_start, period_end)
+        salary_records = [r for r in attendance_records
+                          if not (r.status == 'absent' and r.date in half_days)]
+        excused = len(attendance_records) - len(salary_records)
         salary_breakdown = salary.compute(
-            worker, policy, attendance_records, period_start, period_end,
+            worker, policy, salary_records, period_start, period_end,
             carried_leave_balance=carried,
             unmarked_days=count_unmarked_days(worker, attendance_records,
                                               period_start, period_end))
@@ -2326,6 +2363,9 @@ def calculate_pay_summary(worker, attendance_records, period_start=None, period_
         leave_deductions = salary_breakdown['deduction_amount']
         extra_leave_days = salary_breakdown['deduction_days']
         policy_notes.extend(salary_breakdown['explanation'])
+        if excused:
+            policy_notes.append(
+                'No salary cut for %d absent day(s) when the office closed at half day.' % excused)
     elif worker.pay_type == 'hourly':
         base_pay = (worked_minutes / 60.0) * float(worker.hourly_rate or 0)
         policy_notes.append('Hourly wage is based on check-in/check-out duration.')
@@ -3190,6 +3230,10 @@ def closures():
         reason = request.form['reason'].strip()
         closure_type = request.form.get('type', 'holiday').strip().lower()
         allow_attendance = 'allow_attendance' in request.form
+        # Half day: the office is open for part of it, so attendance is.
+        half_day = request.form.get('duration') == 'half'
+        if half_day:
+            allow_attendance = True
         scope = request.form.get('scope', 'company')
         if scope not in ('company', 'site', 'project'):
             scope = 'company'
@@ -3211,6 +3255,7 @@ def closures():
             existing.reason = reason
             existing.type = closure_type
             existing.allow_attendance = allow_attendance
+            existing.half_day = half_day
             flash('Closure day updated successfully', 'success')
         else:
             closure = ClosureDay()
@@ -3221,6 +3266,7 @@ def closures():
             closure.site_id = site_id
             closure.project_id = project_id
             closure.allow_attendance = allow_attendance
+            closure.half_day = half_day
             db.session.add(closure)
             flash('Closure day added successfully', 'success')
 
@@ -6354,6 +6400,7 @@ def _day_payload(on_date):
             'type': c.type,
             'scope': c.scope or 'company',
             'allow_attendance': bool(c.allow_attendance),
+            'half_day': bool(c.half_day),
         } for c in closures],
         'counts': counts,
         'rows': rows,
@@ -6560,9 +6607,11 @@ def api_attendance_closure():
     if closure_type not in ('holiday', 'site', 'project', 'emergency', 'maintenance'):
         closure_type = 'holiday'
 
+    half_day = request.form.get('half_day') == 'true'
     db.session.add(ClosureDay(
         date=on_date, reason=reason, type=closure_type, scope='company',
-        allow_attendance=request.form.get('allow_attendance') == 'true',
+        allow_attendance=half_day or request.form.get('allow_attendance') == 'true',
+        half_day=half_day,
     ))
     db.session.commit()
     return jsonify({'success': True,
